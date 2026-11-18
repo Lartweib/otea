@@ -255,10 +255,8 @@ export const surfaces = {
 
   // Conectar un agente
   'connect.title': 'Conectar un agente',
-  'connect.others':
-    'Claude Code lee el .mcp.json que escribe {connect}. Codex, Gemini y los demás usan la CLI: {command} les deja la guía en AGENTS.md.',
-  'connect.othersJoin':
-    'Claude Code lee el .mcp.json del proyecto. Codex, Gemini y los demás usan la CLI: {command} les deja la guía en AGENTS.md.',
+  'connect.mcp':
+    'El agente ejecuta {connect}: deja la guía de Otea en AGENTS.md y le dice qué servidor MCP agregar a su propia configuración, sea cual sea su harness (Claude Code, OpenCode, Codex u otro). Sin MCP, el comando otea hace lo mismo.',
   'connect.startBody':
     'Pega esto en el chat de tu agente. Configura Otea, se conecta, lee el proyecto, te pregunta cómo trabajas y te propone los tableros para que los pruebes.',
   'connect.joinBody':
@@ -267,7 +265,8 @@ export const surfaces = {
     'Pega esto en el chat de tu agente. Se conecta con un nombre propio, lee los tableros y trabaja lo que les toca a los agentes.',
   'connect.copyPrompt': 'Copiar la instrucción',
   'connect.copiedPrompt': 'Copiada',
-  'connect.appears': 'Aparece aquí en cuanto llame a Otea.',
+  'connect.appears':
+    'Otea comprueba la conexión: el agente aparece aquí en cuanto llama a Otea, con un aviso si pidió MCP y su harness nunca lo cargó.',
   'connect.done': 'Hecho',
   // Surfaces, redrawn (SPEC §10.4-10.5): Actividad, Triaje, Nuevo ítem, Te espera, Emparejar, Configuración
   'activity.open': 'Ver actividad',

@@ -1,8 +1,5 @@
-import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { connectAgent } from './agents.ts';
+import { mcpEntry } from './agents.ts';
 import { oteaLauncher, shellLine, withHome } from './launcher.ts';
 
 const MAIN = '/opt/Otea/resources/otea/src/cli/main.ts';
@@ -28,20 +25,24 @@ describe('oteaLauncher', () => {
     expect(shellLine(launcher)).toBe(`ELECTRON_RUN_AS_NODE=1 "/opt/Otea/otea-desktop" "${MAIN}"`);
   });
 
-  it('pins an MCP server that runs on the desktop app with its environment', () => {
-    const root = mkdtempSync(join(tmpdir(), 'otea-launcher-'));
-    try {
-      const launcher = oteaLauncher(MAIN, { execPath: 'C:\\Otea\\Otea.exe', electron: '45.2.1' });
-      connectAgent(root, 'claude-b', launcher);
-      const config = JSON.parse(readFileSync(join(root, '.mcp.json'), 'utf8'));
-      expect(config.mcpServers.otea).toEqual({
-        command: 'C:\\Otea\\Otea.exe',
-        args: [MAIN, 'mcp', '--as', 'claude-b'],
-        env: { ELECTRON_RUN_AS_NODE: '1' },
-      });
-    } finally {
-      rmSync(root, { recursive: true, force: true });
-    }
+  it('gives the MCP server of the desktop app with its environment, pinned to the project', () => {
+    const launcher = oteaLauncher(MAIN, { execPath: 'C:\\Otea\\Otea.exe', electron: '45.2.1' });
+
+    expect(mcpEntry(launcher, 'shop-k3x7qa')).toEqual({
+      command: 'C:\\Otea\\Otea.exe',
+      args: [MAIN, 'mcp', '--project', 'shop-k3x7qa'],
+      env: { ELECTRON_RUN_AS_NODE: '1' },
+    });
+  });
+
+  it('gives a checkout MCP server with no environment, and names no agent', () => {
+    const entry = mcpEntry(oteaLauncher(MAIN, { execPath: 'node' }), 'shop-k3x7qa');
+
+    expect(entry).toEqual({
+      command: 'node',
+      args: ['--disable-warning=ExperimentalWarning', MAIN, 'mcp', '--project', 'shop-k3x7qa'],
+    });
+    expect(entry.args).not.toContain('--as');
   });
 
   describe('withHome', () => {

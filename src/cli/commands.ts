@@ -10,8 +10,16 @@ import {
   type Submitted,
   submitAgentDraft,
 } from '../app/agent-draft.ts';
-import { joinFacts, promptKindOf } from '../app/agent-prompts.ts';
-import { type AgentsMdAction, assertPinned, connectAgent, writeAgentsMd } from '../app/agents.ts';
+import { promptFacts, promptKindOf } from '../app/agent-prompts.ts';
+import {
+  type AgentsMdAction,
+  assertPinned,
+  MCP_SERVER,
+  type McpEntry,
+  mcpEntry,
+  oldMcpEntry,
+  writeAgentsMd,
+} from '../app/agents.ts';
 import { addBoard, addBoardSet, type BoardRecord, syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import {
@@ -46,6 +54,7 @@ import {
   moveItem,
   oldestWaiting,
   showItem,
+  systemClock,
   updateItem,
 } from '../app/items.ts';
 import { oteaLauncher, withHome } from '../app/launcher.ts';
@@ -75,6 +84,7 @@ import {
   type Harness,
   hearAgent,
   LISTEN_BEAT_MS,
+  listAgents,
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
@@ -154,7 +164,13 @@ import { machineProjects } from '../server/hub.ts';
 import { formatCode } from '../server/lan.ts';
 import { ensureVapidKeys } from '../server/push.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
-import { type EventFilter, findProfile, type ProfileView, profileView } from '../store/queries.ts';
+import {
+  type EventFilter,
+  findProfile,
+  markMcpAsked,
+  type ProfileView,
+  profileView,
+} from '../store/queries.ts';
 import {
   type Command,
   CommandFailure,
@@ -175,14 +191,7 @@ import {
   indent,
 } from './format.ts';
 import { prState } from './gh.ts';
-import {
-  branchesBrought,
-  commitsOver,
-  currentBranch,
-  keepOutOfGit,
-  keptOutNote,
-  remoteOf,
-} from './gitrepo.ts';
+import { branchesBrought, commitsOver, currentBranch, remoteOf } from './gitrepo.ts';
 import {
   gitHookOf,
   type HookChange,
@@ -639,41 +648,99 @@ const OTEA = oteaLauncher(fileURLToPath(new URL('./main.ts', import.meta.url)), 
   electron: process.versions.electron,
 });
 
+// The MCP server as an agent adds it to its own harness's config: every harness keeps that config
+// its own way, so Otea gives one instruction and writes none of them.
+function mcpInstructionText(entry: McpEntry): string[] {
+  const env = Object.entries(entry.env ?? {}).map(([name, value]) => `${name}=${value}`);
+  const json = JSON.stringify({ [MCP_SERVER]: entry });
+  return [
+    "To use Otea's MCP tools, add this MCP server to your harness's own MCP config yourself (a local stdio server; Otea writes no harness config):",
+    indent(
+      columns([
+        ['name', MCP_SERVER],
+        ['command', entry.command],
+        ['args', entry.args.map((arg) => (/\s/.test(arg) ? `"${arg}"` : arg)).join(' ')],
+        ...(env.length > 0 ? [['env', env.join(' ')]] : []),
+      ]),
+    ),
+    `As JSON: ${json}`,
+    'It names no agent: each session names itself (--as; MCP tools: as). Then restart or reload your session so it loads the server, approve it if your harness asks, and run otea connect --check: the desk shows the agent connected, or warns that it is not. Until then, and whenever MCP is off, the otea command does the same.',
+  ];
+}
+
+// What otea connect --check says: whether the agent named (or any agent) was heard through Otea's
+// MCP server in this project.
+function mcpCheck(project: Project, agent: string | undefined, now = systemClock): Output {
+  const heard = listAgents(project.db, now)
+    .filter(({ name, mcpAt }) => mcpAt !== null && (agent === undefined || name === agent))
+    .sort((a, b) => Date.parse(b.mcpAt ?? '') - Date.parse(a.mcpAt ?? ''));
+  const data = {
+    connected: heard.length > 0,
+    agents: heard.map(({ name, harness, mcpAt }) => ({ name, harness, mcpAt })),
+  };
+  if (heard.length > 0) {
+    const lines = heard.map(
+      ({ name, harness, mcpAt }) =>
+        `MCP works: ${name} was heard through Otea's MCP server ${timeText(mcpAt ?? '')}${harness ? ` (${harness})` : ''}`,
+    );
+    return { data, text: lines.join('\n') };
+  }
+  const who = agent ?? 'No agent';
+  return {
+    data,
+    text: `${who} ${agent ? 'has' : 'has'} not reached Otea through its MCP server in this project yet. If you added the server, restart or reload the session and approve it when your harness asks (declining turns it off for the project), then call any Otea tool, such as next. Meanwhile the otea command works the same.`,
+    failure: 'not_connected',
+  };
+}
+
 const connect: Command = {
   name: 'connect',
   summary:
-    'Pin an agent name in the project MCP config (.mcp.json) so every MCP action is attributed to it; asks for the name unless --as gives it. --model and --effort give the profile it runs as (required unless it declared one), which the agent confirms in its first session',
+    "Connect agents to Otea, the same for every harness: add (or refresh) Otea's block in AGENTS.md and print the MCP server an agent adds to its own harness's config (otea mcp --project <id>: Otea writes no harness config). --as with --model and --effort also declares the profile that agent runs as, and notes it asked for MCP, so the desk warns while its harness never loads the server. --check says whether the agent (--as) or any agent was heard through the MCP server",
   args: [],
   // --as is a global option; it is named here so the usage line shows it.
   options: {
     as: { placeholder: 'name' },
     model: { placeholder: 'id' },
     effort: { placeholder: 'level' },
+    check: { flag: true },
   },
   execute: async (input) => {
-    const { cwd, option, ask } = input;
-    const root = withProject(cwd, (project) => project.root);
-    const name = option('as') ?? (await ask('Agent name (short, like claude-b): '))?.trim();
-    if (name === undefined) throw new UsageError('Name the agent with --as <name>');
-    assertAgentName(name);
+    const { cwd, option, flag } = input;
+    const name = input.agent;
+    if (name !== undefined) assertAgentName(name);
+    if (flag('check')) return withProject(cwd, (project) => mcpCheck(project, name));
     const model = option('model');
     const effort = option('effort');
-    withProject(cwd, (project) => {
-      if (model !== undefined && effort !== undefined) {
-        presetProfile(project.db, { agent: name, model, effort });
-      } else if (!findProfile(project.db, name)) {
-        throw new UsageError(
-          `Give the profile ${name} runs as: --model <id> --effort <level>, exactly as its harness names them (such as claude-opus-5-5 and high)`,
-        );
+    const { root, id } = withProject(cwd, (project) => {
+      if (name !== undefined) {
+        if (model !== undefined && effort !== undefined) {
+          presetProfile(project.db, { agent: name, model, effort });
+        } else if (!findProfile(project.db, name)) {
+          throw new UsageError(
+            `Give the profile ${name} runs as: --model <id> --effort <level>, exactly as its harness names them (such as claude-opus-5-5 and high)`,
+          );
+        }
+        markMcpAsked(project.db, name, systemClock());
       }
+      return { root: project.root, id: project.identity.id };
     });
-    const id = withProject(cwd, (project) => project.identity.id);
-    const connection = connectAgent(root, name, withHome(OTEA, input.home), id);
-    // The entry names this machine's path to Otea: the file stays out of git.
-    const git = keepOutOfGit(connection.path);
-    const note = keptOutNote(connection.path, git);
-    const text = `Connected "${name}": ${connection.path} serves otea mcp --as ${name}${note ? ` (${note})` : ''}`;
-    return { data: { ...connection, git }, text };
+    const agentsMd = writeAgentsMd(root);
+    const mcp = { name: MCP_SERVER, ...mcpEntry(withHome(OTEA, input.home), id) };
+    const old = oldMcpEntry(root);
+    const text = [
+      `${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}: every agent that reads AGENTS.md finds Otea there (Claude Code reads CLAUDE.md: a line @AGENTS.md in it imports this file)`,
+      ...mcpInstructionText(mcpEntry(withHome(OTEA, input.home), id)),
+      ...(old
+        ? [
+            `${old} still has the otea entry an older otea connect wrote, which gives every session there one agent name: remove that entry and add the server as above.`,
+          ]
+        : []),
+    ];
+    return {
+      data: { agentsMd, mcp, ...(name === undefined ? {} : { agent: name }) },
+      text: text.join('\n'),
+    };
   },
 };
 
@@ -1049,7 +1116,7 @@ function projectPrompt(cwd: string, kind: PromptKind | undefined, lang: Lang): s
   }
   try {
     const moment = kind ?? promptKindOf(project);
-    return agentPrompt(moment, lang, moment === 'join' ? joinFacts(project) : empty);
+    return agentPrompt(moment, lang, promptFacts(project, moment));
   } finally {
     project.db.close();
   }
@@ -2320,11 +2387,17 @@ function claimedBy(cwd: string, agent: string, fresh: boolean): void {
 const mcp: Command = {
   name: 'mcp',
   summary:
-    'Serve the agent commands as MCP tools on stdin and stdout until the client disconnects; each tool call acts as the agent its as argument names, or as the one --as names',
+    'Serve the agent commands as MCP tools on stdin and stdout until the client disconnects; each tool call acts as the agent its as argument names (or the one --as names). --project <id> pins the server to that project: it refuses writes from a folder of another one, and serves it when started outside any project',
   args: [],
-  options: {},
-  execute: async ({ cwd, agent, pin, signal, warn }) => {
+  options: { project: { placeholder: 'id' } },
+  execute: async ({ cwd, agent, pin: pinned, option, signal, warn }) => {
     if (agent !== undefined) assertAgentName(agent);
+    const pin = option('project') ?? pinned;
+    // A harness that starts the server outside any project (its own config, kept for every folder)
+    // gets the project the server is pinned to.
+    if (pin !== undefined && !process.env.OTEA_PROJECT && !projectAt(cwd)) {
+      process.env.OTEA_PROJECT = pin;
+    }
     // Every agent that connected or called through this server, heard again on each beat until
     // the client disconnects: that is what makes it count as connected.
     const voices = new Set<string>();
@@ -2334,11 +2407,11 @@ const mcp: Command = {
     // Every name this server ever worked under: one it lost to a newer server never counts as new.
     const used = new Set<string>();
     let client: Harness | undefined;
+    // The client names its harness as it connects. Its agent is heard from its first call: a
+    // harness that only loads the server (a background service, a session that never calls Otea)
+    // is no agent at work, and shows as none.
     const greeted = (harness: Harness | undefined) => {
       client = harness;
-      if (agent === undefined) return;
-      used.add(agent);
-      if (heardBy(cwd, agent, harness, warn, true, true, note(agent))) voices.add(agent);
     };
     const heard = (name: string) => {
       const fresh = !used.has(name);
@@ -2373,6 +2446,7 @@ const mcp: Command = {
           warn,
           greeted,
           heard,
+          still: (name) => claimedBy(cwd, name, false),
         }),
         signal,
       );
@@ -2385,11 +2459,22 @@ const mcp: Command = {
   },
 };
 
+// Whether a project resolves from the folder (or OTEA_PROJECT names one).
+function projectAt(cwd: string): boolean {
+  try {
+    withProject(cwd, () => undefined);
+    return true;
+  } catch (error) {
+    if (error instanceof OteaError && error.code === 'not_found') return false;
+    throw error;
+  }
+}
+
 function endListeningAll(cwd: string, lastHeard: ReadonlyMap<string, string>): void {
   if (lastHeard.size === 0) return;
   try {
     withProject(cwd, (project) => {
-      for (const [name, at] of lastHeard) endListening(project.db, name, at);
+      for (const [name, at] of lastHeard) endListening(project.db, name, at, process.pid);
     });
   } catch {
     // The project may be gone; its agents' listening then lapses on its own.

@@ -337,10 +337,12 @@ describe('dialogs', () => {
     expect(html).toContain('otea connect --as &lt;nombre&gt; --model &lt;modelo&gt;');
     expect(html).toContain('otea board draft --new');
     expect(html).not.toContain('otea mcp --as');
-    expect(html).toContain('otea init --agents-md');
+    // One instruction for every harness: Otea writes no harness config.
+    expect(html).toContain('qué servidor MCP agregar a su propia configuración');
+    expect(html).not.toContain('.mcp.json');
     expect(html).toContain('otea wait --turn agent --unclaimed');
     expect(html).toContain('Copiar la instrucción');
-    expect(html).toContain('en cuanto llame a Otea');
+    expect(html).toContain('en cuanto llama a Otea');
     expect(html).not.toContain('primera reserva');
   });
 
@@ -355,9 +357,9 @@ describe('dialogs', () => {
     expect(html).toContain('(claude)');
     expect(html).toContain('- Cambios: Aclarar, Hacerlo (2 esperan a un agente ahora)');
     expect(html).not.toContain('otea board draft');
-    // One more agent rewrites the project's .mcp.json, never runs otea connect.
-    expect(html).toContain('Claude Code lee el .mcp.json del proyecto.');
-    expect(html).not.toContain('que escribe <code class="inl">otea connect</code>');
+    // One more agent connects too: what connect writes names nobody.
+    expect(html).toContain('El agente ejecuta <code class="inl">otea connect</code>');
+    expect(html).not.toContain('.mcp.json');
   });
 
   it('Conectar un agente speaks to the first agent of a project with boards, with no one to join', () => {
@@ -368,7 +370,7 @@ describe('dialogs', () => {
     );
     expect(html).not.toContain('Para sumar un agente más');
     expect(html).toContain('Pega esto en el chat de tu agente. Se conecta con un nombre propio');
-    expect(html).toContain('lee el .mcp.json que escribe <code class="inl">otea connect</code>');
+    expect(html).toContain('El agente ejecuta <code class="inl">otea connect</code>');
   });
 
   it('Connect an agent reads in English too', () => {

@@ -60,11 +60,12 @@ describe('mcp', () => {
     });
   });
 
-  it('notes the agent as seen through its client as soon as it connects', async () => {
+  // A harness that only loads the server (a background service) is no agent at work: none shows.
+  it('notes the agent through its client from its first call, not as the client connects', async () => {
     const client = new Client({ name: 'claude-code', version: '2.1.0' });
     const transport = new StdioClientTransport({
       command: process.execPath,
-      args: [...ARGS, '--as', 'claude'],
+      args: [...ARGS, '--as', 'quill'],
       cwd: repo.dir,
       env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
       stderr: 'pipe',
@@ -80,9 +81,13 @@ describe('mcp', () => {
     };
 
     try {
+      await client.listTools();
+      expect(agents().some(({ name, live }) => name === 'quill' && live)).toBe(false);
+
+      await client.callTool({ name: 'list', arguments: {} });
       // Seen, and heard listening, while its session is open: closing it ends its listening.
-      await until(() => agents().some(({ name, live }) => name === 'claude' && live));
-      expect(agents().find(({ name }) => name === 'claude')).toMatchObject({
+      await until(() => agents().some(({ name, live }) => name === 'quill' && live));
+      expect(agents().find(({ name }) => name === 'quill')).toMatchObject({
         harness: 'claude-code',
         live: true,
       });
@@ -106,6 +111,7 @@ describe('mcp', () => {
       return client;
     };
     const first = await open();
+    await first.callTool({ name: 'list', arguments: {} });
     const listening = () => {
       const project = openProject(repo.dir);
       try {
@@ -156,6 +162,7 @@ describe('mcp', () => {
       }
     };
     const old = await open();
+    await old.callTool({ name: 'list', arguments: {} });
     await until(listeningFrom);
     const restarted = await open();
     try {
@@ -183,6 +190,7 @@ describe('mcp', () => {
       stderr: 'pipe',
     });
     await client.connect(transport);
+    await client.callTool({ name: 'list', arguments: {} });
     const listening = () => {
       const project = openProject(repo.dir);
       try {
@@ -197,6 +205,39 @@ describe('mcp', () => {
     // Within the server's own exit, not the listening window of minutes.
     await until(() => server === null || !processAlive(server), 10_000);
     expect(listening()).toBe(false);
+  });
+
+  // The server otea connect tells the agent to add: started from outside any project (a harness's
+  // own config, kept for every folder), --project still serves it; from another project's folder
+  // it refuses to write.
+  it('serves the project --project names when started outside any project', async () => {
+    // A project in common storage, the default: the registry finds it by its id.
+    const shop = tempGitRepo();
+    const there = cliAt(shop.dir, { OTEA_AGENT: 'claude' });
+    await there('init', '--template', 'changes');
+    await there('create', '--collection', 'Cambios', '--title', 'Docs', '--field', 'Qué quiero=x');
+    const id = JSON.parse((await there('projects', 'current', '--json')).out).id;
+    const outside = tempGitRepo();
+    const client = new Client({ name: 'opencode', version: '1.4.0' });
+    try {
+      await client.connect(
+        new StdioClientTransport({
+          command: process.execPath,
+          args: [...ARGS, '--project', id],
+          cwd: outside.dir,
+          env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+          stderr: 'pipe',
+        }),
+      );
+      const listed = await client.callTool({ name: 'list', arguments: { as: 'codex' } });
+
+      expect((listed.content as { text: string }[])[0]?.text).toContain('Docs');
+      expect(listed.isError).toBeFalsy();
+    } finally {
+      await client.close();
+      outside.remove();
+      shop.remove();
+    }
   });
 
   it('prints nothing but the protocol and exits once the client closes stdin', async () => {

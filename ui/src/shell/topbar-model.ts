@@ -108,6 +108,8 @@ export type AgentRow = {
   // It waits in otea wait, so what you do here reaches it; connected only (its MCP server open, idle
   // in its chat) it hears nothing. An older server that does not say counts as waiting.
   waiting: boolean;
+  // It asked for MCP (otea connect) and its harness never loaded Otea's server.
+  mcpMissing: boolean;
   state: AgentDoing;
   // Since when it is in that state, and the item it is about (none while idle with no past act).
   since: number;
@@ -166,6 +168,7 @@ export function agentRows(
         quiet,
         working,
         waiting: a.waiting !== false,
+        mcpMissing: a.mcpMissing === true,
         state,
         since: st.since,
         item: st.item ? { id: st.item.id, title: st.item.title, look: lookOf(st.item, now) } : null,

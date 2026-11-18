@@ -620,6 +620,9 @@ export type AgentRecord = {
   harnessVersion: string | null;
   lastSeen: string;
   connectedAt: string | null;
+  // When it was last heard through the MCP server, and when it asked to be (otea connect).
+  mcpAt?: string | null;
+  mcpAskedAt?: string | null;
 };
 
 type AgentRow = {
@@ -628,6 +631,8 @@ type AgentRow = {
   harness_version: string | null;
   last_seen: string;
   connected_at: string | null;
+  mcp_at: string | null;
+  mcp_asked_at: string | null;
 };
 
 function toAgent(row: AgentRow): AgentRecord {
@@ -637,6 +642,8 @@ function toAgent(row: AgentRow): AgentRecord {
     harnessVersion: row.harness_version,
     lastSeen: row.last_seen,
     connectedAt: row.connected_at,
+    mcpAt: row.mcp_at,
+    mcpAskedAt: row.mcp_asked_at,
   };
 }
 
@@ -663,11 +670,18 @@ export function markListening(
   db.prepare(sql).run({ agent, at, session: session ?? null, harness: harness ?? null });
 }
 
-// Notes the agent no longer listening, if it was last heard listening `at` (and not since).
-export function clearListening(db: DatabaseSync, agent: string, at: string): void {
+// Notes the agent no longer listening, if it was last heard listening `at` (and not since), or
+// since then only through the MCP server `session` that ends (its calls hear the agent too).
+export function clearListening(
+  db: DatabaseSync,
+  agent: string,
+  at: string,
+  session?: number,
+): void {
   db.prepare(
-    'UPDATE agents SET listening_at = NULL WHERE name = :agent AND listening_at = :at',
-  ).run({ agent, at });
+    `UPDATE agents SET listening_at = NULL WHERE name = :agent AND (listening_at = :at
+      OR (listening_session = :session AND listening_at >= :at))`,
+  ).run({ agent, at, session: session ?? null });
 }
 
 // Notes that an agent waits in otea wait now, on the CLI or over MCP: the desk's moves reach it.
@@ -729,14 +743,30 @@ export function selectAgents(db: DatabaseSync): AgentRecord[] {
 // A record given without `connectedAt` keeps the one known.
 export function upsertAgent(
   db: DatabaseSync,
-  agent: Omit<AgentRecord, 'connectedAt'> & { connectedAt?: string | null },
+  agent: Omit<AgentRecord, 'connectedAt' | 'mcpAskedAt'> & { connectedAt?: string | null },
 ): void {
-  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen, connected_at)
-    VALUES (:name, :harness, :harnessVersion, :lastSeen, :connectedAt)
+  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen, connected_at, mcp_at)
+    VALUES (:name, :harness, :harnessVersion, :lastSeen, :connectedAt, :mcpAt)
     ON CONFLICT (name) DO UPDATE SET harness = excluded.harness,
       harness_version = excluded.harness_version, last_seen = excluded.last_seen,
-      connected_at = COALESCE(excluded.connected_at, agents.connected_at)`;
-  db.prepare(sql).run({ ...agent, connectedAt: agent.connectedAt ?? null });
+      connected_at = COALESCE(excluded.connected_at, agents.connected_at),
+      mcp_at = COALESCE(excluded.mcp_at, agents.mcp_at)`;
+  const { name, harness, harnessVersion, lastSeen } = agent;
+  db.prepare(sql).run({
+    name,
+    harness,
+    harnessVersion,
+    lastSeen,
+    connectedAt: agent.connectedAt ?? null,
+    mcpAt: agent.mcpAt ?? null,
+  });
+}
+
+// Notes that an agent asked to work through Otea's MCP server (otea connect), now.
+export function markMcpAsked(db: DatabaseSync, agent: string, at: string): void {
+  const sql = `INSERT INTO agents (name, last_seen, mcp_asked_at) VALUES (:agent, :at, :at)
+    ON CONFLICT (name) DO UPDATE SET mcp_asked_at = excluded.mcp_asked_at`;
+  db.prepare(sql).run({ agent, at });
 }
 
 // The profile an agent declared, and whether it declared it in its current session.
