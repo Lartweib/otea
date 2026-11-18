@@ -29,7 +29,7 @@ npm ci
 npm start -- --project <path to a project> [--port <n>]
 ```
 
-`npm start` bundles `src/` into `dist/` (`build.mjs`, esbuild) and starts Electron on it. A checkout runs the checkout's CLI on the system's Node. `--project` is the folder an `otea` command would run in; without it, the folder `npm` was called from (`npm --prefix desktop start` from a project keeps that project).
+`npm start` bundles `src/` into `dist/` (`build.mjs`, esbuild) and starts Electron on it. A checkout runs the checkout's CLI on the system's Node. `--project` is the folder an `otea` command would run in; without it, the folder `npm` was called from (`npm --prefix desktop start` from a project keeps that project). The app opens every project on this computer's one `otea serve` (one per Otea home): it uses the one running, whatever its port, or starts it on `--port` when given (for every project it opens), else on 4400 or the next free port.
 
 ## Package it
 
