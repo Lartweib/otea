@@ -19,6 +19,38 @@ export function projectPage(id: string, hash = '#/'): string {
   return `/p/${encodeURIComponent(id)}/${hash}`;
 }
 
+// The project this browser had open last, for the installed app opening at `/` without the PC
+// (online, the PC sends `/` to it itself).
+export const LAST_PROJECT_KEY = 'otea.project';
+
+type Store = Pick<Storage, 'getItem' | 'setItem'>;
+
+function store(): Store | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+export function rememberProject(id: string, kept: Store | undefined = store()): void {
+  try {
+    kept?.setItem(LAST_PROJECT_KEY, id);
+  } catch {
+    // nowhere to keep it: `/` then waits for the PC
+  }
+}
+
+// Where a page outside any project goes: the last project's page, when there is one.
+export function homeTarget(kept: Store | undefined = store()): string | undefined {
+  try {
+    const id = kept?.getItem(LAST_PROJECT_KEY);
+    return id ? projectPage(id) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // An API path (`/api/items`) of the project this page is on; the computer's own API (`/api/pair`)
 // outside a project.
 export function apiUrl(path: string, from: string = pathname()): string {

@@ -6,7 +6,7 @@ import { SHELL_KEY, swRoute } from './sw-routes.ts';
 import {
   type CacheLike,
   cacheFirst,
-  DATA_CACHE,
+  dataCacheFor,
   networkFirst,
   shellCache,
   staleCaches,
@@ -87,9 +87,21 @@ sw.addEventListener('fetch', (event) => {
   const { request } = event;
   const route = swRoute(request, origin, PRECACHED);
   if (route === 'network') return;
+  if (route === 'home') {
+    event.respondWith(
+      fetch(request).catch(() =>
+        opened(shellCache(VERSION)).then(
+          async (cache) => (await cache.match(SHELL_KEY)) ?? Response.error(),
+        ),
+      ),
+    );
+    return;
+  }
   if (route === 'data') {
     event.respondWith(
-      opened(DATA_CACHE).then((cache) => networkFirst(request, { net, cache, now: Date.now })),
+      opened(dataCacheFor(request.url)).then((cache) =>
+        networkFirst(request, { net, cache, now: Date.now }),
+      ),
     );
     return;
   }

@@ -8,10 +8,12 @@
 // - static: the page's own files, listed when it was built (precached). Cache first.
 // - data: what the read views show. The network first; when the PC does not answer, the last
 //   answer that came back, marked as such (see offline headers below).
+// - home: `/`, the home-screen shortcut's. The PC first (it opens the last project); without the
+//   PC, the cached page, which opens the last project itself (ui/src/main.tsx).
 // - network: everything else, untouched: writes, the live stream, evidence files, pairing and the
 //   phone settings, the notification settings, other origins.
 
-export type SwRoute = 'shell' | 'static' | 'data' | 'network';
+export type SwRoute = 'shell' | 'home' | 'static' | 'data' | 'network';
 
 const PROJECT_PREFIX = /^\/p\/[^/]+(?=\/)/;
 
@@ -41,6 +43,7 @@ export function swRoute(
     return LIVE_ONLY.some((live) => path === live || path.startsWith(live)) ? 'network' : 'data';
   }
   if (request.mode === 'navigate') {
+    if (url.pathname === '/') return 'home';
     const page = url.pathname.startsWith('/p/') || url.pathname === '/pair';
     return page ? 'shell' : 'network';
   }
@@ -55,7 +58,6 @@ export const SHELL_KEY = '/index.html';
 export const SAVED_AT = 'x-otea-saved-at';
 // …and on one served from the cache because the PC did not answer.
 export const FROM_CACHE = 'x-otea-offline';
-// Set by the PC on every answer of its API: the project that answered. Two projects served one
-// after the other on the same address share the browser's cache, so the cache keeps one project's
-// answers at a time (sw-strategies.ts networkFirst).
+// Set by the PC on every answer of a project's API: the project that answered. The cache keeps an
+// answer only under the project that gave it (sw-strategies.ts networkFirst).
 export const PROJECT = 'x-otea-project';

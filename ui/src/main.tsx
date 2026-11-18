@@ -6,6 +6,7 @@ import '@fontsource-variable/schibsted-grotesk/wght.css';
 import '@fontsource/dm-mono/400.css';
 import '@fontsource/dm-mono/500.css';
 import { App } from './App.tsx';
+import { currentProjectId, homeTarget, rememberProject } from './base.ts';
 import { PairScreen } from './components/PairScreen.tsx';
 import { startLanguage } from './i18n/i18n.ts';
 import { applyMotionPref } from './motion/reduced.ts';
@@ -66,6 +67,13 @@ startLanguage();
 
 // A phone on the LAN that has not paired yet is only served this screen.
 const pairing = window.location.pathname === '/pair';
+
+// Every project has its page at /p/<id>/. The installed app opens at `/`, which the PC answers with
+// the last project; without the PC the cached page lands here and opens that project itself.
+const here = currentProjectId();
+if (here !== undefined) rememberProject(here);
+const home = !pairing && here === undefined ? homeTarget() : undefined;
+if (home !== undefined) window.location.replace(home);
 
 const root = document.getElementById('root');
 if (root) {

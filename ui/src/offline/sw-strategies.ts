@@ -10,18 +10,16 @@ export type CacheLike = {
   delete(key: string): Promise<boolean>;
 };
 
-// Where the data cache notes the project its answers are from.
-const PROJECT_KEY = '/__otea/project';
+// The project a URL of this server is about: /p/<id>/….
+const projectOfUrl = (url: string): string | undefined =>
+  /^\/p\/([^/]+)\//.exec(new URL(url).pathname)?.[1];
 
-// The answers kept are of one project, the last one that answered on this address: an answer of
-// another project first forgets everything kept, so offline never shows one project's items under
-// another (two projects served one after the other on the same port).
-async function keepProject(cache: CacheLike, project: string | null): Promise<void> {
-  if (!project) return;
-  const held = await cache.match(PROJECT_KEY);
-  if (held && (await held.text()) === project) return;
-  for (const key of await cache.keys()) await cache.delete(key);
-  await cache.put(PROJECT_KEY, new Response(project));
+// An answer is kept only when the project that gave it is the one its path names, so offline one
+// project's items never show under another (ids repeat across projects: CAM-1 in each).
+function ofItsProject(url: string, response: Response): boolean {
+  const said = response.headers.get(PROJECT);
+  const path = projectOfUrl(url);
+  return said === null || path === undefined || said === path;
 }
 
 export type Net = (request: Request | string) => Promise<Response>;
@@ -69,8 +67,7 @@ export async function networkFirst(
     clearTimeout(timer);
   }
   if (response && !unreachable(response)) {
-    if (response.ok) {
-      await keepProject(cache, response.headers.get(PROJECT));
+    if (response.ok && ofItsProject(key, response)) {
       await cache.put(key, withHeaders(response.clone(), { [SAVED_AT]: `${now()}` }));
     }
     return response;
@@ -101,6 +98,12 @@ export async function cacheFirst(
 // go once it takes over.
 export const SHELL_CACHE = 'otea-shell-';
 export const DATA_CACHE = 'otea-data';
+
+// Each project keeps its answers in a cache of its own; the computer's own API in DATA_CACHE.
+export function dataCacheFor(url: string): string {
+  const project = projectOfUrl(url);
+  return project === undefined ? DATA_CACHE : `${DATA_CACHE}-${project}`;
+}
 
 export const shellCache = (version: string) => `${SHELL_CACHE}${version}`;
 

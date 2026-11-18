@@ -65,14 +65,28 @@ export function promptInstall(): void {
   void event?.prompt().catch(() => undefined);
 }
 
-// Moves the page to a place in the app (a hash route) without reloading it.
-export function goTo(url: string): void {
+// How the page reaches a place in the app: a hash on this project's page moves without reloading;
+// another project's page loads (a notice about another project); another site is never opened.
+export function moveTo(
+  url: string,
+  current: string,
+): { hash: string } | { page: string } | undefined {
   try {
-    const target = new URL(url, window.location.href);
-    if (target.origin === window.location.origin) window.location.hash = target.hash;
+    const target = new URL(url, current);
+    const here = new URL(current);
+    if (target.origin !== here.origin) return undefined;
+    if (target.pathname === here.pathname) return { hash: target.hash };
+    return { page: target.href };
   } catch {
-    // not a place in the app
+    return undefined;
   }
+}
+
+export function goTo(url: string): void {
+  const move = moveTo(url, window.location.href);
+  if (move === undefined) return;
+  if ('hash' in move) window.location.hash = move.hash;
+  else window.location.assign(move.page);
 }
 
 export async function startShell(
