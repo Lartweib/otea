@@ -18,7 +18,13 @@ export type DiagramEdge = { from: string; to: string; label?: string; dashed: bo
 
 export type Diagram = { direction: Direction; nodes: DiagramNode[]; edges: DiagramEdge[] };
 
-export type Parsed = { ok: true; diagram: Diagram } | { ok: false; line: number; message: string };
+// A failure says why as data (`why`, and `at`, the text it stopped at) for the page to word in its
+// language; `message` is the English the CLI and agents read.
+export type ParseFailure = 'header' | 'unread' | 'edge' | 'edgeEnd' | 'empty';
+
+export type Parsed =
+  | { ok: true; diagram: Diagram }
+  | { ok: false; line: number; message: string; why: ParseFailure; at?: string };
 
 const HEADER = /^(?:flowchart|graph)\s+(LR|RL|TD|TB|BT)\s*;?$/;
 const IGNORED = /^(?:classDef|class|style|linkStyle|click|subgraph|end|direction)\b/;
@@ -41,7 +47,13 @@ export function parseDiagram(source: string): Parsed {
   const nodes = new Map<string, DiagramNode>();
   const edges: DiagramEdge[] = [];
   let direction: Direction | undefined;
-  const fail = (line: number, message: string): Parsed => ({ ok: false, line, message });
+  const fail = (line: number, message: string, why: ParseFailure, at?: string): Parsed => ({
+    ok: false,
+    line,
+    message,
+    why,
+    ...(at === undefined ? {} : { at }),
+  });
   const node = (id: string, open?: string, label?: string) => {
     const known = nodes.get(id);
     if (known && label === undefined) return;
@@ -52,7 +64,8 @@ export function parseDiagram(source: string): Parsed {
     if (line === '' || line.startsWith('%%')) continue;
     if (direction === undefined) {
       const header = HEADER.exec(line);
-      if (!header) return fail(index + 1, 'expected "flowchart LR" (or TD, RL, BT) first');
+      if (!header)
+        return fail(index + 1, 'expected "flowchart LR" (or TD, RL, BT) first', 'header');
       const named = header[1] === 'TB' ? 'TD' : header[1];
       direction = named as Direction;
       continue;
@@ -63,7 +76,7 @@ export function parseDiagram(source: string): Parsed {
     let pending: Omit<DiagramEdge, 'from' | 'to'> | undefined;
     while (rest !== '') {
       const found = NODE.exec(rest);
-      if (!found) return fail(index + 1, `cannot read "${rest}"`);
+      if (!found) return fail(index + 1, `cannot read "${rest}"`, 'unread', rest);
       const [whole, id = '', open, label] = found;
       node(id, open, label);
       if (previous !== undefined && pending) edges.push({ from: previous, to: id, ...pending });
@@ -72,14 +85,15 @@ export function parseDiagram(source: string): Parsed {
       rest = rest.slice(whole.length).trim();
       if (rest === '') break;
       const edge = EDGE.exec(rest);
-      if (!edge) return fail(index + 1, `expected an edge such as --> before "${rest}"`);
+      if (!edge)
+        return fail(index + 1, `expected an edge such as --> before "${rest}"`, 'edge', rest);
       const [arrow, kind = '', inline, piped] = edge;
       const text = (piped ?? inline)?.trim();
       pending = { dashed: kind.startsWith('-.'), ...(text ? { label: text } : {}) };
       rest = rest.slice(arrow.length).trim();
-      if (rest === '') return fail(index + 1, 'an edge needs a node after it');
+      if (rest === '') return fail(index + 1, 'an edge needs a node after it', 'edgeEnd');
     }
   }
-  if (direction === undefined) return fail(1, 'the file is empty');
+  if (direction === undefined) return fail(1, 'the file is empty', 'empty');
   return { ok: true, diagram: { direction, nodes: [...nodes.values()], edges } };
 }

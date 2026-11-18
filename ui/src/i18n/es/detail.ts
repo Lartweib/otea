@@ -138,6 +138,12 @@ export const detail = {
   'diagram.close': 'Cerrar',
   'diagram.unreadable':
     'No se puede dibujar este archivo: línea {line}, {message}. Debajo está su fuente.',
+  'diagram.why.header':
+    'tiene que empezar con «flowchart LR» (o TD, RL, BT); solo se dibujan diagramas de flujo',
+  'diagram.why.unread': 'no se entiende «{at}»',
+  'diagram.why.edge': 'falta una flecha como --> antes de «{at}»',
+  'diagram.why.edgeEnd': 'una flecha necesita un nodo después',
+  'diagram.why.empty': 'el archivo está vacío',
   'diagram.newNodes': 'nuevo en v{version}: {names}',
   'diagram.newEdges': {
     one: 'nuevo en v{version}: {count} conexión',
