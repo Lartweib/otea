@@ -15,4 +15,5 @@ vi.mock('node:os', async (importOriginal) => {
 
 const home = mkdtempSync(join(tmpdir(), 'otea-home-'));
 process.env.OTEA_HOME = home;
-afterAll(() => rmSync(home, { recursive: true, force: true }));
+// A process a test started and ended can hold the folder a moment longer on Windows (EPERM).
+afterAll(() => rmSync(home, { recursive: true, force: true, maxRetries: 10 }));

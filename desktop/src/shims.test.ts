@@ -27,7 +27,8 @@ const ECHO = [
 ].join('\n');
 
 const root = mkdtempSync(join(tmpdir(), 'otea-shims-'));
-afterAll(() => rmSync(root, { recursive: true, force: true }));
+// Windows holds the fake apps a moment after they end (EPERM), so the cleanup retries.
+afterAll(() => rmSync(root, { recursive: true, force: true, maxRetries: 10 }));
 
 // <app>/<executable> and <app>/<resources>/{bin,otea/src/cli/main.ts}, as the installers leave them.
 function fakeApp(executable: string, resources: string): string {
