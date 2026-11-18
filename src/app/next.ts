@@ -75,7 +75,7 @@ import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/
 import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { activeLease, assertMayWrite, type Lease } from '../core/lease.ts';
+import { activeLease, type Lease } from '../core/lease.ts';
 import { closesOf } from '../core/workflow.ts';
 import { findBoardOfCollection, findVersion, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
@@ -103,7 +103,7 @@ import {
   systemClock,
   workflowOf,
 } from './items.ts';
-import { takeItem } from './lease-take.ts';
+import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { priorityOf } from './priority.ts';
 
 // What agents meet on a published board: the facts the step engine reads of an item, `next` (the
@@ -694,6 +694,19 @@ function textFor(
   });
 }
 
+// The agent whose question the person answered in this round, while it has done nothing on the
+// item since: the item stays its own, though its lease ran out while the person thought, so the
+// answer reaches the agent that asked it, never another one.
+export function answeredFor(ctx: Context, item: ItemRecord, on: ItemOnBoard): string | undefined {
+  const answered = on.roundQuestions.findLast((q) => q.answer);
+  const at = answered?.answer?.at;
+  if (!answered || at === undefined) return undefined;
+  const acted = selectEvents(ctx.db, item.id).some(
+    (event) => event.at > at && event.actor.kind === 'agent' && event.actor.name === answered.by,
+  );
+  return acted ? undefined : answered.by;
+}
+
 // Whether the item is the agent's to take now: a doing phase it may take, or a review any agent
 // does that it did not do itself; never one another agent holds, nor one the person left for
 // another agent.
@@ -709,7 +722,11 @@ function isTheirs(
   const position = positionOf(item.state);
   if (isClosed(position)) return false;
   // A question waits for the person: the turn is theirs until they answer it.
-  if (itemOnBoard(ctx, item, def).asking) return false;
+  const on = itemOnBoard(ctx, item, def);
+  if (on.asking) return false;
+  // Their answer goes to the agent that asked it.
+  const asker = answeredFor(ctx, item, on);
+  if (asker !== undefined && asker !== agent) return false;
   // Planned work waits for the plan that made it to be approved.
   if (plannedBy(ctx, item)) return false;
   const mine =
@@ -1150,7 +1167,7 @@ export function handoffItem(
     const board = requireBoard(ctx, item);
     const at = now();
     const lease = activeLease(item.lease, at);
-    assertMayWrite(item.id, lease, input.actor);
+    assertMayWriteItem(ctx.db, item, input.actor, at);
     // An agent that holds no lease on it never hands off an item left for or just offered to
     // another agent; whether the step is an agent's at all, the handoff itself answers.
     if (input.actor.kind === 'agent' && !lease) assertMayHandOff(ctx, item, input.actor.name, at);
@@ -1316,7 +1333,7 @@ export function dropItem(ctx: Context, input: DropInput, now = systemClock): Boa
     const board = requireBoard(ctx, item);
     const at = now();
     if (input.actor.kind === 'agent' && input.via !== 'relay')
-      assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+      assertMayWriteItem(ctx.db, item, input.actor, at);
     const to = dropTarget(board, item, input);
     const moved = land(ctx, item, board, to, input, at);
     return { item: moved, text: droppedText(board.def, item.id, to) };
@@ -1662,12 +1679,21 @@ export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): v
       `${item.id} waits for ${planned.id}, which planned it, to leave ${planned.step}; claim only what is yours (otea next)`,
     );
   }
-  // While a question waits, the item stays with the agent that asked it.
-  const asking = itemOnBoard(ctx, item, board.def).asking;
+  // While a question waits, and once answered until the agent that asked it reads the answer, the
+  // item stays with that agent.
+  const on = itemOnBoard(ctx, item, board.def);
+  const asking = on.asking;
   if (asking && asking.by !== agent) {
     throw new OteaError(
       'not_claimable',
       `${item.id} waits for the person to answer ${asking.by}'s question; claim only what is yours (otea next)`,
+    );
+  }
+  const asker = answeredFor(ctx, item, on);
+  if (asker !== undefined && asker !== agent) {
+    throw new OteaError(
+      'not_claimable',
+      `${item.id} waits for ${asker} to read the person's answer to its question; claim only what is yours (otea next)`,
     );
   }
   if (position.phase === 'doing') {

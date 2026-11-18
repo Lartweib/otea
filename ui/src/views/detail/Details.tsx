@@ -1,6 +1,6 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { Prof } from '../../components/Prof.tsx';
-import { whenText } from '../../derive/when.ts';
+import { leaseLeftText, whenText } from '../../derive/when.ts';
 import { externalUrl, gateRows } from '../../gates.ts';
 import { t } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
@@ -95,14 +95,18 @@ export function detailCells(o: {
           '—'
         ),
       };
-  const left = whenText(item, now);
+  // Who holds it and for how long (P2S-10): the time its lease has left, never the item's age; while
+  // its question waits for you, the item stays the asker's whatever the lease says.
+  const left = leaseLeftText(item.lease, now);
   const lease: Cell = {
     label: t('sheet.d.lease'),
     value: item.lease ? (
-      left.warn ? (
-        <span className="warn">{t('sheet.d.expired')}</span>
+      item.asks ? (
+        t('sheet.d.leaseAsks', { agent: item.lease.holder })
+      ) : left ? (
+        t('sheet.d.leaseLeft', { agent: item.lease.holder, time: left })
       ) : (
-        `${item.lease.holder} · ${left.text}`
+        <span className="warn">{t('sheet.d.expired')}</span>
       )
     ) : item.expiredLease ? (
       <span className="warn">{t('sheet.d.expired')}</span>

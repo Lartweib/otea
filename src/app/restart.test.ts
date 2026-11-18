@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem } from './items.ts';
+import { createItem, getItem, updateItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import { reassignItem, restartItem, undoRelease } from './restart.ts';
 import { memoryContext } from './testing.ts';
@@ -66,14 +66,13 @@ describe('a stuck item', () => {
       expect(claimItem(ctx, { id: 'TASKS-1', actor: quill }, at(T30)).lease?.holder).toBe('quill');
     });
 
-    it('refuses an item whose lease is still running, or that has none', () => {
+    it('frees a lease still running too, and refuses an item that has none', () => {
       claimItem(ctx, { id: 'TASKS-1', actor: quill }, at(T30));
-      expect(() => restartItem(ctx, { id: 'TASKS-1', actor: you, channel: 'ui' }, at(T30))).toThrow(
-        expect.objectContaining({ code: 'not_stuck' }),
-      );
-      expect(() => restartItem(ctx, { id: 'TASKS-1', actor: you, channel: 'ui' }, at(T30))).toThrow(
-        'TASKS-1 is held by quill until 2026-11-11 12:45 UTC; it is not stuck',
-      );
+      const freed = restartItem(ctx, { id: 'TASKS-1', actor: you, channel: 'ui' }, at(T30));
+      expect(freed.lease).toBeNull();
+      expect(() =>
+        updateItem(ctx, { id: 'TASKS-1', title: 'Mine', actor: quill }, at(T30)),
+      ).toThrow('The person freed TASKS-1 from you');
 
       createItem(ctx, { collection: 'tasks', title: 'Free', actor: you }, at(T0));
       expect(() => restartItem(ctx, { id: 'TASKS-2', actor: you, channel: 'ui' }, at(T30))).toThrow(

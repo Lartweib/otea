@@ -12,7 +12,6 @@ import {
 } from '../core/board/proofs.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { activeLease, assertMayWrite } from '../core/lease.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -22,6 +21,7 @@ import {
 } from '../store/queries.ts';
 import { evidenceFile } from './evidence.ts';
 import { getItem, requireItem, requireWritableItem, systemClock, updateItem } from './items.ts';
+import { assertMayWriteItem } from './lease-take.ts';
 import { itemOnBoard, liveBoardOf } from './next.ts';
 import type { Project } from './project.ts';
 
@@ -183,7 +183,7 @@ export function tickPoint(project: Project, input: TickInput, now = systemClock)
   const { def } = board;
   const { part, point } = pointOf(def, input.point, input.part);
   const at = now();
-  assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+  assertMayWriteItem(project.db, item, input.actor, at);
   const position = positionOf(item.state);
   if (isClosed(position))
     throw new OteaError('item_closed', `${item.id} is closed and takes no proof`, {

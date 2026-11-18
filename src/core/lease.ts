@@ -25,10 +25,16 @@ export function activeLease(lease: Lease | null, at: string): Lease | null {
   return lease && Date.parse(lease.expiresAt) > Date.parse(at) ? lease : null;
 }
 
+export function heldText(id: string, lease: Lease): string {
+  return `${id} is held by ${lease.holder} until ${timeText(lease.expiresAt)}`;
+}
+
+// Another agent holds it: wait for it, or, when that agent ended (a subagent gone with the lease
+// still on), the person frees it on the desk.
 export function leaseHeld(id: string, lease: Lease): OteaError {
   return new OteaError(
     'lease_held',
-    `${id} is held by ${lease.holder} until ${timeText(lease.expiresAt)}`,
+    `${heldText(id, lease)}; if ${lease.holder} has ended, ask the person to free it in Otea (Liberar)`,
   );
 }
 

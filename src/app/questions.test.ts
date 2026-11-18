@@ -129,7 +129,9 @@ describe('an agent asks the person', () => {
     const item = working(ctx);
     attach(ctx, item.id);
     ask(ctx, item.id);
-    const error = refusal(() => handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }));
+    const error = refusal(() =>
+      handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now),
+    );
     expect(error.code).toBe('invalid_transition');
     expect(error.message).toContain('waits for their answer');
     expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
@@ -154,6 +156,21 @@ describe('the person answers', () => {
     expect(getItem(ctx, item.id, now).lease?.holder).toBe('kiln');
     expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
+  });
+
+  it('keeps the item for the agent that asked while it has not read the answer, though its lease ran out', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    ask(ctx, item.id);
+    answerQuestion(ctx, { id: item.id, text: 'Con musgo', actor: you, channel: 'ui' }, now);
+    tick += 20 * 60;
+
+    expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
+    expect(refusal(() => claimItem(ctx, { id: item.id, actor: scout }, now)).message).toBe(
+      `${item.id} waits for kiln to read the person's answer to its question; claim only what is yours (otea next)`,
+    );
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
+    claimItem(ctx, { id: item.id, actor: kiln }, now);
   });
 
   it('gives the turn back to the agent in the same round, which reads the answer', () => {

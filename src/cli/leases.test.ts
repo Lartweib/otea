@@ -77,7 +77,9 @@ describe('leases', () => {
       expect(code).toBe(12);
       expect(JSON.parse(err).error).toMatchObject({ code: 'lease_held' });
       expect(JSON.parse(err).error.message).toMatch(
-        new RegExp(`^TASKS-1 is held by claude until ${UTC}$`),
+        new RegExp(
+          `^TASKS-1 is held by claude until ${UTC}; if claude has ended, ask the person to free it in Otea \\(Liberar\\)$`,
+        ),
       );
     });
 

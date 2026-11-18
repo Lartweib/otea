@@ -431,10 +431,13 @@ export const detail = {
   'sheet.says.closesUnmerged':
     'queda Hecho, pero aún no se fusionó nada: un agente fusiona su rama y lo registra',
   'sheet.says.resume': 'vuelve a la cola de {state}, para cualquier agente',
+  'sheet.says.free':
+    'quita la reserva de {agent}: vuelve a la cola de {state}, y {agent} la reclama antes de seguir',
   'sheet.says.reassign': 'se lo dejas al agente que elijas',
   'sheet.receipt.has': 'Lo tiene {agent}.',
   'sheet.receipt.hasAny': 'Lo tiene un agente.',
   'sheet.receipt.lease': 'Su reserva: {time}.',
+  'sheet.receipt.free': 'Liberar',
   'sheet.receipt.back': 'Vuelve a tu revisión cuando termine.',
   'sheet.receipt.queued': 'Vuelve a ti cuando termine.',
   'sheet.receipt.done': 'Lo cerraste tú.',
@@ -481,6 +484,8 @@ export const detail = {
   'sheet.d.doer': 'Quién lo hace',
   'sheet.d.reviewer': 'Quién revisa',
   'sheet.d.lease': 'Reserva',
+  'sheet.d.leaseLeft': '{agent} · {time}',
+  'sheet.d.leaseAsks': '{agent} · lo guarda hasta que respondas',
   'sheet.d.type': 'Tipo',
   'sheet.d.board': 'Tablero',
   'sheet.d.createdBy': 'Creado por',

@@ -423,10 +423,13 @@ export const detail = {
   'sheet.says.closesUnmerged':
     'it is Done, but nothing is merged yet: an agent merges its branch and records it',
   'sheet.says.resume': 'back in the queue of {state}, for any agent',
+  'sheet.says.free':
+    'drops {agent}’s lease: back in the queue of {state}, and {agent} claims it again before going on',
   'sheet.says.reassign': 'you leave it for the agent you pick',
   'sheet.receipt.has': '{agent} has it.',
   'sheet.receipt.hasAny': 'An agent has it.',
   'sheet.receipt.lease': 'Its lease: {time}.',
+  'sheet.receipt.free': 'Free it',
   'sheet.receipt.back': 'It comes back to your review when it’s done.',
   'sheet.receipt.queued': 'It comes back to you when it’s done.',
   'sheet.receipt.done': 'You closed it.',
@@ -473,6 +476,8 @@ export const detail = {
   'sheet.d.doer': 'Who does it',
   'sheet.d.reviewer': 'Who reviews',
   'sheet.d.lease': 'Lease',
+  'sheet.d.leaseLeft': '{agent} · {time}',
+  'sheet.d.leaseAsks': '{agent} · kept until you answer',
   'sheet.d.type': 'Type',
   'sheet.d.board': 'Board',
   'sheet.d.createdBy': 'Created by',

@@ -12,7 +12,6 @@ import {
   MAX_EVIDENCE_MB,
 } from '../core/evidence.ts';
 import type { Actor } from '../core/item.ts';
-import { activeLease, assertMayWrite } from '../core/lease.ts';
 import type { Layout } from '../core/modules.ts';
 import {
   evidenceModules,
@@ -34,6 +33,7 @@ import {
 } from '../store/queries.ts';
 import { typeOfItem } from './collections.ts';
 import { requireWritableItem, systemClock } from './items.ts';
+import { assertMayWriteItem } from './lease-take.ts';
 import { boardModule, liveBoardOf } from './next.ts';
 import type { Project } from './project.ts';
 
@@ -143,7 +143,7 @@ export function placeFile(
     );
   }
   const type = typeOfItem(project, item);
-  assertMayWrite(item.id, activeLease(item.lease, at), actor);
+  assertMayWriteItem(project.db, item, actor, at);
   if (turnOf(type.workflow, item.state) === 'none') {
     throw new OteaError(
       'item_closed',
@@ -296,7 +296,7 @@ export function detachEvidence(
   return transaction(project.db, () => {
     const item = requireWritableItem(project.db, input.id);
     const at = now();
-    assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+    assertMayWriteItem(project.db, item, input.actor, at);
     const entry = selectEvidence(project.db, item.id).find(({ id }) => id === input.evidence);
     if (!entry) {
       throw new OteaError('not_found', `${item.id} has no attached file #${input.evidence}`);

@@ -87,6 +87,29 @@ describe('restarting and reassigning a stuck item', () => {
     expect(await errorOf(again)).toBe('not_stuck');
   });
 
+  it('frees a live lease too: the person leads, and the agent claims again before it writes', async () => {
+    const gallop = {
+      collection: 'tasks',
+      title: 'Gallop',
+      fields: { description: 'F' },
+      actor: kiln,
+    };
+    createItem(project, gallop);
+    claimItem(project, { id: 'TASKS-2', actor: kiln });
+
+    const response = await post('TASKS-2/restart');
+
+    expect(response.status).toBe(200);
+    expect(await response.json()).toMatchObject({ id: 'TASKS-2', lease: null });
+    expect(getItem(project, 'TASKS-2').events.at(-1)).toMatchObject({
+      type: 'released',
+      actor: { kind: 'human' },
+      data: { holder: 'kiln', cause: 'restart' },
+    });
+    const undone = await post('TASKS-2/undo', { release: true });
+    expect(await undone.json()).toMatchObject({ lease: { holder: 'kiln' } });
+  });
+
   it('Deshacer gives the lease back, and the item is stuck again', async () => {
     await post('TASKS-1/reassign', { agent: 'quill' });
 

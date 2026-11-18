@@ -11,7 +11,7 @@ import {
 } from '../core/board/questions.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { activeLease, assertMayWrite } from '../core/lease.ts';
+import { activeLease } from '../core/lease.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
@@ -22,7 +22,7 @@ import {
 import { askingItems } from './asking.ts';
 import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
-import { takeItem } from './lease-take.ts';
+import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
 
 // An agent's question to the person (core/board/questions.ts): the agent asks while it does a step,
@@ -74,7 +74,7 @@ export function askQuestion(ctx: Context, input: AskInput, now = systemClock): A
   return transaction(ctx.db, () => {
     const item = requireWritableItem(ctx.db, id);
     const at = now();
-    assertMayWrite(item.id, activeLease(item.lease, at), input.actor);
+    assertMayWriteItem(ctx.db, item, input.actor, at);
     const { board, step } = doing(ctx, item);
     const on = itemOnBoard(ctx, item, board.def);
     if (on.asking)

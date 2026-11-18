@@ -264,6 +264,24 @@ export function Acts({
     </>
   ) : null;
 
+  // A live lease the person frees (a subagent that ended still holding it): back to the queue of
+  // its step, and the agent that held it claims it again before it writes.
+  const freeable = look === 'working' && item.lease ? item.lease.holder : null;
+  const freeState = word(item.state);
+  const freeSays = freeable ? t('sheet.says.free', { agent: freeable, state: freeState }) : '';
+  const freeButton = freeable ? (
+    <Button
+      variant="text"
+      data-free=""
+      title={freeSays}
+      onClick={() =>
+        void app.restart(item.id, stuckToastOf({ title: item.title, state: freeState }))
+      }
+    >
+      {t('sheet.receipt.free')}
+    </Button>
+  ) : null;
+
   // Nobody waits in otea wait: what the person does here, handed to an agent, waits for one.
   const silent = !anyoneWaits(app.agents);
   const handsToAgent = [plan.primary, ...plan.quiet].some((c) => c?.move.turn === 'agent');
@@ -513,6 +531,7 @@ export function Acts({
           </Button>
           {/* An approved item an agent lands: the person may still send it back (P1-4). */}
           {plan.quiet.filter((c) => c.kind === 'sendback').map((c) => btn(c, 'quiet'))}
+          {freeButton}
           {closeAs}
         </div>
         <div className="movesays">{note.says}</div>
@@ -541,13 +560,18 @@ export function Acts({
         </>
       );
     }
+    const open = closeAs && look !== 'done' && look !== 'dropped';
     body = (
       <>
         <p className="receipt">{text}</p>
         {unheard(item, app.agents, app.now) ? <Unheard /> : null}
-        {closeAs && look !== 'done' && look !== 'dropped' ? (
-          <div className="actions">{closeAs}</div>
+        {freeButton || open ? (
+          <div className="actions">
+            {freeButton}
+            {open ? closeAs : null}
+          </div>
         ) : null}
+        {freeable ? <div className="movesays">{freeSays}</div> : null}
       </>
     );
   }
