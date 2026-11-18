@@ -125,6 +125,20 @@ export function readUiToken(home: string): string | undefined {
   }
 }
 
+// The page the window went to, when it is another project's on the same server: its base
+// (`<origin>/p/<id>`), which the tray and the notices then watch.
+export function followedBase(watched: string, url: string): string | undefined {
+  try {
+    const now = new URL(url);
+    if (now.origin !== new URL(watched).origin) return undefined;
+    const id = /^\/p\/([a-z0-9-]+)\//.exec(now.pathname)?.[1];
+    const base = id === undefined ? undefined : `${now.origin}/p/${id}`;
+    return base === watched ? undefined : base;
+  } catch {
+    return undefined;
+  }
+}
+
 // The sign-in link that lands on a project's page: `origin` is the server's, `id` the project's.
 export const signInUrl = (origin: string, token: string, id: string) =>
   `${origin}/auth?token=${encodeURIComponent(token)}&next=${encodeURIComponent(`/p/${id}/`)}`;
