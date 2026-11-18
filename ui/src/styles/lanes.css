@@ -328,23 +328,32 @@
   flex: none;
 }
 .m .bd {
-  display: inline-flex;
-  gap: 0.3em;
-  min-width: 0;
+  display: contents;
 }
+/* the board shrinks long before anything else does, down to nothing */
 .m .bd .bdc {
   min-width: 0;
+  flex-shrink: 1000;
   overflow: hidden;
   text-overflow: ellipsis;
 }
 .m .bd .bds {
   flex: none;
+  margin-left: calc(0.3em - 7px);
 }
-/* a part after the id keeps its dot with it, so a line that wraps never ends on one */
+/* a part after the id keeps its dot with it, so a line that wraps never ends on one; once the
+   board is gone it gives way with an ellipsis instead of running under the step (UI3-1) */
 .m .mpt {
   display: inline-flex;
   gap: 7px;
   align-items: baseline;
+  min-width: 0;
+  overflow: hidden;
+}
+.m .mpt > :last-child {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 .id {
   font: 400 11.5px / 1 var(--mono);
