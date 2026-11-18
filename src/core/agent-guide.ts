@@ -18,8 +18,14 @@ export const AGENT_GUIDE = [
 ].join('\n');
 
 // Added to the guide while the project keeps side topics (app/topics.ts); never otherwise.
+// Agents skipped the bare rule in a chat (0 of 9 side questions recorded with Haiku): it names what
+// a side question is, when to record it, and where to look for what was said before.
 export const TOPICS_RULE =
-  '13. When the person asks you something off the work at hand, record it: otea topic add "<their question>" (MCP: topic_add), then answer it there too with otea topic answer <id> --summary "<a line or two>" --full "<your whole answer>". A task you make from a topic takes --from <id>.';
+  '13. Topics are on. Every question the person asks you that is not a request to do work (advice, an explanation, a comparison, a curiosity), even mid-task, is a topic. Before you answer it, record it: otea topic add "<their question>" (MCP: topic_add); once you answered in the chat, copy your answer there: otea topic answer <id> --summary "<a line or two>" --full "<your whole answer>". A request to do work is never a topic. When the person asks about something said before ("what did we conclude about…?"), look in the topics first: otea topic list --search "<words>" (MCP: topic_list), then otea topic show <id>. A task you make from a topic takes --from <id>.';
+
+// What next and wait remind an agent of while topics are on, between the person's messages.
+export const TOPICS_REMINDER =
+  'Topics are on: record each question the person asks you off the work with otea topic add before you answer it, then otea topic answer.';
 
 // The guide an agent of this project reads: with the topics rule only while topics are on.
 export function agentGuideFor(topics: boolean): string {

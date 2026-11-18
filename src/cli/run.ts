@@ -15,7 +15,7 @@ import {
 import { COMMANDS, findCommand } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
 import { type ForgeCli, NO_FORGE } from './forge.ts';
-import { commandHelp, generalHelp, HELP_ALL, HELP_HINT, shortHelp } from './help.ts';
+import { commandHelp, generalHelp, groupHelp, HELP_ALL, HELP_HINT, shortHelp } from './help.ts';
 import type { Opener } from './opener.ts';
 import { OTEA_VERSION } from './version.ts';
 
@@ -227,8 +227,9 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
     else if (words.length === 1 && words[0] === HELP_ALL) io.stdout.write(`${generalHelp()}\n`);
     else {
       const command = findCommand(words);
-      if (!command) throw new UsageError(unknownCommand(words));
-      io.stdout.write(`${commandHelp(command)}\n`);
+      const group = !command && words.length === 1 ? groupHelp(words[0] ?? '') : undefined;
+      if (!command && !group) throw new UsageError(unknownCommand(words));
+      io.stdout.write(`${command ? commandHelp(command) : group}\n`);
     }
     return EXIT_CODES.ok;
   }
@@ -238,6 +239,14 @@ async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> 
   }
   if (positionals.length === 0) throw new UsageError('Missing command');
   const command = findCommand(positionals);
+  const group =
+    values.help && !command && positionals.length === 1
+      ? groupHelp(positionals[0] ?? '')
+      : undefined;
+  if (group) {
+    io.stdout.write(`${group}\n`);
+    return EXIT_CODES.ok;
+  }
   if (!command) throw new UsageError(unknownCommand(positionals));
   if (values.help) {
     io.stdout.write(`${commandHelp(command)}\n`);

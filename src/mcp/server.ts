@@ -199,9 +199,9 @@ async function callCommand(
   }
 }
 
-// What a command says to the agent (its `text`, and show's `hint`: what to do with the item now),
-// in the words of the tools it calls.
-const SAID = ['text', 'hint'] as const;
+// What a command says to the agent (its `text`, show's `hint`: what to do with the item now, and
+// wait's topics `reminder`), in the words of the tools it calls.
+const SAID = ['text', 'hint', 'reminder'] as const;
 
 function inMcpWords(data: unknown, commands: readonly Command[]): unknown {
   if (data === null || typeof data !== 'object' || Array.isArray(data)) return data;

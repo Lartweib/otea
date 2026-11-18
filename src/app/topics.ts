@@ -469,17 +469,33 @@ const ORDER: Readonly<Record<TopicState, number>> = {
   closed: 4,
 };
 
+// Text as a search compares it: lower case, without accents (migración finds migracion).
+const folded = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
+
+// Whether a topic holds every word searched, anywhere in it: its id, title, the question, each
+// answer's summary and full text, and the person's notes.
+function matches(topic: Topic, words: readonly string[]): boolean {
+  const parts = topic.turns.flatMap((turn) => [turn.text, turn.full ?? '']);
+  const text = folded([topic.id, topic.title, ...parts].join('\n'));
+  return words.every((word) => text.includes(word));
+}
+
 // The topics, what is left hanging first; closed ones and those turned into tasks only when asked.
+// A search looks in every topic, closed ones too: the person asks what was concluded before.
 export function listTopics(
   ctx: Context,
-  filter: { all?: boolean } = {},
+  filter: { all?: boolean; search?: string } = {},
   now = systemClock,
 ): Topic[] {
   const at = now();
+  const words = folded(filter.search ?? '')
+    .split(/\s+/)
+    .filter((word) => word !== '');
+  const searching = words.length > 0;
   const rows = ctx.db.prepare('SELECT * FROM topics ORDER BY seq').all() as TopicRow[];
   return rows
     .map((row) => toTopic(ctx, row, at))
-    .filter((topic) => filter.all || isPending(topic.state))
+    .filter((topic) => (searching ? matches(topic, words) : filter.all || isPending(topic.state)))
     .sort(
       (a, b) =>
         ORDER[a.state] - ORDER[b.state] || a.id.localeCompare(b.id, 'en', { numeric: true }),
@@ -587,7 +603,18 @@ export function topicText(topic: Topic): string {
   return lines.join('\n');
 }
 
-export function topicsListText(topics: readonly Topic[]): string {
-  if (topics.length === 0) return 'No topics wait on anyone.';
-  return topics.map((topic) => `${topic.id}  ${topic.state.padEnd(8)}  ${topic.title}`).join('\n');
+// One line per topic; a search gives each topic found its last answer, often all that was asked.
+export function topicsListText(topics: readonly Topic[], search?: string): string {
+  const searched = search?.trim() ?? '';
+  if (topics.length === 0)
+    return searched === '' ? 'No topics wait on anyone.' : `No topic mentions "${searched}".`;
+  return topics
+    .map((topic) => {
+      const line = `${topic.id}  ${topic.state.padEnd(8)}  ${topic.title}`;
+      const answer = searched === '' ? undefined : lastAnswerOf(topic);
+      return answer ? `${line}\n    ${answer.text}` : line;
+    })
+    .join('\n');
 }
+
+const lastAnswerOf = (topic: Topic) => topic.turns.findLast((turn) => turn.kind === 'answer');

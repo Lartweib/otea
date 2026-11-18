@@ -110,6 +110,8 @@ describe('mcp server', () => {
         'events',
         'list',
         'show',
+        'topic_list',
+        'topic_show',
         'wait',
       ]);
     });
@@ -119,6 +121,21 @@ describe('mcp server', () => {
     // Over MCP, what Otea says names the tools, not the commands (mcpWords).
     const inTools = (data: { text?: string }) =>
       data.text === undefined ? data : { ...data, text: mcpWords(data.text, COMMANDS) };
+
+    // "What did we conclude about…?": a fresh agent looks in the topics kept, closed ones too.
+    it('searches and shows the topics kept, as otea topic list and show do', async () => {
+      await otea('topic', 'on');
+      await otea('topic', 'add', '¿Conviene ESM o CommonJS?');
+      await otea('topic', 'answer', 'TEM-1', '--summary', 'ESM.', '--full', 'Hoy conviene ESM.');
+      await cliAt(repo.dir)('topic', 'close', 'TEM-1');
+
+      const found = await data('topic_list', { search: 'commonjs' });
+      expect(found).toEqual(await json('topic', 'list', '--search', 'commonjs'));
+      expect(found.map(({ id }: { id: string }) => id)).toEqual(['TEM-1']);
+      const shown = await data('topic_show', { id: 'TEM-1' });
+      expect(shown).toEqual(await json('topic', 'show', 'TEM-1'));
+      expect(shown.turns[1]).toMatchObject({ text: 'ESM.', full: 'Hoy conviene ESM.' });
+    });
 
     it('serves a board and the index as otea board --json does, in the words of the tools', async () => {
       expect(await data('board')).toEqual(inTools(await json('board')));

@@ -259,3 +259,40 @@ describe('the list', () => {
     expect(listTopics(ctx, { all: true }, now).map(({ id }) => id)).toContain('TEM-4');
   });
 });
+
+describe('searching topics', () => {
+  it('finds words in the title, the question, the summary and the full answer, closed ones too', () => {
+    addTopic(ctx, { question: '¿Conviene ESM o CommonJS?', actor: quill }, now);
+    answerTopic(
+      ctx,
+      {
+        id: 'TEM-1',
+        summary: 'ESM.',
+        full: 'Hoy conviene ESM: Node lo soporta sin flags.',
+        actor: quill,
+      },
+      now,
+    );
+    closeTopic(ctx, { id: 'TEM-1', actor: fede }, now);
+    addTopic(ctx, { question: '¿Qué licencia uso?', title: 'Licencia', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-2', summary: 'MIT, por simple.', actor: quill }, now);
+    addTopic(ctx, { question: 'Otra cosa', actor: quill }, now);
+
+    const ids = (search: string) => listTopics(ctx, { search }, now).map(({ id }) => id);
+    expect(ids('commonjs')).toEqual(['TEM-1']);
+    expect(ids('sin flags')).toEqual(['TEM-1']);
+    expect(ids('mit')).toEqual(['TEM-2']);
+    expect(ids('LICENCIA')).toEqual(['TEM-2']);
+    expect(ids('nada de esto')).toEqual([]);
+  });
+
+  it('ignores accents and needs every word, in any order', () => {
+    addTopic(ctx, { question: '¿Qué concluimos sobre la migración?', actor: quill }, now);
+    addTopic(ctx, { question: 'La migracion de datos', actor: quill }, now);
+
+    const ids = (search: string) => listTopics(ctx, { search }, now).map(({ id }) => id);
+    expect(ids('migracion')).toEqual(['TEM-1', 'TEM-2']);
+    expect(ids('migración concluimos')).toEqual(['TEM-1']);
+    expect(ids('  ')).toEqual(['TEM-1', 'TEM-2']);
+  });
+});
