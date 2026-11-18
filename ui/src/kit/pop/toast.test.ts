@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { seenAtMount, toast, toastClass } from './toast.tsx';
+import { holdsOn, seenAtMount, toast, toastClass } from './toast.tsx';
 
 describe('a toast host that mounts later', () => {
   it('starts past the toast already shown, so it never replays an old one', () => {
@@ -15,5 +15,13 @@ describe('where a toast sits', () => {
   it('at the foot by default, under the top bar when asked (the phone capture)', () => {
     expect(toastClass(undefined)).toBe('pop e-top toast');
     expect(toastClass('top')).toBe('pop e-top toast at-top');
+  });
+});
+
+describe('what holds a toast up', () => {
+  it('a mouse over it, never a finger: a tap left it paused for minutes (P7-4)', () => {
+    expect(holdsOn('mouse')).toBe(true);
+    expect(holdsOn('touch')).toBe(false);
+    expect(holdsOn('pen')).toBe(false);
   });
 });
