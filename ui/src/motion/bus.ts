@@ -35,6 +35,35 @@ export const motionBus = {
   },
 };
 
+// The longest a count waits on a handoff: past it the handoff's half has long gone by.
+export const HOLD_MAX = 1600;
+
+// Calls fn once: at the half of the handoff in flight, once nothing is in flight any more, or after
+// HOLD_MAX at the latest, so a handoff cut short or one that never ends cannot leave a count
+// behind its rows (DR3-3). With nothing in flight it calls fn at once. Returns how to stop waiting.
+export function afterHalf(fn: () => void): () => void {
+  if (!motionBus.inFlight()) {
+    fn();
+    return () => {};
+  }
+  let done = false;
+  const go = () => {
+    if (done) return;
+    stop();
+    fn();
+  };
+  const offHalf = motionBus.onHalf(go);
+  const offIdle = motionBus.onIdle(go);
+  const timer = setTimeout(go, HOLD_MAX);
+  function stop() {
+    done = true;
+    offHalf();
+    offIdle();
+    clearTimeout(timer);
+  }
+  return stop;
+}
+
 // A move has landed: the handoff carrying it is half-way (its pulse blooms, its counts roll). With
 // no handoff in flight or starting within `wait` ms (the row is not on screen), it resolves then.
 export function landed(wait = 700): Promise<void> {

@@ -1,5 +1,5 @@
 import { useLayoutEffect, useRef, useState } from 'react';
-import { motionBus } from '../motion/bus.ts';
+import { afterHalf } from '../motion/bus.ts';
 import { rollTo } from '../motion/roll.ts';
 
 type CountProps = {
@@ -24,30 +24,21 @@ export function Count({ value, tone, hold = false, className, ...rest }: CountPr
     const el = ref.current;
     if (!el) return;
     const to = String(value);
-    let off: (() => void) | undefined;
-    let offIdle: (() => void) | undefined;
-    const roll = () => {
-      off?.();
-      offIdle?.();
-      rollTo(el, to);
-    };
     if (!hold) {
-      roll();
+      rollTo(el, to);
       return;
     }
     // Every layout effect of this commit runs before the microtask: a handoff the commit started
     // is in flight by then.
     let dead = false;
+    let off: (() => void) | undefined;
     queueMicrotask(() => {
       if (dead) return;
-      if (!motionBus.inFlight()) return roll();
-      off = motionBus.onHalf(roll);
-      offIdle = motionBus.onIdle(roll);
+      off = afterHalf(() => rollTo(el, to));
     });
     return () => {
       dead = true;
       off?.();
-      offIdle?.();
     };
   }, [value, hold]);
   const classes = ['n', tone, className].filter(Boolean).join(' ');
