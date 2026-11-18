@@ -12,7 +12,7 @@ import { Choreo, type Part, part } from '../../motion/choreo.ts';
 import { clamp } from '../../motion/curves.ts';
 import { useEscape } from '../escape.ts';
 import { type Place, placer } from './anchors.ts';
-import { focusFirst, noteTrigger, onMenuKey, returnFocus } from './focus.ts';
+import { focusBackAfterPress, focusFirst, noteTrigger, onMenuKey, returnFocus } from './focus.ts';
 
 // A pop: the line leads from the trigger, the surface unrolls riding its edge, the items resolve
 // (mock:3258-3291, MOTION §3.1). It stays mounted while it closes, the same gesture mirrored, and
@@ -179,6 +179,8 @@ export function Pop({
       const t = event.target as Node | null;
       if (!t || el.current?.contains(t) || anchor?.contains(t)) return;
       closeRef.current();
+      // Pressed on something that takes no focus, the page would keep it: it goes to the trigger.
+      focusBackAfterPress(document, trigger.current);
     };
     document.addEventListener('pointerdown', down, true);
     return () => document.removeEventListener('pointerdown', down, true);
