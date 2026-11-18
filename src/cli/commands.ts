@@ -713,6 +713,7 @@ const connect: Command = {
     as: { placeholder: 'name' },
     model: { placeholder: 'id' },
     effort: { placeholder: 'level' },
+    harness: { placeholder: 'name' },
     check: { flag: true },
   },
   execute: async (input) => {
@@ -725,7 +726,12 @@ const connect: Command = {
     const { root, id } = withProject(cwd, (project) => {
       if (name !== undefined) {
         if (model !== undefined && effort !== undefined) {
-          presetProfile(project.db, { agent: name, model, effort });
+          presetProfile(project.db, {
+            agent: name,
+            model,
+            effort,
+            given: option('harness') ?? 'cli',
+          });
         } else if (!findProfile(project.db, name)) {
           throw new UsageError(
             `Give the profile ${name} runs as: --model <id> --effort <level>, exactly as its harness names them (such as claude-opus-5-5 and high)`,
