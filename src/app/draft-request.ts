@@ -34,6 +34,7 @@ export function handInText(id: string): string {
     `otea board draft ${id} --file ${DRAFT_FILENAME}. It says what is wrong until the board is right.`,
     `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
     'Who does each step is its doer (any agent, a named agent or the person), never its text: write its instructions to whoever does it, and call the person "the person" (in Spanish, "la persona").',
+    'Branches follow how the person works: when they work straight on main with no branches, take the guard off the branch part (or the part itself), unless they want each push of main to wait for their approval; then keep it with main as its base and as the branch of each item, pushed only in the step after their approval.',
     'Handing it in is your handoff: the person tries the board and publishes it in Studio, which closes this Pedido; there is no otea handoff to run.',
   ].join('\n');
 }

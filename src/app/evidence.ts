@@ -2,6 +2,8 @@ import { createHash, randomUUID } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import type { Channel, Performer } from '../core/authority.ts';
+import { gateAt, isClosed, positionOf } from '../core/board/engine.ts';
+import { stepById } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import {
   type EvidenceRole,
@@ -238,6 +240,28 @@ function sameSinceMoved(
   );
 }
 
+// While a step that pushes the board's protected branch is reviewed, the branch is frozen: an
+// agent attaches nothing, so the reviewer approves only what was handed off, never work the branch
+// never got. The person may still attach.
+function refuseWhileFrozen(
+  project: Project,
+  item: { id: string; collection: string; state: string },
+  actor: Actor,
+): void {
+  if (actor.kind !== 'agent') return;
+  const board = liveBoardOf(project, item.collection);
+  if (!board) return;
+  const position = positionOf(item.state);
+  if (isClosed(position) || position.phase === 'doing') return;
+  if (gateAt(board.def, position, 'push').why !== 'review') return;
+  const step = stepById(board.def, position.step)?.name ?? position.step;
+  throw new OteaError(
+    'invalid_transition',
+    `Not attached to ${item.id}: its branch is frozen while ${step} is reviewed, so the reviewer reads only what was handed off. Push and attach once it is sent back.`,
+    { kind: 'frozen_in_review', item: item.id, step },
+  );
+}
+
 // Attaches the file at a path. A refusal stores nothing; the same file again adds nothing.
 export function attachEvidence(project: Project, input: AttachInput, now = systemClock): Attached {
   const file: EvidenceFile = {
@@ -249,6 +273,7 @@ export function attachEvidence(project: Project, input: AttachInput, now = syste
   };
   return transaction(project.db, () => {
     const item = requireWritableItem(project.db, input.id);
+    refuseWhileFrozen(project, item, input.actor);
     const at = now();
     const placed = placeFile(project, item, file, input.actor, at);
     const same = sameSinceMoved(project, item.id, placed);

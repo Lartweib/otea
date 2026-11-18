@@ -13,6 +13,7 @@ export type RefusalDetails =
   // A send-back or a way back without a reason.
   | { kind: 'send_back_reason'; item: string }
   | { kind: 'way_back_reason'; item: string }
+  | { kind: 'frozen_in_review'; item: string; step: string }
   // A merge marked on an item that is not Done, or marked already.
   | { kind: 'not_done'; item: string }
   | { kind: 'merged_already'; item: string }

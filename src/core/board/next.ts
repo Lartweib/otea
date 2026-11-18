@@ -977,9 +977,18 @@ export function gateText(
     }
     case 'not_done':
       return isClosed(position)
-        ? `merge refused: ${id} is ${closedName(def, position)}; its branch can be merged only once ${id} is ${DONE_NAME}.`
-        : `merge refused: ${id} is in ${where}, round ${round}; its branch can be merged only once ${id} is ${DONE_NAME}.`;
+        ? `merge refused: ${id} is ${closedName(def, position)}; its branch can be merged ${mergedOnlyWhen(def, id)}.`
+        : `merge refused: ${id} is in ${where}, round ${round}; its branch can be merged ${mergedOnlyWhen(def, id)}.`;
   }
+}
+
+// When an item's branch may be merged: once it is Done, or on a board with a land step once the
+// person approved it, while an agent lands it there.
+function mergedOnlyWhen(def: BoardDefinition, id: string): string {
+  const land = landStepOf(def);
+  return land
+    ? `only once the person approved ${id}: while it is being landed in ${land.name}, or once it is ${DONE_NAME}`
+    : `only once ${id} is ${DONE_NAME}`;
 }
 
 // What otea check answers for one item whose branch a push or merge brings into the base branch
@@ -999,7 +1008,7 @@ export function baseGateText(
   const where = isClosed(position)
     ? `is ${closedName(def, position)}`
     : `is in ${stepById(def, position.step)?.name ?? ''}, round ${round}`;
-  return `${action} refused: ${id} ${where}; ${base} takes its branch only once ${id} is ${DONE_NAME}.`;
+  return `${action} refused: ${id} ${where}; ${base} takes its branch ${mergedOnlyWhen(def, id)}.`;
 }
 
 // Why a push or merge into the protected base branch that brings in no item of the board is
@@ -1014,7 +1023,12 @@ export function baseRefusal(
   // Named by board, never "a <item>": an item's name is the board's language ("a Entrega").
   const items = `an item of ${all.map((def) => def.name).join(' or ')}`;
   const verb = all.length > 1 ? 'protect' : 'protects';
-  return `${action} refused: ${base} is the base branch ${names} ${verb}; it takes only the branch of ${items} that is ${DONE_NAME}, and this ${action} brings in none.`;
+  const lands = all.flatMap((def) => landStepOf(def)?.name ?? []);
+  const when =
+    lands.length === all.length
+      ? `the person approved (being landed in ${[...new Set(lands)].join(' or ')}, or ${DONE_NAME})`
+      : `that is ${DONE_NAME}`;
+  return `${action} refused: ${base} is the base branch ${names} ${verb}; it takes only the branch of ${items} ${when}, and this ${action} brings in none.`;
 }
 
 // The line after a handoff or an approval: where the item stands now.

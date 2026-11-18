@@ -1,5 +1,5 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync } from 'node:fs';
+import { mkdirSync, writeFileSync } from 'node:fs';
 import { basename, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -245,6 +245,21 @@ describe('check', () => {
     expect(EXIT_CODES.gate_refused).toBe(19);
     const codes = Object.entries(EXIT_CODES).filter(([, code]) => code === 19);
     expect(codes).toEqual([['gate_refused', 19]]);
+  });
+
+  // While its branch is frozen in review, an agent attaches nothing: the reviewer would approve
+  // work the branch never got (P3C-8).
+  it('refuses an agent’s attach while the branch is frozen in review', async () => {
+    person(task, 'implementing');
+    writeFileSync(join(repo.dir, 'out.log'), 'ok\n');
+    expect((await otea('attach', task, 'out.log')).code).toBe(0);
+    await otea('move', task, 'implementing__review');
+
+    const frozen = await otea('attach', task, 'out.log', '--caption', 'later');
+    expect(frozen.code).toBe(4);
+    expect(frozen.err).toContain(
+      `Not attached to ${task}: its branch is frozen while Implementar is reviewed, so the reviewer reads only what was handed off. Push and attach once it is sent back.`,
+    );
   });
 
   describe('with the base branch protected', () => {
