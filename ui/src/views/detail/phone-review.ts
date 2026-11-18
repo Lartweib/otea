@@ -199,10 +199,18 @@ export function handedFields(
 // its marks. A heading or a table is read only when the value holds nothing else (DR2-22: the fold
 // showed «## Problema» and pipe tables raw).
 export function requestLine(markdown: string): string {
+  // Emphasis marks go, but an underscore inside a word (user_name) is not one, as in CommonMark,
+  // and code keeps every character it holds (P7-10).
+  const marks = (s: string) =>
+    s
+      .replace(/(\*\*|\*|~~)(\S(?:.*?\S)?)\1/g, '$2')
+      .replace(/(?<![\p{L}\p{N}_])(__|_)(\S(?:.*?\S)?)\1(?![\p{L}\p{N}_])/gu, '$2');
   const inline = (s: string) =>
     s
       .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
-      .replace(/(\*\*|__|\*|_|~~|`)(\S(?:.*?\S)?)\1/g, '$2')
+      .split(/(`[^`]*`)/)
+      .map((part, at) => (at % 2 ? part.slice(1, -1) : marks(part)))
+      .join('')
       .replace(/\s+/g, ' ')
       .trim();
   let fenced = false;
