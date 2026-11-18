@@ -146,6 +146,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
         ? boardItemOf(live, item, {
             done: t('bs.done'),
             dip: (n, at) => t('sheet.dip', { n, when: at ? dipWhen(at, now) : '' }),
+            redone: (n) => t('sheet.dipRedone', { n }),
             reopen: (at) => t('sheet.reopenDip', { when: at ? dipWhen(at, now) : '' }),
           })
         : null,

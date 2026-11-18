@@ -521,6 +521,7 @@ export const detail = {
   'sheet.h.yesterday': 'yesterday',
   'sheet.route.aria': 'Route of {id}',
   'sheet.dip': 'round {n} · sent back {when}',
+  'sheet.dipRedone': 'round {n} · sent back and redone',
   'sheet.reopenDip': 'reopened {when}',
   'sheet.when.today': 'today',
   'sheet.when.yesterday': 'yesterday',
