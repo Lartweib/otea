@@ -312,7 +312,12 @@ export function showItem(
     ...(archived === undefined
       ? {}
       : { archived: { board: archived, id: archivedId ?? '' }, transitions: [], relayable: [] }),
-    evidence: presentEvidence(type.layout, selectEvidence(ctx.db, item.id)),
+    // On a board, a file attached to no part stays outside the parts (the person's own).
+    evidence: presentEvidence(
+      type.layout,
+      selectEvidence(ctx.db, item.id),
+      findBoardOfCollection(ctx.db, item.collection) !== undefined,
+    ),
     relations: relatedItems(ctx, item.id, at),
     ...(children.length > 0 ? { children: childrenSummary(children) } : {}),
     ...(gates === undefined ? {} : { gates }),

@@ -202,6 +202,40 @@ export async function createRequest(c: Context): Promise<CreateRequest> {
   };
 }
 
+const Places = z.array(
+  z.object({ role: z.enum(EVIDENCE_ROLES).optional(), module: z.string().min(1).optional() }),
+);
+
+// Files the person adds to an item that exists (ONB-18), as a form: each file in a "file" part,
+// and optionally where each goes, as JSON in an "evidence" part (one entry per file, in order).
+export async function attachRequest(c: Context): Promise<EvidenceFile[]> {
+  const invalid = (detail: string) => new RejectedRequest(400, 'invalid_body', detail);
+  if (mediaOf(c.req.header('content-type')) !== FORM_TYPE) {
+    throw invalid('Send the files as a form, each in a "file" part');
+  }
+  const form = await c.req.parseBody({ all: true }).catch(() => {
+    throw invalid('Send the files as a form, each in a "file" part');
+  });
+  const { evidence, file = [] } = form;
+  const files = (Array.isArray(file) ? file : [file]).filter((part) => part instanceof File);
+  if (files.length === 0) throw invalid('Send at least one file, in a "file" part');
+  if (files.length > MAX_INTAKE_FILES) throw invalid(`Send at most ${MAX_INTAKE_FILES} files`);
+  let places: z.infer<typeof Places> = [];
+  if (typeof evidence === 'string') {
+    let raw: unknown;
+    try {
+      raw = JSON.parse(evidence);
+    } catch {
+      raw = undefined;
+    }
+    const parsed = Places.safeParse(raw);
+    if (!parsed.success)
+      throw invalid('Expected "evidence" as [{"role"?: string, "module"?: string}]');
+    places = parsed.data;
+  }
+  return Promise.all(files.map((one, at) => fileOf(one, places[at])));
+}
+
 const CLIENT_KEY = /^[A-Za-z0-9_-]{1,128}$/;
 
 // The create's Idempotency-Key, when the client sends one: a phone resending a capture it queued

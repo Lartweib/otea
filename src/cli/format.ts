@@ -201,7 +201,9 @@ function evidenceLines(
   named = false,
 ): string[] {
   const rows = (entries: EvidenceRecord[]) => columns(entries.map(evidenceRow));
-  const groups = layout ? groupEvidence(layout, evidence) : { modules: [], others: evidence };
+  const groups = layout
+    ? groupEvidence(layout, evidence, named)
+    : { modules: [], others: evidence };
   if (groups.modules.length === 0) {
     return evidence.length > 0 ? ['Evidence:', indent(rows(evidence)), ''] : [];
   }

@@ -149,8 +149,10 @@ export type Placed = { module: string | null; filename: string };
 
 // The module that draws an evidence entry: the one it was attached to while the layout still places
 // it and it still accepts the file, else the first module that accepts it (evidence attached before
-// modules, or after a preset edit). null when no module accepts it.
-export function holderOf(layout: Layout, evidence: Placed): string | null {
+// modules, or after a preset edit). null when no module accepts it. `keepLoose`, on a board: a file
+// attached to no part (the person's, outside the parts the agents hand) stays outside them.
+export function holderOf(layout: Layout, evidence: Placed, keepLoose = false): string | null {
+  if (keepLoose && evidence.module === null) return null;
   const modules = evidenceModules(layout).filter((entry) =>
     moduleAccepts(entry, evidence.filename),
   );
@@ -163,11 +165,15 @@ export type EvidenceGroups<T> = {
   others: T[];
 };
 
-export function groupEvidence<T extends Placed>(layout: Layout, evidence: T[]): EvidenceGroups<T> {
+export function groupEvidence<T extends Placed>(
+  layout: Layout,
+  evidence: T[],
+  keepLoose = false,
+): EvidenceGroups<T> {
   const modules = evidenceModules(layout).map((module) => ({ module, evidence: [] as T[] }));
   const others: T[] = [];
   for (const entry of evidence) {
-    const holder = holderOf(layout, entry);
+    const holder = holderOf(layout, entry, keepLoose);
     const group = modules.find(({ module }) => module.id === holder);
     if (group) group.evidence.push(entry);
     else others.push(entry);

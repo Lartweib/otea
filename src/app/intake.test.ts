@@ -3,15 +3,17 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Performer } from '../core/authority.ts';
+import { creatures } from '../core/board/testing.ts';
 import { MAX_EVIDENCE_BYTES } from '../core/evidence.ts';
 import { evidencePreset } from '../core/testing.ts';
 import { selectEvidence } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import { evidenceDir } from './evidence.ts';
 import { createItemWithEvidence } from './intake.ts';
-import { getItem, listItems } from './items.ts';
+import { getItem, listItems, showItem } from './items.ts';
+import { boardBlockOf } from './next.ts';
 import type { Project } from './project.ts';
-import { memoryContext, projectOf } from './testing.ts';
+import { memoryContext, projectOf, publishAs } from './testing.ts';
 
 const HUMAN: Performer = { actor: { kind: 'human', name: 'human' }, channel: 'ui' };
 const T0 = '2026-01-01T00:00:00.000Z';
@@ -79,5 +81,58 @@ describe('createItemWithEvidence', () => {
     );
     expect(listItems(project)).toEqual([]);
     expect(selectEvidence(project.db, 'PROOF-1')).toEqual([]);
+  });
+});
+
+// ONB3-4: what the person files a new item with is theirs, not an agent's deliverable. It goes to a
+// part the board's creation form asks for, or stays with the item outside the parts.
+describe('createItemWithEvidence on a board, as the person', () => {
+  let project: Project;
+  let root: string;
+  const MP4 = Buffer.from('not really a video');
+
+  const create = (files: Parameters<typeof createItemWithEvidence>[2]) =>
+    createItemWithEvidence(
+      project,
+      { collection: 'Criaturas', title: 'Sapo', fields: { fdesc: 'verde' }, ...HUMAN },
+      files,
+      () => T0,
+    );
+  const shown = (id: string) =>
+    showItem(project, id, HUMAN).evidence.map(({ filename, module }) => [filename, module]);
+
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'otea-intake-board-'));
+    project = projectOf(root, memoryContext());
+    const def = creatures();
+    // Barro (images) is asked for when the item is created; Arte conceptual (images) and
+    // Animación (video) are what the agents hand off.
+    def.form.push({ ref: 'eswamp', required: false });
+    publishAs(project, def, 'bcre', () => T0);
+  });
+
+  afterEach(() => {
+    project.db.close();
+    rmSync(root, { recursive: true, force: true });
+  });
+
+  it('puts a picture in the part the creation form asks for, not the first that takes it', () => {
+    const { id } = create([{ filename: 'mud.png', bytes: PNG }]);
+
+    expect(shown(id)).toEqual([['mud.png', 'eswamp']]);
+  });
+
+  it("keeps a file no form part takes with the item, out of the agents' parts", () => {
+    const { id } = create([{ filename: 'clip.mp4', bytes: MP4 }]);
+
+    expect(shown(id)).toEqual([['clip.mp4', null]]);
+    const block = boardBlockOf(project, getItem(project, id));
+    expect(block?.missing.map(({ ref }) => ref)).toContain('eart');
+  });
+
+  it('puts a file in the part the person names', () => {
+    const { id } = create([{ filename: 'art.png', bytes: PNG, module: 'eart' }]);
+
+    expect(shown(id)).toEqual([['art.png', 'eart']]);
   });
 });

@@ -450,6 +450,12 @@ export const detail = {
   'sheet.answered': 'You answered',
   'sheet.asked': '{agent} asked',
   'sheet.evidence': 'Evidence',
+  'sheet.attach': 'Attach',
+  'sheet.attached': {
+    one: 'You attached {file} to {id}.',
+    other: 'You attached {count} files to {id}.',
+  },
+  'sheet.attachFailed': 'Not attached: {why}',
   'sheet.noEvidence': 'No evidence yet.',
   'sheet.files': { one: '{count} file', other: '{count} files' },
   'sheet.structure': 'Structure',

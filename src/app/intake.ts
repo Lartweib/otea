@@ -2,7 +2,13 @@ import type { Performer } from '../core/authority.ts';
 import { transaction } from '../store/database.ts';
 import type { EvidenceRecord } from '../store/queries.ts';
 import { type EvidenceFile, placeFile, recordEvidence } from './evidence.ts';
-import { type CreateItemInput, type Item, insertNewItem, systemClock } from './items.ts';
+import {
+  type CreateItemInput,
+  type Item,
+  insertNewItem,
+  requireWritableItem,
+  systemClock,
+} from './items.ts';
 import type { Project } from './project.ts';
 
 export type CreatedWithEvidence = Item & { evidence: EvidenceRecord[] };
@@ -21,5 +27,22 @@ export function createItemWithEvidence(
     const placed = files.map((file) => placeFile(project, item, file, input.actor, at));
     const evidence = placed.map((file) => recordEvidence(project, item.id, file, input, at));
     return { ...created, evidence };
+  });
+}
+
+// Files the person adds to an item that exists (ONB-18), in one write: every file is placed before
+// any is stored, and a refusal of any of them attaches nothing. On a board they go where a person's
+// files go (app/evidence.ts personsPlace): never into a part an agent hands, unless named.
+export function attachFiles(
+  project: Project,
+  input: { id: string } & Performer,
+  files: readonly EvidenceFile[],
+  now = systemClock,
+): EvidenceRecord[] {
+  return transaction(project.db, () => {
+    const item = requireWritableItem(project.db, input.id);
+    const at = now();
+    const placed = files.map((file) => placeFile(project, item, file, input.actor, at));
+    return placed.map((file) => recordEvidence(project, item.id, file, input, at));
   });
 }
