@@ -80,6 +80,20 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
     expect(next.out).toContain('The person answered: "Con musgo"');
   });
 
+  it('keeps a wait for unclaimed work on the question it asked, not on another free item', async () => {
+    await otea('create', '--collection', 'Criaturas', '--title', 'Pulpo', '--field', 'fdesc=Ocho');
+    await otea('ask', 'CRI-1', '¿Caparazón liso o con musgo?');
+
+    const waited = await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '2s');
+    expect(waited.out).not.toContain('CRI-2');
+    expect(waited.code).toBe(13);
+    expect(waited.err).toContain('CRI-1');
+
+    answer('Con musgo');
+    const woken = await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '5s');
+    expect(woken.out).toBe('CRI-1: the person answered your question. Read it: otea show CRI-1\n');
+  });
+
   it('refuses a question with no words', async () => {
     const { code, err } = await otea('ask', 'CRI-1', '  ');
     expect(code).toBe(2);

@@ -4,9 +4,11 @@ import { OteaError } from '../core/errors.ts';
 import { activeLease } from '../core/lease.ts';
 import {
   clearListening,
+  clearWaiting,
   findAgent,
   findProfile,
   markListening,
+  markWaiting,
   type ProfileView,
   profileView,
   saveProfile,
@@ -15,6 +17,7 @@ import {
   selectListener,
   selectListening,
   selectProfileChanges,
+  selectWaiting,
   unconfirmProfile,
   upsertAgent,
 } from '../store/queries.ts';
@@ -70,6 +73,9 @@ export type AgentPresence = {
   live: boolean;
   // Heard listening within LISTEN_WINDOW_MS.
   listening: boolean;
+  // Heard waiting in otea wait within LISTEN_WINDOW_MS: what the person does on the desk reaches
+  // it. An agent idle in its chat with its MCP server open listens, but hears nothing.
+  waiting: boolean;
   profile: ProfileView | null;
   profileConfirmed: boolean;
   profileChangedAt: string | null;
@@ -176,14 +182,27 @@ export function ownerGone(
   return current !== start || !chain.every(alive);
 }
 
-// The beat of a wait (watch's `beat`): hears the agent again, never as a new session. Far inside
-// CLI_SESSION_GAP_MS, so a wait of hours is no time away and its profile stays confirmed.
+// The beat of a wait (watch's `beat`): hears the agent again, never as a new session, and notes it
+// waiting. Far inside CLI_SESSION_GAP_MS, so a wait of hours is no time away and its profile stays
+// confirmed.
 export function waitBeat(
   db: DatabaseSync,
   { newSession: _, ...sighting }: Sighting,
   now: Clock = systemClock,
 ): { everyMs: number; run: () => string } {
-  return { everyMs: LISTEN_BEAT_MS, run: () => hearAgent(db, sighting, now) };
+  const run = () => {
+    const at = hearAgent(db, sighting, now);
+    markWaiting(db, sighting.agent, at);
+    return at;
+  };
+  return { everyMs: LISTEN_BEAT_MS, run };
+}
+
+// A wait that ends (it found what it waited for, or its session ended) stops its agent waiting at
+// once, unless another wait heard it after `heardAt`, its last beat. A wait that timed out leaves
+// it: the agent calls it again at once, and the desk would blink to nobody waiting between them.
+export function endWaiting(db: DatabaseSync, agent: string, heardAt: string): void {
+  clearWaiting(db, agent, heardAt);
 }
 
 // A profile's harness is the MCP client's: when the client names another one, the profile follows.
@@ -204,11 +223,13 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
     if (live) holding.set(live.holder, [...(holding.get(live.holder) ?? []), id]);
   }
   const heard = selectListening(db);
+  const waits = selectWaiting(db);
+  const within = (last: string | undefined) =>
+    last !== undefined && Date.parse(at) - Date.parse(last) <= LISTEN_WINDOW_MS;
   const agents = selectAgents(db).map(
     ({ name, harness, harnessVersion, connectedAt, lastSeen }) => {
       const held = holding.get(name) ?? [];
-      const last = heard.get(name);
-      const listening = last !== undefined && Date.parse(at) - Date.parse(last) <= LISTEN_WINDOW_MS;
+      const listening = within(heard.get(name));
       const declared = findProfile(db, name);
       return {
         name,
@@ -219,6 +240,7 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
         lastSeen,
         live: listening || held.length > 0,
         listening,
+        waiting: within(waits.get(name)),
         profile: declared ? profileView(declared.profile) : null,
         profileConfirmed: declared?.confirmed ?? false,
         profileChangedAt: profileChangedAt(db, name),
@@ -238,13 +260,14 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
 export function presenceSignature(db: DatabaseSync, now: Clock = systemClock): string {
   const agents = listAgents(db, now).sort((a, b) => a.name.localeCompare(b.name));
   return JSON.stringify(
-    agents.map(({ name, harness, holding, lastSeen, profile, profileConfirmed }) => [
+    agents.map(({ name, harness, holding, lastSeen, profile, profileConfirmed, waiting }) => [
       name,
       harness,
       holding,
       lastSeen,
       profile,
       profileConfirmed,
+      waiting,
     ]),
   );
 }

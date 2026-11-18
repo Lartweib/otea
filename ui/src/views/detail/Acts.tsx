@@ -1,10 +1,12 @@
 import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { useApp } from '../../app/context.tsx';
+import { Unheard } from '../../components/Unheard.tsx';
 import { mainPath } from '../../derive/path.ts';
 import { agoText, whenText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { Button, Icon, MenuItem, MenuLabel, MenuNote, Pop, Swap } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
+import { anyoneWaits, unheard } from '../../listening.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { parseOptions } from '../../options.ts';
@@ -262,6 +264,10 @@ export function Acts({
     </>
   ) : null;
 
+  // Nobody waits in otea wait: what the person does here, handed to an agent, waits for one.
+  const silent = !anyoneWaits(app.agents);
+  const handsToAgent = [plan.primary, ...plan.quiet].some((c) => c?.move.turn === 'agent');
+
   let body: ReactNode = null;
   if (mode === 'read') {
     body = (
@@ -287,6 +293,7 @@ export function Acts({
             {refusedNow}
           </p>
         ) : null}
+        {silent && handsToAgent && !refusedNow ? <Unheard /> : null}
       </>
     );
   } else if (mode === 'pick' && pick) {
@@ -318,6 +325,7 @@ export function Acts({
             {refusedNow}
           </p>
         ) : null}
+        {silent && !refusedNow ? <Unheard /> : null}
       </PickForm>
     );
   } else if (mode === 'qa') {
@@ -389,6 +397,7 @@ export function Acts({
             </Button>
             <span className="closeas">{t('sheet.qa.goesOn', { agent: agent ?? '—' })}</span>
           </div>
+          {silent ? <Unheard /> : null}
           {plan.primary || closeAs ? (
             <div className="actions more">
               {plan.primary ? btn(plan.primary, 'text') : null}
@@ -533,6 +542,7 @@ export function Acts({
     body = (
       <>
         <p className="receipt">{text}</p>
+        {unheard(item, app.agents, app.now) ? <Unheard /> : null}
         {closeAs && look !== 'done' && look !== 'dropped' ? (
           <div className="actions">{closeAs}</div>
         ) : null}

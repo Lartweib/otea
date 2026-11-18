@@ -77,9 +77,9 @@ const app = {
   phone: false,
 } as unknown as App;
 
-const render = (shown: ItemView = item) =>
+const render = (shown: ItemView = item, value: App = app) =>
   renderToStaticMarkup(
-    <AppTestProvider value={app}>
+    <AppTestProvider value={value}>
       <ItemSheet
         item={shown}
         full={false}
@@ -177,6 +177,16 @@ describe('the item sheet', () => {
       'Se lo dejaste a <b>quill</b>.',
     );
     expect(render(stuck({ cause: 'restart' }))).toContain('Espera a un agente.');
+  });
+
+  it('says nobody is listening beside a send-back while no agent waits, and not while one does', () => {
+    const lone = { name: 'Mender', harness: null, holding: [], lastSeen: ago(1), live: true };
+    const silent = render(item, { ...app, agents: [{ ...lone, waiting: false }] } as App);
+    expect(silent).toContain('data-unheard');
+    expect(silent).toContain('<b>Nobody is listening.</b>');
+    expect(silent).toContain('<code>otea wait --turn agent --unclaimed</code>');
+    const heard = render(item, { ...app, agents: [{ ...lone, waiting: true }] } as App);
+    expect(heard).not.toContain('data-unheard');
   });
 
   it('disables Previous at the start of the list', () => {

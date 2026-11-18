@@ -105,6 +105,9 @@ export type AgentRow = {
   quiet: boolean;
   // It holds a lease now.
   working: boolean;
+  // It waits in otea wait, so what you do here reaches it; connected only (its MCP server open, idle
+  // in its chat) it hears nothing. An older server that does not say counts as waiting.
+  waiting: boolean;
   state: AgentDoing;
   // Since when it is in that state, and the item it is about (none while idle with no past act).
   since: number;
@@ -162,6 +165,7 @@ export function agentRows(
         held: [...holding, ...stuck.filter((s) => !holding.some((h) => h.id === s.id))],
         quiet,
         working,
+        waiting: a.waiting !== false,
         state,
         since: st.since,
         item: st.item ? { id: st.item.id, title: st.item.title, look: lookOf(st.item, now) } : null,
@@ -178,21 +182,25 @@ export function agentRows(
     .map(({ row }) => row);
 }
 
-// The agents the menu lists, those holding a lease ("trabajando"), those listening with nothing
-// held ("escuchando": never one gone quiet, which no longer listens), those gone quiet and those
-// with no profile: counted from the menu's own rows, so the pill and the menu agree.
+// The agents the menu lists, those holding a lease ("trabajando"), those waiting in otea wait with
+// nothing held ("escuchando": never one gone quiet, which no longer listens), those connected but
+// not waiting (an MCP server open, the agent idle in its chat: it hears nothing), those gone quiet
+// and those with no profile: counted from the menu's own rows, so the pill and the menu agree.
 export function agentCounts(rows: readonly AgentRow[]): {
   live: number;
   holding: number;
   idle: number;
+  connected: number;
   quiet: number;
   noProfile: number;
 } {
   const holding = rows.filter((a) => a.working).length;
+  const free = rows.filter((a) => !a.working && !a.quiet);
   return {
     live: rows.length,
     holding,
-    idle: rows.filter((a) => !a.working && !a.quiet).length,
+    idle: free.filter((a) => a.waiting).length,
+    connected: free.filter((a) => !a.waiting).length,
     quiet: rows.filter((a) => a.quiet).length,
     noProfile: rows.filter((a) => !a.profile).length,
   };
@@ -205,9 +213,9 @@ export type PillMark = 'working' | 'idle' | 'none' | 'offline';
 // stream is down (it cannot count).
 export function pillMark(connection: Connection, rows: readonly AgentRow[]): PillMark {
   if (connection !== 'live') return 'offline';
-  const { holding, idle } = agentCounts(rows);
+  const { holding, idle, connected } = agentCounts(rows);
   if (holding > 0) return 'working';
-  return idle > 0 ? 'idle' : 'none';
+  return idle + connected > 0 ? 'idle' : 'none';
 }
 
 // The pill's second datum, in grey or in warn: one gone quiet wins over one without a profile,
@@ -217,7 +225,7 @@ export type PillExtra = { kind: 'quiet' | 'noProfile' | 'of'; n: number } | null
 export type PillSummary =
   | { kind: 'offline' }
   | { kind: 'none'; quiet?: number }
-  | { kind: 'working' | 'waiting'; count: number; extra: PillExtra };
+  | { kind: 'working' | 'waiting' | 'connected'; count: number; extra: PillExtra };
 
 // What the pill says (mock §1): what happens, not how many there are. "2 trabajando" before "3
 // agentes"; with nobody working, how many wait; nobody connected; or that it cannot tell.
@@ -226,7 +234,7 @@ export function pillSummary(connection: Connection, rows: readonly AgentRow[]): 
   const c = agentCounts(rows);
   if (c.live === 0) return { kind: 'none' };
   // Only agents gone quiet: nobody listens, as Te toca says; the pill still names the silence.
-  if (c.holding === 0 && c.idle === 0) return { kind: 'none', quiet: c.quiet };
+  if (c.holding === 0 && c.idle === 0 && c.connected === 0) return { kind: 'none', quiet: c.quiet };
   const working = c.holding > 0;
   const extra: PillExtra =
     c.quiet > 0
@@ -236,7 +244,9 @@ export function pillSummary(connection: Connection, rows: readonly AgentRow[]): 
         : working && c.live > c.holding
           ? { kind: 'of', n: c.live }
           : null;
-  return working
-    ? { kind: 'working', count: c.holding, extra }
-    : { kind: 'waiting', count: c.idle, extra };
+  if (working) return { kind: 'working', count: c.holding, extra };
+  // Connected but none waiting: nobody hears the desk, and the pill does not say "escuchando".
+  return c.idle > 0
+    ? { kind: 'waiting', count: c.idle, extra }
+    : { kind: 'connected', count: c.connected, extra };
 }

@@ -9,6 +9,7 @@ import {
   CLI_HARNESS,
   claimName,
   endListening,
+  endWaiting,
   hearAgent,
   listAgents,
   ownerGone,
@@ -152,6 +153,7 @@ describe('agent presence', () => {
           lastSeen: T0,
           live: true,
           listening: true,
+          waiting: false,
           profile: null,
           profileConfirmed: false,
           profileChangedAt: null,
@@ -166,7 +168,29 @@ describe('agent presence', () => {
 
       beat.run();
 
-      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ live: true, listening: true });
+      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({
+        live: true,
+        listening: true,
+        waiting: true,
+      });
+    });
+
+    it('counts only a wait as waiting: an open MCP server listens, its idle agent hears nothing', () => {
+      hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T5));
+      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ listening: true, waiting: false });
+
+      const beat = waitBeat(ctx.db, { agent: 'claude', channel: 'mcp' }, at(T5));
+      const heard = beat.run();
+      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ waiting: true });
+
+      endWaiting(ctx.db, 'claude', heard);
+      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ listening: true, waiting: false });
+    });
+
+    it('stops counting a wait as waiting a listening window after its last beat', () => {
+      waitBeat(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0)).run();
+
+      expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ waiting: false });
     });
 
     it('lists the items an agent holds a live lease on, and keeps it live while it holds them', () => {

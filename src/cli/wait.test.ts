@@ -96,10 +96,23 @@ describe('wait', () => {
     const project = openProject(repo.dir);
     try {
       const quill = listAgents(project.db).find(({ name }) => name === 'quill');
-      expect(quill).toMatchObject({ listening: true, live: true });
+      expect(quill).toMatchObject({ listening: true, live: true, waiting: true });
     } finally {
       project.db.close();
       await waiting.stop();
+    }
+  });
+
+  it('stops counting the agent as waiting once its wait found an item', async () => {
+    const { code } = await otea('wait', '--turn', 'agent', '--as', 'quill');
+    expect(code).toBe(0);
+
+    const project = openProject(repo.dir);
+    try {
+      const quill = listAgents(project.db).find(({ name }) => name === 'quill');
+      expect(quill).toMatchObject({ listening: true, waiting: false });
+    } finally {
+      project.db.close();
     }
   });
 

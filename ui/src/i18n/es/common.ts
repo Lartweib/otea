@@ -64,6 +64,10 @@ export const common = {
   'lease.heldBy': 'en manos de {holder}',
   'lease.heldUntil': 'en manos de {holder} hasta {time}',
   'lease.heldExpired': 'en manos de {holder}; su reserva venció ({time})',
+  'listen.none': 'nadie está escuchando',
+  'listen.lead': 'Nadie está escuchando.',
+  'listen.notice':
+    '{lead} Ningún agente espera con otea wait: esto queda aquí hasta que uno vuelva. Pídele a tu agente que siga atento con {command}.',
   'severity.bars': 'Gravedad {level} de 4',
   'severity.named': 'Gravedad {value}, {level} de 4',
 

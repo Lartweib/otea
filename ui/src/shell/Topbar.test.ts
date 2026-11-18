@@ -295,7 +295,7 @@ describe('the agents menu', () => {
       '<b>Conectar un agente</b><small>una instrucción para pegar en su chat</small>',
     );
     expect(html).toContain(
-      'conectado: tiene una reserva, o escucha (su servidor MCP abierto, u otea wait corriendo)',
+      'conectado: tiene una reserva o su servidor MCP está abierto; escucha solo mientras otea wait corre',
     );
   });
 

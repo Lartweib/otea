@@ -248,7 +248,14 @@ describe('the agents menu’s rows', () => {
     );
     expect(rows.map((r) => r.name)).toEqual(['Kiln', 'Scout', 'Quill', 'Idle']);
     // The quiet one is no listener: idle counts only those listening with nothing held.
-    expect(agentCounts(rows)).toEqual({ live: 4, holding: 1, idle: 2, quiet: 1, noProfile: 4 });
+    expect(agentCounts(rows)).toEqual({
+      live: 4,
+      holding: 1,
+      idle: 2,
+      connected: 0,
+      quiet: 1,
+      noProfile: 4,
+    });
   });
 });
 
@@ -303,6 +310,16 @@ describe('the agents pill', () => {
     const quiet = agentRows([agent('q', { live: false, lastSeen: ago(12) })], stuck, NOW);
     expect(pillSummary('live', quiet)).toEqual({ kind: 'none', quiet: 1 });
     expect(pillMark('live', quiet)).toBe('none');
+  });
+
+  it('says "escuchando" only of an agent waiting in otea wait, never of one only connected', () => {
+    const a = (name: string, o: Partial<Agent> = {}) => agent(name, { profile: opus, ...o });
+    const idle = rows([a('a', { waiting: false }), a('b', { waiting: false })]);
+    expect(pillSummary('live', idle)).toEqual({ kind: 'connected', count: 2, extra: null });
+    expect(pillMark('live', idle)).toBe('idle');
+    const mixed = rows([a('a', { waiting: true }), a('b', { waiting: false })]);
+    expect(agentCounts(mixed)).toMatchObject({ idle: 1, connected: 1 });
+    expect(pillSummary('live', mixed)).toEqual({ kind: 'waiting', count: 1, extra: null });
   });
 
   it('says nobody is connected, or that it cannot count while offline', () => {

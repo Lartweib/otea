@@ -206,6 +206,23 @@ button.lk2:hover {
   }
 }
 
+/* nobody waits in otea wait: what the person does here waits for an agent to come back */
+.acts .said.unheard {
+  margin-top: 8px;
+  max-width: 70ch;
+  font: 400 13.5px / 1.5 var(--sans);
+  color: var(--ink-2);
+}
+.acts .said.unheard b {
+  font-weight: 600;
+  color: var(--warn);
+}
+.acts .said.unheard code {
+  font: 400 12.5px var(--mono);
+  color: var(--ink-2);
+  overflow-wrap: anywhere;
+}
+
 /* an Aprobar refused in words */
 .acts .said.warn {
   margin-top: 8px;

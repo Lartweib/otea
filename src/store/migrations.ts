@@ -391,6 +391,11 @@ export const MIGRATIONS = [
 
   CREATE INDEX evidence_opened_item ON evidence_opened (item_id);
   `,
+  // When an agent was last heard waiting in otea wait (app/presence.ts): only a waiting agent hears
+  // the desk. An open MCP server listens, but its agent idle in its chat does not wake for a move.
+  `
+  ALTER TABLE agents ADD COLUMN waiting_at TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

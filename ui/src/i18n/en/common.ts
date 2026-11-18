@@ -61,6 +61,10 @@ export const common = {
   'lease.heldBy': 'held by {holder}',
   'lease.heldUntil': 'held by {holder} until {time}',
   'lease.heldExpired': 'held by {holder}, its lease expired at {time}',
+  'listen.none': 'nobody is listening',
+  'listen.lead': 'Nobody is listening.',
+  'listen.notice':
+    '{lead} No agent waits in otea wait: this stays here until one comes back. Ask your agent to keep listening with {command}.',
   'severity.bars': 'Severity {level} of 4',
   'severity.named': 'Severity {value}, {level} of 4',
 

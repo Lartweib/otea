@@ -1556,6 +1556,19 @@
 .p-dock .hint.unseen + .hint {
   margin-top: 2px;
 }
+/* nobody waits in otea wait: what is pressed here waits for an agent to come back */
+.p-dock .hint.unheard {
+  font: 400 12.5px / 1.45 var(--sans);
+  color: var(--ink-2);
+}
+.p-dock .hint.unheard b {
+  font-weight: 600;
+  color: var(--warn);
+}
+.p-dock .hint.unheard code {
+  font: 400 11.5px var(--mono);
+  overflow-wrap: anywhere;
+}
 /* Devolver with a note (mobile mock 2b): the note focused, on the keyboard. */
 .nsheet.p-sb {
   bottom: var(--kb, 0px);

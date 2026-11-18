@@ -17,11 +17,13 @@ import {
 } from '../../components/evidence/EvidenceViewer.tsx';
 import { pickableOn, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { NoteText } from '../../components/NoteText.tsx';
+import { Unheard } from '../../components/Unheard.tsx';
 import { agoText } from '../../derive/when.ts';
 import { roleWord } from '../../evidence.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
+import { anyoneWaits } from '../../listening.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { useKeyboardInset } from '../../phone/CaptureSheet.tsx';
 import { valueWord } from '../../preset-words.ts';
@@ -857,6 +859,7 @@ export function PhoneItem(p: PhoneItemProps) {
               {says.verb} <b>→ {says.state}</b> · {says.tail}
             </p>
           ) : null}
+          {!refused && !anyoneWaits(app.agents) ? <Unheard className="hint unheard" /> : null}
         </section>
       ) : null}
 
