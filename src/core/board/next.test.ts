@@ -187,6 +187,26 @@ describe('nextText', () => {
     expect(text).toContain('  ✓ Note: required (what you changed since it was sent back)');
   });
 
+  it('points at the notes when the send-back went with them alone (P4-7)', () => {
+    const text = nextText(def, {
+      ...base,
+      round: 2,
+      position: { step: 'sconcept', phase: 'doing' },
+      missing: [],
+      sentBack: {
+        note: '',
+        by: { kind: 'human', name: 'fede' },
+        at: '2026-11-12T10:04:00.000Z',
+        step: 'Concepto',
+        round: 1,
+      },
+    });
+    expect(text).toContain(
+      '\nSent back to you with the notes from the person above: answer each\n  by the person,',
+    );
+    expect(text).not.toContain('""');
+  });
+
   it('never offers an agent the review of a step it did in this round', () => {
     const text = nextText(def, {
       ...base,

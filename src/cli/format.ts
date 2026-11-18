@@ -124,7 +124,8 @@ function describeAction({ type, data }: Event): string {
   if (type === 'relation_added' || type === 'relation_removed') {
     return describeRelation(data as Relation);
   }
-  if (type === 'note_left' || type === 'note_answered') {
+  if (type === 'note_withdrawn') return `note ${String(data.note)}`;
+  if (type === 'note_left' || type === 'note_answered' || type === 'note_edited') {
     const anchor = data.anchor as
       | { filename?: unknown; seconds?: unknown; line?: unknown; quote?: unknown; node?: unknown }
       | undefined;

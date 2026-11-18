@@ -121,11 +121,13 @@ export function authorizeMove(
   to: string,
   performer: Performer,
   reason?: string,
+  // The reason is given otherwise: a send-back with the person's review comments.
+  reasonGiven = false,
 ): Transition {
   const transitions = assertTransition(workflow, from, to);
   const allowed = transitions.find(({ by }) => mayPerform(by, performer));
   if (!allowed) throw forbidden(workflow, from, to, transitions, performer);
-  requireReason(workflow, allowed, reason);
+  if (!reasonGiven) requireReason(workflow, allowed, reason);
   return allowed;
 }
 

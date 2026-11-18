@@ -148,6 +148,43 @@ describe('EvidenceReader', () => {
     expect(other).toContain('Note on the whole file');
   });
 
+  it('shows the notes left on the file, where they are, and lets the open review change them (P5-3)', () => {
+    const image = files[0] as Evidence;
+    const left = (note: number, text: string, extra: object = {}) => ({
+      note,
+      text,
+      at: '2026-01-01T00:00:00Z',
+      by: 'you',
+      step: 's',
+      stepName: 'Crear',
+      round: 1,
+      delivered: { done: 0, of: 0 },
+      anchor: { evidence: image.id, filename: image.filename, ...extra },
+    });
+    const note = {
+      onSend: async () => true,
+      left: [
+        left(1, 'La hoja', { x: 10, y: 20, w: 30, h: 15 }),
+        left(2, 'El punto', { x: 50, y: 50 }),
+        { ...left(3, 'En otro archivo'), anchor: { evidence: 999, filename: 'otro.png' } },
+      ],
+      pending: (n: { note: number }) => n.note === 1,
+      onEdit: async () => true,
+      onWithdraw: async () => true,
+    };
+    const html = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={0} onAt={() => {}} note={note} />,
+    );
+    expect(html).toContain('Your notes on this file');
+    expect(html).toContain('La hoja');
+    expect(html).toContain('El punto');
+    expect(html).not.toContain('En otro archivo');
+    expect(html).toContain('a zone of the image');
+    // Only the comment of the open review can be changed or taken back.
+    expect(html.match(/>Edit</g)?.length).toBe(1);
+    expect(html.match(/>Remove</g)?.length).toBe(1);
+  });
+
   it('on the phone stacks the note above the moves in one foot, never one over the other (DR2-10)', () => {
     const note = { onSend: async () => true };
     const decide = { seen: 1, approve: { label: 'Approve', onClick: () => {} } };

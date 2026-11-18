@@ -23,6 +23,9 @@ type NotesFormProps = {
   words?: { title: string; aside: string; placeholder: string; aria: string; send: string };
   extra?: ReactNode;
   says?: ReactNode;
+  // Words of its own are optional (a send-back that goes with your review's comments, P4-7): the
+  // placeholder that says so.
+  optional?: string | undefined;
 };
 
 export function NotesForm({
@@ -37,6 +40,7 @@ export function NotesForm({
   words,
   extra,
   says,
+  optional,
 }: NotesFormProps) {
   const el = useRef<HTMLDivElement>(null);
   const ch = useRef<Choreo | null>(null);
@@ -154,7 +158,7 @@ export function NotesForm({
         <div>
           <textarea
             data-i
-            placeholder={words?.placeholder ?? t('sheet.notes.placeholder')}
+            placeholder={optional ?? words?.placeholder ?? t('sheet.notes.placeholder')}
             rows={3}
             aria-label={words?.aria ?? t('sheet.notes.aria', { agent: who })}
             value={text}
@@ -162,7 +166,11 @@ export function NotesForm({
           />
           {extra}
           <div className="nbtns" data-i>
-            <Button variant="primary" disabled={!text.trim()} onClick={() => onSend(text.trim())}>
+            <Button
+              variant="primary"
+              disabled={!text.trim() && optional === undefined}
+              onClick={() => onSend(text.trim())}
+            >
               {words?.send ?? t('sheet.notes.send')}
             </Button>
             <Button variant="quiet" onClick={onCancel}>

@@ -5,7 +5,8 @@ import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Icon } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
-import { sendThenClear } from '../note-send.ts';
+import type { ItemNote } from '../../views/detail/notes.ts';
+import { keepDraftThen, sendThenClear } from '../note-send.ts';
 import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
 import { FileView } from './FileViews.tsx';
@@ -16,6 +17,7 @@ import {
   pickAt,
   pickableOn,
   pickHint,
+  pickOfAnchor,
   pickWords,
   type ReaderPick,
   revealUpright,
@@ -157,6 +159,12 @@ export type ReaderDecide = {
 // clicked, else on the whole file. True once it went: what was typed stays until then.
 export type ReaderNote = {
   onSend: (text: string, anchor: { evidence: number } & ReaderPick) => Promise<boolean>;
+  // The person's notes already left on these files: listed under the file they are on and drawn
+  // where they are; those of the review still open (`pending`) can be changed or taken back (P5-3).
+  left?: readonly ItemNote[] | undefined;
+  pending?: ((note: ItemNote) => boolean) | undefined;
+  onEdit?: ((note: number, text: string) => Promise<boolean>) | undefined;
+  onWithdraw?: ((note: number) => Promise<boolean>) | undefined;
 };
 
 // A line, node or spot picked in a file, by the file's evidence id.
@@ -224,12 +232,19 @@ export function EvidenceReader({
   const [frame, setFrame] = useState<CSSProperties | null>(null);
   const imageOf = () => view.current?.querySelector<HTMLImageElement>('img.ev-img:not([hidden])');
   const spot = drag ?? (picked?.x !== undefined ? picked : null);
+  // The notes already left on the file shown, numbered as listed; the points and zones among them
+  // are drawn over the image beside the one being picked (P5-3).
+  const leftHere = (note?.left ?? []).filter((n) => n.anchor?.evidence === shownId);
+  const savedSpots = compared
+    ? []
+    : leftHere.flatMap((n, k) => (n.anchor?.x !== undefined ? [{ k: k + 1, a: n.anchor }] : []));
+  const spotsKey = savedSpots.map(({ a }) => `${a.x},${a.y},${a.w},${a.h}`).join(';');
   // The spot is drawn over the image, so the layer follows the image's box as the page lays out.
   // biome-ignore lint/correctness/useExhaustiveDependencies: the image is found anew per file shown
   useLayoutEffect(() => {
     const root = view.current;
     const img = imageOf();
-    if (!spot || !root || !img) {
+    if ((!spot && !spotsKey) || !root || !img) {
       setFrame(null);
       return;
     }
@@ -250,7 +265,35 @@ export function EvidenceReader({
       img.removeEventListener('load', measure);
       window.removeEventListener('resize', measure);
     };
-  }, [spot?.x, spot?.y, spot?.w, spot?.h, shownId]);
+  }, [spot?.x, spot?.y, spot?.w, spot?.h, shownId, spotsKey]);
+  // The lines and nodes notes were left on are marked with their number, once drawn.
+  const markedKey = leftHere.map((n) => `${n.note}:${n.anchor?.line}:${n.anchor?.node}`).join(';');
+  // biome-ignore lint/correctness/useExhaustiveDependencies: marked anew per file and per note
+  useEffect(() => {
+    const root = view.current;
+    if (!root) return;
+    for (const el of root.querySelectorAll('[data-noted]')) el.removeAttribute('data-noted');
+    const marks = leftHere.flatMap((n, k) => {
+      const at = n.anchor ? pickOfAnchor(n.anchor) : null;
+      return at && at.x === undefined ? [{ k: k + 1, at }] : [];
+    });
+    if (marks.length === 0) return;
+    let tries = 0;
+    let frame = 0;
+    const mark = () => {
+      let found = 0;
+      for (const { k, at } of marks) {
+        const el = findPick(root, at);
+        if (el) {
+          found++;
+          if (!el.hasAttribute('data-noted')) el.setAttribute('data-noted', String(k));
+        }
+      }
+      if (found < marks.length && tries++ < 90) frame = requestAnimationFrame(mark);
+    };
+    mark();
+    return () => cancelAnimationFrame(frame);
+  }, [markedKey, shownId]);
   // The picked line or node is lit once its viewer has drawn it (a text is fetched first).
   // biome-ignore lint/correctness/useExhaustiveDependencies: another file shown clears the light
   useEffect(() => {
@@ -270,6 +313,23 @@ export function EvidenceReader({
     light();
     return () => cancelAnimationFrame(frame);
   }, [picked, shownId]);
+  // A move from inside the reader takes the note still in its box with it, first (P7-3).
+  const withDraft = (move: () => void) => () => {
+    if (!note || !shown) return move();
+    setSending(true);
+    void keepDraftThen(
+      text,
+      (typed) =>
+        note.onSend(typed, pickAnchor(shown.id, picked)).then((went) => {
+          if (went) {
+            setText('');
+            setPick(null);
+          }
+          return went;
+        }),
+      move,
+    ).finally(() => setSending(false));
+  };
   if (!shown) return null;
   const noteBox = note ? (
     <div className="ev-reader-note">
@@ -312,12 +372,22 @@ export function EvidenceReader({
         {decide.notice ? <small className="ev-reader-notice">{decide.notice}</small> : null}
       </span>
       {decide.back ? (
-        <button type="button" className="btn quiet" onClick={decide.back.onClick}>
+        <button
+          type="button"
+          className="btn quiet"
+          disabled={sending}
+          onClick={withDraft(decide.back.onClick)}
+        >
           {decide.back.label}
         </button>
       ) : null}
       {decide.approve ? (
-        <button type="button" className="btn primary" onClick={decide.approve.onClick}>
+        <button
+          type="button"
+          className="btn primary"
+          disabled={sending}
+          onClick={withDraft(decide.approve.onClick)}
+        >
           {decide.approve.label}
         </button>
       ) : null}
@@ -419,20 +489,30 @@ export function EvidenceReader({
         ) : (
           <EvidenceViewer key={shown.id} evidence={shown} {...(phone ? { phone } : {})} />
         )}
-        {spot && frame ? (
+        {(spot || savedSpots.length) && frame ? (
           <div className="ev-spot-layer" style={frame} aria-hidden="true">
-            <span
-              className="ev-spot"
-              data-zone={spot.w !== undefined ? 'true' : undefined}
-              style={{
-                left: `${spot.x}%`,
-                top: `${spot.y}%`,
-                ...(spot.w !== undefined ? { width: `${spot.w}%`, height: `${spot.h}%` } : {}),
-              }}
-            />
+            {savedSpots.map(({ k, a }) => (
+              <span
+                key={`saved-${k}`}
+                className="ev-spot"
+                data-saved="true"
+                data-zone={a.w !== undefined ? 'true' : undefined}
+                style={spotStyle(a)}
+              >
+                <i>{k}</i>
+              </span>
+            ))}
+            {spot ? (
+              <span
+                className="ev-spot"
+                data-zone={spot.w !== undefined ? 'true' : undefined}
+                style={spotStyle(spot)}
+              />
+            ) : null}
           </div>
         ) : null}
       </div>
+      {note && leftHere.length ? <LeftNotes key={shown.id} notes={leftHere} note={note} /> : null}
       {phone && (note || decide) ? (
         // On the phone the note and the moves share one foot that stays at the sheet's bottom: two
         // sticky feet laid the moves over the note box (DR2-10).
@@ -446,6 +526,111 @@ export function EvidenceReader({
           {decideBar}
         </>
       )}
+    </div>
+  );
+}
+
+function spotStyle(at: ReaderPick): CSSProperties {
+  return {
+    left: `${at.x}%`,
+    top: `${at.y}%`,
+    ...(at.w !== undefined ? { width: `${at.w}%`, height: `${at.h}%` } : {}),
+  };
+}
+
+// The notes already left on the file shown, numbered as the pins over it are: what each says and
+// where it is. A comment of the review still open can be changed or taken back before it goes.
+function LeftNotes({ notes, note }: { notes: readonly ItemNote[]; note: ReaderNote }) {
+  const [editing, setEditing] = useState<{ note: number; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+  const run = (act: () => Promise<boolean>, done?: () => void) => {
+    setBusy(true);
+    void act()
+      .catch(() => false)
+      .then((went) => {
+        if (went) done?.();
+      })
+      .finally(() => setBusy(false));
+  };
+  return (
+    <div className="ev-reader-left">
+      <b className="ev-left-head">{t('notes.left.title', { count: notes.length })}</b>
+      <ol>
+        {notes.map((n, k) => {
+          const pending = !!note.pending?.(n);
+          const where = pickWords(n.anchor ? pickOfAnchor(n.anchor) : null);
+          const open = editing?.note === n.note ? editing : null;
+          return (
+            <li key={n.note} data-pending={pending ? 'true' : undefined}>
+              <span className="ev-left-k" aria-hidden="true">
+                {k + 1}
+              </span>
+              <div className="ev-left-body">
+                <span className="ev-left-on">{where}</span>
+                {open ? (
+                  <textarea
+                    rows={2}
+                    value={open.text}
+                    aria-label={t('notes.left.editAria', { n: k + 1 })}
+                    onChange={(e) => setEditing({ note: n.note, text: e.currentTarget.value })}
+                  />
+                ) : (
+                  <p>{n.text}</p>
+                )}
+              </div>
+              {pending && note.onEdit && note.onWithdraw ? (
+                <span className="ev-left-acts">
+                  {open ? (
+                    <>
+                      <button
+                        type="button"
+                        className="btn primary sm"
+                        disabled={busy || !open.text.trim()}
+                        onClick={() =>
+                          run(
+                            () => note.onEdit?.(n.note, open.text.trim()) ?? Promise.resolve(false),
+                            () => setEditing(null),
+                          )
+                        }
+                      >
+                        {t('notes.left.save')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn quiet sm"
+                        onClick={() => setEditing(null)}
+                      >
+                        {t('notes.left.cancel')}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button
+                        type="button"
+                        className="btn quiet sm"
+                        disabled={busy}
+                        onClick={() => setEditing({ note: n.note, text: n.text })}
+                      >
+                        {t('notes.left.edit')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn quiet sm"
+                        disabled={busy}
+                        onClick={() =>
+                          run(() => note.onWithdraw?.(n.note) ?? Promise.resolve(false))
+                        }
+                      >
+                        {t('notes.left.remove')}
+                      </button>
+                    </>
+                  )}
+                </span>
+              ) : null}
+            </li>
+          );
+        })}
+      </ol>
     </div>
   );
 }

@@ -271,8 +271,12 @@ function noteLine(step: Step, input: NextInput): string[] {
 function sentBackLines(sent: SentBack): string[] {
   const [first = '', ...rest] = sent.note.trim().split(/\r?\n/);
   const lead = sent.reopened ? 'Reopened' : 'Sent back to you';
-  const quoted = [`${lead}: "${first}`, ...rest.map((line) => `  ${line}`)];
-  quoted[quoted.length - 1] += '"';
+  // A send-back with no words of its own went with the person's review comments (P4-7).
+  const bare = first.trim() === '';
+  const quoted = bare
+    ? [`${lead} with the notes from the person above: answer each`]
+    : [`${lead}: "${first}`, ...rest.map((line) => `  ${line}`)];
+  if (!bare) quoted[quoted.length - 1] += '"';
   const who = sent.by.kind === 'human' ? 'the person' : sent.by.name;
   const from = sent.reopened
     ? `after it was ${sent.step}`

@@ -15,6 +15,8 @@ import {
   type NoteAnchorInput,
   postAnswer,
   postNote,
+  editNote as postNoteEdit,
+  withdrawNote as postNoteWithdraw,
   reassignItem,
   restartItem,
   undoMove,
@@ -97,6 +99,9 @@ export type AppActions = {
   update(id: string, fields: Record<string, string>): Promise<void>;
   // A note to the agent doing the item's step, optionally on a piece of evidence; it moves nothing.
   note(id: string, text: string, anchor?: NoteAnchorInput): Promise<void>;
+  // A review comment of the review still open, changed or taken back before it goes.
+  editNote(id: string, note: number, text: string): Promise<void>;
+  withdrawNote(id: string, note: number): Promise<void>;
   // Your answer to an agent's question: the turn goes back to it, with no move to undo.
   answer(id: string, text: string, toast?: string): Promise<void>;
   // A stuck item: back in the queue of its step (restart), or left for an agent (reassign). Both
@@ -206,6 +211,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       },
       async note(id, text, anchor) {
         await Q.run(() => postNote(id, text, anchor));
+      },
+      async editNote(id, note, text) {
+        await Q.run(() => postNoteEdit(id, note, text));
+      },
+      async withdrawNote(id, note) {
+        await Q.run(() => postNoteWithdraw(id, note));
       },
       async answer(id, text, message) {
         await Q.run(() => postAnswer(id, text));

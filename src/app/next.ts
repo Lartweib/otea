@@ -1204,6 +1204,26 @@ export function approveItem(
   });
 }
 
+// Whether the review open on an item holds comments of the person: a send-back goes with them as
+// what to change, with no words of its own needed.
+function reviewCommented(ctx: Context, item: ItemRecord): boolean {
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) return false;
+  const on = itemOnBoard(ctx, item, board.def);
+  if (isClosed(on.position) || on.position.phase !== 'review') return false;
+  const { step } = on.position;
+  return on.thread.some(
+    (note) => note.review !== undefined && note.step === step && note.round === on.round,
+  );
+}
+
+// A move from the review back to a doing step, while the review holds the person's comments: the
+// page's Devolver, which then needs no words of its own.
+export function backWithComments(ctx: Context, item: ItemRecord, to: string): boolean {
+  const target = positionOf(to);
+  return !isClosed(target) && target.phase === 'doing' && reviewCommented(ctx, item);
+}
+
 // A send-back from a review (the person's Devolver, an agent reviewer's Pedir otra ronda): the item
 // goes back to the step's `back` for its next round, with why.
 export function sendBackItem(
@@ -1211,14 +1231,15 @@ export function sendBackItem(
   input: BoardMoveInput,
   now = systemClock,
 ): BoardMoveResult {
-  if (!input.reason?.trim())
-    throw new OteaError(
-      'reason_required',
-      `Sending ${input.id} back needs a reason: what to change`,
-      { kind: 'send_back_reason', item: input.id },
-    );
   return transaction(ctx.db, () => {
     const item = requireWritableItem(ctx.db, input.id);
+    // The review comments are what to change: with some, the send-back needs no words of its own.
+    if (!input.reason?.trim() && !reviewCommented(ctx, item))
+      throw new OteaError(
+        'reason_required',
+        `Sending ${input.id} back needs a reason: what to change`,
+        { kind: 'send_back_reason', item: input.id },
+      );
     const board = requireBoard(ctx, item);
     const at = now();
     const position = positionOf(item.state);

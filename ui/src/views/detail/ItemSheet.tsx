@@ -6,7 +6,7 @@ import type { NoteAnchorInput } from '../../api.ts';
 import { typeOfItem, useApp } from '../../app/context.tsx';
 import { boardOfCollection, boardsOf, useBoards } from '../../board-studio/home/boards-store.ts';
 import { DeskReader } from '../../components/evidence/DeskReader.tsx';
-import { EvidenceReader } from '../../components/evidence/EvidenceViewer.tsx';
+import { EvidenceReader, type ReaderNote } from '../../components/evidence/EvidenceViewer.tsx';
 import { ItemEvidence } from '../../components/evidence/item-evidence.ts';
 import { READ_AT, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { noteAnchor } from '../../components/evidence/video-moment.ts';
@@ -416,6 +416,23 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       if (went) setNoting((n) => (n ? { ...n, open: false } : n));
     });
   };
+  // The reader's note: what it sends, and the notes already left on its files, drawn where they are;
+  // the comments of the review still open can be changed or taken back before they go (P5-3).
+  const notChanged = () => {
+    toast({ msg: t('notes.failed'), id: item.id });
+    return false;
+  };
+  const readerNote: ReaderNote | undefined =
+    canNote || reviewing
+      ? {
+          onSend: (text, on) => postNote(text, on),
+          left: thread,
+          pending: (n) =>
+            !!reviewing && n.review !== undefined && n.step === reviewing.id && n.round === round,
+          onEdit: (n, text) => app.editNote(item.id, n, text).then(() => true, notChanged),
+          onWithdraw: (n) => app.withdrawNote(item.id, n).then(() => true, notChanged),
+        }
+      : undefined;
   const quiet = canNote ? quietMinutes(worker, now) : null;
   const who = noteTo ?? t('notes.anyAgent');
   // After the note: the agent has gone quiet, or how many deliverables were in and when it reads.
@@ -780,8 +797,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                               says: reviewComments.length
                                 ? t('notes.review.notice', { count: reviewComments.length })
                                 : t('notes.review.phone'),
-                              sendOn: (text: string, on: { evidence: number } & ReaderPick) =>
-                                postNote(text, on),
+                              reader: readerNote ?? { onSend: (text, on) => postNote(text, on) },
+                              commented: reviewComments.length > 0,
                             },
                           }
                         : {}),
@@ -942,13 +959,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                 seen={seen}
                 decide={decide}
                 start={start}
-                note={
-                  canNote || reviewing
-                    ? {
-                        onSend: (text, on) => postNote(text, on),
-                      }
-                    : undefined
-                }
+                note={readerNote}
               />
             ) : null}
             <div className="notes-slot">
@@ -990,6 +1001,11 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                   open={notes.open}
                   agent={facts.agent}
                   why={notes.choice.kind === 'sendback' ? null : word(notes.choice.move.to)}
+                  optional={
+                    notes.choice.kind === 'sendback' && reviewComments.length
+                      ? t('notes.review.optional')
+                      : undefined
+                  }
                   button={notes.button}
                   belowTop={notes.below}
                   onSend={send}
