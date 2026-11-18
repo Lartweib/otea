@@ -23,6 +23,7 @@ import { CATALOGUE_TEMPLATES } from './templates-catalogue.ts';
 describe('templates', () => {
   it('lists the templates of the design, in order, the sets last', () => {
     expect(listedTemplates('es').map(({ key, name }) => `${key}:${name}`)).toEqual([
+      'todos:Pendientes',
       'bug-reports:Errores',
       'changes:Cambios',
       'research:Investigación',
@@ -219,8 +220,8 @@ describe('the official catalogue', () => {
     expect(wanted.filter((kind) => !used.has(kind))).toEqual([]);
   });
 
-  it('offers exactly the nine starter templates, none named after a way of working', () => {
-    expect(LISTED_KEYS).toHaveLength(9);
+  it('offers exactly the ten starter templates, none named after a way of working', () => {
+    expect(LISTED_KEYS).toHaveLength(10);
     for (const gone of [
       'playtest',
       'resume',
@@ -232,6 +233,57 @@ describe('the official catalogue', () => {
     ]) {
       expect(TEMPLATES.some(({ key }) => key === gone)).toBe(false);
     }
+  });
+});
+
+describe('templates that fit the work', () => {
+  // What a step hands in, by the part's name, with the value of the part that makes it required.
+  const handOf = (key: string, step: string) => {
+    const def = instantiate(requireTemplate(key), 'es', {}, sequenceIds());
+    const found = def.steps.find(({ name }) => name === step);
+    return (found?.hand ?? []).map(({ ref, req, fresh, when }) => {
+      const cond = when ? partOf(def, when.part) : undefined;
+      const value = cond?.options.find(({ id }) => id === when?.value)?.name ?? when?.value;
+      return [partOf(def, ref)?.name, req, fresh, cond ? `${cond.name}=${value}` : undefined];
+    });
+  };
+
+  it('offers a board for work that is not code: no branch, no diff, no tests', () => {
+    expect(LISTED_KEYS[0]).toBe('todos');
+    const def = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
+    expect([def.name, def.item]).toEqual(['Pendientes', 'Pendiente']);
+    expect(Object.values(def.parts).map(({ kind }) => kind)).not.toEqual(
+      expect.arrayContaining(['branch']),
+    );
+    for (const kind of ['branch', 'code', 'log', 'test'])
+      expect(Object.values(def.parts).some((part) => part.kind === kind)).toBe(false);
+    expect(handOf('todos', 'Hacerlo')[0]).toEqual(['Lo que hice', 'always', false, undefined]);
+  });
+
+  it('asks a command-line change of Cambios for its terminal output, never for screenshots', () => {
+    const hand = handOf('changes', 'Hacerlo');
+    expect(hand).toContainEqual(['Capturas', 'when', true, 'Clase de cambio=Interfaz visual']);
+    expect(hand).toContainEqual([
+      'Salida en la terminal',
+      'when',
+      true,
+      'Clase de cambio=Línea de comandos',
+    ]);
+  });
+
+  it('asks Diseño visual for its branch and diff once, and only for a piece in the repository', () => {
+    const create = handOf('design', 'Crear');
+    expect(create).toContainEqual(['Rama', 'when', false, 'En el repositorio=yes']);
+    expect(create).toContainEqual(['Cambios', 'when', false, 'En el repositorio=yes']);
+    expect(create).toContainEqual(['Imágenes', 'always', true, undefined]);
+    expect(handOf('design', 'Integrar')).toContainEqual([
+      'Commit en main',
+      'when',
+      false,
+      'En el repositorio=yes',
+    ]);
+    const def = instantiate(requireTemplate('design'), 'es', {}, sequenceIds());
+    expect(Object.values(def.parts).find(({ name }) => name === 'Imágenes')?.show).toBe('gallery');
   });
 });
 

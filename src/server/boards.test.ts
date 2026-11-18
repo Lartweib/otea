@@ -48,6 +48,7 @@ describe('the boards API', () => {
     expect(status).toBe(200);
     const templates = body.templates as Json[];
     expect(templates.map(({ key }) => key)).toEqual([
+      'todos',
       'bug-reports',
       'changes',
       'research',
@@ -58,7 +59,7 @@ describe('the boards API', () => {
       'ideas',
       'repos',
     ]);
-    expect(templates[1]?.name).toBe('Cambios');
+    expect(templates[2]?.name).toBe('Cambios');
     const repos = templates.find(({ key }) => key === 'repos');
     expect(((repos?.boards ?? []) as Json[]).map(({ name }) => name)).toEqual([
       'Trabajos',

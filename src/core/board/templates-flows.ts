@@ -421,12 +421,13 @@ export const CHANGES: Template = {
         'qué clase de cambio es; decide qué evidencia se pide',
       ),
       options: [
-        w('Interface', 'Interfaz'),
+        w('Visual interface', 'Interfaz visual'),
+        w('Command line', 'Línea de comandos'),
         w('Bug', 'Error'),
         w('Documentation', 'Documentación'),
         w('Other', 'Otro'),
       ],
-      optionKeys: ['ui', 'bug', 'doc', 'other'],
+      optionKeys: ['ui', 'cli', 'bug', 'doc', 'other'],
       initial: 'other',
     },
     {
@@ -487,6 +488,15 @@ export const CHANGES: Template = {
       ),
     },
     {
+      key: 'term',
+      kind: 'log',
+      name: w('Terminal output', 'Salida en la terminal'),
+      hint: w(
+        'the command you ran and what it prints now, and before when that changed',
+        'el comando que corriste y lo que imprime ahora, y antes si eso cambió',
+      ),
+    },
+    {
       key: 'commit',
       kind: 'text',
       name: w('Commit on main', 'Commit en main'),
@@ -532,6 +542,7 @@ export const CHANGES: Template = {
         ['branch', 'always'],
         ['diff', 'always', true],
         ['shots', 'when', true, ['kind', 'ui']],
+        ['term', 'when', true, ['kind', 'cli']],
         ['tests', 'when', true, ['kind', 'bug']],
       ],
       note: w(
@@ -543,8 +554,8 @@ export const CHANGES: Template = {
         'Crea @{branch} desde main y trabaja solo ahí. Cumple cada punto de @{check}; si algo es ambiguo, pregunta con otea ask antes de seguir. Si es un error, escribe primero una prueba que falle.',
       ),
       before: w(
-        'Attach the @{diff} against main. For an interface change, @{shots} before and after. For a bug, @{tests} with the new test passing. In the note, say what you changed, how you tested it and what was left out.',
-        'Adjunta @{diff} contra main. Si es de interfaz, @{shots} antes y después. Si es un error, @{tests} con la prueba nueva pasando. En la nota, di qué cambiaste, cómo lo probaste y qué quedó afuera.',
+        'Attach the @{diff} against main. For a visual interface change, @{shots} before and after; for a command-line one, the @{term} instead (never screenshots of a terminal). For a bug, @{tests} with the new test passing. In the note, say what you changed, how you tested it and what was left out.',
+        'Adjunta @{diff} contra main. Si es de interfaz visual, @{shots} antes y después; si es de línea de comandos, la @{term} en su lugar (nunca capturas de una terminal). Si es un error, @{tests} con la prueba nueva pasando. En la nota, di qué cambiaste, cómo lo probaste y qué quedó afuera.',
       ),
     },
     {
@@ -579,6 +590,7 @@ export const CHANGES: Template = {
     shots: 'main',
     video: 'main',
     tests: 'main',
+    term: 'main',
     kind: 'side',
     impact: 'side',
     effort: 'side',
