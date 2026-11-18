@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process';
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, renameSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
@@ -23,6 +23,17 @@ import {
 } from './testing.ts';
 
 const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
+
+// Whether no process holds the folder any more: it can be renamed, and is put back.
+function released(dir: string): boolean {
+  try {
+    renameSync(dir, `${dir}-released`);
+    renameSync(`${dir}-released`, dir);
+    return true;
+  } catch {
+    return false;
+  }
+}
 const GIT_BASH = 'C:\\Program Files\\Git\\bin\\bash.exe';
 
 const USAGE =
@@ -220,6 +231,9 @@ describe('wait', () => {
     } finally {
       parent.kill();
       if (processAlive(pid)) process.kill(pid);
+      // Windows holds the folder of processes that just ended a moment longer, under load longer
+      // than the cleanup retries: wait until it lets go.
+      await until(() => released(repo.dir), 20_000);
     }
   });
 
