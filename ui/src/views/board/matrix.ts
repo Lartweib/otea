@@ -8,6 +8,7 @@ import {
   stepOf,
 } from '../../../../src/core/board/analysis.ts';
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
+import { t } from '../../i18n/i18n.ts';
 import type { Item } from '../../types.ts';
 
 // The analysis matrix (approved mock, "Vistas de análisis"): a board's open items laid in a grid of
@@ -70,6 +71,43 @@ export function heatOf(m: Matrix, cell: MatrixCell): 1 | 2 | 3 | 4 {
   return share < 0.25 ? 1 : share < 0.5 ? 2 : share < 0.8 ? 3 : 4;
 }
 
+// The quadrant a cell is in, named for what doing it is worth: on effort × impact the quick wins
+// (little effort, high impact), the big bets, the fill-ins and the time sinks; on effort × risk how
+// quick and how safe. Other pairs, and the middle of an odd scale, have none.
+export type Quadrant =
+  | 'quick'
+  | 'big'
+  | 'fill'
+  | 'sink'
+  | 'quickSafe'
+  | 'quickRisky'
+  | 'slowSafe'
+  | 'slowRisky';
+
+const EFFORT_BY: Readonly<
+  Record<'impact' | 'risk', Record<'lowLow' | 'lowHigh' | 'highLow' | 'highHigh', Quadrant>>
+> = {
+  impact: { lowHigh: 'quick', highHigh: 'big', lowLow: 'fill', highLow: 'sink' },
+  risk: { lowLow: 'quickSafe', lowHigh: 'quickRisky', highLow: 'slowSafe', highHigh: 'slowRisky' },
+};
+
+export function quadrantOf(
+  m: Pick<Matrix, 'axes' | 'xs' | 'ys'>,
+  cell: Pick<MatrixCell, 'x' | 'y'>,
+): Quadrant | undefined {
+  const half = (at: number, steps: number): 'low' | 'high' | undefined => {
+    const mid = (steps - 1) / 2;
+    return at < mid ? 'low' : at > mid ? 'high' : undefined;
+  };
+  const sides = { [m.axes.x]: half(cell.x, m.xs.length), [m.axes.y]: half(cell.y, m.ys.length) };
+  const other = m.axes.x === 'effort' ? m.axes.y : m.axes.y === 'effort' ? m.axes.x : undefined;
+  if (other !== 'impact' && other !== 'risk') return undefined;
+  const effort = sides.effort;
+  const them = sides[other];
+  if (!effort || !them) return undefined;
+  return EFFORT_BY[other][`${effort}${them === 'low' ? 'Low' : 'High'}`];
+}
+
 // The person's order on the matrix: what is on top (pinned, in the order pinned), then the fixed
 // order, then the rest in the order given.
 export function byPriority(items: readonly Item[]): Item[] {
@@ -87,4 +125,12 @@ export function byPriority(items: readonly Item[]): Item[] {
 // "Your order": the items with a place in the person's order, as next reads it.
 export function orderList(items: readonly Item[]): Item[] {
   return byPriority(items.filter((it) => it.priority !== undefined));
+}
+
+// What «Fijar el orden» says it did: the order is what agents take first. A step that is yours to
+// do or review now (turn human) waits for you whatever the order: said, never promised away.
+export function orderedSaid(ids: readonly string[], items: readonly Item[]): string {
+  const said = t('matrix.ordered', { count: ids.length });
+  const yours = items.filter((it) => ids.includes(it.id) && it.turn === 'human').length;
+  return yours > 0 ? `${said} ${t('matrix.orderedYours', { count: yours })}` : said;
 }

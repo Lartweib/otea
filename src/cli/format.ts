@@ -59,10 +59,31 @@ export function formatItem(item: Item, typed: Typed = notImplicit): string {
   return columns([itemRow(item, typed(item))]);
 }
 
-export function formatItems(items: readonly Item[], typed: Typed = notImplicit): string {
+// order: the person's order (app/priority.ts), said beside each item it places: "on top 1" for
+// what they put on top, "order 2" for the order they fixed on the Matrix. otea next takes them so.
+export function formatItems(
+  items: readonly Item[],
+  typed: Typed = notImplicit,
+  order: ReadonlyMap<string, { pin?: number; rank?: number }> = new Map(),
+): string {
   if (items.length === 0) return 'No items.';
   const withType = items.some(typed);
-  return columns(items.map((item) => itemRow(item, withType)));
+  const placed = items.some(({ id }) => orderLabel(order.get(id)) !== '');
+  return columns(
+    items.map((item) => {
+      const [id = '', ...rest] = itemRow(item, withType);
+      const title = rest.splice(withType ? 3 : 2);
+      return placed
+        ? [id, ...rest, orderLabel(order.get(item.id)), ...title]
+        : [id, ...rest, ...title];
+    }),
+  );
+}
+
+function orderLabel(priority: { pin?: number; rank?: number } | undefined): string {
+  if (priority?.pin !== undefined) return `on top ${priority.pin}`;
+  if (priority?.rank !== undefined) return `order ${priority.rank}`;
+  return '';
 }
 
 function fieldLines(fields: Record<string, unknown>): string[] {

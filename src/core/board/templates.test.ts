@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { assertIconName } from '../icons.ts';
+import { viewsOf } from './analysis.ts';
 import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
 import { EVIDENCE_KINDS, EVIDENCE_SHOWS, partOf, usedRefs } from './model.ts';
@@ -100,7 +101,32 @@ describe('templates', () => {
 
     expect(roles('bug-reports')).toEqual({ effort: 'Esfuerzo', risk: 'Riesgo', area: 'Área' });
     expect(roles('changes')).toEqual({ effort: 'Esfuerzo', impact: 'Impacto' });
+    expect(roles('ideaboard')).toEqual({ effort: 'Esfuerzo', impact: 'Impacto' });
     expect(roles('implementation')).toEqual({ effort: 'Tamaño' });
+  });
+
+  it('opens the Matrix on Ideas and Cambios, an effort read as a size, never as «crítica»', () => {
+    for (const key of ['ideaboard', 'changes', 'bug-reports']) {
+      const def = instantiate(requireTemplate(key), 'es', {}, sequenceIds());
+      if (key !== 'bug-reports') expect(viewsOf(def)).toEqual(['matrix']);
+      const effort = partOf(def, def.analysis?.effort ?? '');
+      expect(effort?.kind).toBe('choice');
+      expect(effort?.options.map(({ name }) => name)).toEqual([
+        'Pequeño',
+        'Mediano',
+        'Grande',
+        'Enorme',
+      ]);
+      // The agent can estimate them at any step, and the person correct them.
+      expect(def.anytime).toEqual(expect.arrayContaining([def.analysis?.effort]));
+    }
+    const en = instantiate(requireTemplate('changes'), 'en', {}, sequenceIds());
+    expect(partOf(en, en.analysis?.effort ?? '')?.options.map(({ name }) => name)).toEqual([
+      'Small',
+      'Medium',
+      'Large',
+      'Huge',
+    ]);
   });
 
   it('speaks the language asked for', () => {

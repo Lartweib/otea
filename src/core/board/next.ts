@@ -1,6 +1,6 @@
 import { PERSON_READER } from '../item.ts';
 import { timeText } from '../time.ts';
-import { mappedScales, rolePart } from './analysis.ts';
+import { mappedScales, rolePart, viewsOf } from './analysis.ts';
 import {
   backTarget,
   backWaysOf,
@@ -113,6 +113,9 @@ export type NextInput = {
   merged?: { commit?: string };
   // The option the person picked last, on an item that carries options.
   chosen?: ItemChoice;
+  // Its place in the person's order (app/priority.ts): put on top (pin), or in the order they
+  // fixed on the Matrix (rank); why next offers it before others.
+  order?: { pin?: number; rank?: number };
   // A step whose work is handed in some other way than otea handoff (a board draft on its
   // Pedido): what comes after it and the command that hands it in, in place of the handoff's.
   handIn?: { after: string; command: string };
@@ -506,6 +509,12 @@ function estimateLines(def: BoardDefinition, input: NextInput): string[] {
   ];
 }
 
+// Why next offers it first: its place in the person's order.
+function orderLine(order: { pin?: number; rank?: number }): string {
+  if (order.pin !== undefined) return `The person put it on top (number ${order.pin}).`;
+  return `It is number ${order.rank} in the order the person fixed on the Matrix.`;
+}
+
 function section(title: string, lines: readonly string[]): string[] {
   return lines.length === 0 ? [] : ['', title, ...lines];
 }
@@ -580,6 +589,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
       ? 'an agent does this step.'
       : 'do this step.';
   const lines = [head, `${person ? "An agent's turn" : 'Your turn'}: ${turn}`];
+  if (input.order) lines.push(orderLine(input.order));
   if (!input.holder && input.leftFor !== undefined && input.leftFor === input.me)
     lines.push('The person left it for you.');
   if (!person) lines.push(holdLine(input));
@@ -1154,6 +1164,19 @@ function fieldValueLines(def: BoardDefinition): string[] {
   });
 }
 
+// The Matrix, on a board that maps two scale roles (core/board/analysis.ts): what the person does
+// there and what it asks of an agent. An agent told "use the Matrix" knows the word from here.
+function matrixLines(def: BoardDefinition): string[] {
+  if (!viewsOf(def).includes('matrix')) return [];
+  const names = mappedScales(def)
+    .map((role) => rolePart(def, role)?.name)
+    .filter((name): name is string => name !== undefined);
+  const [first = ''] = names;
+  return [
+    `  The person weighs this board’s items on the Matrix, ${names.join(' × ')}, and fixes the order you take them in: otea next offers them in that order. Estimate ${and(names, 'and')} on every item you take (otea update <id> --field "${first}=…"); the person corrects you.`,
+  ];
+}
+
 export function boardText(def: BoardDefinition): string {
   const lines = [`${def.name}: steps for each ${def.item}`];
   lines.push(...section('About this board', indent(mentionText(def, def.about))));
@@ -1165,6 +1188,7 @@ export function boardText(def: BoardDefinition): string {
       ]),
     );
   lines.push(...section('What its fields take', fieldValueLines(def)));
+  lines.push(...section('The Matrix', matrixLines(def)));
   def.steps.forEach((step, index) => {
     const say = (title: string, text: string) => {
       const body = indent(mentionText(def, text)).map((line) => `   ${line}`);

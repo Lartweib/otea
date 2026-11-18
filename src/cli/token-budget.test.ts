@@ -28,8 +28,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // on asking the person with otea ask (measured at 308), and its line on proposing a new board
   // with otea board draft --new (measured at 341), and its line on keeping going after a handoff,
   // waiting when there is nothing (measured at 412), and with board draft's --template and asking
-  // the person first (measured at 432).
-  'board index': { text: 440, json: 53, mcp: 53 },
+  // the person first (measured at 432), and with next following the order the person set on the
+  // Matrix, a word agents did not know (measured at 449).
+  'board index': { text: 470, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -63,7 +64,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // which agents told the person they could not do (measured at 312). Raised to 400 for the line on
   // keeping going until the person stops it, as agents did one item and ended (measured at 383).
   // Raised to 410 for drafting a board from a template after asking the person (measured at 403).
-  instructions: { mcp: 410 },
+  // Raised to 450 for next following the order the person set on the Matrix, a view agents asked
+  // to "use the Matrix" did not know (measured at 430).
+  instructions: { mcp: 450 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

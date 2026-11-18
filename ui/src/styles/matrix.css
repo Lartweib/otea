@@ -137,6 +137,18 @@
   background: color-mix(in oklch, var(--warn) 14%, transparent);
 }
 
+/* The quadrant's name, said once, in its corner cell: a quiet caption over the chips. */
+.mx-quad {
+  flex: 1 1 100%;
+  color: var(--ink-3);
+  font: italic 400 12px / 1.25 var(--serif);
+}
+
+.pmx-quad {
+  color: var(--ink-2);
+  font-style: normal;
+}
+
 .mx-title {
   margin: 6px 0 0;
   color: var(--ink-3);

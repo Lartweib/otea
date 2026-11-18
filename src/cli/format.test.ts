@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatEvent } from './format.ts';
+import { formatEvent, formatItems } from './format.ts';
 
 // What `otea show` and `otea events` say of a stuck item the person restarted or reassigned in the
 // UI, so an agent reading the timeline knows the item is free again and whom it is left for.
@@ -96,6 +96,40 @@ describe('an option the person picked in the timeline', () => {
     expect(chose({})).toMatch(/chose B · A cloud backend$/);
     expect(chose({ comment: 'we need sync' })).toMatch(
       /chose B · A cloud backend: "we need sync"$/,
+    );
+  });
+});
+
+describe('the person’s order in a list', () => {
+  const item = (id: string) =>
+    ({
+      id,
+      collection: 'Ideas',
+      type: 'item',
+      title: `Idea ${id}`,
+      fields: {},
+      state: 'Refinar',
+      turn: 'agent',
+      lease: null,
+    }) as unknown as Parameters<typeof formatItems>[0][number];
+
+  it('marks what the person put on top and the order they fixed, as next takes them', () => {
+    const order = new Map([
+      ['IDE-2', { pin: 1 }],
+      ['IDE-3', { rank: 1 }],
+    ]);
+    expect(formatItems([item('IDE-1'), item('IDE-2'), item('IDE-3')], () => false, order)).toBe(
+      [
+        'IDE-1  Refinar  agent            Idea IDE-1',
+        'IDE-2  Refinar  agent  on top 1  Idea IDE-2',
+        'IDE-3  Refinar  agent  order 1   Idea IDE-3',
+      ].join('\n'),
+    );
+  });
+
+  it('adds no column while the person set no order', () => {
+    expect(formatItems([item('IDE-1')], () => false, new Map())).toBe(
+      'IDE-1  Refinar  agent  Idea IDE-1',
     );
   });
 });

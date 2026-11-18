@@ -83,8 +83,10 @@ describe('the Matrix on the phone', () => {
     ]);
   });
 
-  it('heads a zone with each value beside its axis', () => {
+  it('heads a zone with its quadrant, then each value beside its axis', () => {
     setLanguage('es');
-    expect(render()).toContain('<span>Esfuerzo: L · Riesgo: Crítica</span>');
+    expect(render()).toContain(
+      '<span><em class="pmx-quad">Largas y delicadas · </em>Esfuerzo: L · Riesgo: Crítica</span>',
+    );
   });
 });
