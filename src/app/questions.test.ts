@@ -9,6 +9,7 @@ import { createItem, getItem, listItems, showItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import { handoffItem, itemNextText, nextFor } from './next.ts';
 import { answerQuestion, answerWaiting, askQuestion } from './questions.ts';
+import { restartItem } from './restart.ts';
 import { memoryContext } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -171,6 +172,18 @@ describe('the person answers', () => {
     );
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
     claimItem(ctx, { id: item.id, actor: kiln }, now);
+  });
+
+  it('frees an answered item for any agent once the person puts it back in the queue', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    ask(ctx, item.id);
+    answerQuestion(ctx, { id: item.id, text: 'Con musgo', actor: you, channel: 'ui' }, now);
+    tick += 20 * 60;
+
+    restartItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now);
+
+    expect(nextFor(ctx, 'scout', {}, now).item).toBe(item.id);
   });
 
   it('gives the turn back to the agent in the same round, which reads the answer', () => {

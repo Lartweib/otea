@@ -63,7 +63,7 @@ import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
 import { OteaError } from '../core/errors.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
-import { type EventFilter, itemOfClientKey } from '../store/queries.ts';
+import { type EventFilter, itemOfClientKey, selectStateEntries } from '../store/queries.ts';
 import { boardsApi } from './boards.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import {
@@ -415,6 +415,8 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
         // On a board, each item's round as the engine counts it, so every list agrees with it.
         const boards = liveBoards(project);
         const priority = priorityOf(project.db);
+        // When each item entered its state: the turn it stands on began then (Te toca counts from it).
+        const entered = selectStateEntries(project.db);
         const estimated = estimatesOfItems(
           project,
           items,
@@ -430,9 +432,11 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
             const estimates = estimated.get(item.id) ?? {};
             // A closed board item: who did it, and whether its branch was merged.
             const row = rowFactsOf(project, item, boards);
+            const enteredAt = entered.get(item.id);
             return {
               ...item,
               ...row,
+              ...(enteredAt === undefined ? {} : { enteredAt }),
               ...(round === undefined ? {} : { round }),
               ...(notes === undefined ? {} : { notes }),
               ...(order === undefined || Object.keys(order).length === 0

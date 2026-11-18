@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ensureRequestsBoard } from '../app/boards.ts';
 import { addCollection, setCollectionIcon } from '../app/collections.ts';
-import { createItem, moveItem } from '../app/items.ts';
+import { createItem, getItem, moveItem } from '../app/items.ts';
 import { claimItem } from '../app/leases.ts';
 import { CLI_HARNESS, seeAgent } from '../app/presence.ts';
 import { type Project, setProjectIcon } from '../app/project.ts';
@@ -380,6 +380,19 @@ types:
         { id: 'TASKS-1', title: 'Write docs', state: 'todo', turn: 'agent' },
         { id: 'BUGS-1', title: 'Fix login', state: 'review', turn: 'human' },
       ]);
+    });
+
+    it('says when each item entered its state, for the turn to count from it, not from edits', async () => {
+      const items = (await (await get('/p/memory-aaaaaa/api/items')).json()) as {
+        id: string;
+        enteredAt?: string;
+        updatedAt: string;
+      }[];
+      const bug = items.find(({ id }) => id === 'BUGS-1');
+      const moved = getItem(project, 'BUGS-1').events.findLast(({ type }) =>
+        ['created', 'transitioned'].includes(type),
+      );
+      expect(bug?.enteredAt).toBe(moved?.at);
     });
 
     it('includes the active lease of each item', async () => {
