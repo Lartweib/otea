@@ -20,6 +20,9 @@ export const AGENT_COMMANDS = [
   'tick',
   'topic add',
   'topic answer',
+  // Agents read the topics kept to answer what was said before.
+  'topic list',
+  'topic show',
   'ask',
   'handoff',
   'drop',
@@ -56,11 +59,9 @@ export const CLI_ONLY_COMMANDS = [
   'prompt',
   // A cut-out image is a file on the agent's own disk, which only the command line can hand it.
   'crop',
-  // Topics are the person's to turn on, read, keep going and close; agents record and answer them.
+  // Topics are the person's to turn on, keep going and close; agents record, answer and read them.
   'topic on',
   'topic off',
-  'topic list',
-  'topic show',
   'topic note',
   'topic close',
   'collection icon',
@@ -80,7 +81,15 @@ export const CLI_ONLY_COMMANDS = [
 ];
 
 // next is not among them: it keeps what it offers each agent, and claims it with claim.
-export const READ_ONLY = new Set(['board', 'list', 'show', 'events', 'wait']);
+export const READ_ONLY = new Set([
+  'board',
+  'list',
+  'show',
+  'events',
+  'wait',
+  'topic list',
+  'topic show',
+]);
 
 // A tool is named after its command, with words joined by underscores (send-back is send_back).
 export function toolName(command: string): string {

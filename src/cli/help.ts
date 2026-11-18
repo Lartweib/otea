@@ -89,6 +89,18 @@ export function generalHelp(): string {
   ].join('\n');
 }
 
+// A group's commands (otea topic --help): each one's usage and what it does.
+export function groupHelp(group: string): string | undefined {
+  const commands = COMMANDS.filter(({ name }) => name.startsWith(`${group} `));
+  if (commands.length === 0) return undefined;
+  return [
+    `Usage: otea ${group} <command> [options]`,
+    '',
+    'Commands:',
+    ...commands.map((command) => indent(`${usageOf(command)}\n${indent(command.summary)}`)),
+  ].join('\n');
+}
+
 export function commandHelp(command: Command): string {
   const details = command.details === undefined ? '' : `\n\n${command.details}`;
   return `Usage: ${usageOf(command)}\n\n${command.summary}${details}`;

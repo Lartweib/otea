@@ -57,8 +57,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // tick, a checklist point with its proof, and attach's --point (measured at 3980). Raised for
   // topic_add and topic_answer, the side topics an agent records, and create's --from (measured
   // at 4275). Raised for reopen, the way back for a Done item whose PR conflicts (measured at 4393). Raised for
-  // detach, taking back a file attached by mistake (measured at 4541).
-  tools: { mcp: 4610 },
+  // detach, taking back a file attached by mistake (measured at 4541). Raised for topic_list (with
+  // its search) and topic_show, so an agent asked what was concluded before reads the topics kept
+  // (measured at 4806).
+  tools: { mcp: 4850 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to

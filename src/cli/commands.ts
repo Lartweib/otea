@@ -141,7 +141,7 @@ import {
 } from '../app/topics.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
-import { agentGuideFor, TOPICS_RULE } from '../core/agent-guide.ts';
+import { agentGuideFor, TOPICS_REMINDER, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
 import { isClosed, positionOf } from '../core/board/engine.ts';
 import { stepById } from '../core/board/model.ts';
@@ -1194,8 +1194,19 @@ const move: Command = {
   },
 };
 
-// The guide's topics rule without its number, as next and wait say it.
-const TOPICS_TEXT = TOPICS_RULE.replace(/^\d+\. /, '');
+// The guide's topics rule without its number, nor its opening (next and wait say it their way).
+const TOPICS_TEXT = TOPICS_RULE.replace(/^\d+\. Topics are on\. /, '');
+
+// What otea wait woke an agent for, with the topics reminder while topics are on: an agent in a
+// chat reads it between the person's messages, where side questions come.
+function withTopicsReminder(project: Project, actor: Actor, output: Output): Output {
+  if (actor.kind !== 'agent' || !topicsOn(project)) return output;
+  const data =
+    output.data !== null && typeof output.data === 'object'
+      ? { ...(output.data as object), reminder: TOPICS_REMINDER }
+      : output.data;
+  return { ...output, data, text: `${output.text}\n\n${TOPICS_REMINDER}` };
+}
 
 // While topics are on, next names the topics waiting for the agent's answer (a note otea wait woke
 // it for is still there once it runs next) and the topics rule, which an agent whose session began
@@ -1631,11 +1642,13 @@ const wait: Command = {
       }
       const { found } = waited;
       const woke = 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
+      // While topics are on, what woke the agent reminds it to record side questions.
+      const reminded = 'topics' in found ? woke : withTopicsReminder(project, input.actor, woke);
       // An agent woken on its turn reads what woke it, then waits again: told so in exact words.
-      if (input.actor.kind !== 'agent' || turn !== 'agent') return woke;
+      if (input.actor.kind !== 'agent' || turn !== 'agent') return reminded;
       return {
-        ...woke,
-        text: `${woke.text}\n${waitAgainLine(me, input.channel, filter.collection)}`,
+        ...reminded,
+        text: `${reminded.text}\n${waitAgainLine(me, input.channel, filter.collection)}`,
       };
     });
     if ('data' in result) return result;
@@ -2735,7 +2748,7 @@ const topicOff: Command = {
 const topicAdd: Command = {
   name: 'topic add',
   summary:
-    'Record a question the person asked you off the work at hand (--title, short; --session and --resume when known); then answer it with topic answer',
+    'Record a question the person asked you off the work at hand, not a request to do work, before you answer it (--title, short; --session and --resume when known); then answer it with topic answer',
   args: ['question'],
   options: { title: {}, session: {}, resume: {} },
   execute: (input) => {
@@ -2792,13 +2805,17 @@ const topicAnswer: Command = {
 const topicList: Command = {
   name: 'topic list',
   summary:
-    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too)',
+    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too); --search finds every topic that mentions all the words, with its answer',
   args: [],
-  options: { all: { flag: true } },
+  options: { all: { flag: true }, search: { placeholder: 'words' } },
   execute: (input) =>
     withReader(input, (project) => {
-      const topics = listTopics(project, { all: input.flag('all') });
-      return { data: topics, text: topicsListText(topics) };
+      const search = input.option('search');
+      const topics = listTopics(project, {
+        all: input.flag('all'),
+        ...(search === undefined ? {} : { search }),
+      });
+      return { data: topics, text: topicsListText(topics, search) };
     }),
 };
 

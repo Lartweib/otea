@@ -184,4 +184,61 @@ describe('otea topic', () => {
     );
     expect(made.code).not.toBe(0);
   });
+
+  it('searches every topic, closed ones too, and gives each its answer', async () => {
+    const { repo, otea } = fresh();
+    const person = cliAt(repo.dir);
+    await person('topic', 'on');
+    await otea('topic', 'add', '¿Qué licencia uso, MIT o Apache?');
+    await otea('topic', 'answer', 'TEM-1', '--summary', 'MIT, por simple.', '--full', 'MIT.');
+    await person('topic', 'close', 'TEM-1');
+    await otea('topic', 'add', '¿Por qué 0.1 + 0.2 no da 0.3?');
+
+    const found = await person('topic', 'list', '--search', 'licencia');
+    expect(found.code).toBe(0);
+    expect(found.out).toContain('TEM-1');
+    expect(found.out).toContain('MIT, por simple.');
+    expect(found.out).not.toContain('TEM-2');
+
+    const none = await person('topic', 'list', '--search', 'kubernetes');
+    expect(none.out.trim()).toBe('No topic mentions "kubernetes".');
+  });
+
+  it('explains its commands with otea topic --help', async () => {
+    const { repo } = fresh();
+    const help = await cliAt(repo.dir)('topic', '--help');
+    expect(help.code).toBe(0);
+    for (const command of ['add', 'answer', 'list', 'show', 'note', 'close', 'on', 'off'])
+      expect(help.out).toContain(`otea topic ${command}`);
+    expect((await cliAt(repo.dir)('help', 'topic')).out).toBe(help.out);
+  });
+
+  it('tells agents to record a side question before answering it, and to look in the topics for the past', async () => {
+    const { repo, otea } = fresh();
+    await cliAt(repo.dir)('topic', 'on');
+    const guide = (await otea('board')).out;
+    expect(guide).toContain('Before you answer it, record it');
+    expect(guide).toContain('A request to do work is never a topic');
+    expect(guide).toContain('otea topic list --search');
+  });
+
+  it('reminds an agent that otea wait wakes to record side questions while topics are on', async () => {
+    const { repo, otea } = fresh();
+    await otea(
+      'create',
+      '--collection',
+      'Cambios',
+      '--title',
+      'Arreglar el build',
+      '--field',
+      'Qué quiero=x',
+    );
+    const before = await otea('wait', '--turn', 'agent', '--timeout', '5s');
+    expect(before.out).not.toContain('otea topic add');
+
+    await cliAt(repo.dir)('topic', 'on');
+    const woken = await otea('wait', '--turn', 'agent', '--timeout', '5s');
+    expect(woken.code).toBe(0);
+    expect(woken.out).toContain('otea topic add');
+  });
 });
