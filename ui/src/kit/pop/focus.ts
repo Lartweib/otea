@@ -88,3 +88,21 @@ export function focusTarget(saved: Focusable | null): Focusable | null {
 export function returnFocus(saved: Focusable | null): void {
   focusTarget(saved)?.focus({ preventScroll: true });
 }
+
+type PressPage = {
+  body: unknown;
+  activeElement: unknown;
+  addEventListener(type: 'pointerup', run: () => void, options: AddEventListenerOptions): void;
+  removeEventListener(type: 'pointerup', run: () => void, options: EventListenerOptions): void;
+};
+
+// A press outside closes a pop on its way down, and the browser then moves focus to what was
+// pressed: the page's body when that takes no focus. Once the press ends, focus left on the body
+// goes back to the pop's trigger; focus on what was pressed (a field, a button) stays there.
+export function focusBackAfterPress(doc: PressPage, trigger: Focusable | null): void {
+  const up = () => {
+    doc.removeEventListener('pointerup', up, { capture: true });
+    if (doc.activeElement === doc.body) returnFocus(trigger);
+  };
+  doc.addEventListener('pointerup', up, { capture: true });
+}

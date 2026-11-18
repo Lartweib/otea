@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { focusTarget, menuStep, noteTrigger, tabStep } from './focus.ts';
+import { focusBackAfterPress, focusTarget, menuStep, noteTrigger, tabStep } from './focus.ts';
 
 describe('moving through a menu by keys', () => {
   it('goes down and up, wrapping, and to the ends', () => {
@@ -50,5 +50,59 @@ describe('handing focus back when something closes', () => {
   it('goes nowhere when both are gone', () => {
     noteTrigger(el(false));
     expect(focusTarget(el(false))).toBeNull();
+  });
+});
+
+describe('a press outside that closes a pop', () => {
+  // A page whose press ends: it runs the pointerup listeners with focus wherever the press left it.
+  const page = () => {
+    const body = { isConnected: true, focus: () => undefined };
+    let up: (() => void) | undefined;
+    const doc = {
+      body,
+      activeElement: body as unknown,
+      addEventListener: (_: string, run: () => void) => {
+        up = run;
+      },
+      removeEventListener: () => {
+        up = undefined;
+      },
+    };
+    return { doc, body, release: () => up?.() };
+  };
+
+  it('gives focus back to the trigger once the press dropped it to the page', () => {
+    const { doc, release } = page();
+    let focused = 0;
+    const trigger = {
+      isConnected: true,
+      focus: () => {
+        focused += 1;
+      },
+    };
+
+    focusBackAfterPress(doc, trigger);
+    release();
+
+    expect(focused).toBe(1);
+    release();
+    expect(focused).toBe(1);
+  });
+
+  it('leaves focus on what the press landed on when that takes it', () => {
+    const { doc, release } = page();
+    let focused = 0;
+    const trigger = {
+      isConnected: true,
+      focus: () => {
+        focused += 1;
+      },
+    };
+    doc.activeElement = { isConnected: true, focus: () => undefined };
+
+    focusBackAfterPress(doc, trigger);
+    release();
+
+    expect(focused).toBe(0);
   });
 });
