@@ -14,6 +14,7 @@ import {
 } from './command.ts';
 import { COMMANDS, findCommand } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
+import { type ForgeCli, NO_FORGE } from './forge.ts';
 import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
 import type { Opener } from './opener.ts';
 import { OTEA_VERSION } from './version.ts';
@@ -31,9 +32,11 @@ export type Io = {
   // elsewhere, so no test ever reaches this computer's network.
   tailscale?: TailscaleCli;
   probe?: Probe;
-  // The gh CLI otea check asks for a PR's branches, only where otea runs for a person (main.ts):
-  // without it a gh pr merge the hook cannot read is refused.
+  // The gh CLI otea merged asks for a PR's state, only where otea runs for a person (main.ts).
   gh?: string;
+  // The forge otea hook install --forge sets rules on: gh where otea runs for a person, a fake in
+  // tests; none elsewhere, so no test ever reaches GitHub.
+  forge?: ForgeCli;
   // Present only when a person can answer at the terminal.
   ask?: (question: string) => Promise<string>;
   // Present only when something is piped in.
@@ -145,6 +148,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     tailscale: io.tailscale ?? NO_TAILSCALE,
     probe: io.probe ?? (async () => false),
     ...(io.gh === undefined ? {} : { gh: io.gh }),
+    forge: io.forge ?? NO_FORGE,
     ...(io.env.OTEA_HOME ? { home: resolve(io.cwd, io.env.OTEA_HOME) } : {}),
     ...(io.env.OTEA_PROJECT_ID ? { pin: io.env.OTEA_PROJECT_ID } : {}),
     terminal: io.stdout.isTTY === true,

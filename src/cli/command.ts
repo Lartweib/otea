@@ -5,6 +5,7 @@ import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import type { FailureCode } from './exit-codes.ts';
+import type { ForgeCli } from './forge.ts';
 import type { Opener } from './opener.ts';
 
 export type OptionSpec = {
@@ -42,6 +43,8 @@ export type Input = {
   probe: Probe;
   // The gh CLI, where otea runs for a person; none in tests and over MCP.
   gh?: string;
+  // The forge (GitHub through gh) otea hook install --forge sets rules on.
+  forge: ForgeCli;
   // The Otea home the person set apart ($OTEA_HOME), as an absolute path; none for the default.
   home?: string;
   // The project the agent is pinned to ($OTEA_PROJECT_ID, written by otea connect): its writes to

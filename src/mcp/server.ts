@@ -10,6 +10,7 @@ import {
   type OptionSpec,
   UsageError,
 } from '../cli/command.ts';
+import { NO_FORGE } from '../cli/forge.ts';
 import { OTEA_VERSION } from '../cli/version.ts';
 import { agentGuideFor } from '../core/agent-guide.ts';
 import { type Actor, agentActor } from '../core/item.ts';
@@ -222,6 +223,7 @@ function inputFor(
       throw new Error('No browser to open over MCP');
     },
     tailscale: NO_TAILSCALE,
+    forge: NO_FORGE,
     probe: async () => false,
     terminal: false,
     warn: context.warn,

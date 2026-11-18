@@ -1,6 +1,7 @@
 import { createInterface } from 'node:readline/promises';
 import { fetchProbe } from '../app/phone.ts';
 import { systemTailscale } from '../app/tailscale-cli.ts';
+import { ghForge } from './forge.ts';
 import { systemOpener } from './opener.ts';
 import { run } from './run.ts';
 
@@ -33,5 +34,6 @@ process.exitCode = await run(process.argv.slice(2), {
   tailscale: systemTailscale(),
   probe: fetchProbe,
   gh: 'gh',
+  forge: ghForge('gh'),
   ...(process.stdin.isTTY ? { ask } : { stdin }),
 });

@@ -23,8 +23,8 @@ export function cliAt(
   stdin?: string,
   // Whether stdout is a terminal a person reads (it is piped otherwise).
   terminal = false,
-  // A fake tailscale CLI and network probe (otea phone); none by default.
-  network: Pick<Io, 'tailscale' | 'probe'> = {},
+  // A fake tailscale CLI and network probe (otea phone), and a fake forge (gh); none by default.
+  network: Pick<Io, 'tailscale' | 'probe' | 'forge'> = {},
 ): Cli {
   return async (...argv) => {
     let out = '';
