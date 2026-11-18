@@ -65,8 +65,21 @@ function Row({ topic, open }: { topic: Topic; open: boolean }) {
   );
 }
 
-function List({ topics, open }: { topics: readonly Topic[]; open: string | undefined }) {
-  if (topics.length === 0) return <p className="pane-message">{t('topics.empty')}</p>;
+function List({
+  topics,
+  open,
+  search,
+}: {
+  topics: readonly Topic[];
+  open: string | undefined;
+  search: string;
+}) {
+  if (topics.length === 0)
+    return (
+      <p className="pane-message">
+        {search === '' ? t('topics.empty') : t('topics.search.none', { words: search })}
+      </p>
+    );
   return (
     <nav className="tp-list" aria-label={t('topics.list')}>
       {topicGroups(topics).map((group) => (
@@ -353,11 +366,43 @@ function TopicPage({
   );
 }
 
+// What the search box holds, read once the person stops typing for a moment.
+const SEARCH_PAUSE_MS = 250;
+
+function useSettled(value: string): string {
+  const [settled, setSettled] = useState(value);
+  useEffect(() => {
+    const timer = setTimeout(() => setSettled(value.trim()), SEARCH_PAUSE_MS);
+    return () => clearTimeout(timer);
+  }, [value]);
+  return settled;
+}
+
+function SearchBox({ value, onChange }: { value: string; onChange: (value: string) => void }) {
+  return (
+    <div className="tp-search">
+      <input
+        type="search"
+        value={value}
+        aria-label={t('topics.search.label')}
+        placeholder={t('topics.search.placeholder')}
+        onChange={(event) => onChange(event.target.value)}
+      />
+    </div>
+  );
+}
+
 export function TopicsView({ topic: openId }: { topic: string | undefined }) {
   const app = useApp();
   const [all, setAll] = useState(false);
   const [bump, setBump] = useState(0);
-  const load = useCallback((signal: AbortSignal) => fetchTopics(signal, all), [all]);
+  // A search looks in every topic, closed ones too: what was concluded before.
+  const [typed, setTyped] = useState('');
+  const search = useSettled(typed);
+  const load = useCallback(
+    (signal: AbortSignal) => fetchTopics(signal, all, search),
+    [all, search],
+  );
   const remote = useRemote(load, app.version + bump, app.connection);
   const name = app.project?.name ?? '';
   const changed = () => setBump((n) => n + 1);
@@ -378,7 +423,7 @@ export function TopicsView({ topic: openId }: { topic: string | undefined }) {
           <p className={remote.status === 'failed' ? 'pane-message action-error' : 'pane-message'}>
             {remote.status === 'failed' ? remote.message : t('common.loading')}
           </p>
-        ) : !view?.on && view?.topics.length === 0 ? (
+        ) : !view?.on && view?.topics.length === 0 && search === '' ? (
           <div className="tp-off">
             <p className="pane-message">{t('topics.off')}</p>
             {app.session.canConfigure && !app.phone ? (
@@ -392,11 +437,14 @@ export function TopicsView({ topic: openId }: { topic: string | undefined }) {
         ) : (
           <div className="tp-split">
             <div className="tp-side">
-              <List topics={view?.topics ?? []} open={open?.id} />
-              <label className="tp-all">
-                <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />{' '}
-                {t('topics.showClosed')}
-              </label>
+              <SearchBox value={typed} onChange={setTyped} />
+              <List topics={view?.topics ?? []} open={open?.id} search={search} />
+              {search === '' ? (
+                <label className="tp-all">
+                  <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />{' '}
+                  {t('topics.showClosed')}
+                </label>
+              ) : null}
             </div>
             <div className="tp-main">
               {open ? (

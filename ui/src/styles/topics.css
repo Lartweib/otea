@@ -25,6 +25,29 @@
 }
 
 /* ───────── the list ───────── */
+/* The search box over every topic, closed ones too. */
+.tp-search {
+  margin: 0 0 14px;
+}
+.tp-search input {
+  box-sizing: border-box;
+  width: 100%;
+  min-height: 44px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  border: 0;
+  box-shadow: inset 0 0 0 1px var(--rule);
+  background: var(--sheet);
+  font: 14px / 1.4 var(--sans);
+  color: var(--ink);
+}
+.tp-search input::placeholder {
+  color: var(--ink-3);
+}
+.tp-search input:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 1px;
+}
 .tp-group + .tp-group {
   margin-top: 20px;
 }
@@ -292,6 +315,18 @@
   list-style: none;
   margin: 0;
   padding: 0;
+}
+.tp-more,
+.inbox-more {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+.tp-more:hover,
+.inbox-more:hover {
+  color: var(--ink);
 }
 
 /* ───────── Configuración's switch ───────── */

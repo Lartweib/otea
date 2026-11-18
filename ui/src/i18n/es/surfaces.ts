@@ -171,6 +171,14 @@ export const surfaces = {
   'projects.open': 'abrir proyecto',
   'projects.notServed': 'sin servidor · {command} allí lo abre',
   'projects.here': 'aquí',
+  'topics.toca.more': {
+    one: 'Y {count} más en Temas',
+    other: 'Y {count} más en Temas',
+  },
+  'projects.topics.more': {
+    one: 'Y {count} tema respondido más',
+    other: 'Y {count} temas respondidos más',
+  },
   'projects.withAgents': {
     one: 'No se listan aquí: {count} ítem con agentes, en {projects}.',
     other: 'No se listan aquí: {count} ítems con agentes, en {projects}.',
@@ -503,6 +511,12 @@ export const surfaces = {
   'topics.convert.failed':
     'No se pudo crear: {message} Créala desde Nuevo ítem y vincúlala desde ahí.',
   'topics.showClosed': 'Mostrar los cerrados',
+  'topics.search.label': 'Buscar en los temas',
+  'topics.search.placeholder': 'Buscar en preguntas y respuestas…',
+  'topics.search.none': 'Ningún tema menciona «{words}».',
+  'projects.topic.act': 'Leer',
+  'projects.topic.sub': 'respondió {agent}',
+  'projects.topic.kind': 'Tema respondido',
   'topics.back': 'Todos los temas',
   'topics.pick': 'Elige un tema para leerlo.',
   'topics.closed': 'Cerraste {id}.',

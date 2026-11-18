@@ -576,7 +576,10 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       .get('/topics', (c) =>
         c.json({
           on: topicsOn(project),
-          topics: listTopics(project, { all: c.req.query('all') === '1' }),
+          topics: listTopics(project, {
+            all: c.req.query('all') === '1',
+            search: c.req.query('search') ?? '',
+          }),
         }),
       )
       .post('/topics/switch', async (c) => {

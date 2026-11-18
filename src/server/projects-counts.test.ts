@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import { claimItem } from '../app/leases.ts';
+import { addTopic, answerTopic, setTopicsOn } from '../app/topics.ts';
 import type { Actor } from '../core/item.ts';
 import { countsOf } from './projects.ts';
 import { memoryProject } from './testing.ts';
@@ -29,5 +30,47 @@ describe('what waits for you in a project', () => {
     expect(counts.waiting.map((item) => item.title)).toEqual(['To review', 'Gone quiet']);
     expect(counts.withAgents).toBe(1);
     expect(counts.open).toBe(3);
+  });
+
+  // «Todos los proyectos» lists the topics an agent answered: your turn too, though never work.
+  it('lists the topics an agent answered, the oldest first, and leaves them out of the items', () => {
+    const project = memoryProject();
+    setTopicsOn(project, true);
+    addTopic(
+      project,
+      { question: '¿ESM o CommonJS?', actor: bot },
+      () => '2026-11-17T10:00:00.000Z',
+    );
+    addTopic(project, { question: '¿Qué licencia?', actor: bot }, () => '2026-11-17T10:01:00.000Z');
+    addTopic(project, { question: 'Sin responder', actor: bot }, () => '2026-11-17T10:02:00.000Z');
+    answerTopic(
+      project,
+      { id: 'TEM-2', summary: 'MIT.', actor: bot },
+      () => '2026-11-17T11:00:00.000Z',
+    );
+    answerTopic(
+      project,
+      { id: 'TEM-1', summary: 'ESM.', actor: bot },
+      () => '2026-11-17T12:00:00.000Z',
+    );
+
+    const counts = countsOf(project);
+    expect(counts.topics).toEqual([
+      {
+        id: 'TEM-2',
+        title: '¿Qué licencia?',
+        summary: 'MIT.',
+        agent: 'claude',
+        updatedAt: '2026-11-17T11:00:00.000Z',
+      },
+      {
+        id: 'TEM-1',
+        title: '¿ESM o CommonJS?',
+        summary: 'ESM.',
+        agent: 'claude',
+        updatedAt: '2026-11-17T12:00:00.000Z',
+      },
+    ]);
+    expect(counts.waiting).toEqual([]);
   });
 });

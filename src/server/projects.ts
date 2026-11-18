@@ -17,6 +17,7 @@ import { type Item, listItems } from '../app/items.ts';
 import { liveBoards } from '../app/next.ts';
 import { addPathToProject, databasePath, type Env, type Project } from '../app/project.ts';
 import { identityAt, listRepos, type Repo, readReposAtFolder, reposInside } from '../app/repos.ts';
+import { listTopics } from '../app/topics.ts';
 import { hasOteaGitHook } from '../cli/hooks.ts';
 import { OteaError } from '../core/errors.ts';
 import { stateLabel } from '../core/workflow.ts';
@@ -36,6 +37,8 @@ export type ProjectOverview = {
   paths: OverviewPath[];
   // Open items on your turn, each with its type's icon.
   waiting: WaitingItem[];
+  // Side topics an agent answered: the person's turn to read, though never work.
+  topics: AnsweredTopic[];
   // Open items on an agent's turn.
   withAgents: number;
   open: number;
@@ -52,7 +55,29 @@ function withIcon(project: Project, item: Item): WaitingItem {
   return type.icon === undefined ? { ...item, stateName } : { ...item, icon: type.icon, stateName };
 }
 
-type Counts = Pick<ProjectOverview, 'waiting' | 'withAgents' | 'open'>;
+// An answered topic as the inbox lists it: its title and the agent's last summary.
+export type AnsweredTopic = {
+  id: string;
+  title: string;
+  summary: string;
+  agent?: string;
+  updatedAt: string;
+};
+
+function answeredTopics(project: Project): AnsweredTopic[] {
+  return listTopics(project)
+    .filter((topic) => topic.state === 'answered')
+    .sort((a, b) => Date.parse(a.updatedAt) - Date.parse(b.updatedAt))
+    .map((topic) => ({
+      id: topic.id,
+      title: topic.title,
+      summary: topic.turns.findLast((turn) => turn.kind === 'answer')?.text ?? '',
+      ...(topic.agent === undefined ? {} : { agent: topic.agent }),
+      updatedAt: topic.updatedAt,
+    }));
+}
+
+type Counts = Pick<ProjectOverview, 'waiting' | 'topics' | 'withAgents' | 'open'>;
 
 // What waits for you is what Te toca lists: your turn, and the work of an agent that went quiet
 // (its lease ran out), yours to restart or reassign (ONB3-5).
@@ -63,12 +88,13 @@ export function countsOf(project: Project): Counts {
   const open = listItems(project).filter((item) => item.turn !== 'none');
   return {
     waiting: open.filter(yours).map((item) => withIcon(project, item)),
+    topics: answeredTopics(project),
     withAgents: open.filter((item) => !yours(item)).length,
     open: open.length,
   };
 }
 
-const NOTHING: Counts = { waiting: [], withAgents: 0, open: 0 };
+const NOTHING: Counts = { waiting: [], topics: [], withAgents: 0, open: 0 };
 
 function overviewOf(served: ServedProject, currentId: string): ProjectOverview {
   const { id, name, storage, paths, project } = served;

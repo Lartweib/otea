@@ -442,8 +442,17 @@ export async function forgetProjectPath(path: string): Promise<void> {
 
 // Side topics (topics.ts): the list and whether the project keeps them; one topic's note, close
 // and conversion into a task; an item's linked and suggested topics.
-export async function fetchTopics(signal: AbortSignal, all = false): Promise<TopicsView> {
-  return (await get(`/api/topics${all ? '?all=1' : ''}`, signal)).json();
+// `search`: words every topic found mentions, closed ones too (the page's search box).
+export async function fetchTopics(
+  signal: AbortSignal,
+  all = false,
+  search = '',
+): Promise<TopicsView> {
+  const query = new URLSearchParams();
+  if (all) query.set('all', '1');
+  if (search.trim() !== '') query.set('search', search.trim());
+  const qs = query.toString();
+  return (await get(`/api/topics${qs === '' ? '' : `?${qs}`}`, signal)).json();
 }
 
 export async function switchTopics(on: boolean): Promise<TopicsView> {

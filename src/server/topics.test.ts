@@ -3,7 +3,7 @@ import { createBoard, publishBoard, saveDraft } from '../app/boards.ts';
 import { pairDevice } from '../app/devices.ts';
 import { createItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
-import { addTopic, answerTopic, setTopicsOn } from '../app/topics.ts';
+import { addTopic, answerTopic, closeTopic, setTopicsOn } from '../app/topics.ts';
 import { creatures } from '../core/board/testing.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
@@ -85,6 +85,19 @@ describe('topics over the API', () => {
     );
     expect(noted.status).toBe(201);
     expect(await noted.json()).toMatchObject({ id: 'TEM-1', state: 'open', turn: 'agent' });
+  });
+
+  it('searches every topic, closed ones too', async () => {
+    setTopicsOn(project, true);
+    addTopic(project, { question: '¿Qué licencia uso?', actor: kiln });
+    answerTopic(project, { id: 'TEM-1', summary: 'MIT.', full: 'MIT, por simple.', actor: kiln });
+    closeTopic(project, { id: 'TEM-1', actor: { kind: 'human', name: 'fede' } });
+    addTopic(project, { question: 'Otra cosa', actor: kiln });
+
+    const found = (await (await call('/topics?search=simple')).json()) as {
+      topics: { id: string }[];
+    };
+    expect(found.topics.map(({ id }) => id)).toEqual(['TEM-1']);
   });
 
   it('closes a topic and turns another into a task linked both ways', async () => {

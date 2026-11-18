@@ -293,9 +293,19 @@ export type ProjectOverview = {
   current: boolean;
   paths: ProjectPath[];
   waiting: WaitingItem[];
+  // Side topics an agent answered there: yours to read, never work (absent from an older server).
+  topics?: AnsweredTopic[];
   withAgents: number;
   open: number;
   unavailable?: string;
+};
+
+export type AnsweredTopic = {
+  id: string;
+  title: string;
+  summary: string;
+  agent?: string;
+  updatedAt: string;
 };
 
 export type GateKind = 'hard' | 'soft';
