@@ -526,6 +526,7 @@ export const detail = {
   'sheet.h.yesterday': 'ayer',
   'sheet.route.aria': 'Ruta de {id}',
   'sheet.dip': 'ronda {n} · devuelta {when}',
+  'sheet.dipRedone': 'ronda {n} · devuelta y rehecha',
   'sheet.reopenDip': 'reabierto {when}',
   'sheet.when.today': 'hoy',
   'sheet.when.yesterday': 'ayer',

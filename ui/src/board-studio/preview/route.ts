@@ -22,11 +22,13 @@ export type DefinitionRoute = {
   dips: DipSpec[];
 };
 
-// dip: the label of a send-back, its round and, when known, when it happened; reopen: the label of
-// a loop from Done, a closed item reopened (the dip's label when not given).
+// dip: the label of a send-back, its round and, when known, when it happened; redone: its label
+// once the item is Done, when the round sent back was redone long since (dip's when not given);
+// reopen: the label of a loop from Done, a closed item reopened (the dip's label when not given).
 export type RouteWords = {
   done: string;
   dip: (round: number, at?: string) => string;
+  redone?: (round: number) => string;
   reopen?: (at?: string) => string;
 };
 
@@ -71,6 +73,7 @@ export function definitionRoute(
     }
   }
 
+  const closed = at === DONE;
   const sent = new Map<string, number>();
   const dipped: DipSpec[] = [];
   for (const { from, at: when, reopened } of dips) {
@@ -79,7 +82,12 @@ export function definitionRoute(
     if (at < 0) continue;
     const n = (sent.get(from) ?? 0) + 1;
     sent.set(from, n);
-    const label = reopened && words.reopen ? words.reopen(when) : words.dip(n, when);
+    const label =
+      reopened && words.reopen
+        ? words.reopen(when)
+        : !reopened && closed && words.redone
+          ? words.redone(n)
+          : words.dip(n, when);
     dipped.push({ at, label });
   }
   return { steps, words: shown, ci, lane, dips: dipped };

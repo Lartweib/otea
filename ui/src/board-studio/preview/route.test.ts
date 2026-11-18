@@ -48,4 +48,17 @@ describe('definitionRoute', () => {
       { at: 2, label: 'ronda 1 · devuelto' },
     ]);
   });
+
+  it('says a send-back of a Done item was redone, not that it stands sent back', () => {
+    const def = creatures();
+    const rounds = roundsOf(def, 'sconcept', 't0', [
+      { from: 'sconcept', to: 'sconcept__review', at: 't1' },
+      { from: 'sconcept__review', to: 'sconcept', at: 't2' },
+    ]);
+    const redone = { ...words, redone: (n: number) => `ronda ${n} · devuelta y rehecha` };
+    const done = definitionRoute(def, 'done', rounds.dips, redone);
+    expect(done.dips).toEqual([{ at: 1, label: 'ronda 1 · devuelta y rehecha' }]);
+    const open = definitionRoute(def, { step: 'sconcept', phase: 'doing' }, rounds.dips, redone);
+    expect(open.dips).toEqual([{ at: 1, label: 'ronda 1 · devuelto' }]);
+  });
 });
