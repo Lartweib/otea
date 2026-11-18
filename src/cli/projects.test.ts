@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMcpServer } from '../mcp/server.ts';
-import { COMMANDS } from './commands.ts';
+import { COMMANDS, INIT_NEXT } from './commands.ts';
 import { cliAt, presetCollection, spawnCli, type TempRepo, tempGitRepo } from './testing.ts';
 
 // Two separate repos that share one project in common storage. The test setup points OTEA_HOME at a
@@ -57,7 +57,9 @@ describe('projects', () => {
 
     const { out } = await cliAt(b.dir)('init', '--join', id);
 
-    expect(out).toBe(`Linked ${b.dir} to the project ${name} (${id})\nProject data in ${path}\n`);
+    expect(out).toBe(
+      `Linked ${b.dir} to the project ${name} (${id})\nProject data in ${path}\n${INIT_NEXT.join('\n')}\n`,
+    );
   });
 
   it('serves the shared project to an MCP client in the other repo', async () => {

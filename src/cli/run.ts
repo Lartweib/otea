@@ -15,7 +15,7 @@ import {
 import { COMMANDS, findCommand } from './commands.ts';
 import { EXIT_CODES } from './exit-codes.ts';
 import { type ForgeCli, NO_FORGE } from './forge.ts';
-import { commandHelp, generalHelp, HELP_HINT } from './help.ts';
+import { commandHelp, generalHelp, HELP_ALL, HELP_HINT, shortHelp } from './help.ts';
 import type { Opener } from './opener.ts';
 import { OTEA_VERSION } from './version.ts';
 
@@ -122,15 +122,43 @@ function validate(command: Command, values: Values, args: string[]): void {
   }
 }
 
+// What a command reads as a path, which Git Bash's conversion leaves a real path of.
+const PATH_OPTIONS = new Set(['file', 'log', 'join']);
+const PATH_ARGS = new Set(['path', 'path?', 'file', 'old', 'new']);
+
+// Git Bash (MSYSTEM set) hands a Windows program an argument that starts with / as a path under
+// its own folder: "/deploy fails" arrives as "C:/Program Files/Git/deploy fails", and so does the
+// value of "key=/value". Text given to Otea (a title, a field, a note) gets its slash back.
+export function undoGitBashPath(env: Io['env']): (value: string) => string {
+  if (!env.MSYSTEM || !env.EXEPATH) return (value) => value;
+  const root = env.EXEPATH.replaceAll('\\', '/').replace(/\/((mingw(32|64)|usr)\/)?bin\/?$/i, '');
+  const prefix = `${root}/`;
+  return (value) => {
+    if (value.startsWith(prefix)) return `/${value.slice(prefix.length)}`;
+    const equals = value.indexOf('=');
+    if (equals > 0 && value.startsWith(prefix, equals + 1)) {
+      return `${value.slice(0, equals + 1)}/${value.slice(equals + 1 + prefix.length)}`;
+    }
+    return value;
+  };
+}
+
 function inputFor(command: Command, values: Values, args: string[], io: Io, json: boolean): Input {
+  const text = undoGitBashPath(io.env);
   const option = (name: string) => {
     const value = values[name];
-    return typeof value === 'string' ? value : undefined;
+    if (typeof value !== 'string') return undefined;
+    return PATH_OPTIONS.has(name) ? value : text(value);
   };
   const options = (name: string) => {
     const value = values[name];
-    return Array.isArray(value) ? value.map(String) : [];
+    if (!Array.isArray(value)) return [];
+    return value.map((each) => (PATH_OPTIONS.has(name) ? String(each) : text(String(each))));
   };
+  const given = args.map((arg, index) => {
+    const name = command.args[Math.min(index, command.args.length - 1)] ?? '';
+    return PATH_ARGS.has(name) ? arg : text(arg);
+  });
   const agent = agentName(values, io.env);
   return {
     cwd: io.cwd,
@@ -158,7 +186,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     ask: async (question) => io.ask?.(question),
     stdin: async () => (io.stdin ? io.stdin() : ''),
     print: (data, text) => io.stdout.write(`${json ? JSON.stringify(data) : text}\n`),
-    args,
+    args: given,
     flag: (name) => values[name] === true,
     option,
     options,
@@ -194,7 +222,14 @@ function unknownCommand(positionals: readonly string[]): string {
 async function dispatch(argv: string[], io: Io, json: boolean): Promise<number> {
   const { values, positionals } = parse(argv);
   if (positionals[0] === 'help' || (values.help && positionals.length === 0)) {
-    io.stdout.write(`${generalHelp()}\n`);
+    const [, ...words] = positionals;
+    if (words.length === 0) io.stdout.write(`${shortHelp()}\n`);
+    else if (words.length === 1 && words[0] === HELP_ALL) io.stdout.write(`${generalHelp()}\n`);
+    else {
+      const command = findCommand(words);
+      if (!command) throw new UsageError(unknownCommand(words));
+      io.stdout.write(`${commandHelp(command)}\n`);
+    }
     return EXIT_CODES.ok;
   }
   if (values.version && positionals.length === 0) {

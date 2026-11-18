@@ -4,6 +4,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { AGENT_GUIDE } from '../core/agent-guide.ts';
+import { INIT_NEXT } from './commands.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
 // The profile connect gives the agent it pins.
@@ -48,7 +49,7 @@ describe('setup for agents', () => {
       expect(code).toBe(0);
       expect(read('AGENTS.md')).toBe(`${BLOCK}\n`);
       expect(out).toBe(
-        `Project data in ${join(repo.dir, '.otea')}\nAdded the Otea block to ${join(repo.dir, 'AGENTS.md')}\n`,
+        `Project data in ${join(repo.dir, '.otea')}\nAdded the Otea block to ${join(repo.dir, 'AGENTS.md')}\n${INIT_NEXT.join('\n')}\n`,
       );
     });
 
