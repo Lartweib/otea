@@ -30,8 +30,8 @@ export const board = {
   'list.childOf': 'Child of {id}',
   'list.relates': 'relates · {count}',
   'list.alsoUnder': 'also under {id}',
-  'list.progress': '{open}{of} open',
-  'list.progressOf': ' of {total}',
+  'list.progress': '{open}{of} not done',
+  'list.progressOf': ' of {total} parts',
 
   // The grid
   'column.id': 'id',
@@ -153,7 +153,7 @@ export const board = {
   'matrix.across': 'Across',
   'matrix.up': 'Up',
   'matrix.hint':
-    'Tap items to pick them, then Set the order or Put on top: agents take them first.',
+    'Click items to pick them, then Set the order or Put on top: agents take them first.',
   'matrix.aside': 'Not estimated',
   'matrix.asideNone': 'Every open item has both values.',
   'matrix.order': 'Your order',
@@ -161,7 +161,9 @@ export const board = {
   'matrix.top': 'Top',
   'matrix.label': '{x} across, {y} up',
   'matrix.estimated': 'Estimated by {agent}: set it on the item to confirm',
-  'matrix.guess': 'est.',
+  'matrix.guess': 'estimated',
+  'matrix.legend':
+    'Dashed edge, “estimated”: an agent estimated it. Set it on the item yourself to confirm it.',
   'matrix.ordered': {
     one: 'Order set: agents take it next.',
     other: 'Order set: agents take these {count} in this order.',
@@ -203,7 +205,6 @@ export const board = {
   'boardView.noMatch': 'Nothing matches these filters.',
   'boardView.clearFilters': 'clear filters',
   'boardView.inside': '{count} inside',
-  'boardView.kidsOpen': '{open} of {total} open',
   'boardView.quiet': 'quiet · {time}',
   'boardView.quietCard': 'quiet {time}',
   'boardView.round': 'round {n}',

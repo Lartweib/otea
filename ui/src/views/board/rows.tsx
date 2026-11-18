@@ -10,6 +10,7 @@ import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
 import { parentOf } from '../../nesting.ts';
 import { stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
+import { openLabel } from '../../relations.ts';
 import type { CollectionView, Item } from '../../types.ts';
 import { type Entry, roundOf, rowWords, severityOf, signalOf, tablaCells } from './model.ts';
 import { cellClass } from './table.ts';
@@ -101,7 +102,7 @@ function Progress({ item, kids }: { item: Item; kids: readonly Item[] }) {
     <span className="mpt">
       <span className="sep">·</span>
       <span className="prog">{bars}</span>
-      <span className="po">{t('boardView.kidsOpen', { open: c.open, total: c.total })}</span>
+      <span className="po">{openLabel(c)}</span>
     </span>
   );
 }

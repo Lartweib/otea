@@ -17,6 +17,7 @@ import {
 } from '../../components/evidence/EvidenceViewer.tsx';
 import { pickableOn, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { NoteText } from '../../components/NoteText.tsx';
+import { agoText } from '../../derive/when.ts';
 import { roleWord } from '../../evidence.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
@@ -27,7 +28,6 @@ import { valueWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
 import type { Evidence, ItemView, TypeView } from '../../types.ts';
 import { evidenceWords } from '../toca/phone.ts';
-import { spanText } from '../toca/words.ts';
 import { Acts, type ActsMode } from './Acts.tsx';
 import type { Facts } from './facts.ts';
 import { toastOf } from './frame.ts';
@@ -402,7 +402,7 @@ function RoundView({
         )}
         <div className="p-by">
           <AgentMark name={r.by} decorative />
-          {r.by} · {t('sheet.ago', { time: spanText(now - Date.parse(r.at)) })}
+          {r.by} · {agoText(r.at, now)}
         </div>
       </section>
       {notes ? (

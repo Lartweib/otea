@@ -32,8 +32,8 @@ export const board = {
   'list.childOf': 'Hijo de {id}',
   'list.relates': 'relacionados · {count}',
   'list.alsoUnder': 'también bajo {id}',
-  'list.progress': '{open}{of} abiertos',
-  'list.progressOf': ' de {total}',
+  'list.progress': '{open}{of} sin terminar',
+  'list.progressOf': ' de {total} partes',
 
   // La tabla
   'column.id': 'id',
@@ -159,7 +159,7 @@ export const board = {
   'matrix.across': 'A lo ancho',
   'matrix.up': 'Hacia arriba',
   'matrix.hint':
-    'Toca los ítems para elegirlos y después Fijar el orden o Poner arriba: los agentes los toman primero.',
+    'Haz clic en los ítems para elegirlos y después Fijar el orden o Poner arriba: los agentes los toman primero.',
   'matrix.aside': 'Sin estimar',
   'matrix.asideNone': 'Todos los ítems abiertos tienen los dos valores.',
   'matrix.order': 'Tu orden',
@@ -167,7 +167,9 @@ export const board = {
   'matrix.top': 'Arriba',
   'matrix.label': '{x} a lo ancho, {y} hacia arriba',
   'matrix.estimated': 'Estimado por {agent}: ponlo en el ítem para confirmarlo',
-  'matrix.guess': 'estim.',
+  'matrix.guess': 'estimado',
+  'matrix.legend':
+    'Borde punteado, «estimado»: lo estimó un agente. Ponlo tú en el ítem para confirmarlo.',
   'matrix.ordered': {
     one: 'Orden fijado: los agentes lo toman primero.',
     other: 'Orden fijado: los agentes toman estos {count} en este orden.',
@@ -209,7 +211,6 @@ export const board = {
   'boardView.noMatch': 'Nada coincide con estos filtros.',
   'boardView.clearFilters': 'quitar filtros',
   'boardView.inside': '{count} dentro',
-  'boardView.kidsOpen': '{open} de {total} abiertos',
   'boardView.quiet': 'callado · {time}',
   'boardView.quietCard': 'callado {time}',
   'boardView.round': 'ronda {n}',

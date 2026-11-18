@@ -104,7 +104,10 @@ export const detail = {
   'children.count': { one: '{count} hijo', other: '{count} hijos' },
   'children.none': 'Sin hijos',
   'children.add': 'hijo',
-  'children.open': '{open} de {total} abiertos',
+  'children.open': {
+    one: '{open} de {count} parte sin terminar',
+    other: '{open} de {count} partes sin terminar',
+  },
   'children.closedOf': '{closed} de {total} hijos cerrados',
   'children.yours': '{count} tuyos',
   'children.agents': '{count} con agentes',

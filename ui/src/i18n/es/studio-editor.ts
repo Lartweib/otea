@@ -41,7 +41,7 @@ export const studioEditor = {
   'bs.editor.route.add': 'Añadir un paso aquí',
   'bs.editor.ends.about': 'Sobre el tablero',
   'bs.editor.ends.hint':
-    'Toca un paso para editarlo. Pasa el ratón por la línea para añadir uno con {plus}.',
+    'Haz clic en un paso para editarlo. Pasa el ratón por la línea para añadir uno con {plus}.',
   'bs.editor.ends.anytime': 'En cualquier momento',
   'bs.editor.vroute.add': 'Añadir un paso',
   'bs.editor.vroute.done': 'termina aquí',
@@ -468,7 +468,7 @@ export const studioEditor = {
   'bs.editor.twin.title': 'El otro tablero que creaste con este',
   'bs.editor.ends.about_of': 'Sobre {board}',
   'bs.editor.ends.hint_pair':
-    'Toca un paso de cualquiera de los dos para editarlo. Pasa el ratón por una línea para añadir uno con {plus}.',
+    'Haz clic en un paso de cualquiera de los dos para editarlo. Pasa el ratón por una línea para añadir uno con {plus}.',
   'bs.editor.pair.tabs': 'Tableros unidos',
   'bs.editor.pair.draft': 'borrador',
   'bs.editor.pair.changed': 'cambios sin publicar',

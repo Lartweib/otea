@@ -25,7 +25,7 @@ export const studioPreview = {
   'bs.preview.anAgentCap': 'Un agente',
   'bs.preview.anotherAgent': 'otro agente',
   'bs.preview.anotherAgentCap': 'Otro agente',
-  'bs.preview.why': '¿Por qué está aquí? Toca para ver de dónde sale.',
+  'bs.preview.why': '¿Por qué está aquí? Haz clic para ver de dónde sale.',
   'bs.preview.whyShort': '¿por qué?',
   'bs.preview.dip': 'ronda {n} · devuelto',
   'bs.preview.turn.yourStep': 'tu turno · tu paso',
@@ -68,7 +68,7 @@ export const studioPreview = {
   'bs.preview.from.form': 'al crear',
   'bs.preview.from.anytime': 'cualquier momento',
   'bs.preview.from.column': 'columna',
-  'bs.preview.see.foot': 'Toca cualquier parte para saber de dónde sale.',
+  'bs.preview.see.foot': 'Haz clic en cualquier parte para saber de dónde sale.',
 
   'bs.preview.value.optionA': 'A · Guardado local',
   'bs.preview.value.optionAText': 'Rápido y sin servidor; se pierde al cambiar de equipo.',
