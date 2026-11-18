@@ -19,8 +19,8 @@ import type { Facts } from './facts.ts';
 import { Structure } from './Structure.tsx';
 
 // The body (SPEC §10.3, mock:2740-2749): sections over hairlines, each named in its margin: what the
-// agent says, your notes, what you answered, the type's layout (its fields, rounds, options), the
-// evidence, the structure. When the item changes, sections are diffed by key: unchanged ones stay,
+// agent says, your notes, what you answered, the type's layout (its fields, options), the evidence,
+// the rounds, the structure. When the item changes, sections are diffed by key: unchanged ones stay,
 // added ones unroll, removed ones collapse (mock:3165-3178).
 
 export type Sec = { key: string; node: ReactNode };
@@ -84,7 +84,7 @@ export function bodySections(o: {
   // Opens the reader, at a file or at the round's first.
   onRead?: ((id?: number) => void) | undefined;
   // On a Studio board: the long texts it shows as options side by side, the notes of each round
-  // (drawn where its layout puts Rondas, else after the fields), and its own sections (Partes,
+  // (drawn after the deliverable, with Rondas), and its own sections (Partes,
   // Enlaces) in place of Structure.
   board?:
     | {
@@ -182,6 +182,9 @@ export function bodySections(o: {
 
   const { primary, sections } = detailBlocks(type, item.fields);
   const evidence: ReactNode[] = [];
+  // Rondas come after the deliverable, wherever the layout places them: what was handed in is
+  // what the person reads first, as on the phone.
+  const rounds: Sec[] = [];
   const loose = leftovers(type, item.evidence);
   const fieldSecs = (block: DetailBlock, i: number, label?: string): Sec[] => {
     if (block.kind === 'fields')
@@ -228,26 +231,25 @@ export function bodySections(o: {
       const k = `r:${block.entry.module}:${i}`;
       if (block.entry.module === 'rounds') {
         roundsDrawn = true;
-        return [
-          {
-            key: k,
-            node: (
-              <Plain k={k} label={label ?? t('rounds.title')} className="d-sec mod">
-                {board?.rounds}
-                <RoundsModule
-                  key={board?.steps.step}
-                  slot={slotData(block.at)}
-                  item={item}
-                  type={type}
-                  entry={block.entry}
-                  canWrite={canWrite}
-                  quiet={!!board}
-                  {...(board ? { board: board.steps, stepName: board.railName } : {})}
-                />
-              </Plain>
-            ),
-          },
-        ];
+        rounds.push({
+          key: k,
+          node: (
+            <Plain k={k} label={label ?? t('rounds.title')} className="d-sec mod">
+              {board?.rounds}
+              <RoundsModule
+                key={board?.steps.step}
+                slot={slotData(block.at)}
+                item={item}
+                type={type}
+                entry={block.entry}
+                canWrite={canWrite}
+                quiet={!!board}
+                {...(board ? { board: board.steps, stepName: board.railName } : {})}
+              />
+            </Plain>
+          ),
+        });
+        return [];
       }
       if (block.entry.module === 'options')
         return [
@@ -293,7 +295,7 @@ export function bodySections(o: {
       out.push(...fieldSecs(b, 100 * (s.index + 1) + i, s.title));
     });
   if (board?.rounds && board.roundsAfter && !roundsDrawn)
-    out.push({
+    rounds.push({
       key: 'r:notes',
       node: (
         <Plain k="r:notes" label={t('bi.rounds.title')} className="d-sec mod">
@@ -324,6 +326,7 @@ export function bodySections(o: {
       </section>
     ),
   });
+  out.push(...rounds);
   if (board) out.push(...board.sections);
   else out.push({ key: 'structure', node: <Structure item={item} /> });
   return out;
