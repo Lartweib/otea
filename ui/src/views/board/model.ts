@@ -115,11 +115,21 @@ export function pasosCards(
 ): Map<string, Card[]> {
   const key = (it: Item) => columnKeyOf(it);
   const out = new Map<string, Card[]>(columns.map((c) => [c.key, []]));
-  for (const it of sortBoard(topOf(items, key), sort, ctx)) {
-    const kids = descendants(it, items, key);
+  // Pasos folds nothing: a closed part is a card in Hecho, never inside its parent's (IDEA-11).
+  for (const it of sortBoard(topOf(items, key, false), sort, ctx)) {
+    const kids = descendants(it, items, key, false);
     out.get(key(it))?.push({ item: it, kids });
   }
   return out;
+}
+
+// The open items that block `item` (its `blocked_by` relations), among `all` the items listed.
+export function openBlockersOf(item: Item, all: readonly Item[]): number {
+  const ids = (item.relations ?? [])
+    .filter(({ kind }) => kind === 'blocked_by')
+    .map(({ id }) => id);
+  if (ids.length === 0) return 0;
+  return all.filter((it) => ids.includes(it.id) && it.turn !== 'none').length;
 }
 
 // The items a column counts: each card and the children riding in it.
@@ -128,25 +138,36 @@ export function cardCount(cards: readonly Card[]): number {
 }
 
 // A child rides with its parent when the parent is listed and both sit in the same group (step);
-// the closed children of a parent whose children are all closed come along under it too.
-function ridesWith(it: Item, parent: Item | undefined, key: (it: Item) => string): boolean {
+// in Lista and Tabla, where they fold, the closed children of a parent whose children are all
+// closed come along under it too (`settled`).
+function ridesWith(
+  it: Item,
+  parent: Item | undefined,
+  key: (it: Item) => string,
+  settled = true,
+): boolean {
   if (!parent) return false;
-  return key(it) === key(parent) || (it.turn === 'none' && isSettled(parent));
+  return key(it) === key(parent) || (settled && it.turn === 'none' && isSettled(parent));
 }
 
-function topOf(items: readonly Item[], key: (it: Item) => string): Item[] {
+function topOf(items: readonly Item[], key: (it: Item) => string, settled = true): Item[] {
   const byId = new Map(items.map((it) => [it.id, it]));
   return items.filter((it) => {
     const p = parentOf(it);
-    return !ridesWith(it, p === undefined ? undefined : byId.get(p), key);
+    return !ridesWith(it, p === undefined ? undefined : byId.get(p), key, settled);
   });
 }
 
-function descendants(parent: Item, items: readonly Item[], key: (it: Item) => string): Item[] {
+function descendants(
+  parent: Item,
+  items: readonly Item[],
+  key: (it: Item) => string,
+  settled = true,
+): Item[] {
   const out: Item[] = [];
   const walk = (of: Item, seen: Set<string>) => {
     for (const it of items) {
-      if (parentOf(it) !== of.id || seen.has(it.id) || !ridesWith(it, of, key)) continue;
+      if (parentOf(it) !== of.id || seen.has(it.id) || !ridesWith(it, of, key, settled)) continue;
       seen.add(it.id);
       out.push(it);
       walk(it, seen);

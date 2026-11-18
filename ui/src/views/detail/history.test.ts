@@ -522,3 +522,23 @@ describe('who did what on a board, in the history', () => {
     expect(line?.text).toBe('Registró que feat/x se fusionó');
   });
 });
+
+// An agent that could read neither its model nor its effort read «sin declarar · sin declarar»
+// (UI-23): it says so once.
+describe('a profile the agent could not read, in the history', () => {
+  it('says it is not declared, once', () => {
+    const kiln = { kind: 'agent', name: 'kiln' } as const;
+    const declared = { model: 'opus', effort: 'high', harness: 'claude-code' };
+    const unread = { model: 'unknown', effort: 'unknown', harness: 'claude-code' };
+    const lines = historyOf(
+      [
+        { ...ev('claimed', kiln, {}, 6), profile: declared },
+        { ...ev('released', kiln, {}, 2), profile: unread },
+      ] as ItemEvent[],
+      bug,
+      word,
+      NOW,
+    );
+    expect(lines.map((l) => l.text)).toContain('Switched to not declared');
+  });
+});

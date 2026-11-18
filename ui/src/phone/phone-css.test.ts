@@ -112,6 +112,8 @@ describe('a finger’s size: every control on the phone is at least 44 px (#34)'
       '.rd-earlier summary',
       '.ffield input[type="text"]',
       '.ffield select',
+      // «Rellenar» beside a handoff part was 60×24 (UI-24)
+      '.hn .lnk',
     ])
       expect(rules(phone, sel), sel).toMatch(/min-height:\s*44px/);
     for (const sel of ['.rel-remove', '.prow .x']) {

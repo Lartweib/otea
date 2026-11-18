@@ -77,11 +77,16 @@ function withIcon(project: Project, item: Item): WaitingItem {
 
 type Counts = Pick<ProjectOverview, 'waiting' | 'withAgents' | 'open'>;
 
-function countsOf(project: Project): Counts {
+// What waits for you is what Te toca lists: your turn, and the work of an agent that went quiet
+// (its lease ran out), yours to restart or reassign (ONB3-5).
+const yours = (item: Item) =>
+  item.turn === 'human' || (item.turn === 'agent' && !!item.expiredLease);
+
+export function countsOf(project: Project): Counts {
   const open = listItems(project).filter((item) => item.turn !== 'none');
   return {
-    waiting: open.filter((item) => item.turn === 'human').map((item) => withIcon(project, item)),
-    withAgents: open.filter((item) => item.turn === 'agent').length,
+    waiting: open.filter(yours).map((item) => withIcon(project, item)),
+    withAgents: open.filter((item) => !yours(item)).length,
     open: open.length,
   };
 }

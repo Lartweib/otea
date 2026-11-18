@@ -8,7 +8,14 @@ import { SeverityBars } from '../../kit/Marks.tsx';
 import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import type { CollectionView, Item } from '../../types.ts';
-import { type Card, cardCount, type PasosColumn, roundOf, severityOf } from './model.ts';
+import {
+  type Card,
+  cardCount,
+  openBlockersOf,
+  type PasosColumn,
+  roundOf,
+  severityOf,
+} from './model.ts';
 import { type CardSnap, pasosTransition, revealCols, snapCards } from './pasos-motion.ts';
 import { since } from './rows.tsx';
 
@@ -21,6 +28,8 @@ type PasosProps = {
   cards: ReadonlyMap<string, Card[]>;
   now: number;
   feed: readonly FeedEvent[];
+  // Every item listed, to say which ones still block a card.
+  all: readonly Item[];
   selected: string | undefined;
   onOpen: (id: string) => void;
   // Trace the columns in as the view appears (not when the morph brings them).
@@ -29,7 +38,15 @@ type PasosProps = {
   ghost?: boolean;
 };
 
-function WhoText({ item, feed }: { item: Item; feed: readonly FeedEvent[] }) {
+function WhoText({
+  item,
+  feed,
+  blockers,
+}: {
+  item: Item;
+  feed: readonly FeedEvent[];
+  blockers: number;
+}) {
   if (item.turn === 'human') {
     return (
       <span className="who you" data-s={`${item.id}:who`}>
@@ -48,7 +65,12 @@ function WhoText({ item, feed }: { item: Item; feed: readonly FeedEvent[] }) {
   }
   if (!item.lease && !item.expiredLease) {
     const open = item.children?.open ?? 0;
-    suffix = open > 0 ? t('boardView.waits', { count: open }) : t('boardView.queued');
+    suffix =
+      open > 0
+        ? t('boardView.waits', { count: open })
+        : blockers > 0
+          ? t('boardView.blocked', { count: blockers })
+          : t('boardView.queued');
   } else if (item.expiredLease && !item.lease) suffix = t('boardView.who.quiet');
   return (
     <span className="who" data-s={`${item.id}:who`}>
@@ -85,7 +107,7 @@ function CardView({
   p,
 }: {
   card: Card;
-  p: Pick<PasosProps, 'collection' | 'now' | 'feed' | 'selected' | 'onOpen'>;
+  p: Pick<PasosProps, 'collection' | 'now' | 'feed' | 'all' | 'selected' | 'onOpen'>;
 }) {
   const it = card.item;
   const sev = severityOf(it, p.collection);
@@ -139,7 +161,7 @@ function CardView({
         <span className="id" data-s={`${it.id}:id`}>
           {it.id}
         </span>
-        <WhoText item={it} feed={p.feed} />
+        <WhoText item={it} feed={p.feed} blockers={openBlockersOf(it, p.all)} />
       </div>
       <div className="t">
         <span className="tt" data-s={`${it.id}:t`}>

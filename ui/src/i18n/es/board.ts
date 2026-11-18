@@ -217,6 +217,10 @@ export const board = {
   'boardView.toMerge': 'rama sin fusionar',
   'boardView.merged': 'rama fusionada',
   'boardView.queued': 'en cola',
+  'boardView.blocked': {
+    one: 'espera a {count} que lo bloquea',
+    other: 'espera a {count} que lo bloquean',
+  },
   'boardView.waits': 'espera {count}',
   'boardView.col.title': 'ítem',
   'boardView.col.state': 'paso',
