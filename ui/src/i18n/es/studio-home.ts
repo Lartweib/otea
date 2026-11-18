@@ -27,6 +27,10 @@ export const studioHome = {
   'bs.home.builtin': 'viene con cada proyecto',
   'bs.home.view': 'Ver el tablero',
   'bs.home.edit': 'Editar',
+  'bs.home.discard': 'Descartar…',
+  'bs.home.discardMates':
+    'Con él se descarta {names}, que se creó junto a él y tampoco se publicó.',
+  'bs.home.keep': 'Conservarlo',
   'bs.home.use': 'Usar',
   'bs.home.start': 'Empezar uno nuevo',
   'bs.home.startGloss': 'un tablero es el camino que sigue un tipo de trabajo',

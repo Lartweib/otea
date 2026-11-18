@@ -1,15 +1,16 @@
-import { type ReactNode, useRef } from 'react';
+import { type ReactNode, useRef, useState } from 'react';
 import { useApp } from '../../app/context.tsx';
 import { language, t, tx } from '../../i18n/i18n.ts';
 import { Button } from '../../kit/Button.tsx';
 import { Count } from '../../kit/Count.tsx';
 import { Icon } from '../../kit/Icon.tsx';
+import { Dialog } from '../../kit/pop/Dialog.tsx';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import { reduced } from '../../motion/reduced.ts';
 import { studioHash } from '../../selection.ts';
 import { RowIcon } from '../../shell/Rail.tsx';
 import { boardIcon } from '../../shell/rail-model.ts';
-import type { BoardSummary, TemplateView } from '../api.ts';
+import { type BoardSummary, discardDraft, type TemplateView } from '../api.ts';
 import { Archived } from './Archived.tsx';
 import { loadBoards, useBoards } from './boards-store.ts';
 import {
@@ -78,7 +79,12 @@ export function StudioHome({ canWrite }: StudioHomeProps) {
             row.kind === 'pair' ? (
               <PairRow key={row.parent.id} parent={row.parent} child={row.child} />
             ) : (
-              <BoardRow key={row.board.id} board={row.board} madeWith={row.madeWith} />
+              <BoardRow
+                key={row.board.id}
+                board={row.board}
+                madeWith={row.madeWith}
+                canWrite={canWrite}
+              />
             ),
           )
         )}
@@ -364,8 +370,75 @@ function PairRow({ parent, child }: { parent: BoardSummary; child: BoardSummary 
   );
 }
 
-function BoardRow({ board, madeWith = [] }: { board: BoardSummary; madeWith?: string[] }) {
+// «Descartar…» on a board that never went live: one still waiting for an agent's draft, or a draft
+// (a set's second board too). Asks once; the drafts its set made with it go too, so none is left
+// over on its own (P4-16).
+function DiscardBoard({ board, madeWith }: { board: BoardSummary; madeWith: string[] }) {
+  const app = useApp();
+  const [open, setOpen] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const discard = async () => {
+    setBusy(true);
+    setError('');
+    try {
+      await discardDraft(board.id);
+      setOpen(false);
+      loadBoards(app.version, true);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setBusy(false);
+    }
+  };
+  return (
+    <>
+      <Button variant="text" size="sm" data-discard="" onClick={() => setOpen(true)}>
+        {t('bs.home.discard')}
+      </Button>
+      <Dialog
+        open={open}
+        label={t('bs.preview.discard.title')}
+        onClose={() => setOpen(false)}
+        className="bsp-dialog"
+      >
+        <h4 data-i="">{t('bs.preview.discard.title')}</h4>
+        <p className="lede" data-i="">
+          {t('bs.preview.discard.never', { name: board.name })}
+          {madeWith.length ? ` ${t('bs.home.discardMates', { names: madeWith.join(', ') })}` : ''}
+        </p>
+        <p className="bsp-dwarn" aria-live="polite">
+          {error}
+        </p>
+        <div className="dbtns" data-i="">
+          <button type="button" className="btn quiet" onClick={() => setOpen(false)}>
+            {t('bs.home.keep')}
+          </button>
+          <button
+            type="button"
+            className="btn danger"
+            disabled={busy}
+            onClick={() => void discard()}
+          >
+            {t('bs.preview.discard.discard')}
+          </button>
+        </div>
+      </Dialog>
+    </>
+  );
+}
+
+function BoardRow({
+  board,
+  madeWith = [],
+  canWrite = false,
+}: {
+  board: BoardSummary;
+  madeWith?: string[];
+  canWrite?: boolean;
+}) {
   const status = statusOf(board, drafterOf(board.id));
+  const discardable = canWrite && !board.builtin && board.liveVersion === null;
   if (board.status === 'waiting') {
     return (
       <div className="brow waiting" data-e="in">
@@ -377,7 +450,9 @@ function BoardRow({ board, madeWith = [] }: { board: BoardSummary; madeWith?: st
           <div className="bmeta">{statusWords(status)}</div>
           <div className="bdesc">{t('bs.home.waitingNote', { id: board.requestItem ?? '—' })}</div>
         </div>
-        <div className="bacts" />
+        <div className="bacts">
+          {discardable ? <DiscardBoard board={board} madeWith={madeWith} /> : null}
+        </div>
       </div>
     );
   }
@@ -419,6 +494,7 @@ function BoardRow({ board, madeWith = [] }: { board: BoardSummary; madeWith?: st
             {t('bs.home.view')}
           </Button>
         ) : null}
+        {discardable ? <DiscardBoard board={board} madeWith={madeWith} /> : null}
         <Button variant="quiet" size="sm" onClick={edit}>
           {t('bs.home.edit')}
         </Button>

@@ -5,6 +5,7 @@ import { findCollection } from '../store/queries.ts';
 import {
   createBoard,
   createBoardSet,
+  discardDraft,
   getBoardRecord,
   publishBoard,
   restoreBoard,
@@ -106,6 +107,33 @@ describe('restoreBoard alongside', () => {
     expect(() =>
       restoreBoard(ctx, ideas, { version: 1, by: you, alongside: [tasks] }, now),
     ).toThrow(OteaError);
+    expect(getBoardRecord(ctx, tasks).live?.version).toBe(1);
+  });
+});
+
+describe('discarding a board its set made boards with', () => {
+  const gone = (ctx: Context, id: string) => {
+    try {
+      getBoardRecord(ctx, id);
+      return false;
+    } catch {
+      return true;
+    }
+  };
+
+  it('takes the never-published drafts made with it too: none is left over', () => {
+    const ctx = memoryContext();
+    const { ideas, tasks } = ideasSet(ctx);
+    expect(discardDraft(ctx, ideas, now)).toEqual({ deleted: true });
+    expect(gone(ctx, ideas)).toBe(true);
+    expect(gone(ctx, tasks)).toBe(true);
+  });
+
+  it('keeps a board made with it that is already published', () => {
+    const ctx = memoryContext();
+    const { ideas, tasks } = ideasSet(ctx);
+    publishBoard(ctx, tasks, { moves: {}, by: you, alongside: [ideas] }, now);
+    discardDraft(ctx, ideas, now);
     expect(getBoardRecord(ctx, tasks).live?.version).toBe(1);
   });
 });

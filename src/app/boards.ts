@@ -405,12 +405,24 @@ export function discardDraft(
 ): { deleted: boolean } {
   return transaction(ctx.db, () => {
     const row = requireStanding(ctx, id);
-    deleteDraft(ctx.db, id);
+    // A board never published takes with it the drafts its template set made with it that were
+    // never published either (Implementación with Ideas): none is left over on its own (P4-16).
+    const mates =
+      row.liveVersion === null ? (getBoardRecord(ctx, id).draft?.definition.madeWith ?? []) : [];
+    const drop = (board: string) => {
+      deleteDraft(ctx.db, board);
+      if (maxVersion(ctx.db, board) === 0) deleteBoard(ctx.db, board);
+      else retireBoard(ctx.db, board, now());
+    };
     if (row.liveVersion === null) {
-      if (maxVersion(ctx.db, id) === 0) deleteBoard(ctx.db, id);
-      else retireBoard(ctx.db, id, now());
+      drop(id);
+      for (const mate of mates) {
+        const other = findBoard(ctx.db, mate);
+        if (other && other.liveVersion === null && other.archivedAt === null) drop(mate);
+      }
       return { deleted: true };
     }
+    deleteDraft(ctx.db, id);
     return { deleted: false };
   });
 }
