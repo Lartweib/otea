@@ -57,6 +57,19 @@ describe('the diagram module', () => {
     expect(parseDiagram('')).toMatchObject({ ok: false });
   });
 
+  // The page words the failure in its own language: the English detail once showed inside a
+  // Spanish sentence (IDEA-7).
+  it('says why it stopped as data, for the page to word', () => {
+    expect(parseDiagram('sequenceDiagram
+  a->>b: hi')).toMatchObject({ why: 'header' });
+    expect(parseDiagram('flowchart LR
+  a --> b
+  a ==> ')).toMatchObject({ why: 'edgeEnd' });
+    expect(parseDiagram('flowchart LR
+  a{{hex}} --> b')).toMatchObject({ why: 'edge', at: '{{hex}} --> b' });
+    expect(parseDiagram('')).toMatchObject({ why: 'empty' });
+  });
+
   it('lays ranks along the flow, so every edge runs forward', () => {
     const drawing = layoutDiagram(parsed(ROTATION));
     const x = (id: string) => drawing.nodes.find((node) => node.id === id)?.x ?? -1;

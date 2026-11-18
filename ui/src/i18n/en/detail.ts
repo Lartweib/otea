@@ -136,6 +136,12 @@ export const detail = {
   'diagram.zoomOut': 'Zoom out',
   'diagram.close': 'Close',
   'diagram.unreadable': 'Can’t draw this file: line {line}, {message}. Its source follows.',
+  'diagram.why.header':
+    'it must start with “flowchart LR” (or TD, RL, BT); only flowcharts are drawn',
+  'diagram.why.unread': 'cannot read “{at}”',
+  'diagram.why.edge': 'expected an arrow such as --> before “{at}”',
+  'diagram.why.edgeEnd': 'an arrow needs a node after it',
+  'diagram.why.empty': 'the file is empty',
   'diagram.newNodes': 'new in v{version}: {names}',
   'diagram.newEdges': {
     one: 'new in v{version}: {count} edge',

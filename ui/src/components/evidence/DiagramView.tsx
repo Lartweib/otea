@@ -249,7 +249,12 @@ function Version({
     return (
       <div className="dg-body">
         <p className="dg-error t-small">
-          {t('diagram.unreadable', { line: parsed.line, message: parsed.message })}
+          {t('diagram.unreadable', {
+            line: parsed.line,
+            message: t(`diagram.why.${parsed.why}` as 'diagram.why.header', {
+              at: parsed.at ?? '',
+            }),
+          })}
         </p>
         <Source text={text.text} added={lines} failed={parsed.line} />
       </div>
