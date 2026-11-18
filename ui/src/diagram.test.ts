@@ -9,6 +9,8 @@ const ROTATION = `flowchart LR
   %% the job runs at midnight
   job(rotation job) -- daily --> keys`;
 
+type Box = { x: number; y: number; w: number; h: number };
+
 const parsed = (source: string) => {
   const result = parseDiagram(source);
   if (!result.ok) throw new Error(result.message);
@@ -67,6 +69,29 @@ describe('the diagram module', () => {
       at: '} --> b',
     });
     expect(parseDiagram('')).toMatchObject({ why: 'empty' });
+  });
+
+  it('keeps edge labels clear of each other and of the nodes', () => {
+    const fan = `flowchart TD
+  ask{does it build} -->|yes it builds| ship[ship it]
+  ask -->|no it does not| fix[fix it]
+  ask -->|not sure yet| run[run it again]
+  fix -->|then try again| ask`;
+    for (const source of [fan, fan.replace('TD', 'LR'), ROTATION]) {
+      const drawing = layoutDiagram(parsed(source));
+      // As DiagramView draws a label: 6.8px a letter and 8px each side, 20px high.
+      const boxes = drawing.edges.flatMap(({ label, lx, ly }) =>
+        label
+          ? [{ x: lx - label.length * 3.4 - 8, y: ly - 10, w: label.length * 6.8 + 16, h: 20 }]
+          : [],
+      );
+      const meet = (a: Box, b: Box) =>
+        a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
+      boxes.forEach((box, index) => {
+        for (const other of boxes.slice(index + 1)) expect(meet(box, other)).toBe(false);
+        for (const node of drawing.nodes) expect(meet(box, node)).toBe(false);
+      });
+    }
   });
 
   it('lays ranks along the flow, so every edge runs forward', () => {
