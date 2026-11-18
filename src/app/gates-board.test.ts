@@ -232,6 +232,87 @@ describe('gates on a board', () => {
       );
     });
 
+    // A board with a land step (Integrar): the person's approval, not Done, lets the branch in.
+    function landBoard(branch: string, push?: string[]) {
+      const ctx = memoryContext();
+      const def = tareasDeRepo();
+      const guard = def.parts.fbranch?.guard;
+      if (guard) {
+        guard.base = 'main';
+        if (push) guard.push = push;
+      }
+      def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+      publishAs(ctx, def, 'brt', now);
+      publishAs(ctx, cambios(), 'bcam', now);
+      const parent = createItem(
+        ctx,
+        { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+        now,
+      );
+      const task = createItem(
+        ctx,
+        {
+          collection: 'Tareas de repo',
+          title: 'API',
+          fields: { frepo: 'api', fbranch: branch },
+          parent: parent.id,
+          actor: you,
+        },
+        now,
+      );
+      return { ctx, id: task.id };
+    }
+
+    it('says a refused merge is allowed once landed in Integrar, not only once Done (P1-8)', () => {
+      const { ctx, id } = landBoard('feat/x');
+      updateItemState(ctx.db, id, 'simpl', now());
+
+      const own = checkGate(ctx, 'merge', { branch: 'feat/x', repo: 'api' });
+      expect(own.items[0]?.text).toBe(
+        `merge refused: ${id} is in Implementar, round 1; its branch can be merged only once the person approved ${id}: while it is being landed in Integrar, or once it is Done.`,
+      );
+      const base = checkGate(ctx, 'merge', { branch: 'main', repo: 'api' }, () => ['feat/x']);
+      expect(base.items[0]?.text).toBe(
+        `merge refused: ${id} is in Implementar, round 1; main takes its branch only once the person approved ${id}: while it is being landed in Integrar, or once it is Done.`,
+      );
+      const none = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => []);
+      expect(none.refusal).toBe(
+        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo the person approved (being landed in Integrar, or Done), and this push brings in none.',
+      );
+    });
+
+    // Main-only boards (P2S-1, P2S-4): the item's branch is the base itself. A push of the base
+    // is checked against the open items on it, by their own step: allowed while one of the steps
+    // that push it is being done, so a board that pushes only in Integrar means "main, but only
+    // after my approval".
+    it('lets an item that works straight on the base push it in the steps that push it', () => {
+      const { ctx, id } = landBoard('main');
+      updateItemState(ctx.db, id, 'simpl', now());
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => [])).toMatchObject({
+        allowed: true,
+        items: [{ id, allowed: true }],
+      });
+      updateItemState(ctx.db, id, 'simpl__review', now());
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => []).allowed).toBe(false);
+      updateItemState(ctx.db, id, 'sland', now());
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => []).allowed).toBe(true);
+      // Once it is Done it no longer speaks for the base: a later push brings in no item.
+      updateItemState(ctx.db, id, 'done', now());
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => []).allowed).toBe(false);
+    });
+
+    it('refuses a push of the base until the person approved, when only Integrar pushes it', () => {
+      const { ctx, id } = landBoard('main', ['sland']);
+      updateItemState(ctx.db, id, 'simpl', now());
+      const early = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => []);
+      expect(early.allowed).toBe(false);
+      expect(early.items[0]?.text).toBe(
+        `push refused: ${id} is in Implementar; its branch can be pushed only while Integrar is being done.`,
+      );
+      updateItemState(ctx.db, id, 'sland', now());
+      expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => []).allowed).toBe(true);
+    });
+
     it('lets the Done item’s branch merge when a dropped duplicate shares it', () => {
       const { ctx, id, parent } = repoTask();
       const twin = createItem(

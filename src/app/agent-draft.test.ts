@@ -113,6 +113,10 @@ describe('an agent drafting a board', () => {
     expect(take).toContain(
       'Who does each step is its doer (any agent, a named agent or the person), never its text: write its instructions to whoever does it, and call the person "the person" (in Spanish, "la persona").',
     );
+    // A board for someone who works on main keeps no branch guard by mistake (P2S-1).
+    expect(take).toContain(
+      'Branches follow how the person works: when they work straight on main with no branches, take the guard off the branch part (or the part itself), unless they want each push of main to wait for their approval; then keep it with main as its base and as the branch of each item, pushed only in the step after their approval.',
+    );
     // A Pedido made in Studio closes on publish, as one made with draft --new does.
     expect(take).toContain(
       'Handing it in is your handoff: the person tries the board and publishes it in Studio, which closes this Pedido; there is no otea handoff to run.',

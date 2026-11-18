@@ -191,11 +191,39 @@ function baseCheck(
       text: baseGateText(board.def, item.id, position, gate, round, base),
     };
   });
+  // An open item whose branch is the base itself works straight on it (a main-only board): a push
+  // or merge of the base is its own, allowed by its own step as for any branch.
+  const onBase = selectItems(ctx.db, { collection: board.collection })
+    .filter((item) => branch && base !== '' && item.fields[branch.id] === base)
+    .filter(
+      (item) =>
+        repo === undefined || fields.repo === undefined || sameRepo(item.fields[repo], fields.repo),
+    )
+    .filter((item) => !isClosed(positionOf(item.state)));
+  const own = onBase.map((item): GateVerdict => {
+    const position = positionOf(item.state);
+    const round = itemOnBoard(ctx, item, board.def).round;
+    const allowedIn = workflowOf(ctx, item).gates?.[gate] ?? [];
+    // Its land step lands it on the base, which on its own branch is a push of the base.
+    const landing = gateAt(board.def, position, 'merge').why === 'landing';
+    return {
+      id: item.id,
+      state: item.state,
+      stateName: stateName(board.def, item.state),
+      allowed: landing || gateAt(board.def, position, gate).allowed,
+      allowedIn,
+      allowedInNames: allowedIn.map((state) => stateName(board.def, state)),
+      text: landing
+        ? baseGateText(board.def, item.id, position, gate, round, base)
+        : gateText(board.def, item.id, position, gate, round),
+    };
+  });
+  const all = [...items, ...own];
   return {
     gate,
-    allowed: items.length > 0 && items.every(({ allowed }) => allowed),
-    items,
-    held,
+    allowed: all.length > 0 && all.every(({ allowed }) => allowed),
+    items: all,
+    held: own.length > 0 ? [...held, base] : held,
   };
 }
 
