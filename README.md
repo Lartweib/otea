@@ -29,7 +29,7 @@ Download Otea for your system from [GitHub Releases](https://github.com/Lartweib
 | macOS (Apple Silicon and Intel) | `Otea-<version>-mac.dmg`: drag Otea to Applications | tray menu › **Install the otea command** (`/usr/local/bin/otea`) |
 | Linux | the `.deb` (`sudo apt install ./Otea-<version>-amd64.deb`), or the `.AppImage` for the app alone | `/usr/bin/otea` from the deb |
 
-Open Otea like any app. The first time it asks for a project: **Open folder** or **Create project**; after that it reopens the last one, and the tray menu opens another. It runs `otea serve` itself and shows the UI in its window, with no console. Agents run `otea` from any new terminal, on the CLI the app carries. Otea checks for updates at start and every few hours, downloads them in the background and says so in a corner ("Otea updated · restart"); the update applies when you restart it.
+Open Otea like any app. The first time it asks for a project: **Open folder** or **Create project**; after that it reopens the last one, and the tray menu opens another. It runs this computer's one `otea serve` itself (or uses the one already running) and shows the UI in its window, with no console; every project opens on that one server, and the project menu switches between them in the window. Agents run `otea` from any new terminal, on the CLI the app carries. Otea checks for updates at start and every few hours, downloads them in the background and says so in a corner ("Otea updated · restart"); the update applies when you restart it.
 
 The installers are not signed yet. On Windows, SmartScreen warns on the first run: **More info** › **Run anyway**. On macOS, Gatekeeper refuses the first open: Control-click Otea in Applications › **Open** (on macOS 15 and later, System Settings › Privacy & Security › **Open Anyway**); until the Mac app is signed it announces a new version with a download link instead of updating itself. More in [`desktop/README.md`](desktop/README.md).
 
@@ -88,7 +88,7 @@ A board is named in any case wherever a command takes one (`--collection encargo
 
 ### Projects
 
-`otea init` creates the project for the repository root (or the folder itself outside git) in common storage: its data goes to `$OTEA_HOME/data/<id>/` (`OTEA_HOME` defaults to `~/.otea`), the user-level registry links the root to it, and nothing is written into the repo (only `otea init --agents-md`, `otea connect` and `otea hook install` write there, when asked: see [Files Otea writes in the repo](#files-otea-writes-in-the-repo)). `otea init --local` keeps the data in `.otea/` at the root instead, excluded from git through `.git/info/exclude`. Every command finds the project from any subfolder or git worktree of that repo: the nearest registered folder containing the working directory or the main repo root, or else the nearest folder above the main repo root holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly (or a registered folder, or a project id). The MCP server and `otea serve` find the project the same way.
+`otea init` creates the project for the repository root (or the folder itself outside git) in common storage: its data goes to `$OTEA_HOME/data/<id>/` (`OTEA_HOME` defaults to `~/.otea`), the user-level registry links the root to it, and nothing is written into the repo (only `otea init --agents-md`, `otea connect` and `otea hook install` write there, when asked: see [Files Otea writes in the repo](#files-otea-writes-in-the-repo)). `otea init --local` keeps the data in `.otea/` at the root instead, excluded from git through `.git/info/exclude`. Every command finds the project from any subfolder or git worktree of that repo: the nearest registered folder containing the working directory or the main repo root, or else the nearest folder above the main repo root holding `.otea/otea.db`. So one project can also live in a product folder above several repos (the folder need not be a repo): run `otea init` there, and commands from inside any of those repos use it. `otea init` inside a repo that such a project already covers refuses; `otea init --here` creates a separate project at the repo, which then wins for it. `OTEA_PROJECT=<path>` skips discovery and names the project folder directly (or a registered folder, or a project id). The MCP server and `otea serve` find the project the same way (`otea serve` then opens that project's page on the computer's one server).
 
 Each project has an identity stored in its database: a name (its folder's) and an id, the name as a slug plus six random base32 characters (`my-app-k3x7qa`). `otea init --json` prints both next to `root`, `path` (the data folder) and `storage`, and `GET /api/project` returns them. A database created before identities gets one the first time it is opened.
 
@@ -134,7 +134,7 @@ A project created in `.otea/` (with `otea init --local`, or before common storag
 3. renames `.otea/` to `.otea.migrated-<date>-<time>/`, a backup Otea never deletes (excluded from git like `.otea/`);
 4. prints what it did and how to undo it: `otea projects forget <folder>`, rename the backup back to `.otea`, and delete the copied data folder once it is no longer needed.
 
-It refuses (exit code 18, `in_use`) while `otea serve` runs on the project, and when another process holds or writes the database during the move, leaving everything as it was. Running it again on a migrated project does nothing; if a run stopped after registering the project, the next one only moves the old folder aside, once its contents match the copy.
+It refuses (exit code 18, `in_use`) while this computer's `otea serve` runs (it holds the project's database open), and when another process holds or writes the database during the move, leaving everything as it was. Running it again on a migrated project does nothing; if a run stopped after registering the project, the next one only moves the old folder aside, once its contents match the copy.
 
 ### Attaching evidence
 
@@ -300,7 +300,7 @@ cd /path/to/your/project
 otea connect --as claude-b --model claude-opus-5-5 --effort high   # or just "otea connect" at a terminal, which asks for the name
 ```
 
-- `otea connect` writes the `otea` server into `.mcp.json` at the project root (the project config Claude Code reads), running `node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts mcp --as claude-b`, so every action through it is attributed to `claude-b`. `--model` and `--effort` give the profile the agent runs as (see [The profile an agent runs as](#the-profile-an-agent-runs-as)); `connect` refuses without them (exit 2) unless the agent already declared one, and the agent confirms it in its first session. Other servers in the file are kept, and connecting again replaces the entry. `--json` prints the path, the agent, and the `command` and `args`, to copy into clients that keep their config elsewhere (or run `claude mcp add otea -- <command> <args>`).
+- `otea connect` writes the `otea` server into `.mcp.json` at the project root (the project config Claude Code reads), running `node --disable-warning=ExperimentalWarning /path/to/otea/src/cli/main.ts mcp --as claude-b`, so every action through it is attributed to `claude-b`. The entry also pins the project (`"env": {"OTEA_PROJECT_ID": "<id>"}`): the server still finds its project from the folder it starts in, and refuses any write when that folder is another project's (exit 7, `forbidden`, naming both). The CLI honours `OTEA_PROJECT_ID` the same way when it is set. `--model` and `--effort` give the profile the agent runs as (see [The profile an agent runs as](#the-profile-an-agent-runs-as)); `connect` refuses without them (exit 2) unless the agent already declared one, and the agent confirms it in its first session. Other servers in the file are kept, and connecting again replaces the entry. `--json` prints the path, the agent, and the `command` and `args`, to copy into clients that keep their config elsewhere (or run `claude mcp add otea -- <command> <args>`).
 - `.mcp.json` then names this machine's path to Otea, so it is a file for this machine alone: `connect` keeps it out of git through `.git/info/exclude` (never `.gitignore`, which is tracked) and says so. When the repo already tracks `.mcp.json` (a team's shared servers), Otea leaves git alone and says the file is tracked, so keep the change out of your commits; `--json` tells which with `git` (`excluded`, `tracked`, or `outside` a repo).
 - The name is a short slug: at most 24 lowercase letters, digits and single dashes, starting with a letter, and not `you`, `human` or `agent`. Anything else fails with exit 6 (`invalid_agent_name`) and writes nothing. Without `--as`, `connect` asks for the name at a terminal and fails with exit 2 otherwise, so scripts pass `--as`. The web UI shows each agent by a mark derived from its name, so a stable name keeps its mark stable.
 - On initialize the server gives Otea's agent guide as its `instructions`, which clients such as Claude Code put in the agent's context.
@@ -430,10 +430,27 @@ The web UI updates live as items change, and it is where you take the decisions 
 npm run build:ui            # once, in the Otea checkout
 
 cd /path/to/your/project
-otea serve                  # Otea running at http://127.0.0.1:4400
+otea serve                  # Otea running at http://127.0.0.1:4400/p/<project id>/
 ```
 
-`otea serve` opens your browser already signed in to act on items (the session lives in an HTTP-only cookie; the token in `ui-token` in the project's data folder is never printed, except as below). Pass `--no-open` to skip the browser: at a terminal `otea serve` then prints the sign-in link (`<url>/auth?token=…`) for you to open by hand; piped to a file or a log, or with `--json`, it never prints the token and says to run `otea open`, which signs a browser in to the running server from the project. A tab opened on the plain URL without signing in is read-only.
+`otea serve` opens your browser on the project's page, already signed in to act on items (the session lives in an HTTP-only cookie; the token in `ui-token` in the Otea home is never printed, except as below). Pass `--no-open` to skip the browser: at a terminal `otea serve` then prints the sign-in link (`<url>/auth?token=…&next=/p/<id>/`) for you to open by hand; piped to a file or a log, or with `--json`, it never prints the token and says to run `otea open`, which signs a browser in to the running server on the project's page. A tab opened on the plain URL without signing in is read-only. One server serves every project of the computer: see [Several projects](#several-projects).
+
+### Several projects
+
+One Otea server runs per computer (per Otea home, `$OTEA_HOME`), and it serves every project at once: each registered project, and each local one (`otea init --local`) where `otea serve` was run. Each project has its own page on it, `http://127.0.0.1:4400/p/<project id>/`, with its API under the same path (`/p/<id>/api/…`).
+
+```sh
+cd ~/code/api && otea serve      # starts the server; opens api's page
+cd ~/code/web && otea serve      # Otea already runs on this computer: opens web's page on it
+cd ~/code/web && otea open       # the same, without trying to start anything
+```
+
+- **One sign-in for all.** The browser signs in once (`otea serve` or `otea open` from any project); the session works in every project's page. The project menu at the top left and **All projects** (Todos los proyectos) open another project in the same window, never a new tab, and nothing turns read-only.
+- **One phone pairing for all.** Opening the local network, choosing Tailscale and pairing a phone are the computer's, not a project's: a paired phone and its home-screen shortcut open every project, and the shortcut opens the project you had open last. A paired device is yours: it sees all your projects, and revoking it (Settings › Phone, `otea devices revoke`) is what protects them.
+- **Ids repeat across projects**: each project numbers its own items, so `PED-1` exists in each. Views that span projects (All projects) show the project's name next to each id.
+- **Agents are unchanged**: the CLI and the MCP server find the project from the folder they run in, with or without the server. `otea connect` also pins the project in the MCP entry (`OTEA_PROJECT_ID`): an agent's MCP server that finds itself in another project's folder refuses to write there (exit 7, `forbidden`) and says which project it is pinned to.
+- The server keeps its own state in the Otea home: `ui-token` (the sign-in key), `machine.db` (paired devices, the phone transport, whether the local network is open, notification targets, the local projects it serves), `push-keys.json` and, while it runs, `serve.json`. Agents in a separate Otea home (`OTEA_HOME=…`) get a server of their own; give it another port (`otea serve --port 4401`).
+
 
 In another terminal in the same project, create and move items and watch them update:
 
@@ -463,9 +480,9 @@ On a phone the selected item unfolds in place under its row, with its moves at t
 
 ### A phone: on the same network, or through Tailscale
 
-`otea serve` answers this computer only (127.0.0.1). A phone reaches it through a **phone transport**; the transports are interchangeable, and whichever carries the phone, it pairs once with a code shown on this computer, gets its own device token, and only paired devices get in:
+`otea serve` answers this computer only (127.0.0.1). A phone reaches it through a **phone transport**, set once for the computer (not per project); the transports are interchangeable, and whichever carries the phone, it pairs once with a code shown on this computer, gets its own device token, and only paired devices get in:
 
-- **Local network** (the default): **Open to the local network** in Settings › Phone (or `otea phone lan --open`) makes the running `otea serve` also listen on this computer's network addresses, plain HTTP, same Wi-Fi only, without a restart. The choice is kept, so every `otea serve` after (the desktop app's too) starts open; **Close to the network** (or `otea phone lan --close`) stops listening there, and paired phones stay paired but cannot reach Otea off this computer until it opens again. `otea serve --lan` opens it for that run only.
+- **Local network** (the default): **Open to the local network** in Settings › Phone (or `otea phone lan --open`, from any folder) makes the running `otea serve` also listen on this computer's network addresses, plain HTTP, same Wi-Fi only, without a restart. The choice is kept, so every `otea serve` after (the desktop app's too) starts open; **Close to the network** (or `otea phone lan --close`) stops listening there, and paired phones stay paired but cannot reach Otea off this computer until it opens again. `otea serve --lan` opens it for that run only.
 - **Tailscale**: `otea phone tailscale` gives Otea an HTTPS address on your tailnet, `https://<machine>.<tailnet>.ts.net`, that your own devices reach from anywhere.
 - **Otea relay**: a future service. It is not available yet: `otea phone relay` and Configuración say so.
 
@@ -500,11 +517,11 @@ What `tailscale serve` forwards comes from this computer, so Otea tells it apart
 
 #### Notifications
 
-On a phone over HTTPS (Tailscale), **Preferences › Notifications** (Avisos) turns on Web Push: the phone's browser subscribes with the project's own VAPID key pair (made on the first `otea serve`, kept in `push-keys.json` in the data folder with owner-only permissions) and `otea serve` posts each notice to that browser's push service, encrypted for it (aes128gcm) and to no other host. On iPhone, Safari allows it only for Otea added to the Home Screen; over the local network's plain HTTP no browser allows it, and Preferences says so. The desktop app shows the same notices as the system's notifications (see `desktop/README.md`).
+On a phone over HTTPS (Tailscale), **Preferences › Notifications** (Avisos) turns on Web Push: the phone's browser subscribes with the server's VAPID key pair (made on the first `otea serve`, kept in `push-keys.json` in the Otea home with owner-only permissions); a notice names its project and opens it and `otea serve` posts each notice to that browser's push service, encrypted for it (aes128gcm) and to no other host. On iPhone, Safari allows it only for Otea added to the Home Screen; over the local network's plain HTTP no browser allows it, and Preferences says so. The desktop app shows the same notices as the system's notifications (see `desktop/README.md`).
 
 What is told, each a switch, all on by default: something is your turn (a review, or an agent's question via `otea ask`), an agent answered your note, an item got stuck (an agent went quiet holding its lease). A burst arrives as one ("3 things are yours"), an item is told about at most once every five minutes, and optional quiet hours (off by default) keep it silent. A notice carries a title, the item's id and title and where tapping it leads (the item, or Your turn for a burst); nothing else from the item. Unpairing a phone unsubscribes it, and a subscription its push service reports gone (404, 410) is dropped. The API: `GET /api/notify`, `POST /api/notify/subscribe` (a paired device on HTTPS), `/api/notify/unsubscribe`, `/api/notify/prefs`, and the desktop app's `GET /api/notify/stream` (this computer only).
 
-Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/api` to port 4400).
+Working on the UI itself: keep `otea serve` running and start `npm run dev:ui` in the Otea checkout for hot reload (it proxies `/auth`, `/api` and each project's `/p/<id>/api` to port 4400).
 
 ## License
 
