@@ -102,7 +102,10 @@ export const detail = {
   'children.count': { one: '{count} child', other: '{count} children' },
   'children.none': 'No children',
   'children.add': 'child',
-  'children.open': '{open} of {total} open',
+  'children.open': {
+    one: '{open} of {count} part not done',
+    other: '{open} of {count} parts not done',
+  },
   'children.closedOf': '{closed} of {total} children closed',
   'children.yours': '{count} yours',
   'children.agents': '{count} with agents',

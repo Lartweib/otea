@@ -41,7 +41,7 @@ export const studioEditor = {
   'bs.editor.route.loop': 'if you send it back: next round',
   'bs.editor.route.add': 'Add a step here',
   'bs.editor.ends.about': 'About the board',
-  'bs.editor.ends.hint': 'Tap a step to edit it. Hover the line to add one with {plus}.',
+  'bs.editor.ends.hint': 'Click a step to edit it. Hover the line to add one with {plus}.',
   'bs.editor.ends.anytime': 'Any time',
   'bs.editor.vroute.add': 'Add a step',
   'bs.editor.vroute.done': 'ends here',
@@ -475,7 +475,7 @@ export const studioEditor = {
   'bs.editor.twin.title': 'The other board you made with this one',
   'bs.editor.ends.about_of': 'About {board}',
   'bs.editor.ends.hint_pair':
-    'Tap a step of either board to edit it. Hover a line to add one with {plus}.',
+    'Click a step of either board to edit it. Hover a line to add one with {plus}.',
   'bs.editor.pair.tabs': 'Joined boards',
   'bs.editor.pair.draft': 'draft',
   'bs.editor.pair.changed': 'unpublished changes',

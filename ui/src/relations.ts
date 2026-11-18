@@ -116,7 +116,7 @@ export function matchItems(
 
 // A parent's open children, as its row says it.
 export function openLabel({ total, open }: ChildrenSummary): string {
-  return t('children.open', { open, total });
+  return t('children.open', { open, count: total });
 }
 
 const SEGMENT_ORDER: Readonly<Record<NodeKind, number>> = {

@@ -170,7 +170,7 @@ export function Structure({ item }: { item: ItemView }) {
                     />
                   ))}
               </span>
-              <span className="po">{t('children.open', { open, total: kids.length })}</span>
+              <span className="po">{t('children.open', { open, count: kids.length })}</span>
             </>
           ) : null}
           <span className="sp" />

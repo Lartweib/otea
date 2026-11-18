@@ -139,7 +139,7 @@ describe('a board', () => {
     expect(html).toContain(
       '<span class="mpt"><span class="sep">·</span><span class="stp you">A verificar</span></span>',
     );
-    expect(html).toContain('2 de 2 abiertos');
+    expect(html).toContain('2 de 2 partes sin terminar');
     expect(html).toMatch(/data-k="ERR-9".*class="row child" data-k="ERR-11"/);
     // The child on another step sits in that step's group, not under its parent.
     expect(html).toMatch(/data-k="sec:verify".*class="row" data-k="ERR-10"/);

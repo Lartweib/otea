@@ -156,7 +156,7 @@ function Grid(p: {
     >
       <div
         className="mx-grid"
-        style={{ gridTemplateColumns: `minmax(64px, auto) repeat(${cols}, minmax(120px, 1fr))` }}
+        style={{ gridTemplateColumns: `minmax(48px, auto) repeat(${cols}, minmax(92px, 1fr))` }}
       >
         {p.m.rows.map((row, r) => {
           const step = p.m.ys[p.m.ys.length - 1 - r];
@@ -193,6 +193,11 @@ function Grid(p: {
       <p className="mx-title">
         {roleWord(p.m.axes.x)} → · {roleWord(p.m.axes.y)} ↑
       </p>
+      {p.m.rows.some((row) =>
+        row.some((cell) => cell.items.some((it) => Object.keys(it.estimates ?? {}).length > 0)),
+      ) ? (
+        <p className="mx-legend">{t('matrix.legend')}</p>
+      ) : null}
     </section>
   );
 }
@@ -222,13 +227,19 @@ function Chip({
           guessed ? `${item.title} · ${t('matrix.estimated', { agent: by ?? '' })}` : item.title
         }
       >
-        {pinned ? <span className="mx-pin">{t('matrix.top')}</span> : null}
         <span className="mx-t">{item.title}</span>
-        {guessed ? <span className="mx-guess">{t('matrix.guess')}</span> : null}
       </button>
-      <button type="button" className="mx-id" onClick={() => onOpen(item.id)}>
-        {item.id}
-      </button>
+      <span className="mx-meta">
+        <button type="button" className="mx-id" onClick={() => onOpen(item.id)}>
+          {item.id}
+        </button>
+        {pinned ? <span className="mx-pin">{t('matrix.top')}</span> : null}
+        {guessed ? (
+          <span className="mx-guess" title={t('matrix.estimated', { agent: by ?? '' })}>
+            {t('matrix.guess')}
+          </span>
+        ) : null}
+      </span>
     </span>
   );
 }

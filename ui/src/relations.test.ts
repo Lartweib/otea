@@ -190,9 +190,11 @@ describe('matchItems', () => {
 });
 
 describe('openLabel', () => {
-  it('says how many of the children are still open', () => {
-    expect(openLabel({ total: 4, open: 3, done: 1, discarded: 0 })).toBe('3 of 4 open');
-    expect(openLabel({ total: 2, open: 0, done: 1, discarded: 1 })).toBe('0 of 2 open');
+  // «1 de 1 abiertos» did not say of what (IDEA3-5): it names the parts.
+  it('says how many of the parts are not done yet', () => {
+    expect(openLabel({ total: 4, open: 3, done: 1, discarded: 0 })).toBe('3 of 4 parts not done');
+    expect(openLabel({ total: 2, open: 0, done: 1, discarded: 1 })).toBe('0 of 2 parts not done');
+    expect(openLabel({ total: 1, open: 1, done: 0, discarded: 0 })).toBe('1 of 1 part not done');
   });
 });
 
