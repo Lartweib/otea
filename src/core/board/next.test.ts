@@ -441,7 +441,7 @@ describe('handedText', () => {
 });
 
 describe('boardText', () => {
-  it('says the board’s own words: about, idle time, the cap and each step’s instructions', () => {
+  it('says the board’s own words: about, idle time, the cap, the values of its fields and each step’s instructions', () => {
     const board = { ...def, idle: 'Ordena el @[eart].', cap: { on: true, n: 2 } };
 
     expect(boardText(board)).toBe(
@@ -456,6 +456,10 @@ describe('boardText', () => {
         '',
         'New items',
         '  Add items only while fewer than 2 wait for the person.',
+        '',
+        'What its fields take',
+        '  Bioma: one of Pantano, Bosque',
+        '  Comprobaciones: any of Silueta, Paleta',
         '',
         '1. Concepto: any agent does it; the person reviews it',
         '   When you take it',
@@ -474,5 +478,27 @@ describe('boardText', () => {
         'Run otea next to get the item to take now.',
       ].join('\n'),
     );
+  });
+
+  it('names the values of a level and a yes or no in the language of the board', () => {
+    const board = creatures();
+    board.parts.fsev = { id: 'fsev', name: 'Gravedad', kind: 'level', hint: '', options: [] };
+    board.parts.fok = { id: 'fok', name: 'Revisado', kind: 'yesno', hint: '', options: [] };
+    board.steps[0]?.hand.push(
+      { ref: 'fsev', req: 'no', fresh: false },
+      { ref: 'fok', req: 'no', fresh: false },
+    );
+    const text = boardText(board);
+
+    expect(text).toContain('  Gravedad: one of baja, media, alta, crítica');
+    expect(text).toContain('  Revisado: sí or no');
+  });
+
+  it('leaves out a field no step uses', () => {
+    const board = creatures();
+    const options = [{ id: 'oa', name: 'A' }];
+    board.parts.fold = { id: 'fold', name: 'Antiguo', kind: 'choice', hint: '', options };
+
+    expect(boardText(board)).not.toContain('Antiguo');
   });
 });

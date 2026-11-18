@@ -40,6 +40,7 @@ import {
   type Step,
   stepById,
   type Target,
+  usedRefs,
 } from './model.ts';
 import { type ItemNote, notesBlock, notesHandLine, notesRefusal } from './notes.ts';
 import { answersBlock, type ItemQuestion, waitingAnswerText } from './questions.ts';
@@ -1117,6 +1118,17 @@ function whoReviews(step: Step): string {
 
 // What `otea board` prints: the board's own words for agents (about it, idle time, the cap) and
 // each step's instructions, mentions read with today's names.
+// The values each field the board uses takes, as the board says them, so an agent never has to
+// look for them elsewhere (an agent once read otea.db for a choice's options).
+function fieldValueLines(def: BoardDefinition): string[] {
+  const used = usedRefs(def);
+  const lang = boardLangOf(def);
+  return Object.values(def.parts).flatMap((part) => {
+    const takes = used.has(part.id) ? choicesText(part, false, lang).replace(/^; /, '') : '';
+    return takes ? [`  ${part.name}: ${takes}`] : [];
+  });
+}
+
 export function boardText(def: BoardDefinition): string {
   const lines = [`${def.name}: steps for each ${def.item}`];
   lines.push(...section('About this board', indent(mentionText(def, def.about))));
@@ -1127,6 +1139,7 @@ export function boardText(def: BoardDefinition): string {
         `  Add items only while fewer than ${def.cap.n} wait for the person.`,
       ]),
     );
+  lines.push(...section('What its fields take', fieldValueLines(def)));
   def.steps.forEach((step, index) => {
     const say = (title: string, text: string) => {
       const body = indent(mentionText(def, text)).map((line) => `   ${line}`);
