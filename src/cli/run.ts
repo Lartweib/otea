@@ -146,6 +146,7 @@ function inputFor(command: Command, values: Values, args: string[], io: Io, json
     probe: io.probe ?? (async () => false),
     ...(io.gh === undefined ? {} : { gh: io.gh }),
     ...(io.env.OTEA_HOME ? { home: resolve(io.cwd, io.env.OTEA_HOME) } : {}),
+    ...(io.env.OTEA_PROJECT_ID ? { pin: io.env.OTEA_PROJECT_ID } : {}),
     terminal: io.stdout.isTTY === true,
     warn: (message) =>
       io.stderr.write(`otea: ${message}

@@ -11,7 +11,7 @@ import {
   submitAgentDraft,
 } from '../app/agent-draft.ts';
 import { joinFacts, promptKindOf } from '../app/agent-prompts.ts';
-import { type AgentsMdAction, connectAgent, writeAgentsMd } from '../app/agents.ts';
+import { type AgentsMdAction, assertPinned, connectAgent, writeAgentsMd } from '../app/agents.ts';
 import { addBoard, addBoardSet, type BoardRecord, syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import {
@@ -314,8 +314,10 @@ function seen(project: Project, input: Input, actor: Actor = input.actor): void 
 }
 
 // Opens the project for a command an agent runs, noting the agent as seen first.
+// An agent's write: refused when the agent is pinned to another project (otea connect).
 function withAgent<T>(input: Input, use: (project: Project) => T): T {
   return withProject(input.cwd, (project) => {
+    assertPinned(input.pin, project.identity);
     seen(project, input);
     return use(project);
   });
@@ -339,6 +341,7 @@ async function withReaderWhile<T>(input: Input, use: (project: Project) => Promi
 
 async function withAgentWhile<T>(input: Input, use: (project: Project) => Promise<T>): Promise<T> {
   return withProjectWhile(input.cwd, (project) => {
+    assertPinned(input.pin, project.identity);
     seen(project, input);
     return use(project);
   });
@@ -667,7 +670,8 @@ const connect: Command = {
         );
       }
     });
-    const connection = connectAgent(root, name, withHome(OTEA, input.home));
+    const id = withProject(cwd, (project) => project.identity.id);
+    const connection = connectAgent(root, name, withHome(OTEA, input.home), id);
     // The entry names this machine's path to Otea: the file stays out of git.
     const git = keepOutOfGit(connection.path);
     const note = keptOutNote(connection.path, git);
@@ -2282,7 +2286,7 @@ const mcp: Command = {
     'Serve the agent commands as MCP tools on stdin and stdout until the client disconnects; each tool call acts as the agent its as argument names, or as the one --as names',
   args: [],
   options: {},
-  execute: async ({ cwd, agent, signal, warn }) => {
+  execute: async ({ cwd, agent, pin, signal, warn }) => {
     if (agent !== undefined) assertAgentName(agent);
     // Every agent that connected or called through this server, heard again on each beat until
     // the client disconnects: that is what makes it count as connected.
@@ -2322,7 +2326,15 @@ const mcp: Command = {
         }
       })();
       await serveStdio(
-        createMcpServer(COMMANDS, { cwd, ...named, topics, warn, greeted, heard }),
+        createMcpServer(COMMANDS, {
+          cwd,
+          ...named,
+          ...(pin === undefined ? {} : { pin }),
+          topics,
+          warn,
+          greeted,
+          heard,
+        }),
         signal,
       );
     } finally {

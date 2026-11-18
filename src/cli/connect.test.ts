@@ -83,13 +83,43 @@ describe('setup for agents', () => {
   });
 
   describe('connect', () => {
+    let id: string;
+
     beforeEach(async () => {
       await otea('init', '--local');
+      id = (await json('projects', 'current')).id;
     });
 
+    // The entry pins the project too: its server refuses writes to any other (OTEA_PROJECT_ID).
     const entry = (name: string) => ({
       command: 'node',
       args: ['--disable-warning=ExperimentalWarning', MAIN, 'mcp', '--as', name],
+      env: { OTEA_PROJECT_ID: id },
+    });
+
+    it('refuses a pinned agent writing to another project, and lets it write to its own', async () => {
+      await otea('connect', '--as', 'claude-b', ...PROFILE);
+      const elsewhere = cliAt(repo.dir, {
+        OTEA_AGENT: 'claude-b',
+        OTEA_PROJECT_ID: 'other-zzzzzz',
+      });
+      const refused = await elsewhere('create', '--collection', 'Pedidos', '--title', 'Lost');
+      expect(refused.code).toBe(7);
+      expect(refused.err).toContain('pinned to the project other-zzzzzz');
+      expect(refused.err).toContain(id);
+
+      const own = cliAt(repo.dir, { OTEA_AGENT: 'claude-b', OTEA_PROJECT_ID: id });
+      const made = await own(
+        'create',
+        '--collection',
+        'Pedidos',
+        '--title',
+        'Kept',
+        '--field',
+        'Qué necesitas=x',
+      );
+      expect(made.err).toBe('');
+      expect(made.code).toBe(0);
     });
 
     it('names --as in its usage, beside the profile', async () => {
@@ -174,7 +204,7 @@ describe('setup for agents', () => {
 
       expect(JSON.parse(read('.mcp.json')).mcpServers.otea).toEqual({
         ...entry('claude'),
-        env: { OTEA_HOME: home },
+        env: { OTEA_HOME: home, OTEA_PROJECT_ID: id },
       });
     });
 
