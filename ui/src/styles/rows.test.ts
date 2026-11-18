@@ -58,6 +58,27 @@ describe('a list row', () => {
   });
 });
 
+// The meta line is one row of flex items that never wraps: when it is too long, the board name
+// gives way first (with an ellipsis), the step stays whole, and a stuck row's "gemini-c callado"
+// shrinks only after the board is gone. The step once sat inside a shrinking box of its own and
+// slid under the next part ("Hacergemini-c callado", UI3-1).
+describe('a row’s meta line', () => {
+  it('lets the board and the step be parts of the line, not a box that shrinks under the step', () => {
+    expect(rule(lanes, '.m .bd')).toMatch(/display:\s*contents;/);
+  });
+
+  it('gives way with the board first, then with the stuck note', () => {
+    const board = rule(lanes, '.m .bd .bdc');
+    expect(board).toMatch(/min-width:\s*0;/);
+    expect(board).toMatch(/text-overflow:\s*ellipsis;/);
+    expect(Number(/flex-shrink:\s*(\d+)/.exec(board)?.[1])).toBeGreaterThan(100);
+    expect(rule(lanes, '.m .bd .bds')).toMatch(/flex:\s*none;/);
+    const part = rule(lanes, '.m .mpt');
+    expect(part).toMatch(/min-width:\s*0;/);
+    expect(part).toMatch(/overflow:\s*hidden;/);
+  });
+});
+
 describe('a table row', () => {
   it('sets its cells on the title’s baseline', () => {
     expect(rule(table, '.trow .lift')).toMatch(/align-items:\s*baseline;/);
