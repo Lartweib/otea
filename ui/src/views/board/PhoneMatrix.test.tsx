@@ -57,6 +57,32 @@ describe('the Matrix on the phone', () => {
     expect(html).toMatch(/class="pmx-axis y"[^>]*>↑ Riesgo</);
   });
 
+  // The order the person fixed was invisible on the phone (IDEA2-5): it is listed, numbered.
+  it('lists the order you fixed, in that order', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(
+      <PhoneMatrix
+        def={weighed()}
+        items={[
+          { ...item('A', { feffort: 'cl', frisk: 'critical' }), priority: { rank: 2 } },
+          { ...item('B', { feffort: 'cm', frisk: 'low' }), priority: { rank: 1 } },
+          item('C', { feffort: 'cs', frisk: 'low' }),
+        ]}
+        ticked={[]}
+        onTick={() => undefined}
+        onOpen={() => undefined}
+        onPin={() => undefined}
+        onOrder={() => undefined}
+      />,
+    );
+    expect(html).toMatch(/<span>Tu orden<\/span> <b>2<\/b>/);
+    const order = html.slice(html.indexOf('class="mx-order"'));
+    expect([...order.matchAll(/class="mx-oid"[^>]*>([^<]*)</g)].map((m) => m[1])).toEqual([
+      'B',
+      'A',
+    ]);
+  });
+
   it('heads a zone with each value beside its axis', () => {
     setLanguage('es');
     expect(render()).toContain('<span>Esfuerzo: L · Riesgo: Crítica</span>');
