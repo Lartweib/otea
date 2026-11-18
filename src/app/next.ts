@@ -533,6 +533,25 @@ export function boardRoundOf(
   return itemOnBoard(ctx, item, board.def).round;
 }
 
+// What a list row says of a closed board item: the agent that did its work (never the one that only
+// landed it), and, on a board whose protected branch is merged after Done, whether it was merged.
+export type RowFacts = { doer?: string; merge?: 'waiting' | 'merged' };
+
+export function rowFactsOf(
+  ctx: Context,
+  item: ItemRecord,
+  boards: readonly LiveBoard[] = liveBoards(ctx),
+): RowFacts {
+  const board = boards.find(({ collection }) => collection === item.collection);
+  if (!board || !isClosed(positionOf(item.state))) return {};
+  const events = selectEvents(ctx.db, item.id);
+  const { doer } = closedByOf(board.def, events);
+  const out: RowFacts = doer ? { doer } : {};
+  if (waitsToMerge(ctx, board, item)) out.merge = 'waiting';
+  else if (mergedFrom(events)) out.merge = 'merged';
+  return out;
+}
+
 // `next`'s text for one item, as the agent `me` reads it; undefined off a board.
 export function itemNextText(
   ctx: Context,

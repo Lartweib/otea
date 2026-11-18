@@ -45,6 +45,7 @@ import {
   deliverLabel,
   handRefusal,
   handRows,
+  holdApproval,
   type ItemBoardBlock,
   linksOf,
   ownStepOf,
@@ -209,7 +210,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   };
   const block0 = (item as ItemView & { board?: ItemBoardBlock }).board;
   const missing = block0?.missing ?? [];
-  // On your own step the primary hands it off ("Entregar"), asking for the note when the step does;
+  // On your own step the primary hands it off, named by the step ("Triar"), asking for the note when the step does;
   // while what the step waits for is open it stays off and says what it waits for.
   const held = waitBlock(waits);
   const deliver =
@@ -225,7 +226,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               planned.primary.move.reasonRequired || missing.some(({ ref }) => ref === 'note'),
           },
         }
-      : planned.primary;
+      : holdApproval(planned.primary, waits);
   const plan = live
     ? {
         ...planned,

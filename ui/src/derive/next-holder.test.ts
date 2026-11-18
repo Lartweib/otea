@@ -62,3 +62,15 @@ describe('who an item waits for after Atasco', () => {
     expect(agentOf(held, feed)).toBe('mender');
   });
 });
+
+describe('who a closed board item names', () => {
+  it('names the agent that did it, not the one that landed it last', () => {
+    const done = item({ id: 'B', turn: 'none', state: 'done' });
+    const feed = [
+      moved('B', 'sfix', agent('kiln'), { minutes: 30 }),
+      moved('B', 'done', agent('lander'), { minutes: 5 }),
+    ];
+    expect(agentOf(done, feed)).toBe('lander');
+    expect(agentOf({ ...done, doer: 'kiln' }, feed)).toBe('kiln');
+  });
+});

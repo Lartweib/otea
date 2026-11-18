@@ -207,6 +207,8 @@ export const board = {
   'boardView.quiet': 'quiet · {time}',
   'boardView.quietCard': 'quiet {time}',
   'boardView.round': 'round {n}',
+  'boardView.toMerge': 'branch not merged yet',
+  'boardView.merged': 'branch merged',
   'boardView.queued': 'queued',
   'boardView.waits': 'waits {count}',
   'boardView.col.title': 'item',

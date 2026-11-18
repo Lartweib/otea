@@ -54,6 +54,10 @@ export type Item = {
   priority?: { pin?: number; rank?: number };
   // The analysis role fields an agent set and the person has not touched since: part id → agent.
   estimates?: Record<string, string>;
+  // A closed board item (app/next.ts rowFactsOf): the agent that did its work, never the one that
+  // only landed it, and whether its protected branch waits to be merged or was merged.
+  doer?: string;
+  merge?: 'waiting' | 'merged';
 };
 
 // `profile`: what the agent behind the event (the one acting, or relaying your word) had declared

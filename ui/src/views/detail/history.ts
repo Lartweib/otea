@@ -198,6 +198,18 @@ export function historyOf(
           const key = asked ? 'sheet.h.asked' : again ? 'sheet.h.handedAgain' : 'sheet.h.handed';
           return { ...base, text: t(key, { state }), ...q };
         }
+        // Its own step handed off to another agent's review: a handoff, not a plain move.
+        const next = positionOf(to);
+        if (
+          board &&
+          !isClosed(from) &&
+          from.phase === 'doing' &&
+          !isClosed(next) &&
+          next.phase !== 'doing'
+        ) {
+          const step = stepById(board, next.step)?.name ?? state;
+          return { ...base, text: t('sheet.h.handedReview', { step }), ...q };
+        }
         return { ...base, text: t('sheet.h.moved', { state }), ...q };
       }
       if (target?.closes === 'discarded')

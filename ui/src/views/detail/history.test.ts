@@ -428,9 +428,9 @@ describe('who did what on a board, in the history', () => {
       ['Lo cerró: done', 'Mender'],
       ['Lo entregaste: pasa a Integrar', 'tú'],
       ['Lo aprobó: pasa a Aprobar', 'rev'],
-      ['Lo pasó a Hacer (revisión)', 'Mender'],
+      ['Lo entregó: otro agente revisa Hacer', 'Mender'],
       ['Lo devolvió a Hacer con notas', 'rev'],
-      ['Lo pasó a Hacer (revisión)', 'Mender'],
+      ['Lo entregó: otro agente revisa Hacer', 'Mender'],
     ]);
   });
 
@@ -443,7 +443,7 @@ describe('who did what on a board, in the history', () => {
       'Closed it: done',
       'You handed it off: on to Integrar',
       'Approved it: on to Aprobar',
-      'Moved it to Hacer (revisión)',
+      'Handed it off: another agent reviews Hacer',
       'Sent it back to Hacer with notes',
     ]);
   });
