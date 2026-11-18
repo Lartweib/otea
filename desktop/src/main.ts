@@ -55,6 +55,7 @@ import {
   type Connection,
   connect,
   createProject,
+  followedBase,
   probeProject,
   sourceCli,
 } from './server.ts';
@@ -316,6 +317,8 @@ class Shell {
       },
     });
     this.win.webContents.on('did-finish-load', () => this.sendNotice());
+    // The switcher opens another project in this window: the tray and the notices follow it.
+    this.win.webContents.on('did-navigate', (_event, url) => this.follow(url));
     this.win.webContents.setWindowOpenHandler(({ url }) => {
       if (/^https?:/.test(url)) void shell.openExternal(url);
       return { action: 'deny' };
@@ -402,6 +405,15 @@ class Shell {
       this.pickerError = message(error);
       await this.showPicker();
     }
+  }
+
+  // The window went to another project's page on the same server: watch that one instead.
+  private follow(url: string): void {
+    const connection = this.connection;
+    const base = connection ? followedBase(connection.url, url) : undefined;
+    if (!connection || base === undefined) return;
+    const id = base.slice(base.lastIndexOf('/') + 1);
+    this.attach({ ...connection, url: base, project: { ...connection.project, id } });
   }
 
   private attach(connection: Connection): void {

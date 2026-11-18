@@ -1,5 +1,21 @@
 import { describe, expect, it } from 'vitest';
-import { cliError, startOnFreePort } from './server.ts';
+import { cliError, followedBase, startOnFreePort } from './server.ts';
+
+describe('followedBase', () => {
+  const watched = 'http://127.0.0.1:4400/p/alpha-aaaaaa';
+
+  it('follows the window to another project of the same server', () => {
+    expect(followedBase(watched, 'http://127.0.0.1:4400/p/beta-bbbbbb/#/')).toBe(
+      'http://127.0.0.1:4400/p/beta-bbbbbb',
+    );
+  });
+
+  it('stays on a move within the same project, and never follows another site', () => {
+    expect(followedBase(watched, 'http://127.0.0.1:4400/p/alpha-aaaaaa/#/i/T-1')).toBeUndefined();
+    expect(followedBase(watched, 'https://example.com/p/beta-bbbbbb/')).toBeUndefined();
+    expect(followedBase(watched, 'http://127.0.0.1:4400/pair')).toBeUndefined();
+  });
+});
 
 describe('cliError', () => {
   it('keeps the code and the details of the CLI’s JSON error', () => {
