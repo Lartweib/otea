@@ -64,6 +64,11 @@ describe('events', () => {
     expect(await ndjson('--since', '3')).toEqual([]);
   });
 
+  it('prints the latest events with --limit alone, still in commit order', async () => {
+    expect((await ndjson('--limit', '2')).map(({ id }) => id)).toEqual([2, 3]);
+    expect((await ndjson('--item', 'TASKS-1', '--limit', '1')).map(({ id }) => id)).toEqual([3]);
+  });
+
   it('filters by --item and --collection', async () => {
     expect((await ndjson('--item', 'TASKS-1')).map(({ id }) => id)).toEqual([1, 3]);
     expect((await ndjson('--collection', 'bugs')).map(({ id }) => id)).toEqual([2]);
