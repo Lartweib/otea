@@ -297,7 +297,9 @@ export function PillWords({ summary }: { summary: PillSummary }) {
       <span>
         {summary.kind === 'working'
           ? t('shell.pill.working', { count: summary.count })
-          : t('shell.pill.waiting', { count: summary.count })}
+          : summary.kind === 'connected'
+            ? t('shell.pill.connected', { count: summary.count })
+            : t('shell.pill.waiting', { count: summary.count })}
       </span>
       {extra ? (
         <small className={extra.kind === 'quiet' ? 'wl warn-t' : 'wl'}>
@@ -323,10 +325,11 @@ function RowDoing({ row, now }: { row: AgentRow; now: number }) {
     );
   }
   if (row.state === 'idle' || !it) {
+    const time = clockOf(Math.min(row.since, now));
     return (
       <span className="held">
-        <span className="verb">
-          {t('shell.row.idle', { time: clockOf(Math.min(row.since, now)) })}
+        <span className={row.waiting ? 'verb' : 'verb warn-t'}>
+          {row.waiting ? t('shell.row.idle', { time }) : t('shell.row.connected')}
         </span>
       </span>
     );
@@ -382,6 +385,8 @@ export function AgentsMenuBody({
             {counts.holding ? <b>{t('shell.pill.working', { count: counts.holding })}</b> : null}
             {counts.holding && waiting ? ' · ' : null}
             {waiting ? t('shell.pill.waiting', { count: waiting }) : null}
+            {(counts.holding || waiting) && counts.connected ? ' · ' : null}
+            {counts.connected ? t('shell.pill.connected', { count: counts.connected }) : null}
             {counts.quiet ? (
               <>
                 {' · '}

@@ -21,6 +21,7 @@ import { laneOf } from '../../lanes/geometry.ts';
 import type { Universe } from '../../lanes/handoff.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
+import { unheard } from '../../listening.ts';
 import { actedWith } from '../../presence.ts';
 import { stateWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
@@ -269,6 +270,12 @@ function TocaRow({
             <span className="mpt nt">
               <span className="sep">·</span>
               <span className="nt-mark">{mark}</span>
+            </span>
+          ) : null}
+          {sec === 'encamino' && unheard(it, app.agents, app.now) ? (
+            <span className="mpt" data-unheard="">
+              <span className="sep">·</span>
+              <span className="warn">{t('listen.none')}</span>
             </span>
           ) : null}
         </div>

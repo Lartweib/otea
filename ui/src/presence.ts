@@ -18,6 +18,10 @@ export type Agent = {
   profile?: AgentProfile | null;
   profileConfirmed?: boolean;
   profileChangedAt?: string | null;
+  // Its open MCP server or a running otea wait heard it lately (`listening`); a running otea wait
+  // did (`waiting`): only then does what the person does here reach it. Absent from an older server.
+  listening?: boolean;
+  waiting?: boolean;
 };
 
 // What an agent declares it runs as, as declared, with the family its model groups under.
@@ -103,6 +107,8 @@ export function parseAgents(body: unknown): Agent[] {
         ...('profile' in each ? { profile: parseProfile(each.profile) } : {}),
         ...('profileConfirmed' in each ? { profileConfirmed: each.profileConfirmed === true } : {}),
         ...('profileChangedAt' in each ? { profileChangedAt: textOr(each.profileChangedAt) } : {}),
+        ...('listening' in each ? { listening: each.listening === true } : {}),
+        ...('waiting' in each ? { waiting: each.waiting === true } : {}),
       },
     ];
   });

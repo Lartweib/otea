@@ -670,6 +670,27 @@ export function clearListening(db: DatabaseSync, agent: string, at: string): voi
   ).run({ agent, at });
 }
 
+// Notes that an agent waits in otea wait now, on the CLI or over MCP: the desk's moves reach it.
+export function markWaiting(db: DatabaseSync, agent: string, at: string): void {
+  db.prepare('UPDATE agents SET waiting_at = :at WHERE name = :agent').run({ agent, at });
+}
+
+// Notes the agent no longer waiting, if it was last heard waiting `at` (and not since).
+export function clearWaiting(db: DatabaseSync, agent: string, at: string): void {
+  db.prepare('UPDATE agents SET waiting_at = NULL WHERE name = :agent AND waiting_at = :at').run({
+    agent,
+    at,
+  });
+}
+
+// When each agent was last heard waiting, for those waiting or heard waiting.
+export function selectWaiting(db: DatabaseSync): Map<string, string> {
+  const rows = db
+    .prepare('SELECT name, waiting_at FROM agents WHERE waiting_at IS NOT NULL')
+    .all() as { name: string; waiting_at: string }[];
+  return new Map(rows.map((row) => [row.name, row.waiting_at]));
+}
+
 // The MCP server an agent was last heard listening from, the harness process that started it, and
 // when it was heard.
 export function selectListener(

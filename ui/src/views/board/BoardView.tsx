@@ -360,6 +360,7 @@ function Board({ board }: { board: string }) {
     },
     onFold: toggleFold,
     onTick,
+    agents: app.agents,
   };
   const empty: LaneBlock[] | null = !items.length
     ? [

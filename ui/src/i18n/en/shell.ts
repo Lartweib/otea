@@ -24,6 +24,7 @@ export const shell = {
   'shell.pill.none': 'No agents',
   'shell.pill.working': { one: '{count} working', other: '{count} working' },
   'shell.pill.waiting': { one: '{count} listening', other: '{count} listening' },
+  'shell.pill.connected': { one: '{count} connected', other: '{count} connected' },
   'shell.pill.quiet': { one: '{count} quiet', other: '{count} quiet' },
   'shell.pill.noProfile': { one: '{count} without a profile', other: '{count} without a profile' },
   'shell.pill.of': 'of {count}',
@@ -33,6 +34,7 @@ export const shell = {
   'shell.row.quietRan': 'quiet since {time} · its lease ran out',
   'shell.row.wait': 'waits for your answer ·',
   'shell.row.idle': 'listening · free since {time}',
+  'shell.row.connected': 'connected · not listening: not in otea wait',
   'shell.row.noProfile': 'takes no step until it declares model and effort',
   'shell.flag.noProfile': 'no profile',
   'shell.flag.unconfirmed': 'unconfirmed',
@@ -47,7 +49,7 @@ export const shell = {
   'shell.performance': 'See performance',
   'shell.performanceLine': 'how many handoffs come back, per model',
   'shell.connectedRule':
-    'connected: holds a lease, or listens (its MCP server is open, or otea wait runs)',
+    'connected: it holds a lease or its MCP server is open; it listens only while otea wait runs',
   'shell.selfDeclared': 'each agent declares its own profile: Otea keeps it, never checks it.',
 
   // Preferences: what belongs to this browser

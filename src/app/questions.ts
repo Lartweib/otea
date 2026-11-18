@@ -19,6 +19,7 @@ import {
   selectEvents,
   selectEventsOfTypes,
 } from '../store/queries.ts';
+import { askingItems } from './asking.ts';
 import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
 import { takeItem } from './lease-take.ts';
@@ -167,4 +168,14 @@ export function answerWaiting(ctx: Context, agent: string): AnswerWaiting | unde
       return { item: item.id, question: answered.question, text: waitAnswerText(item.id) };
   }
   return undefined;
+}
+
+// The items where a question this agent asked still waits for the person, oldest first. While one
+// does, otea wait keeps the agent on its answer: other free work would wake it only for it to end
+// its turn there, and the answer would go unread.
+export function askedByAgent(ctx: Context, agent: string): string[] {
+  return [...askingItems(ctx.db)]
+    .filter(([, open]) => open.by === agent)
+    .sort(([, a], [, b]) => a.at.localeCompare(b.at))
+    .map(([id]) => id);
 }

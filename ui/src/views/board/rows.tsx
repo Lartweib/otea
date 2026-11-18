@@ -8,7 +8,9 @@ import { AgentMark, Checkbox, EnumChip, SeverityBars, StepPill } from '../../kit
 import { laneOf } from '../../lanes/geometry.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
+import { unheard } from '../../listening.ts';
 import { parentOf } from '../../nesting.ts';
+import type { Agent } from '../../presence.ts';
 import { stateWordIn, typeWord, valueWordIn } from '../../preset-words.ts';
 import { openLabel } from '../../relations.ts';
 import type { CollectionView, Item } from '../../types.ts';
@@ -28,6 +30,8 @@ export type RowCtx = {
   open: (id: string) => boolean;
   onFold: (id: string) => void;
   onTick: (id: string, shift: boolean) => void;
+  // The agents seen, to mark what waits for an agent while none listens; absent, nothing is marked.
+  agents?: readonly Agent[] | null | undefined;
 };
 
 const MIN = 60_000;
@@ -201,6 +205,12 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
                   <span>{signal}</span>
                 </span>
               ))}
+              {unheard(it, ctx.agents, ctx.now) ? (
+                <span className="mpt" data-unheard="">
+                  <span className="sep">·</span>
+                  <span className="warn">{t('listen.none')}</span>
+                </span>
+              ) : null}
             </div>
           </div>
           <span className="sev" data-leaf="">

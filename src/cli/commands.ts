@@ -71,6 +71,7 @@ import { lanOpen, type Probe, type TransportKind } from '../app/phone.ts';
 import {
   claimName,
   endListening,
+  endWaiting,
   type Harness,
   hearAgent,
   LISTEN_BEAT_MS,
@@ -95,7 +96,7 @@ import {
   setProjectIcon,
 } from '../app/project.ts';
 import { type ProofSource, tickPoint } from '../app/proofs.ts';
-import { answerWaiting, askQuestion } from '../app/questions.ts';
+import { answerWaiting, askedByAgent, askQuestion } from '../app/questions.ts';
 import { readerFilter } from '../app/reader-filter.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
@@ -1482,12 +1483,23 @@ const wait: Command = {
         input.actor.kind === 'agent' && !topicsBefore && topicsOn(project)
           ? { topics: 'on', text: `The person turned topics on. ${TOPICS_TEXT}` }
           : undefined;
+      // An agent waiting on the agent turn while its own question waits for the person waits for
+      // the answer: other free work would wake it at once, and the answer would go unread.
+      const onItsQuestion = () =>
+        input.actor.kind === 'agent' && turn === 'agent' && askedByAgent(project, me).length > 0;
       const lookFor = () =>
         topicsTurnedOn() ??
         noteWaiting(project, me) ??
         (input.actor.kind === 'agent' ? topicWaiting(project, me) : undefined) ??
         answerWaiting(project, me) ??
-        oldestWaiting(project, filter, undefined, forMe ? offerableTo(project, me) : undefined);
+        (onItsQuestion()
+          ? undefined
+          : oldestWaiting(
+              project,
+              filter,
+              undefined,
+              forMe ? offerableTo(project, me) : undefined,
+            ));
       // Waiting is listening: the agent is heard as it waits, so it counts as connected and its
       // profile stays confirmed.
       // When it was last heard: a wait whose session ended stops its agent listening at once.
@@ -1510,13 +1522,24 @@ const wait: Command = {
       beat.beat?.run();
       const waited = await watch(project.db, check, { ...options, ...beat }).finally(owner.stop);
       if (owner.orphaned() && heardAt) endListening(project.db, me, heardAt);
-      if (!('found' in waited)) return waited;
+      // It waits no more once it found something or was stopped; a timeout is called again at once.
+      const timedOut = !('found' in waited) && waited.stopped === 'timeout';
+      if (heardAt && !timedOut) endWaiting(project.db, me, heardAt);
+      if (!('found' in waited)) {
+        return { ...waited, asked: onItsQuestion() ? askedByAgent(project, me) : [] };
+      }
       const { found } = waited;
       return 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
     });
     if ('data' in result) return result;
     if (result.stopped === 'timeout') {
-      throw new CommandFailure('timeout', `No item reached the ${turn} turn within ${timeout}`);
+      const asked = result.asked.join(', ');
+      throw new CommandFailure(
+        'timeout',
+        asked === ''
+          ? `No item reached the ${turn} turn within ${timeout}`
+          : `The person has not answered your question on ${asked} within ${timeout}`,
+      );
     }
     if (owner.orphaned()) {
       throw new CommandFailure('interrupted', 'Stopped waiting: the session that started it ended');
