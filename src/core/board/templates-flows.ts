@@ -61,9 +61,10 @@ const IDEAS: Template = {
       kind: 'long',
       name: w('Options', 'Opciones'),
       hint: w(
-        'In Markdown: the problem to decide and 2 or 3 options, each with pros, cons and cost; end with your recommendation',
-        'En Markdown: el problema a decidir y 2 o 3 opciones, cada una con pros, contras y costo; cierra con tu recomendación',
+        'In Markdown: the problem to decide and 2 or 3 options, each one under a heading ### A · Name, then its pros (+ ), cons (- ) and cost; mark your recommendation with (recommended) after its name. The person picks one when reviewing',
+        'En Markdown: el problema a decidir y 2 o 3 opciones, cada una bajo un título ### A · Nombre, luego sus pros (+ ), contras (- ) y costo; marca tu recomendación con (recomendada) después del nombre. La persona elige una al revisar',
       ),
+      show: 'options',
     },
     {
       key: 'decision',
@@ -156,12 +157,12 @@ const IDEAS: Template = {
         'Qué documentaste, qué cambió desde la ronda anterior y qué riesgos ves',
       ),
       take: w(
-        'For an Idea: first open a Decision part for each architecture decision the @{brief} implies (otea create --collection #{ideaboard:arg} --parent <id> --field "What it is=Decision"), and wait for the person to close them. With the decisions taken, write the @{architecture}, draw the @{diagrams} (Mermaid flowchart, .mmd files) and attach the @{docs} (.md) that start the project. For a Decision: write the @{decision} with the option the person chose.',
-        'Para una Idea: primero abre una Decisión hija por cada decisión de arquitectura que el @{brief} implica (otea create --collection #{ideaboard:arg} --parent <id> --field "Qué es=Decisión"), y espera a que la persona las cierre. Con las decisiones tomadas, escribe el @{architecture}, dibuja los @{diagrams} (Mermaid flowchart, archivos .mmd) y adjunta los @{docs} (.md) que arrancan el proyecto. Para una Decisión: escribe la @{decision} con la opción que eligió la persona.',
+        'For an Idea: first open a Decision part for each architecture decision the @{brief} implies (otea create --collection #{ideaboard:arg} --parent <id> --field "What it is=Decision"), and wait for the person to close them. With the decisions taken, write the @{architecture}, draw the @{diagrams} (Mermaid flowchart, .mmd files) and attach the @{docs} (.md) that start the project. For a Decision: write the @{decision} with the option the person chose (otea next and otea show say which, with their comment).',
+        'Para una Idea: primero abre una Decisión hija por cada decisión de arquitectura que el @{brief} implica (otea create --collection #{ideaboard:arg} --parent <id> --field "Qué es=Decisión"), y espera a que la persona las cierre. Con las decisiones tomadas, escribe el @{architecture}, dibuja los @{diagrams} (Mermaid flowchart, archivos .mmd) y adjunta los @{docs} (.md) que arrancan el proyecto. Para una Decisión: escribe la @{decision} con la opción que eligió la persona (otea next y otea show dicen cuál, con su comentario).',
       ),
       before: w(
-        'Each decision in the @{architecture} points to its Decision by id. Each diagram reads on its own: a title, named nodes, arrows with a verb. A Decision ends here: take it to Done.',
-        'Cada decisión del @{architecture} remite a su Decisión por id. Cada diagrama se lee solo: título, nodos con nombre, flechas con verbo. Una Decisión termina aquí: llévala a Hecho.',
+        'Each decision in the @{architecture} points to its Decision by id. Each diagram reads on its own: a title, named nodes, arrows with a verb. A Decision is handed off here like any step: the person then closes it in Done, or sends it on to Plan when it leads to work.',
+        'Cada decisión del @{architecture} remite a su Decisión por id. Cada diagrama se lee solo: título, nodos con nombre, flechas con verbo. Una Decisión se entrega aquí como cualquier paso: después la persona la cierra en Hecho, o la pasa a Planificar si lleva a trabajo.',
       ),
     },
     {
@@ -175,8 +176,8 @@ const IDEAS: Template = {
         'Cuántas tareas y subtareas creaste y qué dejaste fuera',
       ),
       take: w(
-        'From the @{architecture} and the Decisions, create the tasks on the #{implementation} board: one task per delivery that can be tested, with its done criteria; split the ones that take more than a day into subtasks (otea create --parent). Link each top-level task to this idea with otea link <task> implements <this idea>, and the order with otea link <before> blocks <after>. The tasks wait until the person approves this plan.',
-        'Del @{architecture} y las Decisiones, crea las tareas en el tablero #{implementation}: una tarea por entrega que se pueda probar, con su criterio de terminado; las que llevan más de un día, divídelas en subtareas (otea create --parent). Enlaza cada tarea de primer nivel a esta idea con otea link <tarea> implements <esta idea>, y el orden con otea link <antes> blocks <después>. Las tareas esperan a que la persona apruebe este plan.',
+        'From the @{architecture} and the Decisions (for a Decision, from its @{decision} and the option the person chose), create the tasks on the #{implementation} board: one task per delivery that can be tested, with its done criteria; split the ones that take more than a day into subtasks (otea create --parent). Link each top-level task to this idea with otea link <task> implements <this idea>, and the order with otea link <before> blocks <after>. The tasks wait until the person approves this plan.',
+        'Del @{architecture} y las Decisiones (para una Decisión, de su @{decision} y la opción que eligió la persona), crea las tareas en el tablero #{implementation}: una tarea por entrega que se pueda probar, con su criterio de terminado; las que llevan más de un día, divídelas en subtareas (otea create --parent). Enlaza cada tarea de primer nivel a esta idea con otea link <tarea> implements <esta idea>, y el orden con otea link <antes> blocks <después>. Las tareas esperan a que la persona apruebe este plan.',
       ),
       before: w(
         'Each top-level task implements this idea, and the @{plan} lists them in order with their ids.',

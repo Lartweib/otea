@@ -83,6 +83,8 @@ export function describeEvent(
   if (type === 'note_left') return t('event.noteLeft');
   if (type === 'note_answered') return t('event.noteAnswered', { n: String(data.note) });
   if (type === 'question_asked') return t('event.questionAsked');
+  if (type === 'option_chosen')
+    return t('event.chose', { option: `${String(data.option)} · ${String(data.name)}` });
   if (type === 'question_answered')
     return t('event.questionAnswered', { n: String(data.question) });
   return type;

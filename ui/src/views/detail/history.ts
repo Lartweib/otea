@@ -1,3 +1,4 @@
+import { OPTION_CHOSEN } from '../../../../src/core/board/choices.ts';
 import { isClosed, positionOf } from '../../../../src/core/board/engine.ts';
 import { MERGED } from '../../../../src/core/board/merged.ts';
 import { type BoardDefinition, stepById } from '../../../../src/core/board/model.ts';
@@ -124,6 +125,16 @@ export function historyOf(
       return { ...base, text: t('sheet.h.askedYou'), quote: String(e.data.text ?? '') };
     if (e.type === QUESTION_ANSWERED)
       return { ...base, text: t('sheet.h.youAnswered'), quote: String(e.data.text ?? '') };
+    // The option you picked of a decision's, with your comment.
+    if (e.type === OPTION_CHOSEN) {
+      const option = `${String(e.data.option ?? '')} · ${String(e.data.name ?? '')}`;
+      const comment = typeof e.data.comment === 'string' && e.data.comment.trim();
+      return {
+        ...base,
+        text: t('sheet.h.chose', { option }),
+        ...(comment ? { quote: comment } : {}),
+      };
+    }
     if (e.type === 'created' && before(i, e.data.state)) {
       return { ...base, text: t(human ? 'sheet.h.createdYouBefore' : 'sheet.h.createdBefore') };
     }

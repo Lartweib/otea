@@ -157,8 +157,20 @@ async function post<T>(
   throw new Error(serverMessage(body, response.status));
 }
 
-export async function moveItem(id: string, to: string, reason: string): Promise<void> {
-  await post(`/api/items/${encodeURIComponent(id)}/move`, reason === '' ? { to } : { to, reason });
+// The option picked with an approval, on a board item that carries options, and why.
+export type MoveChoiceInput = { option: string; comment?: string };
+
+export async function moveItem(
+  id: string,
+  to: string,
+  reason: string,
+  choice?: MoveChoiceInput,
+): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/move`, {
+    to,
+    ...(reason === '' ? {} : { reason }),
+    ...(choice ? { choice } : {}),
+  });
 }
 
 // Fills fields of an item as the person (the own step's "Rellenar"), keyed by part id.

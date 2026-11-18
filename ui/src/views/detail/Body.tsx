@@ -1,4 +1,5 @@
 import { type ReactNode, useLayoutEffect, useRef } from 'react';
+import type { ItemChoice } from '../../../../src/core/board/choices.ts';
 import { attachFiles } from '../../api.ts';
 import { EvidenceList } from '../../components/EvidenceList.tsx';
 import { EvidenceModule } from '../../components/evidence/EvidenceModule.tsx';
@@ -89,6 +90,10 @@ export function bodySections(o: {
   board?:
     | {
         options: ReadonlySet<string>;
+        // The option you picked last of those options, with your comment; `picking` while you
+        // pick one as you approve (the rounds then draw no verdict of their own).
+        chosen?: ItemChoice | undefined;
+        picking?: boolean;
         rounds: ReactNode;
         roundsAfter: boolean;
         sections: Sec[];
@@ -208,6 +213,7 @@ export function bodySections(o: {
                     entry={{ module: 'options', label: v.label }}
                     field={v.field.name}
                     sideBySide
+                    chosen={board.chosen}
                   />
                 </Plain>
               ),
@@ -244,6 +250,7 @@ export function bodySections(o: {
                 entry={block.entry}
                 canWrite={canWrite}
                 quiet={!!board}
+                noVerdict={!!board?.picking}
                 {...(board ? { board: board.steps, stepName: board.railName } : {})}
               />
             </Plain>

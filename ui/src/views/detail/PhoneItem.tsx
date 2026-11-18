@@ -35,6 +35,7 @@ import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
 import { AnchorPicker, countWords, showPiece, Thread } from './NotesThread.tsx';
 import type { ItemNote } from './notes.ts';
 import { useOpened } from './opened.ts';
+import { PickForm, type PickMade } from './PickForm.tsx';
 import {
   compareFiles,
   fileMarks,
@@ -48,6 +49,7 @@ import {
   splitEvidence,
   unopenedOf,
 } from './phone-review.ts';
+import type { Pick } from './pick.ts';
 
 // Reviewing an item on the phone (mobile mock 2, 2b): what was delivered first (the round's note,
 // its evidence, what you asked the round before), the rounds of the step as one segment (Ronda N ·
@@ -81,6 +83,9 @@ type PhoneItemProps = {
   back?: ((state: string) => { agent: string | null; round: number }) | undefined;
   onClose: () => void;
   notes?: PhoneNotes | undefined;
+  // Reviewing an item that carries options (mode 'pick'): the options and the ways on, named for
+  // the pick, picked in a sheet from below; `plan` then holds the rest (the send-backs, the closes).
+  pick?: { pick: Pick; ways: MoveChoice[] } | undefined;
 };
 
 // The person's notes on the phone (the notes mock, part 4): while the agent works, the round's
@@ -527,11 +532,14 @@ export function PhoneItem(p: PhoneItemProps) {
   const [linked, setLinked] = useState(false);
 
   // ---- the moves: Aprobar and Devolver docked; a note asked for in a sheet from below ----
-  const dock = p.mode === 'moves' && app.session.canWrite;
+  const dock = (p.mode === 'moves' || p.mode === 'pick') && app.session.canWrite;
   const sendback = plan.quiet.find((c) => c.kind === 'sendback' && !c.blocked);
   const primary = plan.primary && !plan.primary.blocked ? plan.primary : null;
+  const picking = p.mode === 'pick' ? p.pick : undefined;
+  const [pickOpen, setPickOpen] = useState(false);
+  const pickBtn = useRef<HTMLButtonElement>(null);
   const leave = notesDock(p.mode, app.session.canWrite) ? p.notes?.leave : undefined;
-  const docked = (dock && (primary || sendback)) || !!leave;
+  const docked = (dock && (primary || sendback || picking)) || !!leave;
   const [asking, setAsking] = useState<Asking | null>(null);
   const [refused, setRefused] = useState('');
   const [text, setText] = useState('');
@@ -572,10 +580,13 @@ export function PhoneItem(p: PhoneItemProps) {
   const roundNotes = leave ? (p.notes?.of(leave.round) ?? []) : [];
   const noteWords = countWords(roundNotes);
 
-  const make = (c: MoveChoice, reason = '') => {
+  const make = (c: MoveChoice, reason = '', made?: PickMade) => {
     const kind = c.deliver ? 'deliver' : c.move.closes === 'done' ? 'close' : c.kind;
+    const choice = made
+      ? { option: made.option, ...(made.comment ? { comment: made.comment } : {}) }
+      : undefined;
     app
-      .move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)))
+      .move(item.id, c.move.to, reason, toastOf(kind, item.title, word(c.move.to)), choice)
       .then(() => p.onClose())
       .catch(() => setRefused(t('sheet.refused')));
   };
@@ -796,7 +807,7 @@ export function PhoneItem(p: PhoneItemProps) {
         </section>
       ) : docked ? (
         <section className="p-dock" aria-label={t('phone.r.dock')}>
-          <div className={primary && sendback ? 'btns two' : 'btns'}>
+          <div className={(primary || picking) && sendback ? 'btns two' : 'btns'}>
             {sendback ? (
               <button
                 ref={backBtn}
@@ -819,8 +830,20 @@ export function PhoneItem(p: PhoneItemProps) {
                 {primary.label}
               </button>
             ) : null}
+            {picking ? (
+              <button
+                ref={pickBtn}
+                type="button"
+                className="btn primary"
+                aria-haspopup="dialog"
+                aria-expanded={pickOpen}
+                onClick={() => setPickOpen(true)}
+              >
+                {t('pick.open')}
+              </button>
+            ) : null}
           </div>
-          {primary && unseen.unopened > 0 && !refused ? (
+          {(primary || picking) && unseen.unopened > 0 && !refused ? (
             <p className="hint unseen">
               {t('phone.r.unopened', { n: unseen.unopened, total: unseen.total })}
             </p>
@@ -921,6 +944,42 @@ export function PhoneItem(p: PhoneItemProps) {
               />
             </div>
           ) : null}
+        </BottomSheet>
+      ) : null}
+      {picking ? (
+        <BottomSheet
+          open={pickOpen}
+          label={t('pick.label')}
+          title={t('pick.label')}
+          className="p-sb p-pick"
+          from={() => pickBtn.current}
+          onClose={() => setPickOpen(false)}
+        >
+          <div data-i="">
+            <PickForm
+              pick={picking.pick}
+              ways={picking.ways}
+              onChoose={(way, made) => {
+                setPickOpen(false);
+                const no = p.refuse?.(way);
+                if (no) setRefused(no);
+                else make(way, '', made);
+              }}
+              says={(way, option) => {
+                const s = moveSaysOf(way, {
+                  agent: facts.agent,
+                  round: facts.round,
+                  word,
+                  back: p.back,
+                });
+                return (
+                  <p className="hint">
+                    {t('pick.verb', { option: option ?? '' })} <b>→ {s.state}</b> · {s.tail}
+                  </p>
+                );
+              }}
+            />
+          </div>
         </BottomSheet>
       ) : null}
       <BottomSheet

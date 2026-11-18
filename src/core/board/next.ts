@@ -27,6 +27,7 @@ import { type Lang, LEVEL_SAID, TITLE_NAME, YES_NO_SAID } from './template-words
 // given to the agent in it, as the board stores and accepts them.
 const boardLangOf = (def: BoardDefinition): Lang => (def.title === TITLE_NAME.es ? 'es' : 'en');
 
+import { choiceLines, type ItemChoice } from './choices.ts';
 import {
   type BoardDefinition,
   DONE,
@@ -110,6 +111,8 @@ export type NextInput = {
   handed?: { note: string; by: string };
   // Once Done: that its branch was merged, and the commit when given.
   merged?: { commit?: string };
+  // The option the person picked last, on an item that carries options.
+  chosen?: ItemChoice;
   // A step whose work is handed in some other way than otea handoff (a board draft on its
   // Pedido): what comes after it and the command that hands it in, in place of the handoff's.
   handIn?: { after: string; command: string };
@@ -538,7 +541,10 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
           : land
             ? ` Its branch ${branch.value} was merged in ${land.name}.`
             : ` Its branch ${branch.value} may be merged now; once it is, otea merged ${id} --pr <url>.${reopenHint(def, id)}`;
-    return `${id} · ${def.item} · ${closedName(def, position)}\nClosed: nothing left to do.${merge}`;
+    const chose = input.chosen
+      ? ` The person chose ${input.chosen.option} · ${input.chosen.name}.`
+      : '';
+    return `${id} · ${def.item} · ${closedName(def, position)}\nClosed: nothing left to do.${chose}${merge}`;
   }
   const step = stepById(def, position.step);
   if (!step) return `${id} · ${def.item}\nThis item stands in a step the board no longer has.`;
@@ -588,6 +594,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
   if (!reviewing && input.sentBack) lines.push(...sentBackLines(input.sentBack));
   if (!reviewing) lines.push(...answersBlock(input.questions ?? [], input.me));
   lines.push(...section('About this board', indent(aboutBrief(def))));
+  if (input.chosen) lines.push(...section('The person chose', choiceLines(input.chosen)));
   if (input.parent) lines.push(...section('Part of', [`  ${parentLine(input.parent)}`]));
   if (input.implements?.length)
     lines.push(

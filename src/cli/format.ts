@@ -136,6 +136,10 @@ function describeAction({ type, data }: Event): string {
       typeof anchor?.filename === 'string' ? ` (on ${anchor.filename}${at}${line}${node})` : '';
     return `note ${String(data.note)}: ${JSON.stringify(String(data.text ?? ''))}${where}`;
   }
+  if (type === 'option_chosen') {
+    const comment = typeof data.comment === 'string' ? `: ${JSON.stringify(data.comment)}` : '';
+    return `chose ${String(data.option)} · ${String(data.name)}${comment}`;
+  }
   if (type === 'question_asked' || type === 'question_answered')
     return `question ${String(data.question)}: ${JSON.stringify(String(data.text ?? ''))}`;
   if (type === 'point_proved') {

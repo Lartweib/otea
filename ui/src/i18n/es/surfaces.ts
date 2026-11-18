@@ -321,6 +321,8 @@ export const surfaces = {
   'activity.mergedYou': 'Registraste que {id} se fusionó',
   'activity.proved': 'probó un punto del checklist en {id}',
   'activity.provedYou': 'Probaste un punto del checklist en {id}',
+  'activity.chose': 'eligió una opción en {id}',
+  'activity.choseYou': 'Elegiste una opción en {id}',
   'activity.touched': 'actualizó {id}',
   'activity.touchedYou': 'Actualizaste {id}',
   'activity.movedYou': 'Moviste {id} a {state}',

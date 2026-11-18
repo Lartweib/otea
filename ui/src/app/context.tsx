@@ -10,6 +10,7 @@ import {
 import type { FeedEvent } from '../activity.ts';
 import {
   linkItems,
+  type MoveChoiceInput,
   moveItem,
   type NoteAnchorInput,
   postAnswer,
@@ -83,8 +84,15 @@ export type AppActions = {
   openItem(id: string): void;
   closeItem(): void;
   // A Q-ordered move. With a toast message, the toast offers Deshacer: the server takes the move
-  // back while the toast is up, whatever the workflow allows.
-  move(id: string, to: string, reason?: string, toast?: string): Promise<void>;
+  // back while the toast is up, whatever the workflow allows. `choice`: on a board item that
+  // carries options, the one you pick with this approval (kept as its own event).
+  move(
+    id: string,
+    to: string,
+    reason?: string,
+    toast?: string,
+    choice?: MoveChoiceInput,
+  ): Promise<void>;
   // Fills fields of an item as the person, keyed by part id.
   update(id: string, fields: Record<string, string>): Promise<void>;
   // A note to the agent doing the item's step, optionally on a piece of evidence; it moves nothing.
@@ -180,9 +188,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const { item: _open, ...view } = ref.current.route;
         go(view as ViewRoute);
       },
-      async move(id, to, reason = '', message) {
+      async move(id, to, reason = '', message, choice) {
         const before = ref.current.data.all.find((each) => each.id === id);
-        await Q.run(() => moveItem(id, to, reason));
+        await Q.run(() => moveItem(id, to, reason, choice));
         if (message === undefined) return;
         // Line, then surface, then content: the toast comes once the item has landed.
         await landed();
