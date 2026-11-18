@@ -125,6 +125,39 @@ describe('marking a Done item merged', () => {
     expect(text).not.toContain('may be merged now');
   });
 
+  it('tells the lander it merges in the land step, with no review to freeze the branch', () => {
+    const ctx = memoryContext();
+    const def = tareasDeRepo();
+    def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    const guard = def.parts.fbranch?.guard;
+    if (guard) guard.push = ['simpl', 'sland'];
+    publishAs(ctx, def, 'brt', now);
+    publishAs(ctx, cambios(), 'bcam', now);
+    const parent = createItem(
+      ctx,
+      { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+      now,
+    );
+    const { id } = createItem(
+      ctx,
+      {
+        collection: 'Tareas de repo',
+        title: 'API',
+        fields: { frepo: 'api', fbranch: 'feat/x' },
+        parent: parent.id,
+        actor: you,
+      },
+      now,
+    );
+    updateItemState(ctx.db, id, 'sland', now());
+
+    const text = itemNextText(ctx, requireItem(ctx.db, id), 'quill', now);
+    expect(text).toContain(
+      '  feat/x in api: you may push while you do Integrar; it is merged here, in Integrar.',
+    );
+    expect(text).not.toContain('While it is reviewed');
+  });
+
   it('says who did a closed item and who approved it', () => {
     const { ctx, id } = repoTask();
     updateItemState(ctx.db, id, 'simpl', now());

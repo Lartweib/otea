@@ -271,8 +271,9 @@ export function installClaudeHook(cwd: string, otea: Launcher): HookChange {
     permissions: { ...(base.permissions ?? {}), allow: [...allow, ...CLAUDE_TOPIC_RULES] },
     hooks: { ...(base.hooks ?? {}), PreToolUse: [...existing, group], Stop: [...stops, stop] },
   };
+  // What Otea adds, in the shape the file holds it, so the printed preview reads like the file.
   const content = JSON.stringify(
-    { PreToolUse: group, Stop: stop, allow: CLAUDE_TOPIC_RULES },
+    { permissions: { allow: CLAUDE_TOPIC_RULES }, hooks: { PreToolUse: [group], Stop: [stop] } },
     null,
     2,
   );

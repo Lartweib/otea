@@ -1699,7 +1699,8 @@ const reopen: Command = {
     const reason = input.option('reason') ?? '';
     return withAgent(input, (project) => {
       const { item, text } = reopenItem(project, { id, actor, channel, reason });
-      return { data: item, text };
+      // As any move answers: the item with its fields by name, and what to do now.
+      return { data: { item: itemData(project, item), text }, text };
     });
   },
 };
