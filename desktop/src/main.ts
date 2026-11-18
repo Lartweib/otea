@@ -371,7 +371,9 @@ class Shell {
   }
 
   // Opens the project of the folder: attaches to its otea serve or starts one, and shows its UI.
-  async open(dir: string, port?: number): Promise<void> {
+  // Every project opens on the one server: --port, when given, is that server's port for every
+  // open (the picker's, a recent one's, a second launch's), never only the first (P4-14).
+  async open(dir: string, port: number | undefined = PORT): Promise<void> {
     this.opening = basename(dir);
     this.pickerError = undefined;
     // An empty window says what it is opening meanwhile.
@@ -812,7 +814,7 @@ else {
       wirePicker(shellInstance);
       wireUpdates(shellInstance);
       const first = firstProject({ asked: ASKED_DIR, recents: readRecents(), exists: existsSync });
-      if (first.kind === 'open') await shellInstance.open(first.dir, PORT);
+      if (first.kind === 'open') await shellInstance.open(first.dir);
       else await shellInstance.showPicker();
     } catch (error) {
       fail(message(error));
