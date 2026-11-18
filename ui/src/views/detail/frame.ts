@@ -48,6 +48,12 @@ export function penPath(o: { x0: number; y0: number; xs: number; xe: number; y1:
   return { d, len: Math.abs(xe - x0) + Math.abs(y1 - y0) };
 }
 
+// The pen runs only from a row the sheet leaves in view: one ending left of where the sheet begins.
+// Where the item covers the list (a narrow window), there is nothing to reach across.
+export function penReaches(o: { x0: number; sheetLeft: number }): boolean {
+  return o.x0 < o.sheetLeft;
+}
+
 // Details shows five beside the headline, then "N more".
 export const DETAILS_SHOWN = 5;
 export const moreOf = (cells: number): number => Math.max(0, cells - DETAILS_SHOWN);

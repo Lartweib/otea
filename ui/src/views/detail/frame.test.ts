@@ -6,6 +6,7 @@ import {
   intakeTarget,
   moreOf,
   penPath,
+  penReaches,
   pressInView,
   shortTitle,
   stuckToastOf,
@@ -40,6 +41,14 @@ describe('the pen (mock:2845-2863)', () => {
     const p = penPath({ x0: 500, y0: 300.5, xs: 547.5, xe: 561, y1: 120.5 });
     expect(p.d).toBe('M500 300.5H538.5Q547.5 300.5 547.5 291.5V129.5Q547.5 120.5 556.5 120.5H561');
     expect(p.len).toBe(61 + 180);
+  });
+
+  // At 721 px the item covers the list: the pen ran from a row under the sheet across the item's
+  // own content (UI3-3). It is drawn only from a row the sheet leaves in view.
+  it('is drawn only when the row ends left of where the sheet begins', () => {
+    expect(penReaches({ x0: 500, sheetLeft: 547 })).toBe(true);
+    expect(penReaches({ x0: 590, sheetLeft: 10 })).toBe(false);
+    expect(penReaches({ x0: 500, sheetLeft: 500 })).toBe(false);
   });
 
   it('bends with an S when the row and the headline are almost level', () => {

@@ -5,7 +5,7 @@ import { C, clamp, F, lerp, sstep } from '../../motion/curves.ts';
 import { type Drive, drive } from '../../motion/drive.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { Tt } from '../../motion/time.ts';
-import { penPath } from './frame.ts';
+import { penPath, penReaches } from './frame.ts';
 
 // The pen (SPEC §10.2, mock:2844-2888): the open row's lane reaches across the divider into the
 // item, drawn with ink and a spark at its head. It follows the row every frame something moves
@@ -81,6 +81,7 @@ export class Pen {
       y0 = nd.top + nd.height / 2 - mr.top;
     }
     if (y0Override != null) y0 = y0Override;
+    if (!penReaches({ x0, sheetLeft: sr.left - mr.left })) return null;
     const xs = Math.round(sr.left - mr.left + 18) + 0.5;
     const xe = sr.left - mr.left + 32;
     const y1 = Math.round(hr.top - mr.top + 20) + 0.5;
