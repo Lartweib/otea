@@ -92,6 +92,23 @@ describe('the project menu’s rows', () => {
     expect(rows.find((r) => r.id === 'gone')?.line).toBe('a path is missing · /old');
   });
 
+  // P6-17: a folder on the computer means nothing on the phone, and a Windows path is noise there.
+  it('says on the phone what waits in each project, never its folder', () => {
+    setLanguage('es');
+    const { rows } = projectRows(
+      here,
+      [
+        overview({ id: 'mirefall', waiting: waiting(2) }),
+        overview({ id: 'quiet', waiting: waiting(0) }),
+      ],
+      0,
+      true,
+    );
+    expect(rows.find((r) => r.id === 'mirefall')?.line).toBe('2 te esperan');
+    expect(rows.find((r) => r.id === 'quiet')?.line).toBe('nada te espera');
+    expect(rows.map((r) => r.line).join(' ')).not.toContain('/repos/');
+  });
+
   it('adds every waiting count for Todos los proyectos', () => {
     const { total } = projectRows(
       here,

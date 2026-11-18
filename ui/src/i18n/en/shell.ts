@@ -9,6 +9,8 @@ export const shell = {
   'shell.newProject': 'new project: {command} in a repo',
   'shell.allProjectsLine': 'what waits for you, everywhere',
   'shell.unavailable': 'cannot be read now',
+  'shell.waitingThere': { one: '{count} waits for you', other: '{count} wait for you' },
+  'shell.nothingThere': 'nothing waits for you',
   'shell.pathMissing': 'a path is missing',
   'shell.settingsOf': '{project} settings',
   'shell.otherProjects': { one: '{count} other project', other: '{count} other projects' },

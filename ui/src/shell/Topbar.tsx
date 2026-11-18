@@ -180,7 +180,7 @@ function ProjectPill() {
   const project = app.project;
   const name = project?.name ?? '';
   const menu = project
-    ? projectRows(project, app.projects, tocaCount(app.all, { now: app.now }))
+    ? projectRows(project, app.projects, tocaCount(app.all, { now: app.now }), app.phone)
     : { rows: [], total: 0 };
   return (
     <>

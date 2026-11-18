@@ -282,6 +282,10 @@ describe('Te espera', () => {
       createElement('div', null, (blocks[1] as { content: ReactNode }).content),
     );
     expect(html).toContain('Refinar · en revisión');
+    // The same id lives in several projects: the project's name goes right after it.
+    expect(html).toContain(
+      '<span class="id">SAL-12</span><span class="mpt"><span class="sep">·</span><span class="pid">Salinas</span></span>',
+    );
     expect(html).not.toContain('sk3j9x');
   });
 

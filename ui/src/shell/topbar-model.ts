@@ -28,6 +28,8 @@ export function projectRows(
   project: ProjectView,
   projects: readonly ProjectOverview[] | undefined,
   yoursHere: number,
+  // On the phone a project's folder means nothing: its line says what waits there instead.
+  phone = false,
 ): { rows: ProjectRow[]; total: number } {
   const listed: ProjectOverview[] = projects?.length
     ? [...projects.filter((p) => p.current), ...projects.filter((p) => !p.current)]
@@ -57,12 +59,14 @@ export function projectRows(
     const href = each.unavailable ? undefined : projectHref(each);
     const where = whereOf(each) ?? '';
     const missing = each.paths.some((path) => path.missing);
-    const line = href ? where : t('shell.unavailable');
+    const waits = each.waiting.length;
+    const told = waits > 0 ? t('shell.waitingThere', { count: waits }) : t('shell.nothingThere');
+    const line = href ? (phone ? told : where) : t('shell.unavailable');
     return {
       id: each.id,
       name: each.name,
       current: false,
-      line: missing ? `${t('shell.pathMissing')} · ${line}` : line,
+      line: missing && !phone ? `${t('shell.pathMissing')} · ${line}` : line,
       waiting: each.waiting.length,
       ...(href ? { href } : {}),
       inert: !href,
