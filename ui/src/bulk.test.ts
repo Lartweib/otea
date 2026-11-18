@@ -91,6 +91,26 @@ describe('bulkPlan', () => {
     expect(plan.hidden).toEqual([{ moves: ['shipped'], why: 'RELS-1 waits for 1 open blocker' }]);
   });
 
+  it('never approves a decision in bulk: its approval goes through the pick, on its page', () => {
+    const DESIGN = move('design');
+    const plan = bulkPlan([
+      { item: item('IDEAS-2', 'refine__review'), moves: [DESIGN, BACK], picks: ['design'] },
+      { item: item('IDEAS-3', 'refine__review'), moves: [DESIGN, BACK] },
+    ]);
+
+    expect(to(plan.moves)).toEqual(['fixing']);
+    expect(plan.hidden).toEqual([
+      { moves: ['design'], why: 'IDEAS-2 is a decision: pick its option on its page', pick: true },
+    ]);
+    const many = bulkPlan([
+      { item: item('IDEAS-2', 'refine__review'), moves: [DESIGN], picks: ['design'] },
+      { item: item('IDEAS-3', 'refine__review'), moves: [DESIGN], picks: ['design'] },
+    ]);
+    expect(many.hidden).toEqual([
+      { moves: ['design'], why: '2 are decisions: pick each one’s option on its page', pick: true },
+    ]);
+  });
+
   it('offers nothing while the moves of an item are still loading', () => {
     const plan = bulkPlan([
       { item: item('BUGS-1', 'reported'), moves: REPORTED },

@@ -1,19 +1,26 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Channel } from '../core/authority.ts';
-import { choiceOf, OPTION_CHOSEN, pickableOptions } from '../core/board/choices.ts';
-import { isClosed, positionOf, stateOf, waysOf } from '../core/board/engine.ts';
-import { type BoardDefinition, DONE, stepById } from '../core/board/model.ts';
+import { choiceOf, OPTION_CHOSEN, pickAt } from '../core/board/choices.ts';
+import { isClosed, positionOf } from '../core/board/engine.ts';
+import { type BoardDefinition, stepById } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { appendEvent, type ItemRecord, selectEvents } from '../store/queries.ts';
 
 // The person's pick of one of a decision's options (core/board/choices.ts), made with the approval
-// out of a review: kept as an option_chosen event before the move, so the step it goes on to reads
-// it. Picking the option already chosen, with no new comment, records nothing.
+// out of the review that asks for it: kept as an option_chosen event before the move, so the step
+// it goes on to reads it. Picking the option already chosen, with no new comment, records nothing.
+// That approval never goes without a pick: the options are what the person reviews there.
 
 export type ChoiceInput = { option: string; comment?: string };
 
-type Why = 'not_person' | 'not_review' | 'not_forward' | 'no_options' | 'unknown_option';
+type Why =
+  | 'not_person'
+  | 'not_review'
+  | 'not_forward'
+  | 'no_options'
+  | 'unknown_option'
+  | 'no_pick';
 
 function refuse(id: string, why: Why, message: string): never {
   throw new OteaError(why === 'not_person' ? 'forbidden' : 'invalid_transition', message, {
@@ -21,6 +28,25 @@ function refuse(id: string, why: Why, message: string): never {
     item: id,
     why,
   });
+}
+
+// A person's approval out of a review that asks for a pick, made without one, is refused: picking
+// is the point of that review (the desk opens the pick for it).
+export function assertPicked(
+  def: BoardDefinition,
+  item: ItemRecord,
+  move: { to: string; actor: Actor },
+  choice: ChoiceInput | undefined,
+): void {
+  if (choice || move.actor.kind !== 'human') return;
+  const at = pickAt(def, item);
+  if (!at?.forward.includes(move.to)) return;
+  const letters = at.options.map(({ letter }) => letter).join(', ');
+  refuse(
+    item.id,
+    'no_pick',
+    `Not approved ${item.id}: pick one of its options (${letters}) as you approve it, on its page`,
+  );
 }
 
 export function recordChoice(
@@ -36,17 +62,14 @@ export function recordChoice(
   const position = positionOf(item.state);
   if (isClosed(position) || position.phase !== 'review')
     refuse(id, 'not_review', `Not chosen on ${id}: an option is picked when approving a review`);
-  const forward = waysOf(def, position.step).map((way) =>
-    stateOf(way === DONE ? { closed: DONE } : { step: way, phase: 'doing' }),
-  );
-  if (!forward.includes(move.to))
+  const found = pickAt(def, item);
+  if (!found) refuse(id, 'no_options', `Not chosen on ${id}: this review asks for no pick`);
+  if (!found.forward.includes(move.to))
     refuse(
       id,
       'not_forward',
       `Not chosen on ${id}: an option goes with an approval, not a send-back`,
     );
-  const found = pickableOptions(def, item.fields);
-  if (!found) refuse(id, 'no_options', `Not chosen on ${id}: it holds no options to pick from`);
   const letter = choice.option.trim().toUpperCase();
   const option = found.options.find((each) => each.letter === letter);
   if (!option) {

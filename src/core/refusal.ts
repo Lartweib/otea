@@ -138,9 +138,16 @@ export type RefusalDetails =
       why: 'not_person' | 'not_agent' | 'empty' | 'not_working' | 'asking' | 'none_open';
     }
   // An option picked with a move refused: by an agent, off a review, with a send-back, on an item
-  // with no options, or a letter its options do not have.
+  // with no options, or a letter its options do not have; or an approval that asks for a pick
+  // made without one (no_pick).
   | {
       kind: 'choice';
       item: string;
-      why: 'not_person' | 'not_review' | 'not_forward' | 'no_options' | 'unknown_option';
+      why:
+        | 'not_person'
+        | 'not_review'
+        | 'not_forward'
+        | 'no_options'
+        | 'unknown_option'
+        | 'no_pick';
     };

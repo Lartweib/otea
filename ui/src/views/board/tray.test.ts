@@ -102,6 +102,18 @@ describe('the tray notice', () => {
     });
   });
 
+  it('says a decision is approved by picking when that is all that is left out', () => {
+    const decisions = {
+      moves: [ACCEPT],
+      hidden: [{ moves: ['design'], why: '', pick: true as const }],
+      loading: false,
+    };
+    expect(trayNotice(decisions, 2)).toEqual({
+      say: 'Una decisión se aprueba eligiendo su opción, en su página.',
+      why: false,
+    });
+  });
+
   it('says nothing when every move shows', () => {
     expect(trayNotice(plan({ moves: [ACCEPT] }), 1)).toBeNull();
   });

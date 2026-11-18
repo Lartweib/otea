@@ -52,6 +52,7 @@ import {
   unopenedOf,
 } from './phone-review.ts';
 import type { Pick } from './pick.ts';
+import { takePick } from './pick-intent.ts';
 
 // Reviewing an item on the phone (mobile mock 2, 2b): what was delivered first (the round's note,
 // its evidence, what you asked the round before), the rounds of the step as one segment (Ronda N ·
@@ -540,6 +541,10 @@ export function PhoneItem(p: PhoneItemProps) {
   const picking = p.mode === 'pick' ? p.pick : undefined;
   const [pickOpen, setPickOpen] = useState(false);
   const pickBtn = useRef<HTMLButtonElement>(null);
+  // Opened from Triage to pick: the sheet opens as soon as the pick is known.
+  useEffect(() => {
+    if (picking && takePick(item.id)) setPickOpen(true);
+  }, [picking, item.id]);
   const leave = notesDock(p.mode, app.session.canWrite) ? p.notes?.leave : undefined;
   const docked = (dock && (primary || sendback || picking)) || !!leave;
   const [asking, setAsking] = useState<Asking | null>(null);

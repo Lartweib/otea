@@ -6,6 +6,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { pickAt } from '../../../src/core/board/choices.ts';
 import type { BoardDefinition } from '../../../src/core/board/model.ts';
 import { waitsOf } from '../actions.ts';
 import { evidenceFileUrl, fetchItem } from '../api.ts';
@@ -57,6 +58,7 @@ import {
 import type { Evidence, Item, ItemView, Move } from '../types.ts';
 import { useStudioBoard } from '../views/board/studio-board.tsx';
 import type { ItemBoardBlock } from '../views/detail/board-item.ts';
+import { askPick } from '../views/detail/pick-intent.ts';
 import {
   arriveUnder,
   dropFace,
@@ -260,12 +262,14 @@ type Drag = {
 export type From = { x: number; v: number };
 
 // What a card shows of the round under review: its images, the fields and other files it hands in.
-// pending: the board the item is on is still being read (its gate is not known yet).
+// pending: the board the item is on is still being read (its gate is not known yet). picks: where
+// the approvals that carry a decision's pick lead, when the review asks for one.
 type RoundShown = {
   figures: Evidence[];
   fields: { ref: string; name: string; value: string }[];
   files: Evidence[];
   gate: Gate | undefined;
+  picks?: string[] | undefined;
   pending: boolean;
 };
 
@@ -308,10 +312,11 @@ function Stamp({ side, move, word }: { side: Direction; move: Move; word: string
 }
 
 // The card's moves once its view is read and, on a board, the board too: an approval the board
-// would refuse is never offered, it is shown held with why.
+// would refuse is never offered, it is shown held with why. A decision's approval is never made
+// here: it opens the item, where the person picks one of its options as they approve.
 function planOf(view: ItemView | undefined, round: RoundShown): TriagePlan | undefined {
   if (!view || round.pending) return undefined;
-  return triagePlan(view.transitions, waitsOf(view), round.gate);
+  return triagePlan(view.transitions, waitsOf(view), round.gate, round.picks);
 }
 
 function TriCard({
@@ -333,11 +338,17 @@ function TriCard({
   const home = useRef<Flight | null>(null);
   const plan = planOf(view, round);
   const forward = plan?.forward;
+  const pick = plan?.pick;
   const back = plan?.back;
   // The card under the top one waits complete (inert): it is the same card, brought forward.
   const ready = !!plan;
 
   const approve = () => {
+    if (pick) {
+      askPick(item.id);
+      onOpen();
+      return;
+    }
     if (!forward) return;
     if (forward.reasonRequired) setNotes(true);
     else onDecide('approve');
@@ -434,6 +445,7 @@ function TriCard({
 
   const blocked = plan?.blocked?.[0];
   const waitId = `tc-wait-${item.id}`;
+  const pickId = `tc-pick-${item.id}`;
   return (
     <article
       ref={(el) => {
@@ -466,11 +478,12 @@ function TriCard({
       <div className="tc-acts">
         <Button
           variant="primary"
-          disabled={!ready || !forward}
+          disabled={!ready || !(forward || pick)}
           onClick={approve}
-          aria-describedby={blocked ? waitId : undefined}
+          aria-describedby={blocked ? waitId : pick ? pickId : undefined}
+          data-pick={pick ? '' : undefined}
         >
-          {t('triage.approve')}
+          {t(pick ? 'triage.pick' : 'triage.approve')}
         </Button>
         {!plan || back ? (
           <Button
@@ -493,6 +506,10 @@ function TriCard({
       {blocked ? (
         <p className="tc-wait" id={waitId} data-gate={round.gate ? '' : undefined}>
           {blocked.note}
+        </p>
+      ) : pick ? (
+        <p className="tc-wait" id={pickId} data-pick="">
+          {t('triage.pickNote')}
         </p>
       ) : null}
       {/* The hint names both ways: said only while both are open. */}
@@ -764,6 +781,7 @@ export function Triage() {
       fields: def ? deliveredFields(def, view, (f, v) => valueWord(type, f, v)) : [],
       files,
       gate: held ? { to: held.to, note: approvalWaitWords(held.missing) } : undefined,
+      picks: def ? pickAt(def, view)?.forward : undefined,
       pending,
     };
   }

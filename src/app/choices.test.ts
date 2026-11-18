@@ -98,13 +98,28 @@ describe('picking an option of a Decisión', () => {
     claimItem(ctx, { id, actor: quill }, now);
     updateItem(ctx, { id, fields: { Decisión: 'ADR: SQLite local' }, actor: quill }, now);
     handoffItem(ctx, { id, actor: quill, channel: 'cli', note: 'ADR escrito' }, now);
-    moveItem(ctx, { id, to: 'done', actor: you, channel: 'ui', choice: { option: 'A' } }, now);
+    // Diseñar never asks to pick again: the choice was made in Refinar.
+    expect(
+      choiceError(() =>
+        moveItem(ctx, { id, to: 'done', actor: you, channel: 'ui', choice: { option: 'B' } }, now),
+      ),
+    ).toMatchObject({ details: { why: 'no_options' } });
+    moveItem(ctx, { id, to: 'done', actor: you, channel: 'ui' }, now);
     expect(requireItem(ctx.db, id).state).toBe('done');
-    // The same pick again records nothing new.
     expect(selectEvents(ctx.db, id).filter(({ type }) => type === OPTION_CHOSEN)).toHaveLength(1);
     expect(itemNextText(ctx, requireItem(ctx.db, id), 'quill')).toContain(
       'The person chose A · SQLite local.',
     );
+  });
+
+  it('refuses an approval that picks nothing, and lets the send-back go without a pick', () => {
+    const { ctx, id, refine, design } = refinedDecision();
+    expect(
+      choiceError(() => moveItem(ctx, { id, to: design, actor: you, channel: 'ui' }, now)),
+    ).toMatchObject({ code: 'invalid_transition', details: { kind: 'choice', why: 'no_pick' } });
+    expect(requireItem(ctx.db, id).state).toBe(`${refine}__review`);
+    moveItem(ctx, { id, to: refine, actor: you, channel: 'ui', reason: 'una opción más' }, now);
+    expect(requireItem(ctx.db, id).state).toBe(refine);
   });
 
   it('refuses a letter the options do not have, an agent picking, and a send-back', () => {

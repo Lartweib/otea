@@ -25,8 +25,11 @@ export type Direction = 'right' | 'left';
 // forward: the primary move (the one that hands the turn on). back: the first other move that hands the
 // item to an agent. Either may be missing. blocked: moves that wait for open children or blockers, shown disabled
 // with why, never swiped.
+// pick: the approval of a decision's review, made only by picking one of its options on its page
+// (never by a swipe or a press here): it stands where forward would.
 export type TriagePlan = {
   forward?: Move;
+  pick?: Move;
   back?: Move;
   blocked?: Array<{ move: Move; note: string }>;
 };
@@ -39,16 +42,25 @@ export type SwipeAction =
 // gate: what a board refuses before it is tried, the approvals (by where they lead) and why.
 export type Gate = { to: readonly string[]; note: string };
 
-export function triagePlan(moves: readonly Move[], waits?: Waits, gate?: Gate): TriagePlan {
+// picks: the states the approvals that carry a pick lead to (core pickAt), when the review asks for one.
+export function triagePlan(
+  moves: readonly Move[],
+  waits?: Waits,
+  gate?: Gate,
+  picks?: readonly string[],
+): TriagePlan {
   const blocked = moves.flatMap((move) => {
     const note = gate?.to.includes(move.to) ? gate.note : moveBlock(move, waits);
     return note === undefined ? [] : [{ move, note }];
   });
   const free = moves.filter((move) => !blocked.some((entry) => entry.move === move));
-  const forward = free[moveVariants(free, waits).indexOf('primary')];
-  const back = free.find((move) => move !== forward && move.turn === 'agent');
+  const primary = free[moveVariants(free, waits).indexOf('primary')];
+  const picked = primary && picks?.includes(primary.to) ? primary : undefined;
+  const forward = picked ? undefined : primary;
+  const back = free.find((move) => move !== primary && move.turn === 'agent');
   return {
     ...(forward ? { forward } : {}),
+    ...(picked ? { pick: picked } : {}),
     ...(back ? { back } : {}),
     ...(blocked.length > 0 ? { blocked } : {}),
   };

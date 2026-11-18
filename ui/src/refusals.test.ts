@@ -185,6 +185,11 @@ describe('a refusal from the server', () => {
         { kind: 'board_unpublished', item: 'PED-1', board: 'Criaturas' },
         'PED-1 se cierra al publicar el tablero Criaturas: pruébalo y publícalo en Studio.',
       ],
+      [
+        'invalid_transition',
+        { kind: 'choice', item: 'IDEAS-2', why: 'no_pick' },
+        'No se aprobó IDEAS-2: es una decisión, elige una de sus opciones en su página.',
+      ],
       ['not_found', { kind: 'item_missing', item: 'ERR-9' }, 'No existe el ítem ERR-9.'],
       [
         'invalid_board',

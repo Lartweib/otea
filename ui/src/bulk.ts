@@ -7,14 +7,22 @@ import type { Item, Move } from './types.ts';
 // never one waiting for an item's open children (requires: children_closed), and says what keeps the
 // others out. moves: an item's moves as the API serves them to this browser, undefined while loading.
 // blockers: how many items that block it are open, read with its moves.
-export type Selected = { item: Item; moves: readonly Move[] | undefined; blockers?: number };
+// picks: where the approvals that carry a decision's pick lead (core pickAt): never made in bulk,
+// the person picks each decision's option on its page.
+export type Selected = {
+  item: Item;
+  moves: readonly Move[] | undefined;
+  blockers?: number;
+  picks?: readonly string[] | undefined;
+};
 
 export type StateCount = { state: string; count: number };
 
 export type BulkPlan = {
   moves: Move[];
   // The moves some items could take but not all, grouped by what keeps them out.
-  hidden: { moves: string[]; why: string }[];
+  // pick: kept out because a decision is approved only by picking its option, on its page.
+  hidden: { moves: string[]; why: string; pick?: true }[];
   // How many of each state, in the order the selection meets them, and as one line:
   // `2 reported · 1 verify`.
   states: StateCount[];
@@ -84,6 +92,7 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
   const offered: Move[] = [];
   const hidden = new Map<string, string[]>();
   const hide = (why: string, to: string) => hidden.set(why, [...(hidden.get(why) ?? []), to]);
+  const picked = new Set<string>();
   for (const move of all) {
     const missing = [
       ...new Set(
@@ -96,6 +105,17 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
       hide(t('bulk.notFor', { who: whoOf(states, missing) }), move.to);
       continue;
     }
+    const picking = selected.filter(({ picks }) => picks?.includes(move.to));
+    const [onlyPick] = picking;
+    if (onlyPick) {
+      const why =
+        picking.length === 1
+          ? t('bulk.pickOne', { id: onlyPick.item.id })
+          : t('bulk.pickMany', { count: picking.length });
+      picked.add(why);
+      hide(why, move.to);
+      continue;
+    }
     const blocked = selected.flatMap(({ item, moves, blockers }) => {
       const own = moves?.find(({ to }) => to === move.to);
       const why = own ? moveBlock(own, { children: item.children, blockers }) : undefined;
@@ -106,7 +126,11 @@ export function bulkPlan(selected: readonly Selected[]): BulkPlan {
   }
   return {
     moves: offered,
-    hidden: [...hidden].map(([why, moves]) => ({ moves, why })),
+    hidden: [...hidden].map(([why, moves]) => ({
+      moves,
+      why,
+      ...(picked.has(why) ? { pick: true as const } : {}),
+    })),
     states: counted,
     counts,
     narrow,

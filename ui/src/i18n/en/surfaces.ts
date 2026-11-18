@@ -339,6 +339,9 @@ export const surfaces = {
   'triage.pos': '{at} of {n}',
   'triage.decided': { one: '{count} decided', other: '{count} decided' },
   'triage.approve': 'Approve',
+  'triage.pick': 'Pick an option…',
+  'triage.pickNote':
+    'This is a decision: you approve it by picking one of its options, on its page.',
   'triage.sendBack': 'Send back…',
   'triage.later': 'Later',
   'triage.open': 'open the item',
