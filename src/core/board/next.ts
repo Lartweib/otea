@@ -684,14 +684,17 @@ function named(open: readonly Linked[], board = false): string[] {
 }
 
 // What holds a parent back while its parts are open, said of the item `id`.
+// Parts that are Done but wait to be merged are said so: "not merged yet".
 function partsHold(id: string, wait: Missing): string {
   const open = wait.open ?? [];
   const total = wait.total ?? open.length;
   const list = named(open).join(', ');
-  if (total === 1 && open.length === 1) return `its part ${list} is not finished`;
-  if (open.length === total) return `its ${total} ${wait.name} are not finished: ${list}`;
+  const state =
+    open.length > 0 && open.every((linked) => linked.unmerged) ? 'not merged yet' : 'not finished';
+  if (total === 1 && open.length === 1) return `its part ${list} is ${state}`;
+  if (open.length === total) return `its ${total} ${wait.name} are ${state}: ${list}`;
   const verb = open.length === 1 ? 'is' : 'are';
-  return `${open.length} of its ${total} ${wait.name} ${verb} not finished: ${list}`;
+  return `${open.length} of its ${total} ${wait.name} ${verb} ${state}: ${list}`;
 }
 
 // `unmerged`: every one of them is Done and waits to be merged; `some`, at least one is.
@@ -750,9 +753,11 @@ function lackingText(id: string, missing: readonly Missing[]): string {
   const waitingParts = missing.find(({ ref }) => ref === WAIT_PARTS);
   const waitingBlockers = missing.find(({ ref }) => ref === WAIT_BLOCKERS);
   if (waitingParts) {
+    const unmerged = (waitingParts.open ?? []).some((linked) => linked.unmerged);
+    const until = unmerged ? `${DONE_NAME} and merged (otea merged)` : DONE_NAME;
     lines.push(
       `Not handed off ${id}: ${partsHold(id, waitingParts)}.`,
-      `Nothing moves ${id} for them: hand it off again once they are ${DONE_NAME} or ${DROPPED_NAME}.`,
+      `Nothing moves ${id} for them: hand it off again once they are ${until} or ${DROPPED_NAME}.`,
     );
   }
   if (waitingBlockers) {

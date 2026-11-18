@@ -116,6 +116,10 @@ export const common = {
   'refusal.why.unproved': 'con prueba en {list}',
   'refusal.why.note': 'una nota',
   'refusal.why.part': 'su parte {list} sigue sin terminar',
+  'refusal.why.partsUnmerged': {
+    one: 'su parte {list} aún no se fusionó',
+    other: 'sus partes {list} aún no se fusionaron',
+  },
   'refusal.why.allParts': {
     one: 'su {count} parte sigue sin terminar: {list}',
     other: 'sus {count} partes siguen sin terminar: {list}',

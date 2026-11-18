@@ -563,6 +563,23 @@ describe('approvalRefusal: Aprobar refused in words when a wait no longer holds'
     expect(waitBlock(rows)).toBe('espera a ENT-1, que lo frena');
     setLanguage('en');
   });
+
+  it('says a parent’s Done parts not merged yet still hold it', () => {
+    setLanguage('es');
+    const item = {
+      relations: [rel('child', 'ENT-1', { collection: 'Entregas', state: 'done' })],
+      board: {
+        parts: [{ id: 'ENT-1', board: 'Entregas', closed: false, unmerged: true as const }],
+        blockers: [],
+        blocking: [],
+      },
+    } as unknown as Parameters<typeof linksOf>[0];
+    const links = linksOf(item, (r) => ({ board: r.collection }));
+    expect(approvalRefusal('TRA-1', waitRows(cambios(), 'sexec', links))).toBe(
+      'No se aprobó TRA-1: ENT-1 aún no se fusionó.',
+    );
+    setLanguage('en');
+  });
 });
 
 describe('waitBlock: Entregar held while what the step waits for is open', () => {

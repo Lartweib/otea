@@ -8,6 +8,7 @@ import type { Context } from './context.ts';
 import { initBoards } from './init-boards.ts';
 import { createItem, requireItem, updateItem } from './items.ts';
 import { claimItem } from './leases.ts';
+import { markMerged } from './merged.ts';
 import { approveItem, handoffItem, liveBoardOf } from './next.ts';
 import { memoryContext } from './testing.ts';
 
@@ -161,6 +162,11 @@ describe('a project made from an official template', () => {
     const job = newItem(ctx, jobs);
     const delivery = newItem(ctx, deliveries, { parent: job });
     expect(runToDone(ctx, delivery, deliveries)).toEqual(['Implementar', 'Aprobar el merge']);
+    markMerged(
+      ctx,
+      { id: delivery, actor: { kind: 'agent', name: 'lander' }, channel: 'cli' },
+      now,
+    );
     expect(runToDone(ctx, job, jobs)).toEqual(['Analizar', 'Entregar']);
     expect(requireItem(ctx.db, job).state).toBe('done');
   });

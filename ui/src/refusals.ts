@@ -33,6 +33,9 @@ function partsWhy(wait: Missing): string {
   const open = wait.open ?? [];
   const total = wait.total ?? open.length;
   const list = named(open);
+  // Parts Done but not merged yet still hold their parent: merge order.
+  if (open.length > 0 && open.every((linked) => linked.unmerged))
+    return t('refusal.why.partsUnmerged', { list, count: open.length });
   if (total === 1 && open.length === 1) return t('refusal.why.part', { list });
   if (open.length === total) return t('refusal.why.allParts', { list, count: total });
   return t('refusal.why.someParts', { list, count: open.length, total });

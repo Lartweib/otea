@@ -65,6 +65,23 @@ describe('marking a Done item merged', () => {
     );
   });
 
+  it('refuses a merge the forge says has not happened, or of another branch', () => {
+    const { ctx, id } = repoTask();
+    updateItemState(ctx.db, id, 'done', now());
+    const pr = 'https://github.com/o/r/pull/7';
+    const mark = (forge: { state: string; head: string }) =>
+      markMerged(ctx, { id, actor: quill, channel: 'cli', pr, forge }, now);
+
+    expect(() => mark({ state: 'OPEN', head: 'feat/x' })).toThrow(
+      `Not marked ${id} merged: its PR ${pr} is open, not merged. Merge it first, then otea merged ${id} --pr ${pr}.`,
+    );
+    expect(() => mark({ state: 'MERGED', head: 'feat/y' })).toThrow(
+      `Not marked ${id} merged: its PR ${pr} merges feat/y, not ${id}'s branch feat/x.`,
+    );
+    expect(mergedOf(ctx, id)).toBeUndefined();
+    expect(mark({ state: 'MERGED', head: 'feat/x' })).toMatchObject({ pr, branch: 'feat/x' });
+  });
+
   it('tells the agent how to record the merge while the branch waits', () => {
     const { ctx, id } = repoTask();
     updateItemState(ctx.db, id, 'done', now());
@@ -350,6 +367,21 @@ describe('reopening a Done item whose branch is not merged', () => {
     );
     markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
     expect(nextFor(ctx, 'quill', {}, now).item).toBe(parent);
+  });
+
+  it('holds the parent back until its parts are merged, not only Done', () => {
+    const { ctx, id, parent } = repoTask();
+    updateItemState(ctx.db, id, 'done', now());
+    updateItemState(ctx.db, parent, 'sexec', now());
+
+    expect(() =>
+      handoffItem(ctx, { id: parent, actor: quill, channel: 'cli', note: 'todo junto' }, now),
+    ).toThrow(`Not handed off ${parent}: its part ${id} (Done, not merged yet) is not merged yet.`);
+    markMerged(ctx, { id, actor: quill, channel: 'cli' }, now);
+    expect(
+      handoffItem(ctx, { id: parent, actor: quill, channel: 'cli', note: 'todo junto' }, now).item
+        .state,
+    ).toBe('sexec__review');
   });
 
   it('keeps the list of merges under the item it offers', () => {

@@ -16,6 +16,9 @@ export type RefusalDetails =
   // A merge marked on an item that is not Done, or marked already.
   | { kind: 'not_done'; item: string }
   | { kind: 'merged_already'; item: string }
+  // A merge marked with a PR the forge says is not merged, or merges another branch.
+  | { kind: 'pr_not_merged'; item: string; state: string }
+  | { kind: 'pr_other_branch'; item: string; head: string }
   // A reopen on a board that protects no branch: nothing to reopen it for.
   | { kind: 'no_branch'; item: string }
   // A way the item does not have from where it stands, with the ways it has: on (`ways`) and, while

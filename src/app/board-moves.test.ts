@@ -4,6 +4,7 @@ import { OteaError } from '../core/errors.ts';
 import { insertEvidence, updateItemState } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, moveItem, showItem, updateItem } from './items.ts';
+import { markMerged } from './merged.ts';
 import { approveItem, dropItem, handoffItem } from './next.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
@@ -170,6 +171,15 @@ describe('waiting for parts', () => {
       ].join('\n'),
     });
     updateItemState(ctx.db, part, 'done', now());
+    // Done is not enough for a part whose branch is protected: it must be merged too.
+    expect(refusal(() => handoffItem(ctx, { id, actor: agent, channel: 'cli' }, now))).toEqual({
+      code: 'children_open',
+      message: [
+        `Not handed off ${id}: its part ${part} (Done, not merged yet) is not merged yet.`,
+        `Nothing moves ${id} for them: hand it off again once they are Done and merged (otea merged) or Dropped.`,
+      ].join('\n'),
+    });
+    markMerged(ctx, { id: part, actor: agent, channel: 'cli' }, now);
     expect(handoffItem(ctx, { id, actor: agent, channel: 'cli' }, now).text).toBe(
       `Handed off. ${id} waits for the person to review Ejecutar.`,
     );

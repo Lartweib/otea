@@ -121,6 +121,23 @@ describe('a refusal from the server', () => {
     expect(serverMessage(unmerged, 409)).toBe(
       'No se entregó ENT-2: ENT-1 (Entregas, Hecho, sin fusionar) lo frena y aún no se fusionó.',
     );
+    const unmergedParts = refused('children_open', 'x', {
+      kind: 'handoff',
+      item: 'TRA-1',
+      missing: [
+        {
+          ref: 'wait:parts',
+          name: 'Entregas',
+          reason: 'open',
+          fresh: false,
+          open: [{ id: 'ENT-1', board: 'Entregas', closed: false, unmerged: true }],
+          total: 2,
+        },
+      ],
+    });
+    expect(serverMessage(unmergedParts, 409)).toBe(
+      'No se entregó TRA-1: su parte ENT-1 (Hecho, sin fusionar) aún no se fusionó.',
+    );
   });
 
   it('says why a discard, a send-back, an undo or a restart was refused', () => {

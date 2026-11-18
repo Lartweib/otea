@@ -50,7 +50,7 @@ describe('the facts an item on a board carries', () => {
     expect(on.facts.parts).toEqual([
       { id: a, board: 'Tareas de repo', step: 'Propuesta', closed: false },
       { id: b, board: 'Tareas de repo', step: 'Implementar', closed: false },
-      { id: c, board: 'Tareas de repo', closed: true },
+      { id: c, board: 'Tareas de repo', closed: false, unmerged: true },
     ]);
     expect(on.facts.blockers).toEqual([]);
   });
