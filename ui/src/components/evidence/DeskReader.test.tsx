@@ -107,6 +107,20 @@ describe('ReaderPane: the desk reader', () => {
     expect(html).toContain('2 of 3');
   });
 
+  it('marks the files that hold notes, with how many (DR3-14)', () => {
+    const html = renderToStaticMarkup(
+      <ReaderPane
+        evidence={files}
+        at={0}
+        onAt={noop}
+        seen={new Set()}
+        noted={new Map([[video.id, 2]])}
+      />,
+    );
+    expect(html.match(/class="rd-notes"/g)?.length).toBe(1);
+    expect(html).toMatch(/grabacion\.webm[\s\S]*?class="rd-notes">2 notes</);
+  });
+
   it('names a file with no part by its kind', () => {
     const html = renderToStaticMarkup(
       <ReaderPane evidence={[strip, shot]} at={0} onAt={noop} seen={new Set()} />,

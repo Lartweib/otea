@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { diffText } from './text-diff.ts';
+import { diffText, plainMarkdown } from './text-diff.ts';
 
 const words = (n: number, word = 'palabra') => Array.from({ length: n }, () => word).join(' ');
 
@@ -16,6 +16,17 @@ describe('diffText', () => {
       { op: 'same', text: ' duerme.' },
     ]);
     expect(second).toEqual({ kind: 'same', text: 'Sigue igual.' });
+  });
+
+  it('keeps a run of changed words together, not interleaved word by word (DR3-2)', () => {
+    const diff = diffText('El gato negro duerme.', 'El perro blanco duerme.');
+    const [first] = diff.blocks;
+    expect(first?.kind === 'changed' && first.words).toEqual([
+      { op: 'same', text: 'El ' },
+      { op: 'del', text: 'gato negro' },
+      { op: 'ins', text: 'perro blanco' },
+      { op: 'same', text: ' duerme.' },
+    ]);
   });
 
   it('reads paragraphs that came or went whole', () => {
@@ -45,5 +56,16 @@ describe('diffText', () => {
     const diff = diffText('Hola.\n\nChau.', 'Hola.\n\nChau.');
     expect(diff.changedShare).toBe(0);
     expect(diff.blocks.every((b) => b.kind === 'same')).toBe(true);
+  });
+});
+
+describe('plainMarkdown', () => {
+  it('drops the marks of headings, quotes, lists, emphasis and code (DR3-2)', () => {
+    expect(plainMarkdown('## Cambios')).toBe('Cambios');
+    expect(plainMarkdown('- Se quita `render(null)`.\n2. Una **prueba**')).toBe(
+      'Se quita render(null).\nUna prueba',
+    );
+    expect(plainMarkdown('> cita')).toBe('cita');
+    expect(plainMarkdown('a - b * c')).toBe('a - b * c');
   });
 });

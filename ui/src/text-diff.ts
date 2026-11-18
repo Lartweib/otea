@@ -62,13 +62,45 @@ const tokensOf = (text: string) => text.match(/\s+|[^\s]+/g) ?? [];
 
 const wordCount = (text: string) => text.match(/[^\s]+/g)?.length ?? 0;
 
-// One paragraph against its new version, word by word; neighbours of one kind joined.
+// One paragraph against its new version, word by word; neighbours of one kind joined. A run of
+// changes kept apart only by spaces reads as one change: what went, then what came (DR3-2), never
+// «gato perro negro blanco» word by word.
 function wordPieces(before: string, after: string): WordPiece[] {
+  const ops = edits(tokensOf(before), tokensOf(after));
   const pieces: WordPiece[] = [];
-  for (const { op, value } of edits(tokensOf(before), tokensOf(after))) {
+  const push = (op: WordPiece['op'], text: string) => {
+    if (text === '') return;
     const last = pieces.at(-1);
-    if (last && last.op === op) last.text += value;
-    else pieces.push({ op, text: value });
+    if (last && last.op === op) last.text += text;
+    else pieces.push({ op, text });
+  };
+  let at = 0;
+  while (at < ops.length) {
+    const first = ops[at] as Op<string>;
+    if (first.op === 'same') {
+      push('same', first.value);
+      at++;
+      continue;
+    }
+    // The run: changes, and the blank stretches between them that both versions keep.
+    let end = at;
+    let del = '';
+    let ins = '';
+    while (end < ops.length) {
+      const one = ops[end] as Op<string>;
+      if (one.op === 'del') del += one.value;
+      else if (one.op === 'ins') ins += one.value;
+      else {
+        const next = ops[end + 1];
+        if (!/^\s+$/.test(one.value) || !next || next.op === 'same') break;
+        del += one.value;
+        ins += one.value;
+      }
+      end++;
+    }
+    push('del', del);
+    push('ins', ins);
+    at = end;
   }
   return pieces;
 }
@@ -107,4 +139,12 @@ export function diffText(before: string, after: string, mode?: TextDiffMode): Te
   const total = wordCount(before) + wordCount(after);
   const changedShare = total === 0 ? 0 : changedWords / total;
   return { blocks, changedShare, mode: mode ?? (changedShare > 1 / 3 ? 'paragraphs' : 'words') };
+}
+
+// A piece of Markdown as words, its marks dropped: a heading's #, a quote's >, a list's bullet or
+// number at a line's start, and emphasis and code marks anywhere (DR3-2).
+export function plainMarkdown(text: string): string {
+  return text
+    .replace(/(^|\n)[ \t]*(#{1,6}[ \t]+|>[ \t]?|[-*+][ \t]+|\d+[.)][ \t]+)/g, '$1')
+    .replace(/(\*\*|__|`)/g, '');
 }

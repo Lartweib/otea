@@ -135,6 +135,14 @@
   width: min(520px, calc(100vw - 32px));
   margin-left: calc(min(520px, calc(100vw - 32px)) / -2);
 }
+/* While the desk reader is open its foot holds the note box and the moves: a toast goes over the top
+   bar instead of covering them (DR3-14). */
+@media (min-width: 721px) {
+  body:has(.rd-dialog) .toast {
+    top: 8px;
+    bottom: auto;
+  }
+}
 .toast .pline {
   transform-origin: 50% 0;
 }

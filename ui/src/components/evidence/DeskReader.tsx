@@ -21,6 +21,8 @@ type PaneProps = {
   // The board part each file went to, by module id; a file without one reads by its kind.
   parts?: ReadonlyMap<string, string> | undefined;
   marks?: ReadonlyMap<number, FileMark> | undefined;
+  // How many of the person's notes each file holds, by evidence id (DR3-14).
+  noted?: ReadonlyMap<number, number> | undefined;
   // The files opened in the reader, by evidence id.
   seen: ReadonlySet<number>;
   decide?: ReaderDecide | undefined;
@@ -37,6 +39,7 @@ export function ReaderPane({
   onAt,
   parts,
   marks,
+  noted,
   seen,
   decide,
   note,
@@ -49,6 +52,7 @@ export function ReaderPane({
           const mark = marks?.get(e.id);
           const part = e.module === null ? undefined : parts?.get(e.module);
           const side = roleWord(e);
+          const notes = noted?.get(e.id) ?? 0;
           return (
             <button
               key={e.id}
@@ -62,6 +66,9 @@ export function ReaderPane({
               <span className="rd-kd">
                 {part ?? t(`evidence.kind.${e.kind}`)}
                 {side ? ` · ${side}` : ''}
+                {notes ? (
+                  <span className="rd-notes">{t('notes.count', { count: notes })}</span>
+                ) : null}
               </span>
               {mark ? <span className={`mk ${mark}`}>{t(MARK_KEY[mark])}</span> : null}
               {seen.has(e.id) ? (

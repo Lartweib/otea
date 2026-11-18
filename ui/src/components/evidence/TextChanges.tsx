@@ -1,8 +1,20 @@
 import { useState } from 'react';
 import { t } from '../../i18n/i18n.ts';
-import { diffText, type TextDiffMode } from '../../text-diff.ts';
+import { renderMarkdown } from '../../markdown.ts';
+import { diffText, plainMarkdown, type TextDiffMode } from '../../text-diff.ts';
 import type { Evidence } from '../../types.ts';
 import { TextState, useEvidenceText } from './TextViews.tsx';
+
+// A Markdown paragraph drawn as the document draws it, never as raw markup (DR3-2).
+function Md({ text, className }: { text: string; className?: string }) {
+  return (
+    <div
+      className={className ? `md ${className}` : 'md'}
+      // biome-ignore lint/security/noDangerouslySetInnerHtml: renderMarkdown escapes raw HTML and drops dangerous links
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(text) }}
+    />
+  );
+}
 
 // A document against its version of the round before: inside a paragraph that changed, the words
 // removed and added; once more than a third of it changed, paragraph by paragraph instead, with
@@ -37,28 +49,16 @@ export function TextChanges({ evidence, earlier }: { evidence: Evidence; earlier
         {diff.blocks.map((block, at) => {
           // A block is its place in the text.
           const key = at;
-          if (block.kind === 'same') return <p key={key}>{block.text}</p>;
+          if (block.kind === 'same') return <Md key={key} text={block.text} />;
           if (block.kind === 'added')
-            return (
-              <p key={key} className="ev-ins-block">
-                <ins>{block.text}</ins>
-              </p>
-            );
+            return <Md key={key} text={block.text} className="ev-ins-block" />;
           if (block.kind === 'removed')
-            return (
-              <p key={key} className="ev-del-block">
-                <del>{block.text}</del>
-              </p>
-            );
+            return <Md key={key} text={block.text} className="ev-del-block" />;
           if (diff.mode === 'paragraphs')
             return (
               <div key={key} className="ev-para-pair">
-                <p className="ev-del-block">
-                  <del>{block.before}</del>
-                </p>
-                <p className="ev-ins-block">
-                  <ins>{block.after}</ins>
-                </p>
+                <Md text={block.before} className="ev-del-block" />
+                <Md text={block.after} className="ev-ins-block" />
               </div>
             );
           return (
@@ -66,13 +66,13 @@ export function TextChanges({ evidence, earlier }: { evidence: Evidence; earlier
               {block.words.map((w, i) =>
                 w.op === 'same' ? (
                   // biome-ignore lint/suspicious/noArrayIndexKey: a piece is its place.
-                  <span key={i}>{w.text}</span>
+                  <span key={i}>{plainMarkdown(w.text)}</span>
                 ) : w.op === 'del' ? (
                   // biome-ignore lint/suspicious/noArrayIndexKey: a piece is its place.
-                  <del key={i}>{w.text}</del>
+                  <del key={i}>{plainMarkdown(w.text)}</del>
                 ) : (
                   // biome-ignore lint/suspicious/noArrayIndexKey: a piece is its place.
-                  <ins key={i}>{w.text}</ins>
+                  <ins key={i}>{plainMarkdown(w.text)}</ins>
                 ),
               )}
             </p>

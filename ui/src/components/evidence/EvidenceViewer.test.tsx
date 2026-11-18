@@ -102,6 +102,23 @@ describe('EvidenceReader', () => {
     expect(desk).toMatch(/<textarea[^>]*><\/textarea>/);
   });
 
+  it('says a test report is commented whole, not by a line it does not draw (UI2-9)', () => {
+    const note = { onSend: async () => true };
+    const report = piece('file', 'pruebas.xml', 'application/xml');
+    keepEvidenceText(
+      `/api/evidence/${report.id}/file`,
+      '<testsuites><testsuite name="s"><testcase classname="s" name="ok"/></testsuite></testsuites>',
+    );
+    const plain = piece('file', 'config.xml', 'application/xml');
+    keepEvidenceText(`/api/evidence/${plain.id}/file`, '<config><a>1</a></config>');
+    const html = (shown: Evidence) =>
+      renderToStaticMarkup(
+        <EvidenceReader evidence={[shown]} at={0} onAt={() => {}} note={note} />,
+      );
+    expect(html(report)).toContain('This kind of file takes a note as a whole');
+    expect(html(plain)).toContain('Click a line');
+  });
+
   it('keeps the line a note begun was on, after the reader closed and opened again (DR3-16)', () => {
     const note = { onSend: async () => true };
     const diff = files[1] as Evidence;

@@ -1,4 +1,5 @@
 import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import { parseTestReport } from '../../../../src/core/test-report.ts';
 import { pairIn, roleWord } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
@@ -20,8 +21,8 @@ import {
   revealUpright,
   spotOf,
 } from './reader-pick.ts';
-import { ReportOr } from './TestReportView.tsx';
-import { DiffView, LogView } from './TextViews.tsx';
+import { mayBeReport, ReportOr } from './TestReportView.tsx';
+import { DiffView, LogView, useEvidenceText } from './TextViews.tsx';
 import { VideoPlayer } from './VideoViews.tsx';
 
 // How one piece of evidence is read, whatever module holds it: nothing opens as a raw file.
@@ -274,7 +275,9 @@ export function EvidenceReader({
     <div className="ev-reader-note">
       <div className="ev-reader-on">
         <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
-        <span>{compared ? t('notes.pick.hintCompare') : pickHint(shown, !!phone)}</span>
+        <span>
+          {compared ? t('notes.pick.hintCompare') : <PickHint evidence={shown} phone={!!phone} />}
+        </span>
       </div>
       <textarea
         rows={2}
@@ -445,4 +448,18 @@ export function EvidenceReader({
       )}
     </div>
   );
+}
+
+// What the note box says a click does on the file shown. A test report (JUnit XML, vitest or jest
+// JSON, a log that is one) is drawn as its results, not as lines: it is commented whole (UI2-9).
+function PickHint({ evidence, phone }: { evidence: Evidence; phone: boolean }) {
+  if (!mayBeReport(evidence)) return <>{pickHint(evidence, phone)}</>;
+  // Keyed by the file: the text it reads is that file's, never the one shown before.
+  return <ReportHint key={evidence.id} evidence={evidence} phone={phone} />;
+}
+
+function ReportHint({ evidence, phone }: { evidence: Evidence; phone: boolean }) {
+  const state = useEvidenceText(evidence);
+  const report = state.status === 'ready' && parseTestReport(state.text) !== null;
+  return <>{report ? t('notes.pick.hintFile') : pickHint(evidence, phone)}</>;
 }
