@@ -6,7 +6,7 @@ It is its own package so the CLI never installs Electron: the root `npm ci` does
 
 ## What the app does
 
-- **Opens a project.** The first run shows the picker: **Open folder** (a folder that is not in a project yet asks before `otea init`) or **Create project** (`otea init` in the folder chosen). Later runs reopen the last project; **Open another project…** in the tray menu goes back to the picker, with the recent projects (`recent-projects.json` in Electron's user data folder).
+- **Opens a project.** The first run shows the picker: **Open folder** (a folder that is not in a project yet asks before `otea init`) or **Create project** (`otea init` in the folder chosen). Later runs reopen the last project; **Switch project…** in the tray menu goes back to the picker, with the recent projects (`recent-projects.json` in Electron's user data folder).
 - **Runs the server itself.** If `otea serve` already runs for the project, the app attaches to it and leaves it running. Otherwise it starts `otea serve --no-open` and stops it when it switches project or quits. There is no console.
 - **Carries the CLI.** The packaged app has the Otea CLI in `resources/otea` and runs it on its own Electron as Node (`ELECTRON_RUN_AS_NODE`, as VS Code runs `code`), so no Node or npm is needed. `resources/bin` holds the commands that run it: `otea` (a shell script for macOS, Linux and Git Bash) and `otea.cmd` (cmd and PowerShell). What the CLI writes for later (`otea connect`'s `.mcp.json` entry, `otea hook install`'s hooks) runs the app's Electron the same way.
 - **Puts `otea` on PATH.**
