@@ -60,13 +60,12 @@ describe('the diagram module', () => {
   // The page words the failure in its own language: the English detail once showed inside a
   // Spanish sentence (IDEA-7).
   it('says why it stopped as data, for the page to word', () => {
-    expect(parseDiagram('sequenceDiagram
-  a->>b: hi')).toMatchObject({ why: 'header' });
-    expect(parseDiagram('flowchart LR
-  a --> b
-  a ==> ')).toMatchObject({ why: 'edgeEnd' });
-    expect(parseDiagram('flowchart LR
-  a{{hex}} --> b')).toMatchObject({ why: 'edge', at: '{{hex}} --> b' });
+    expect(parseDiagram('sequenceDiagram\n  a->>b: hi')).toMatchObject({ why: 'header' });
+    expect(parseDiagram('flowchart LR\n  a --> b\n  a ==> ')).toMatchObject({ why: 'edgeEnd' });
+    expect(parseDiagram('flowchart LR\n  a{{hex}} --> b')).toMatchObject({
+      why: 'edge',
+      at: '} --> b',
+    });
     expect(parseDiagram('')).toMatchObject({ why: 'empty' });
   });
 

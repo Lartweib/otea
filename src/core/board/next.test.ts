@@ -35,10 +35,7 @@ describe('nextText', () => {
       implements: [{ id: 'IDE-1', title: 'Pantano vivo', board: 'Ideas' }],
     });
     expect(text).toContain(
-      '
-Implements
-  IDE-1 · Pantano vivo (Ideas): what it decided is in otea show IDE-1
-',
+      '\nImplements\n  IDE-1 · Pantano vivo (Ideas): what it decided is in otea show IDE-1\n',
     );
   });
 
