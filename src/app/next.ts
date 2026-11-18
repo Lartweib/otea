@@ -605,6 +605,25 @@ function parentOf(ctx: Context, id: string): NextInput['parent'] {
   };
 }
 
+// What the item `id` implements (`id implements X`), as next names a parent: title, board and step.
+function implementedBy(ctx: Context, id: string): NonNullable<NextInput['parent']>[] {
+  return selectRelationsOf(ctx.db, id)
+    .filter((r) => r.kind === 'implements' && r.from === id)
+    .flatMap(({ to }) => {
+      const item = findItem(ctx.db, to);
+      if (!item) return [];
+      const linked = linkedOf(ctx, to);
+      return [
+        {
+          id: item.id,
+          title: item.title,
+          board: linked.board,
+          ...(linked.closed || linked.step === undefined ? {} : { step: linked.step }),
+        },
+      ];
+    });
+}
+
 function textFor(
   ctx: Context,
   item: ItemRecord,
@@ -628,6 +647,7 @@ function textFor(
   const stepName = isClosed(on.position) ? undefined : stepById(def, on.position.step)?.name;
   const handed = on.notes.findLast(({ step, round }) => step === stepName && round === on.round);
   const parent = parentOf(ctx, item.id);
+  const implemented = implementedBy(ctx, item.id);
   // A Pedido whose board draft is still to hand in (withHandIn gave its step the instructions).
   const handIn =
     def === live
@@ -654,6 +674,7 @@ function textFor(
     ...(left === undefined ? {} : { leftFor: left }),
     ...(planned === undefined ? {} : { plannedBy: planned }),
     ...(parent === undefined ? {} : { parent }),
+    ...(implemented.length === 0 ? {} : { implements: implemented }),
     ...(handed === undefined ? {} : { handed: { note: handed.note, by: handed.by } }),
     ...(merged === undefined ? {} : { merged }),
     ...(on.roundNotes.length === 0 ? {} : { notes: on.roundNotes }),
