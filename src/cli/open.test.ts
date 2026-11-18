@@ -86,6 +86,8 @@ describe('open', () => {
     expect(opened).toEqual([]);
   });
 
+  // It makes and serves a second project besides this one: twice the work of the other tests, which
+  // passed 8s on a Windows runner and 20s on a loaded one. It gets twice their budget.
   it('refuses a server that belongs to another project', async () => {
     const other = tempGitRepo();
     await cliAt(other.dir)('init', '--local');
@@ -99,7 +101,7 @@ describe('open', () => {
     expect(opened).toEqual([]);
     interrupt.abort();
     await vi.waitFor(() => other.remove());
-  });
+  }, 40_000);
 
   it('fails when no browser can be opened', async () => {
     await serve();

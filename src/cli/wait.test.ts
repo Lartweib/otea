@@ -12,13 +12,12 @@ import { errores } from '../core/board/testing.ts';
 import { listProcesses, ownerChain, type ProcessRow } from './owner.ts';
 import {
   type Cli,
-  cliAt,
   declareProfiles,
   presetCollection,
+  seedOnce,
   spawnCli,
   startCli,
   type TempRepo,
-  tempGitRepo,
   until,
 } from './testing.ts';
 
@@ -46,15 +45,18 @@ describe('wait', () => {
   const settled = async (running: { done: Promise<number> }) =>
     Promise.race([running.done.then(() => true), delay(400).then(() => false)]);
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
-    presetCollection(repo.dir, 'tasks');
-    presetCollection(repo.dir, 'bugs');
-    await otea('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
-    await otea('create', '--collection', 'tasks', '--title', 'Second', '--description', 'D');
+  // Seeded once and copied for each test: seeding through the CLI before every one of them cost a
+  // loaded Windows runner up to 30s, past the hook's budget.
+  const seeded = seedOnce(async (cli, dir) => {
+    declareProfiles(dir, 'claude', 'claude-a', 'claude-b', 'codex', 'gemini', 'quill');
+    presetCollection(dir, 'tasks');
+    presetCollection(dir, 'bugs');
+    await cli('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
+    await cli('create', '--collection', 'tasks', '--title', 'Second', '--description', 'D');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());
