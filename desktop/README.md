@@ -1,6 +1,6 @@
 # Otea desktop app
 
-The UI of `otea serve` in a window, with its state on the desktop: a static app icon, the Windows taskbar overlay, the macOS Dock badge and a tray that carries the living mark (see "The desktop shell" in `../DESIGN.md`). Installed, it is how people get Otea: it carries the CLI, puts `otea` on PATH and updates itself from GitHub Releases.
+The UI of `otea serve` in a window, with its state on the desktop: a static app icon, the count of what is yours on the Windows taskbar, the macOS Dock badge and a tray that carries the living mark (see "The desktop shell" in `../DESIGN.md`). Installed, it is how people get Otea: it carries the CLI, puts `otea` on PATH and updates itself from GitHub Releases.
 
 It is its own package so the CLI never installs Electron: the root `npm ci` does not touch this folder.
 
@@ -38,6 +38,8 @@ Electron Builder, not Electron Forge: it makes all the installers asked for (NSI
 ```sh
 npm run dist        # build.mjs, scripts/stage-cli.mjs, electron-builder --publish never
 ```
+
+The icons come from one drawing, `src/marks.ts`: the app draws its window, tray and taskbar images from it at start-up, and `npm run icons` (`scripts/render-icons.mjs`, on this folder's Electron) writes the files that ship: `build/icon.ico` (Otea.exe, its shortcut and the installer, every size from 16 to 256 hinted on its own grid), `build/icon.png` (the Mac app) and the favicons and home-screen icons in `../ui/public`. A test fails when a drawing changes and its files were not rendered again.
 
 `scripts/stage-cli.mjs` lays out the CLI in `stage/otea`: the root's `package.json`, `src` without tests, `ui/dist`, `presets`, `schemas` and the production dependencies. The installers land in `release/`. Packaging only builds for the system it runs on; CI builds all three.
 
