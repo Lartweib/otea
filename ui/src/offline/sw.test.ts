@@ -3,6 +3,8 @@ import { FROM_CACHE, PROJECT, SAVED_AT, swRoute } from './sw-routes.ts';
 import {
   type CacheLike,
   cacheFirst,
+  DATA_CACHE,
+  dataCacheFor,
   networkFirst,
   shellCache,
   staleCaches,
@@ -27,11 +29,16 @@ describe('swRoute', () => {
   });
 
   // P3C-1: a sign-in served from the cache sets no cookie, and every write is refused after.
-  it('leaves the sign-in link and the home page to the PC', () => {
+  it('leaves the sign-in link to the PC', () => {
     expect(route('/auth?token=abc&next=%2Fp%2Fweb-k3x7qa%2F', { mode: 'navigate' })).toBe(
       'network',
     );
-    expect(route('/', { mode: 'navigate' })).toBe('network');
+  });
+
+  // The home-screen shortcut opens `/`: the PC sends it to the last project; without the PC the
+  // cached page opens that project itself.
+  it('asks the PC for the home page first, and falls back to the cached app', () => {
+    expect(route('/', { mode: 'navigate' })).toBe('home');
   });
 
   it("reads a project's API under its path as the API", () => {
@@ -158,43 +165,52 @@ describe('networkFirst', () => {
   });
 });
 
-// Two projects served one after the other on the same address (the desktop app hands ports out
-// from 4400) share the browser's cache: offline, one once showed the other's items.
-describe('networkFirst, one project at a time', () => {
-  const ITEM = `${ORIGIN}/api/items/CAM-1`;
+// One server serves every project, each under /p/<id>/: each keeps its own offline answers, and
+// CAM-1 of one never shows as CAM-1 of another (DR3-9, P6).
+describe('networkFirst, a cache per project', () => {
+  const A = `${ORIGIN}/p/alpha-aaaaaa/api/items/CAM-1`;
+  const B = `${ORIGIN}/p/beta-bbbbbb/api/items/CAM-1`;
   const from = (project: string, body: unknown) =>
     new Response(JSON.stringify(body), { headers: { [PROJECT]: project } });
 
-  it('forgets what another project answered once a new one answers on this address', async () => {
-    const { cache, map } = memoryCache();
-    await networkFirst(new Request(ITEM), {
-      net: async () => from('p2', { title: 'Secret of p2' }),
-      cache,
-      now: () => 0,
-    });
-    await networkFirst(new Request(ITEMS), {
-      net: async () => from('p1', [{ id: 'CAM-3' }]),
-      cache,
-      now: () => 0,
-    });
-    expect(map.has(ITEM)).toBe(false);
-
-    const offline = await networkFirst(new Request(ITEM), { net: down, cache, now: () => 0 });
-    expect(offline.status).toBe(503);
-    const items = await networkFirst(new Request(ITEMS), { net: down, cache, now: () => 0 });
-    expect(await items.json()).toEqual([{ id: 'CAM-3' }]);
+  it('names the cache after the project in the path', () => {
+    expect(dataCacheFor(A)).toBe('otea-data-alpha-aaaaaa');
+    expect(dataCacheFor(B)).toBe('otea-data-beta-bbbbbb');
+    expect(dataCacheFor(`${ORIGIN}/api/session`)).toBe(DATA_CACHE);
   });
 
-  it('keeps every answer of the same project', async () => {
+  it("keeps each project's answers apart, and reads each one's offline", async () => {
+    const alpha = memoryCache();
+    const beta = memoryCache();
+    await networkFirst(new Request(A), {
+      net: async () => from('alpha-aaaaaa', { title: 'Alpha camera' }),
+      cache: alpha.cache,
+      now: () => 0,
+    });
+    await networkFirst(new Request(B), {
+      net: async () => from('beta-bbbbbb', { title: 'Beta camera' }),
+      cache: beta.cache,
+      now: () => 0,
+    });
+
+    const offA = await networkFirst(new Request(A), {
+      net: down,
+      cache: alpha.cache,
+      now: () => 0,
+    });
+    const offB = await networkFirst(new Request(B), { net: down, cache: beta.cache, now: () => 0 });
+    expect(await offA.json()).toEqual({ title: 'Alpha camera' });
+    expect(await offB.json()).toEqual({ title: 'Beta camera' });
+  });
+
+  it('never keeps an answer another project gave under this path', async () => {
     const { cache, map } = memoryCache();
-    await networkFirst(new Request(ITEM), { net: async () => from('p1', {}), cache, now: () => 0 });
-    await networkFirst(new Request(ITEMS), {
-      net: async () => from('p1', []),
+    await networkFirst(new Request(A), {
+      net: async () => from('beta-bbbbbb', { title: 'Beta camera' }),
       cache,
       now: () => 0,
     });
-    expect(map.has(ITEM)).toBe(true);
-    expect(map.has(ITEMS)).toBe(true);
+    expect(map.has(A)).toBe(false);
   });
 });
 
@@ -215,9 +231,18 @@ describe('cacheFirst', () => {
 });
 
 describe('versions', () => {
-  it('drops the shell caches of other versions, never the data', () => {
+  it("drops the shell caches of other versions, never a project's data", () => {
     expect(
-      staleCaches(['otea-shell-old', shellCache('new'), 'otea-data', 'someone-else'], 'new'),
+      staleCaches(
+        [
+          'otea-shell-old',
+          shellCache('new'),
+          'otea-data',
+          'otea-data-alpha-aaaaaa',
+          'someone-else',
+        ],
+        'new',
+      ),
     ).toEqual(['otea-shell-old']);
   });
 

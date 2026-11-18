@@ -1,5 +1,18 @@
 import { describe, expect, it } from 'vitest';
-import { apiUrl, projectIdOf, projectPage } from './base.ts';
+import { apiUrl, homeTarget, projectIdOf, projectPage, rememberProject } from './base.ts';
+
+describe('the last project', () => {
+  it('opens the project kept last from a page outside any project', () => {
+    const map = new Map<string, string>();
+    const kept = {
+      getItem: (key: string) => map.get(key) ?? null,
+      setItem: (key: string, value: string) => void map.set(key, value),
+    };
+    expect(homeTarget(kept)).toBeUndefined();
+    rememberProject('beta-bbbbbb', kept);
+    expect(homeTarget(kept)).toBe('/p/beta-bbbbbb/#/');
+  });
+});
 
 describe('the project a page is on', () => {
   it('reads it from the page path', () => {
