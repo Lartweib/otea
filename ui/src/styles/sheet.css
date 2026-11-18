@@ -439,6 +439,20 @@ section.evidence,
   text-transform: none;
   margin-top: 4px;
 }
+/* The evidence margin's buttons (Read one by one, Attach) line up with its label and wrap inside its
+   96px: on one line, Read one by one ran into the diff tools beside it. */
+.sheet section.evidence > .margin-label .btn {
+  display: flex;
+  max-width: 100%;
+  height: auto;
+  min-height: 30px;
+  padding: 6px 0;
+  line-height: 1.25;
+  white-space: normal;
+  text-align: start;
+  text-transform: none;
+  letter-spacing: 0;
+}
 .note blockquote {
   margin: 0;
   font: 400 17px / 1.5 var(--serif);
