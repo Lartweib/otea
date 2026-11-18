@@ -29,16 +29,38 @@ export function threadOf(
   return block?.thread ?? notesOf(events as unknown as NoteEvent[]);
 }
 
+// The notes of a step's round as the page shows them. `reached`, the round each step has got to: a
+// review comment then shows in one round only, the one a send-back took it to, else the one it
+// was left in (P5-8: it showed under both).
 export function roundNotesOf(
   thread: readonly ItemNote[],
   step: string | null | undefined,
   round: number,
+  reached?: (step: string) => number,
 ): ItemNote[] {
-  return notesOfRound(thread, step ?? undefined, round);
+  const notes = notesOfRound(thread, step ?? undefined, round);
+  if (!reached) return notes;
+  return notes.filter((n) => {
+    if (!n.review) return true;
+    const went = reached(n.review.for.step) >= n.review.for.round;
+    const here = n.review.for.step === step && n.review.for.round === round;
+    return went ? here : !here;
+  });
 }
 
-export function notesCount(notes: readonly ItemNote[]): { count: number; unanswered: number } {
-  return { count: notes.length, unanswered: notes.filter(({ answer }) => !answer).length };
+// How many notes, and how many still owe the agent's answer. `at`: the round they show in; a review
+// comment still in the round it was left in owes none (it goes with a send-back, or stays).
+export function notesCount(
+  notes: readonly ItemNote[],
+  at?: { step: string; round: number },
+): { count: number; unanswered: number; waiting: number } {
+  const waits = (n: ItemNote) =>
+    !!at && n.review !== undefined && n.step === at.step && n.round === at.round;
+  return {
+    count: notes.length,
+    unanswered: notes.filter((n) => !n.answer && !waits(n)).length,
+    waiting: notes.filter((n) => !n.answer && waits(n)).length,
+  };
 }
 
 // The time a note was left at, as the page says times: the hour today, the day before it else.

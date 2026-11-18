@@ -80,8 +80,38 @@ describe('the thread the page reads', () => {
   });
 
   it('counts the notes and those waiting for an answer', () => {
-    expect(notesCount([answered(1), note(2), note(3)])).toEqual({ count: 3, unanswered: 2 });
-    expect(notesCount([])).toEqual({ count: 0, unanswered: 0 });
+    expect(notesCount([answered(1), note(2), note(3)])).toEqual({
+      count: 3,
+      unanswered: 2,
+      waiting: 0,
+    });
+    expect(notesCount([])).toEqual({ count: 0, unanswered: 0, waiting: 0 });
+  });
+});
+
+describe('a review comment in the rounds (P5-8)', () => {
+  // Left while reviewing round 1 of sdo, for round 2.
+  const comment = note(5, { round: 1, review: { for: { step: 'sdo', round: 2 } } });
+
+  it('shows once: in the round reviewed until a send-back takes it to the next', () => {
+    const thread = [comment];
+    expect(roundNotesOf(thread, 'sdo', 1, () => 1).map(({ note: n }) => n)).toEqual([5]);
+    expect(roundNotesOf(thread, 'sdo', 2, () => 1)).toEqual([]);
+    expect(roundNotesOf(thread, 'sdo', 1, () => 2)).toEqual([]);
+    expect(roundNotesOf(thread, 'sdo', 2, () => 2).map(({ note: n }) => n)).toEqual([5]);
+  });
+
+  it('owes no answer while it waits in the round reviewed', () => {
+    expect(notesCount([comment, note(6, { round: 1 })], { step: 'sdo', round: 1 })).toEqual({
+      count: 2,
+      unanswered: 1,
+      waiting: 1,
+    });
+    expect(notesCount([comment], { step: 'sdo', round: 2 })).toEqual({
+      count: 1,
+      unanswered: 1,
+      waiting: 0,
+    });
   });
 });
 

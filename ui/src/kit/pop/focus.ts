@@ -35,7 +35,9 @@ const focusables = (root: HTMLElement): HTMLElement[] => [
 
 // Focuses the first focusable inside root, without scrolling.
 export function focusFirst(root: HTMLElement): void {
-  focusables(root)[0]?.focus({ preventScroll: true });
+  // A dialog may say where its focus starts; else its first focusable.
+  const first = root.querySelector<HTMLElement>('[data-autofocus]') ?? focusables(root)[0];
+  first?.focus({ preventScroll: true });
 }
 
 // The arrows of a role=menu.

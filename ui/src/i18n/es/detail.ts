@@ -55,6 +55,7 @@ export const detail = {
   'event.noteLeft': 'Dejó una nota',
   'event.noteAnswered': 'Contestó la nota {n}',
   'event.noteEdited': 'Cambió la nota {n}',
+  'event.handoffAmended': 'Cambió la nota de la entrega',
   'event.noteWithdrawn': 'Retiró la nota {n}',
   'event.questionAsked': 'Preguntó',
   'event.questionAnswered': 'Respondió la pregunta {n}',
@@ -765,6 +766,14 @@ export const detail = {
   'notes.at': 'en {time}',
   'notes.hand': 'Que conteste tus notas',
   'notes.round.live': { one: '{count} nota en el hilo', other: '{count} notas en el hilo' },
+  'notes.round.review': {
+    one: '{count} comentario de tu revisión',
+    other: '{count} comentarios de tu revisión',
+  },
+  'notes.review.withBack': {
+    one: 'va con la devolución',
+    other: 'van con la devolución',
+  },
   'notes.round.done': {
     one: '{count} nota mientras la hacía',
     other: '{count} notas mientras la hacía',

@@ -563,6 +563,41 @@ describe('comments the person leaves while reviewing', () => {
     expect(moveItem(ctx, back, now).state).toBe('sconcept');
   });
 
+  it('can go with the approval itself, which the next step reads (P6-11)', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    attach(ctx, item.id);
+    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
+    approveItem(
+      ctx,
+      { id: item.id, actor: you, channel: 'ui', note: 'Bien; en Animar, más lenta' },
+      now,
+    );
+
+    const answer = nextFor(ctx, 'scout', {}, now);
+    expect(answer.item).toBe(item.id);
+    expect(answer.text).toContain('Approved with a note: "Bien; en Animar, más lenta"');
+    expect(answer.text).toContain('by the person');
+  });
+
+  it('let the agent amend its handoff note while the review waits (P3C-11)', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    attach(ctx, item.id);
+    const handed = { id: item.id, actor: kiln, channel: 'cli' as const, note: 'Hecho' };
+    handoffItem(ctx, handed, now);
+
+    const amended = handoffItem(ctx, { ...handed, note: 'Hecho; falta la cola' }, now);
+
+    expect(amended.text).toContain('Changed the note of the handoff');
+    expect(amended.item.state).toBe('sconcept__review');
+    expect(showItem(ctx, item.id, { actor: you, channel: 'ui' }).board?.notes.at(-1)?.note).toBe(
+      'Hecho; falta la cola',
+    );
+    // Only who handed it amends it.
+    expect(() => handoffItem(ctx, { ...handed, actor: scout, note: 'x' }, now)).toThrow();
+  });
+
   it('are refused from an agent, and on a step an agent reviews', () => {
     const ctx = memoryContext();
     const item = working(ctx);

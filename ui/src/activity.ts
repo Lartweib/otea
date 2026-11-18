@@ -75,6 +75,7 @@ export type Phrase =
         | 'activity.noteLeft'
         | 'activity.noteAnswered'
         | 'activity.noteEdited'
+        | 'activity.handoffAmended'
         | 'activity.noteWithdrawn'
         | 'activity.merged'
         | 'activity.proved'
@@ -187,6 +188,7 @@ const SAID: Record<string, Pick<FeedLine, 'kind' | 'phrase'>> = {
   note_left: { kind: 'other', phrase: { key: 'activity.noteLeft' } },
   note_answered: { kind: 'other', phrase: { key: 'activity.noteAnswered' } },
   note_edited: { kind: 'other', phrase: { key: 'activity.noteEdited' } },
+  handoff_amended: { kind: 'other', phrase: { key: 'activity.handoffAmended' } },
   note_withdrawn: { kind: 'other', phrase: { key: 'activity.noteWithdrawn' } },
   merged: { kind: 'other', phrase: { key: 'activity.merged' } },
   point_proved: { kind: 'other', phrase: { key: 'activity.proved' } },

@@ -1,5 +1,10 @@
 import { isClosed, positionOf } from '../../src/core/board/engine.ts';
-import { historyOf, roundsOfStep, withoutUndone } from '../../src/core/board/history.ts';
+import {
+  HANDOFF_AMENDED,
+  historyOf,
+  roundsOfStep,
+  withoutUndone,
+} from '../../src/core/board/history.ts';
 import { type BoardDefinition, stepIndex } from '../../src/core/board/model.ts';
 import { relayOf } from './format.ts';
 import type { Actor, Closing, Evidence, ItemEvent, State } from './types.ts';
@@ -67,6 +72,13 @@ export function roundsOf(
   const rounds: (Round & { step?: string })[] = [];
   let since = '';
   for (const event of live) {
+    // The agent amended its handoff's note while the review waited (P3C-11).
+    if (event.type === HANDOFF_AMENDED) {
+      const open = rounds.at(-1);
+      const note = textOf(event.data.note);
+      if (open && !open.verdict && note) open.note = note;
+      continue;
+    }
     if (event.type !== 'transitioned') continue;
     const to = String(event.data.to);
     const state = turn.get(to);

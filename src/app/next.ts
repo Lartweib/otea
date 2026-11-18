@@ -31,7 +31,13 @@ import {
   turnAt,
   waysOf,
 } from '../core/board/engine.ts';
-import { type History, handoffNotes, historyOf, roundAfter } from '../core/board/history.ts';
+import {
+  HANDOFF_AMENDED,
+  type History,
+  handoffNotes,
+  historyOf,
+  roundAfter,
+} from '../core/board/history.ts';
 import { requiredParent } from '../core/board/joins.ts';
 import { type Merged, mergedFrom } from '../core/board/merged.ts';
 import {
@@ -80,6 +86,7 @@ import { closesOf } from '../core/workflow.ts';
 import { findBoardOfCollection, findVersion, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
+  appendEvent,
   type EventRecord,
   findAgent,
   findItem,
@@ -96,6 +103,7 @@ import { collectionNamed } from './collections.ts';
 import type { Context } from './context.ts';
 import { DRAFT_FILENAME, type DraftRequest, draftRequestOf } from './draft-request.ts';
 import {
+  getItem,
   type Item,
   landMove,
   requireItem,
@@ -208,8 +216,10 @@ export type ItemOnBoard = {
   round: number;
   notes: RoundNote[];
   links: Links;
-  // While a step is being done, the send-back that started its round.
+  // While a step is being done, the send-back that started its round, or the approval that did
+  // when the reviewer said something with it.
   sentBack?: SentBack;
+  approved?: SentBack;
   // Every note the person left on the item (core/board/notes.ts), oldest first, and those of the
   // round of the step it stands on now.
   thread: ItemNote[];
@@ -225,6 +235,32 @@ export type ItemOnBoard = {
   // The option the person picked last, on an item that carries options (core/board/choices.ts).
   chosen?: ItemChoice;
 };
+
+// The approval that started the round of the step being done, when the reviewer said something
+// with it (P6-11): its note, who, when and the review it came from.
+function approvedOf(
+  def: BoardDefinition,
+  position: Position,
+  history: History,
+): SentBack | undefined {
+  if (isClosed(position) || position.phase !== 'doing') return undefined;
+  const index = history.moves.length - 1;
+  const move = history.moves[index];
+  const said = history.said[index];
+  if (!move || !said?.text?.trim()) return undefined;
+  const from = positionOf(move.from);
+  const to = positionOf(move.to);
+  if (isClosed(from) || from.phase !== 'review' || isClosed(to) || to.step !== position.step)
+    return undefined;
+  if (from.step === position.step) return undefined;
+  return {
+    note: said.text,
+    by: { kind: said.by.kind, name: said.by.name },
+    at: move.at,
+    step: stepById(def, from.step)?.name ?? from.step,
+    round: roundAfter(def, history, from.step, index),
+  };
+}
 
 // The send-back that started the round of the step being done, with its note, who sent it, when
 // and the review it came from; undefined when the round began any other way.
@@ -309,6 +345,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
   const startedAt = step === undefined ? undefined : rounds.startedAt[step];
   const links = linksOf(ctx, item.id);
   const sentBack = sentBackOf(def, position, history);
+  const approved = sentBack === undefined ? approvedOf(def, position, history) : undefined;
   const round = step === undefined ? 0 : (rounds.rounds[step] ?? 1);
   const thread = notesOf(events);
   const roundNotes = notesOfRound(thread, step, round);
@@ -347,6 +384,7 @@ export function itemOnBoard(ctx: Context, item: ItemRecord, def: BoardDefinition
     notes,
     links,
     ...(sentBack === undefined ? {} : { sentBack }),
+    ...(approved === undefined ? {} : { approved }),
     thread,
     roundNotes,
     questions,
@@ -678,6 +716,7 @@ function textFor(
     ...(child === undefined ? {} : { child: child.def }),
     ...(me === undefined ? {} : { me }),
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
+    ...(on.approved === undefined ? {} : { approved: on.approved }),
     ...(on.facts.did === undefined ? {} : { did: on.facts.did }),
     ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
     ...(left === undefined ? {} : { leftFor: left }),
@@ -1184,6 +1223,38 @@ function land(
   );
 }
 
+// The agent that just handed a step off changes its note while the review still waits (P3C-11):
+// otea handoff again with --note. Only the round's own handoff, by the agent that made it.
+function amendHandoff(
+  ctx: Context,
+  item: ItemRecord,
+  board: LiveBoard,
+  input: BoardMoveInput,
+  at: string,
+): BoardMoveResult | undefined {
+  const position = positionOf(item.state);
+  const note = input.note?.trim();
+  if (!note || isClosed(position) || position.phase !== 'review' || input.actor.kind !== 'agent')
+    return undefined;
+  const last = selectEvents(ctx.db, item.id)
+    .filter(({ type }) => type === 'transitioned')
+    .at(-1);
+  if (!last || String(last.data.to) !== item.state) return undefined;
+  if (last.actor.kind !== 'agent' || last.actor.name !== input.actor.name) return undefined;
+  appendEvent(ctx.db, {
+    itemId: item.id,
+    type: HANDOFF_AMENDED,
+    actor: input.actor,
+    at,
+    data: { note, channel: input.channel },
+  });
+  const name = stepById(board.def, position.step)?.name ?? position.step;
+  return {
+    item: getItem(ctx, item.id),
+    text: `Changed the note of the handoff of ${item.id} (${name}); it still waits for its review.`,
+  };
+}
+
 // A handoff from the doing phase: refused, in the agent's words, while something required is
 // missing (its parts, the note, what it waits for); otherwise to the review, or along the way
 // picked. A way back to an earlier step takes only a reason, and starts that step's next round.
@@ -1196,6 +1267,8 @@ export function handoffItem(
     const item = requireWritableItem(ctx.db, input.id);
     const board = requireBoard(ctx, item);
     const at = now();
+    const amended = amendHandoff(ctx, item, board, input, at);
+    if (amended) return amended;
     const lease = activeLease(item.lease, at);
     assertMayWriteItem(ctx.db, item, input.actor, at);
     // An agent that holds no lease on it never hands off an item left for or just offered to

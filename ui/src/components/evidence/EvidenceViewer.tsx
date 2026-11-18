@@ -1,4 +1,11 @@
-import { type CSSProperties, useEffect, useLayoutEffect, useRef, useState } from 'react';
+import {
+  type CSSProperties,
+  type KeyboardEvent,
+  useEffect,
+  useLayoutEffect,
+  useRef,
+  useState,
+} from 'react';
 import { createPortal } from 'react-dom';
 import { parseTestReport } from '../../../../src/core/test-report.ts';
 import { pairIn } from '../../evidence.ts';
@@ -9,6 +16,7 @@ import { useBlind, useSideWord } from '../../preset-words.ts';
 import type { Evidence } from '../../types.ts';
 import type { ItemNote } from '../../views/detail/notes.ts';
 import { keepDraftThen, sendThenClear } from '../note-send.ts';
+import { readerStep } from './arrows.ts';
 import { pickNoteText, pickOf } from './blind-pick.ts';
 import { DiagramView } from './DiagramView.tsx';
 import { FileMeta } from './FileMeta.tsx';
@@ -440,7 +448,8 @@ export function EvidenceReader({
     </div>
   ) : null;
   return (
-    <div className="ev-reader">
+    // biome-ignore lint/a11y/noStaticElementInteractions: ← and → step files from anywhere inside it (P5-9)
+    <div className="ev-reader" onKeyDown={(e) => stepByKey(e, at, evidence.length, onAt)}>
       <div className="ev-reader-bar">
         <button
           type="button"
@@ -708,6 +717,31 @@ export function BlindPick({
       {t('compare.pick', { side })}
     </button>
   );
+}
+
+// ← and → from anywhere in the reader step to the file before or after, unless what has the focus
+// takes them itself (P5-9).
+export function stepByKey(
+  e: KeyboardEvent<HTMLElement>,
+  at: number,
+  total: number,
+  onAt: (at: number) => void,
+): void {
+  if (e.defaultPrevented) return;
+  const el = e.target instanceof HTMLElement ? e.target : null;
+  const to = readerStep(
+    e.key,
+    {
+      tagName: el?.tagName ?? '',
+      role: el?.getAttribute('role') ?? null,
+      editable: !!el?.isContentEditable,
+    },
+    at,
+    total,
+  );
+  if (to === null) return;
+  e.preventDefault();
+  onAt(to);
 }
 
 function spotStyle(at: ReaderPick): CSSProperties {

@@ -286,6 +286,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       : undefined;
   const round = onBoard?.round ?? 0;
   const roundNotes = agentStep ? roundNotesOf(thread, agentStep.id, round) : [];
+  // The round each step has got to: a review comment shows only in the round it went to (P5-8).
+  const reachedOf = (s: string) =>
+    Math.max(
+      s === stepId ? round : 0,
+      ...(journey.find((j) => j.step === s)?.rounds.map((r) => r.round) ?? [0]),
+    );
   // While you review a step: comments on what was handed, which go with a send-back.
   const reviewing =
     live &&
@@ -652,7 +658,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               onFold={onFold}
               notes={(step, r) => (
                 <RoundNotesLine
-                  notes={roundNotesOf(thread, step, r)}
+                  notes={roundNotesOf(thread, step, r, reachedOf)}
+                  at={{ step, round: r }}
                   live={!!agentStep && step === agentStep.id && r === round}
                   evidence={item.evidence}
                   now={now}
@@ -778,7 +785,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               notes={
                 live
                   ? {
-                      of: (n) => roundNotesOf(thread, stepId, n),
+                      of: (n) => roundNotesOf(thread, stepId, n, reachedOf),
+                      ...(stepId ? { step: stepId } : {}),
                       noted,
                       ...(canNote && agentStep
                         ? {

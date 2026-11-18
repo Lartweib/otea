@@ -106,8 +106,9 @@ export type PhoneNotes = {
     // Whether the review holds comments: a send-back then needs no words of its own (P4-7).
     commented: boolean;
   };
-  // The notes of a round of the step under review (or being done), by its number.
+  // The notes of a round of the step under review (or being done), by its number, and that step.
   of: (round: number) => ItemNote[];
+  step?: string;
   // How many notes are on each piece of evidence, by its id.
   noted: ReadonlyMap<number, number>;
   // While the agent does the step and you may write: the round's notes, who they go to, the round,
@@ -364,14 +365,16 @@ function RoundThread({
   notes,
   evidence,
   now,
+  at,
 }: {
   notes: readonly ItemNote[];
   evidence: readonly Evidence[];
   now: number;
+  at?: { step: string; round: number } | undefined;
 }) {
   const [open, setOpen] = useState(true);
   if (notes.length === 0) return null;
-  const words = countWords(notes);
+  const words = countWords(notes, at);
   return (
     <Fold
       label={t('notes.phone.round')}
@@ -428,7 +431,13 @@ function RoundView({
         </div>
       </section>
       {notes ? (
-        <RoundThread key={r.n} notes={notes.of(r.n)} evidence={r.evidence} now={now} />
+        <RoundThread
+          key={r.n}
+          notes={notes.of(r.n)}
+          evidence={r.evidence}
+          now={now}
+          at={notes.step ? { step: notes.step, round: r.n } : undefined}
+        />
       ) : null}
       <section className="p-part" data-c>
         <Lab x={evidenceWords(images.length, files.length) || '—'}>{t('sheet.evidence')}</Lab>

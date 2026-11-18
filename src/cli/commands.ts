@@ -1303,7 +1303,7 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
 const handoffCommand: Command = {
   name: 'handoff',
   summary:
-    'Hand off the step you did on an item: refused, saying what is missing, until its handoff is complete; then to its review, or along --way (a step name or Done) with --reason when the step has several. --note is the note of the handoff, kept with the round (required where the step asks for one, and after a send-back); --way an earlier step, with --reason, takes the item back to it for its next round',
+    'Hand off the step you did on an item: refused, saying what is missing, until its handoff is complete; then to its review, or along --way (a step name or Done) with --reason when the step has several. --note is the note of the handoff, kept with the round (required where the step asks for one, and after a send-back); --way an earlier step, with --reason, takes the item back to it for its next round; again in review, --note amends it',
   args: ['id'],
   options: { way: { placeholder: 'step' }, reason: {}, note: {} },
   execute: (input) => {
@@ -1351,9 +1351,9 @@ const dropCommand: Command = {
 
 const approveCommand: Command = {
   name: 'approve',
-  summary: 'Approve the step you review on an item, along --way when it has several ways out',
+  summary: 'Approve the step you review, along --way when it has several; --note for the next step',
   args: ['id'],
-  options: { way: { placeholder: 'step' } },
+  options: { way: { placeholder: 'step' }, note: {} },
   execute: (input) => boardMove(input, approveItem),
 };
 
