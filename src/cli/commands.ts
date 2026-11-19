@@ -1606,11 +1606,10 @@ const handoffCommand: Command = {
       said = handed.said;
       return handoffItem(project, { ...move, ...(handed.tip ? { tip: handed.tip } : {}) });
     });
-    // An agent goes on to the next item: the reply says so, so it does not stop after one.
-    const next =
-      input.channel === 'mcp'
-        ? 'Next: call next, and keep going until the person stops you.'
-        : 'Next: otea next';
+    // An agent goes on to the next item, and waits when there is none: the reply ends with the
+    // exact commands, so it neither stops after one nor says it waits with no wait running
+    // (P3C-R3-9).
+    const next = waitAgainLine(input.actor.name, input.channel);
     return {
       data: {
         ...(moved.data as object),
@@ -2301,7 +2300,8 @@ const reply: Command = {
     const { actor, channel } = input;
     return withAgent(input, (project) => {
       const replied = replyNote(project, { id, note: Number(given), text: answer, actor, channel });
-      return { data: replied, text: replied.text };
+      const next = keepWaitingLine(actor.name, channel, { idle: false });
+      return { data: { ...replied, next }, text: [replied.text, next].join('\n') };
     });
   },
 };
@@ -2472,7 +2472,10 @@ const answer: Command = {
     const { actor, channel } = input;
     return withAgent(input, (project) => {
       const noted = noteChatAnswer(project, { id, text, actor, channel });
-      return { data: noted, text: noted.text };
+      // It ends with the exact wait: after a chat answer an agent said it waited, running no
+      // wait (P3C-R3-9).
+      const next = keepWaitingLine(actor.name, channel, { idle: false });
+      return { data: { ...noted, next }, text: [noted.text, next].join('\n') };
     });
   },
 };

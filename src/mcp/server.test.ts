@@ -317,7 +317,7 @@ describe('mcp server', () => {
       expect(handed).toMatchObject({
         item: { state: 'todo__review' },
         text: 'Handed off. TASKS-1 waits for the person to review Hacerlo.',
-        next: 'Next: call next, and keep going until the person stops you.',
+        next: 'Then keep going: otea next; when it has nothing, wait again in a background shell: $ otea wait --turn agent --unclaimed --as claude. Without a shell, otea wait --turn agent --unclaimed holds your chat until it returns.',
       });
       const refused = await call('approve', { id: 'TASKS-1' });
       expect(refused.isError).toBe(true);

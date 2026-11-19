@@ -110,9 +110,11 @@ describe('notes from the person, on the CLI and over MCP', () => {
     );
 
     const replied = await otea('reply', 'CRI-1', '--note', '1', 'Va en la ronda');
+    // P3C-R3-9: an agent said it left a wait running and started none; each reply ends with the
+    // exact wait command, as handoff and answer do.
     expect(replied).toMatchObject({
       code: 0,
-      out: 'Answered note 1 on CRI-1. Nothing left unanswered: you may hand it off.\n',
+      out: 'Answered note 1 on CRI-1. Nothing left unanswered: you may hand it off.\nWhen you finish and otea next --as claude has nothing: otea wait --turn agent --unclaimed --as claude in the background if you can.\n',
     });
     expect((await otea('handoff', 'CRI-1')).code).toBe(0);
     const events = await otea('events', '--item', 'CRI-1');

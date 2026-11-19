@@ -150,7 +150,7 @@ describe('next and the board moves', () => {
 
     expect(handed).toMatchObject({
       code: 0,
-      out: 'Handed off. CRI-1 waits for the person to review Concepto.\nNext: otea next\n',
+      out: 'Handed off. CRI-1 waits for the person to review Concepto.\nThen keep going: otea next --as quill; when it has nothing, otea wait --turn agent --unclaimed --as quill in the background if you can.\n',
     });
     expect((await json('show', 'CRI-1')).state).toBe('sconcept__review');
   });
@@ -230,7 +230,7 @@ describe('next and the board moves', () => {
     const noted = await otea('handoff', 'CRI-1', '--note', 'Barro añadido', '--as', 'quill');
     expect(noted).toMatchObject({
       code: 0,
-      out: 'Handed off. CRI-1 waits for the person to review Concepto.\nNext: otea next\n',
+      out: 'Handed off. CRI-1 waits for the person to review Concepto.\nThen keep going: otea next --as quill; when it has nothing, otea wait --turn agent --unclaimed --as quill in the background if you can.\n',
     });
   });
 
