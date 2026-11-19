@@ -5,8 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/otea-idle.svg" />
-    <!-- Add to Home Screen: a manifest everywhere; over HTTPS a service worker too (offline/register.ts) -->
-    <link rel="manifest" href="/manifest.webmanifest" />
+    <!-- Add to Home Screen: a manifest everywhere; over HTTPS a service worker too (offline/register.ts).
+         With the session: a browser sends no cookie with a manifest request unless the link asks. -->
+    <link rel="manifest" href="/manifest.webmanifest" crossorigin="use-credentials" />
     <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f8fc" />
     <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#13161c" />
     <link rel="apple-touch-icon" href="/icons/apple-touch-icon.png" />
