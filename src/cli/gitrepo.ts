@@ -245,7 +245,12 @@ export function mergeTake(cwd: string, tip: Tip, base?: string, given?: string):
     }
     for (const { ref, at } of takes) {
       if (landsAs(cwd, at, start, [{ branch, tip }])) continue;
-      return { held: false, ref, commit: at.slice(0, 7), added: addedSince(cwd, tip, at, start) };
+      return {
+        held: false,
+        ref,
+        commit: at.slice(0, 7),
+        added: commitsAddedSince(cwd, tip, at, start),
+      };
     }
     return { held: true };
   } catch (error) {
@@ -256,7 +261,7 @@ export function mergeTake(cwd: string, tip: Tip, base?: string, given?: string):
 // The commits `at` holds that the approved tip and the base do not, a rebased copy of an approved
 // one aside, each by short id with its author, oldest first; none when this checkout lacks the
 // approved commit.
-function addedSince(
+export function commitsAddedSince(
   cwd: string,
   tip: Tip,
   at: string,

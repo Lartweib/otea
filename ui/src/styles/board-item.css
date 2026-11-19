@@ -142,6 +142,21 @@ button.lk2:hover {
   background: none;
   box-shadow: inset 0 0 0 1px var(--rule);
 }
+/* under the branch in review: commits pushed to it since the handoff (P3C-R3-1) */
+.bstrip.drift {
+  margin-top: 4px;
+  background: none;
+  box-shadow: inset 0 0 0 1px var(--warn);
+  color: var(--ink);
+}
+.bstrip.drift svg {
+  color: var(--warn);
+  flex: none;
+}
+.bstrip.drift span {
+  flex: 1 1 0;
+  min-width: 0;
+}
 
 /* the board a Pedido asks an agent to draft, and, folded, how the agent hands it in */
 .bi-draft {

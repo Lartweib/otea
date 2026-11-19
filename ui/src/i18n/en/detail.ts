@@ -683,6 +683,11 @@ export const detail = {
   'bi.branch.landedOwn': 'pushed in {step}',
   'bi.branch.closed': 'no longer pushed',
   'bi.branch.noPush': 'no pushes in {step}',
+  'bi.branch.drift':
+    'Someone pushed commits to the branch after the handoff: {list}. Approving approves only what was handed off, {handed}.',
+  'bi.branch.driftBy': '{commit} by {author}',
+  'bi.branch.moved':
+    'The branch changed on the remote after the handoff: it is now at {now}. Approving approves only what was handed off, {handed}.',
   'bi.request.board': 'Board {name}',
   'bi.request.waiting': 'waiting for the draft',
   'bi.request.arrived': 'the draft arrived: review and publish it',

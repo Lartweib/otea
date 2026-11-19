@@ -691,6 +691,11 @@ export const detail = {
   'bi.branch.landedOwn': 'subida en {step}',
   'bi.branch.closed': 'ya no se sube',
   'bi.branch.noPush': 'sin subidas en {step}',
+  'bi.branch.drift':
+    'Alguien subió commits a la rama después de la entrega: {list}. Aprobar aprueba solo lo entregado, {handed}.',
+  'bi.branch.driftBy': '{commit} de {author}',
+  'bi.branch.moved':
+    'La rama cambió en el remoto después de la entrega: ahora está en {now}. Aprobar aprueba solo lo entregado, {handed}.',
   'bi.request.board': 'Tablero {name}',
   'bi.request.waiting': 'espera el esbozo',
   'bi.request.arrived': 'el esbozo llegó: revísalo y publícalo',

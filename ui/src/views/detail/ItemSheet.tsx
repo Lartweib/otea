@@ -60,6 +60,7 @@ import {
   waitRows,
 } from './board-item.ts';
 import { Details, detailCells } from './Details.tsx';
+import { useDrift } from './drift.ts';
 import { boardFactsOf, factsOf, standAgentOf, standOf } from './facts.ts';
 import { pressInView, toastOf } from './frame.ts';
 import { History } from './History.tsx';
@@ -188,6 +189,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const strip = live
     ? branchStrip(live, item.state, item.fields, { merged: !!block?.merged })
     : null;
+  // While the person reviews it: what a clone without Otea's hook pushed since the handoff.
+  const drift = useDrift(item.id, strip?.key === 'frozen', item.updatedAt);
   const split = live?.split;
   const childSummary =
     split && split.board !== SAME ? summaries.find((b) => b.id === split.board) : undefined;
@@ -757,7 +760,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               checks={
                 <>
                   {/* Its branch and where it stands: «fusionada» once merged, as on the desk (WF-3). */}
-                  <BranchLine strip={strip} />
+                  <BranchLine strip={strip} drift={drift} />
                   {hand.length ? (
                     <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
                   ) : null}
@@ -1058,7 +1061,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                   />
                 ) : null}
               </div>
-              <BranchLine strip={strip} />
+              <BranchLine strip={strip} drift={drift} />
               {block?.request ? (
                 <DraftRequestLine
                   request={block.request}
