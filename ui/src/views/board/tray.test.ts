@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { item } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Move } from '../../types.ts';
-import { trayButtons, trayGroups, trayNotice, trayStates } from './tray.ts';
+import { stateSaid, trayButtons, trayGroups, trayNotice, trayStates } from './tray.ts';
 
 const move = (to: string, extra: Partial<Move> = {}): Move => ({
   to,
@@ -51,6 +51,20 @@ describe('the tray count line', () => {
       item({ id: 'C', state: 'verify' }),
     ];
     expect(trayStates(its, word)).toBe('2 en verify · 1 en reported');
+  });
+
+  // P4-R2-11: «1 en Hacerlo · 2 en Hacerlo» did not say two of them wait for a review.
+  it('names the review of a step apart from its doing', () => {
+    const its = [
+      item({ id: 'A', state: 'sdo' }),
+      item({ id: 'B', state: 'sdo__review' }),
+      item({ id: 'C', state: 'sdo__yours' }),
+    ];
+    const named = (s: string) => (s.startsWith('sdo') ? 'Hacerlo' : s);
+    expect(trayStates(its, named)).toBe('1 en Hacerlo · 2 en revisión de Hacerlo');
+    // «Seleccionar un solo paso» names it the same way.
+    expect(stateSaid('sdo__yours', named)).toBe('Hacerlo · en revisión');
+    expect(stateSaid('sdo', named)).toBe('Hacerlo');
   });
 });
 

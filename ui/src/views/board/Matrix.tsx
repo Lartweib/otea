@@ -1,5 +1,5 @@
 import { type ReactNode, useState } from 'react';
-import { mappedScales, rolePart, type ScaleRole } from '../../../../src/core/board/analysis.ts';
+import { mappedScales, type ScaleRole } from '../../../../src/core/board/analysis.ts';
 import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { roleWord } from '../../board-studio/words.ts';
 import { t } from '../../i18n/i18n.ts';
@@ -13,6 +13,7 @@ import {
   matrixOf,
   orderList,
   quadrantOf,
+  scaleWord,
 } from './matrix.ts';
 
 // The Matrix (approved mock, "Vistas de análisis"), the fourth way to look at a board: its open
@@ -37,14 +38,6 @@ function keepAxes(collection: string, axes: Axes): void {
   } catch {
     // A browser that refuses storage keeps the axes for this visit only.
   }
-}
-
-// The words of a step of a scale: a level reads in the language on screen.
-function stepWord(def: BoardDefinition, role: ScaleRole, value: string, name: string): string {
-  const part = rolePart(def, role);
-  if (part?.kind !== 'level') return name;
-  const word = t(`bs.level.${value}` as 'bs.level.low');
-  return word.charAt(0).toLocaleUpperCase() + word.slice(1);
 }
 
 export function MatrixView({
@@ -183,7 +176,7 @@ function Grid(p: {
           return (
             <div key={step?.value ?? r} className="mx-row">
               <div className="mx-ylab">
-                {step ? stepWord(p.def, p.m.axes.y, step.value, step.name) : ''}
+                {step ? scaleWord(p.def, p.m.axes.y, step.value, step.name) : ''}
               </div>
               {row.map((cell) => (
                 <div key={cell.x} className={`mx-cell h${heatOf(p.m, cell)}`}>
@@ -206,7 +199,7 @@ function Grid(p: {
           <div className="mx-corner" />
           {p.m.xs.map((step) => (
             <div key={step.value} className="mx-xlab">
-              {stepWord(p.def, p.m.axes.x, step.value, step.name)}
+              {scaleWord(p.def, p.m.axes.x, step.value, step.name)}
             </div>
           ))}
         </div>
@@ -297,8 +290,8 @@ export function PhoneMatrix({
   if (!axes) return null;
   const m = matrixOf(def, items, axes);
   const ykey = (y: number) => m.ys[y];
-  const xWord = (x: number) => stepWord(def, axes.x, m.xs[x]?.value ?? '', m.xs[x]?.name ?? '');
-  const yWord = (y: number) => stepWord(def, axes.y, ykey(y)?.value ?? '', ykey(y)?.name ?? '');
+  const xWord = (x: number) => scaleWord(def, axes.x, m.xs[x]?.value ?? '', m.xs[x]?.name ?? '');
+  const yWord = (y: number) => scaleWord(def, axes.y, ykey(y)?.value ?? '', ykey(y)?.name ?? '');
   // Each value beside its axis («Esfuerzo: L · Riesgo: Crítica»): two bare values did not say
   // which was which (IDEA2-5).
   const zoneName = (x: number, y: number) =>

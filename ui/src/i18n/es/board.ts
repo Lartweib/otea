@@ -165,6 +165,10 @@ export const board = {
   'matrix.aside': 'Sin estimar',
   'matrix.asideNone': 'Todos los ítems abiertos tienen los dos valores.',
   'matrix.order': 'Tu orden',
+  'matrix.size.low': 'pequeño',
+  'matrix.size.medium': 'mediano',
+  'matrix.size.high': 'grande',
+  'matrix.size.critical': 'enorme',
   'matrix.orderNone': 'Elige ítems y después Fijar el orden.',
   'matrix.top': 'Arriba',
   'matrix.label': '{x} a lo ancho, {y} hacia arriba',
@@ -258,6 +262,7 @@ export const board = {
   'boardView.tray.aria': 'Acciones en bloque',
   'boardView.tray.selected': { one: 'seleccionado', other: 'seleccionados' },
   'boardView.tray.inState': '{count} en {state}',
+  'boardView.tray.inReview': '{count} en revisión de {state}',
   'boardView.tray.noneShared': {
     one: 'Este ítem no tiene acciones aquí.',
     other: 'Estos {count} no comparten ninguna acción.',
