@@ -74,7 +74,7 @@ const review: ItemView = {
   relations: [],
 };
 
-const app = (phone: boolean) =>
+const app = (phone: boolean, agents: object[] = []) =>
   ({
     connection: 'live',
     version: 1,
@@ -83,15 +83,15 @@ const app = (phone: boolean) =>
     all: [],
     collections: [errores],
     collectionOf: (n: string) => (n === 'Errores' ? errores : undefined),
-    agents: [],
+    agents,
     feed: [],
     route: { view: 'toca', item: 'ERR-214' },
     phone,
   }) as unknown as App;
 
-const render = (shown: ItemView = review, phone = true) =>
+const render = (shown: ItemView = review, phone = true, agents: object[] = []) =>
   renderToStaticMarkup(
-    <AppTestProvider value={app(phone)}>
+    <AppTestProvider value={app(phone, agents)}>
       <ItemSheet
         item={shown}
         full={false}
@@ -105,11 +105,27 @@ const render = (shown: ItemView = review, phone = true) =>
 
 describe('reviewing an item on the phone', () => {
   // P4-R3-5: «Nadie está escuchando» showed under the person's own chore, whose only move closes it.
-  it('says nobody is listening only when a move there lands on an agent', () => {
+  // P7-R2-9: and under every review, though Aprobar closed it and only Devolver, in its own sheet,
+  // hands it to an agent; and while the agent plainly worked.
+  it('says nobody is listening in the dock only when Aprobar lands on an agent', () => {
     setLanguage('es');
-    expect(render()).toContain('data-unheard');
+    const dock = (html: string) => html.slice(html.indexOf('class="p-dock"'));
+    expect(dock(render())).not.toContain('data-unheard');
+    const onward: ItemView = {
+      ...review,
+      transitions: [
+        { to: 'fixed', by: 'human-ui', reasonRequired: false, turn: 'agent' },
+        ...review.transitions.slice(1),
+      ],
+    };
+    expect(dock(render(onward))).toContain('data-unheard=""');
+    expect(dock(render(onward))).toContain('<b>Nadie está escuchando.</b>');
     const closing = review.transitions.filter(({ turn }) => turn !== 'agent');
     expect(render({ ...review, transitions: closing })).not.toContain('data-unheard');
+    const busy = { name: 'Mender', harness: null, holding: ['ERR-300'], lastSeen: ago(10) };
+    const working = dock(render(onward, true, [{ ...busy, live: true, waiting: false }]));
+    expect(working).toContain('Mender está trabajando; lo verá cuando vuelva a esperar.');
+    expect(working).not.toContain('Nadie está escuchando');
   });
 
   it('goes back to where it came from and says the item and its step on one line', () => {

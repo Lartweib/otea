@@ -26,7 +26,7 @@ import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import { itemOpened } from '../../kit/pop/toast.tsx';
 import type { Look } from '../../lanes/looks.ts';
-import { anyoneWaits, handsToAgent } from '../../listening.ts';
+import { handsToAgent, hearing } from '../../listening.ts';
 import { type DecisionOption, parseOptions } from '../../options.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { useKeyboardInset } from '../../phone/CaptureSheet.tsx';
@@ -675,6 +675,8 @@ export function PhoneItem(p: PhoneItemProps) {
   // «Mover a Hecho». A Decisión at Diseñar could not be closed from the phone (P7-R2-3). Discarding
   // stays on the desk, as the phone's review always had it.
   const moreMoves = dock ? plan.quiet.filter((c) => c.kind === 'move' && !c.blocked) : [];
+  // Whether what is handed to an agent here is heard (P7-R2-9): said beside the move that does it.
+  const heard = hearing(app.agents, app.all, now);
   const [pickOpen, setPickOpen] = useState(false);
   const pickBtn = useRef<HTMLButtonElement>(null);
   // Opened from Triage to pick: the sheet opens as soon as the pick is known.
@@ -1024,10 +1026,9 @@ export function PhoneItem(p: PhoneItemProps) {
               {says.verb} <b>→ {says.state}</b> · {says.tail}
             </p>
           ) : null}
-          {!refused &&
-          !anyoneWaits(app.agents) &&
-          handsToAgent([primary, sendback, ...moreMoves, ...(picking?.ways ?? [])]) ? (
-            <Unheard className="hint unheard" />
+          {/* Beside the moves the dock makes at once; Devolver says it in its own sheet. */}
+          {!refused && heard && handsToAgent([primary, ...moreMoves, ...(picking?.ways ?? [])]) ? (
+            <Unheard className="hint unheard" hearing={heard} />
           ) : null}
         </section>
       ) : null}
@@ -1167,6 +1168,9 @@ export function PhoneItem(p: PhoneItemProps) {
         <p className="p-sb-to" data-i="">
           {sheetSays}
         </p>
+        {heard && asking && handsToAgent([asking.choice]) ? (
+          <Unheard className="p-sb-unheard" hearing={heard} />
+        ) : null}
         <textarea
           ref={area}
           className="p-sb-area"

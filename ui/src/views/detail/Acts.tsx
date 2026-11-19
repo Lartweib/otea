@@ -6,7 +6,7 @@ import { agoText, whenText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { Button, Icon, MenuItem, MenuLabel, MenuNote, Pop, Swap } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
-import { anyoneWaits, handsToAgent, unheard } from '../../listening.ts';
+import { handsToAgent, hearing, unheard } from '../../listening.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { parseOptions } from '../../options.ts';
@@ -300,9 +300,13 @@ export function Acts({
     </Button>
   ) : null;
 
-  // Nobody waits in otea wait: what the person does here, handed to an agent, waits for one.
-  const silent = !anyoneWaits(app.agents);
-  const handsOn = handsToAgent([plan.primary, ...plan.quiet]);
+  // Nobody waits in otea wait: what the person does here, handed to an agent, waits for one, or
+  // for one at work to wait again (P7-R2-9).
+  const heard = hearing(app.agents, app.all, app.now);
+  // The move in view: the one the person opened (a send-back's notes) or points at, else the first.
+  // The notice stands beside it and beside the first: a review whose Aprobar closes the item says
+  // nothing of listening until the person goes for Devolver.
+  const focus = (first: MoveChoice | null) => notesOpen ?? pointed ?? first;
 
   let body: ReactNode = null;
   if (mode === 'read') {
@@ -329,7 +333,9 @@ export function Acts({
             {refusedNow}
           </p>
         ) : null}
-        {silent && handsOn && !refusedNow ? <Unheard /> : null}
+        {heard && handsToAgent([first, focus(first)]) && !refusedNow ? (
+          <Unheard hearing={heard} />
+        ) : null}
       </>
     );
   } else if (mode === 'pick' && pick) {
@@ -361,7 +367,9 @@ export function Acts({
             {refusedNow}
           </p>
         ) : null}
-        {silent && handsToAgent([...pick.ways, ...plan.quiet]) && !refusedNow ? <Unheard /> : null}
+        {heard && handsToAgent([...pick.ways, focus(null)]) && !refusedNow ? (
+          <Unheard hearing={heard} />
+        ) : null}
       </PickForm>
     );
   } else if (mode === 'qa') {
@@ -433,7 +441,7 @@ export function Acts({
             </Button>
             <span className="closeas">{t('sheet.qa.goesOn', { agent: agent ?? '—' })}</span>
           </div>
-          {silent ? <Unheard /> : null}
+          {heard ? <Unheard hearing={heard} /> : null}
           {plan.primary || closeAs ? (
             <div className="actions more">
               {plan.primary ? btn(plan.primary, 'text') : null}

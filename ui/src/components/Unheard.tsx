@@ -1,13 +1,26 @@
 import { t, tx } from '../i18n/i18n.ts';
-import { unheardWords } from '../listening.ts';
+import { type Hearing, unheardWords } from '../listening.ts';
 
 // The command an agent runs to keep hearing the desk.
 export const KEEP_WAITING = 'otea wait --turn agent --unclaimed';
 
-// «Nadie está escuchando» where the person approves, sends back or answers, and on an item that
-// waits for an agent: no agent waits in otea wait, so what is done here waits until one comes back.
-// `className` places it: the sheet's acts, or the phone's dock.
-export function Unheard({ className = 'said unheard' }: { className?: string }) {
+// «Nadie está escuchando» beside a move that hands the item to an agent, where the person answers,
+// and on an item that waits for an agent: no agent waits in otea wait, so what is done here waits
+// until one comes back. While agents are at work (`hearing`), it says calmly that they will see it
+// when they wait again (P7-R2-9). `className` places it: the sheet's acts, or the phone's dock.
+export function Unheard({
+  className = 'said unheard',
+  hearing = { kind: 'unheard' },
+}: {
+  className?: string;
+  hearing?: Hearing;
+}) {
+  if (hearing.kind === 'working')
+    return (
+      <p className={className} role="status" data-unheard="calm">
+        {t('listen.working', { count: hearing.agents.length, agent: hearing.agents[0] ?? '' })}
+      </p>
+    );
   return (
     <p className={className} role="status" data-unheard="">
       {tx('listen.notice', {

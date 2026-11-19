@@ -40,6 +40,41 @@ export function busyAgents(
     .map((a) => a.name);
 }
 
+// The agents at work now, for what the person hands to one (P7-R2-9): each is connected and holds
+// an item it works on, not one that only waits for your answer, or, holding nothing, called Otea
+// lately through the command line. An open MCP server is heard on its beats whether or not its
+// agent acts, so a fresh sighting of a listening agent is no call: idle in its chat, it hears
+// nothing of the desk.
+export function workingAgents(
+  agents: readonly Agent[] | null | undefined,
+  items: readonly Pick<Item, 'id' | 'asks'>[],
+  now: number,
+): string[] {
+  const asks = (id: string) => !!items.find((it) => it.id === id)?.asks;
+  return (agents ?? [])
+    .filter((a) => {
+      if (!a.live) return false;
+      if (a.holding.length > 0) return a.holding.some((id) => !asks(id));
+      return !a.listening && now - (Date.parse(a.lastSeen) || 0) <= AT_WORK_MS;
+    })
+    .map((a) => a.name);
+}
+
+// What the desk says beside a move that hands the item to an agent (P7-R2-9): nothing while an
+// agent waits (it hears it at once); while none does, that the agents at work will see it when
+// they wait again (calm), or, with none at work, that nobody is listening (the alarm).
+export type Hearing = { kind: 'unheard' } | { kind: 'working'; agents: string[] };
+
+export function hearing(
+  agents: readonly Agent[] | null | undefined,
+  items: readonly Pick<Item, 'id' | 'asks'>[],
+  now: number,
+): Hearing | null {
+  if (anyoneWaits(agents)) return null;
+  const working = workingAgents(agents, items, now);
+  return working.length > 0 ? { kind: 'working', agents: working } : { kind: 'unheard' };
+}
+
 // What the desk says of an item nobody hears: «nadie está escuchando» (a warning), or, while an
 // agent is at work on another item, that it waits in the queue for it (calm).
 export function unheardWords(busy: readonly string[]): { text: string; calm: boolean } {
