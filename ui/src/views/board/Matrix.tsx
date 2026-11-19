@@ -265,6 +265,12 @@ function Chip({
   );
 }
 
+// The ticked items in the order they were tapped, as the desk's tray keeps them: «Fijar el orden»
+// took them in id order on the phone (P7-R2-4).
+export function pickedInTapOrder(items: readonly Item[], ticked: readonly string[]): Item[] {
+  return ticked.flatMap((id) => items.find((it) => it.id === id) ?? []);
+}
+
 // The Matrix on the phone (approved mock): a matrix does not fit 390 px, so a small grid of counts
 // is the index (tapping a cell keeps the list to it) and the list below goes zone by zone, rows of
 // 48 px whose whole width ticks the item. The tray docks at the bottom: Poner arriba, Fijar el
@@ -299,7 +305,7 @@ export function PhoneMatrix({
     `${roleWord(axes.x)}: ${xWord(x)} · ${roleWord(axes.y)}: ${yWord(y)}`;
   const cells = m.rows.flat().filter((cell) => cell.items.length > 0);
   const shown = zone === null ? cells : cells.filter((cell) => `${cell.x},${cell.y}` === zone);
-  const picked = items.filter((it) => ticked.includes(it.id));
+  const picked = pickedInTapOrder(items, ticked);
   const order = orderList(items);
   const allPinned = picked.length > 0 && picked.every((it) => it.priority?.pin !== undefined);
   return (
