@@ -1222,7 +1222,7 @@ function proposeBoard(input: Input, name: string): Output {
         : [
             `Made with it, from the same template, as drafts the person publishes together with it: ${made.others.map((record) => `"${boardName(record)}"`).join(', ')}`,
           ]),
-      ...(made.submitted ? [] : [handInText(made.item)]),
+      ...(made.submitted ? [] : [handInText(made.item, actor.name)]),
     ];
     return { data: { ...made, studio }, text: lines.join('\n') };
   });
@@ -1251,7 +1251,7 @@ function proposeChange(input: Input, board: string): Output {
     const lines = [
       ...(made.submitted ? handedInLines(made.item, made.submitted) : []),
       `The change to the board "${name}" waits in Studio for the person to try and publish, on the Pedido ${made.item} you hold; the board works as it is until then: ${studio}`,
-      ...(made.submitted ? [] : [handInText(made.item)]),
+      ...(made.submitted ? [] : [handInText(made.item, actor.name)]),
     ];
     return { data: { ...made, studio }, text: lines.join('\n') };
   });

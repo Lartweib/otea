@@ -110,8 +110,8 @@ describe('an agent drafting a board', () => {
     const text = itemNextText(ctx, pedido, 'kiln') ?? '';
     const take = text.slice(text.indexOf('When you take it'), text.indexOf('Handoff'));
     // The file goes to the temp folder, so none is left in the repo (P8-R2-14).
-    expect(take).toContain(`otea board draft ${item} > ${draftFile(item)}`);
-    expect(take).toContain(`otea board draft ${item} --file ${draftFile(item)}`);
+    expect(take).toContain(`otea board draft ${item} --as kiln > ${draftFile(item)}`);
+    expect(take).toContain(`otea board draft ${item} --file ${draftFile(item)} --as kiln`);
     expect(take).toContain(`is the JSON Schema ${BOARD_JSON_SCHEMA}.`);
     // Who does a step is its doer; its words speak to that doer (AGENTS3-6).
     expect(take).toContain(
@@ -129,7 +129,9 @@ describe('an agent drafting a board', () => {
 
     const shown = showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request;
     expect(shown).toMatchObject({ board: board.id, name: 'Criaturas', arrived: false });
-    expect(shown?.instructions).toContain(`otea board draft ${item} --file ${draftFile(item)}`);
+    expect(shown?.instructions).toContain(
+      `otea board draft ${item} --file ${draftFile(item)} --as kiln`,
+    );
   });
 
   it('reads a hand-in whose step names one agent as any agent, and says so', () => {
@@ -248,7 +250,7 @@ describe('an agent drafting a board', () => {
     expect(text).not.toContain('Qué hice');
     expect(text).not.toContain('Handoff\n');
     const finish = text.slice(text.indexOf('When you finish'));
-    expect(finish).toContain(`otea board draft ${item} --file ${draftFile(item)}`);
+    expect(finish).toContain(`otea board draft ${item} --file ${draftFile(item)} --as kiln`);
     expect(text).toContain('the person tries the board and publishes it in Studio');
   });
 

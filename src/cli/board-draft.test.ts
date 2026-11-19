@@ -71,7 +71,13 @@ describe('otea board draft --new', () => {
     expect(out).toContain(item);
     expect(out).toContain('waits in Studio for the person to try and publish');
     expect(out).toContain(`/#/studio/board/${board?.id}`);
-    expect(out).toContain(`otea board draft ${item} > ${draftFile(item)}`);
+    expect(out).toContain(`otea board draft ${item} --as claude > ${draftFile(item)}`);
+    // P3C-R3-14: the hint named no agent, so in a shell without OTEA_AGENT the command failed as
+    // printed (unnamed_agent). Run as printed, it prints the draft.
+    const printed = /otea (board draft \S+ --as \S+) >/.exec(out)?.[1]?.split(' ') ?? [];
+    const run = await cliAt(repo.dir)(...printed);
+    expect(run.code).toBe(0);
+    expect(JSON.parse(run.out).name).toBe('Criaturas');
   });
 
   it('answers the board and the Pedido with --json, and the draft to start from after', async () => {
@@ -369,7 +375,7 @@ describe('otea board draft --change', () => {
     const id = /\bPED-\d+\b/.exec(out)?.[0] ?? '';
     expect(id).not.toBe('');
     expect(out).toContain('The change to the board "Tareas" waits in Studio');
-    expect(out).toContain(`otea board draft ${id} > ${draftFile(id)}`);
+    expect(out).toContain(`otea board draft ${id} --as claude > ${draftFile(id)}`);
     const start = JSON.parse((await otea('board', 'draft', id)).out);
     expect(start.name).toBe('Tareas');
   });

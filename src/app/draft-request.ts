@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { readDefinition } from '../core/board/schema.ts';
 import type { Lang } from '../core/board/templates.ts';
 import { findBoard, findDraft, findVersion, listBoards } from '../store/boards.ts';
-import { selectEvents } from '../store/queries.ts';
+import { findItem, selectEvents } from '../store/queries.ts';
 import type { Context } from './context.ts';
 
 // A Pedido an agent drafts a board on ("Que lo esboce un agente"): the board waiting on it, and how
@@ -34,13 +34,14 @@ export const BOARD_JSON_SCHEMA = fileURLToPath(
   new URL('../../schemas/board.schema.json', import.meta.url),
 );
 
-// How the agent hands its draft in on the Pedido `id`: agents read English.
-export function handInText(id: string): string {
+// How the agent hands its draft in on the Pedido `id`: agents read English. Each command names the
+// agent (`agent`, the one drafting it), so it works as printed (P3C-R3-14).
+export function handInText(id: string, agent = '<your name>'): string {
   return [
-    `How to hand it in: start from the draft with otea board draft ${id} > ${draftPath(id)}`,
+    `How to hand it in: start from the draft with otea board draft ${id} --as ${agent} > ${draftPath(id)}`,
     '(in the temp folder, so nothing is left in the repo),',
     'change it (keep the ids of what is there; give what you add new ids), then run',
-    `otea board draft ${id} --file ${draftPath(id)}. It says what is wrong until the board is right.`,
+    `otea board draft ${id} --file ${draftPath(id)} --as ${agent}. It says what is wrong until the board is right.`,
     `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
     'Who does each step is its doer (any agent, a named agent or the person), never its text: write its instructions to whoever does it, and call the person "the person" (in Spanish, "la persona").',
     'Branches follow how the person works. For code, ask the person whether anything may reach the remote before they see it. When they work straight on main and want nothing pushed before they see it ("do not push anything I have not seen"), start from the mainline template (Code on main): each item\'s branch is main and only the step after their approval pushes it, so the gate refuses a push of main until they approve, wherever the repo has Otea\'s git hook, which Publicar offers to install (tell the person: without it, git lets a push through); never draft code on todos, which has no gate. When they work straight on main and pushes need not wait, take the guard off the branch part (or the part itself).',
@@ -58,7 +59,12 @@ export type DraftRequest = {
   instructions: string;
 };
 
-export function draftRequestOf(ctx: Context, item: string): DraftRequest | undefined {
+// `agent`: the agent the instructions name, else the one that holds or last held the Pedido.
+export function draftRequestOf(
+  ctx: Context,
+  item: string,
+  agent?: string,
+): DraftRequest | undefined {
   for (const { id } of listBoards(ctx.db)) {
     const draft = findDraft(ctx.db, id);
     if (draft?.requestItem !== item) continue;
@@ -66,7 +72,7 @@ export function draftRequestOf(ctx: Context, item: string): DraftRequest | undef
       board: id,
       name: readDefinition(draft.definition).name,
       arrived: draft.agentNote !== null,
-      instructions: handInText(item),
+      instructions: handInText(item, agent ?? findItem(ctx.db, item)?.lease?.holder),
     };
   }
   return publishedRequestOf(ctx, item);
