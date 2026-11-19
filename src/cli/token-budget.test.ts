@@ -36,7 +36,8 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // chat request going on a board first and waiting in a background shell (measured at 512).
   // Raised to 560 for otea whoami, which gives a new session the name it worked under. Raised to
   // 630 with the guide's lines on answering in Otea and on staying in the wait (measured at 606).
-  'board index': { text: 630, json: 53, mcp: 53 },
+  // Raised to 640 with the guide's line on otea answer (P4-R2-2; measured at 633).
+  'board index': { text: 640, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -71,7 +72,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // do (P4-6; measured at 5134 with board_draft's summary trimmed). Raised for reply's note, whose
   // description was only "n": an agent answered a send-back reason with it three times, so it says
   // what the number is and that a send-back reason is not one (P2S-R3-5; measured at 5162).
-  tools: { mcp: 5170 },
+  // Raised for answer, the person's answer to a question given in the chat, which an agent could
+  // not put on the question and asked the person to paste into Otea (P4-R2-2; measured at 5272).
+  tools: { mcp: 5280 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to
@@ -89,8 +92,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Raised to 545 for otea whoami (rule 1), so one agent keeps one name across sessions. Raised to
   // 610 for telling the person to answer in Otea, not in the chat (P4-R2-2), and for staying in the
   // wait: only it hears the desk, agents went back to it neither after a chat reply nor stopped it
-  // safely (P2S-6, P8-R2-13, P8-R2-11; measured at 587).
-  instructions: { mcp: 610 },
+  // safely (P2S-6, P8-R2-13, P8-R2-11; measured at 587). Raised to 620 because people answer in the
+  // chat anyway: rule 10 now says that answer goes on the question with otea answer, where it
+  // said to tell them to answer in Otea (P4-R2-2; measured at 614).
+  instructions: { mcp: 620 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

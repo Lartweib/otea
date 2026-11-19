@@ -28,8 +28,14 @@ export type Facts = {
   question: boolean;
   own: boolean;
   mine: { reason: string; at: string; round: number } | null;
-  // What you answered last, and, for an agent's question (otea ask), what it asked and who.
-  answered: { reason: string; at: string; asked?: { agent: string; text: string } } | null;
+  // What you answered last, and, for an agent's question (otea ask), what it asked and who, and
+  // the agent that noted it when you gave it in the chat (`via`).
+  answered: {
+    reason: string;
+    at: string;
+    asked?: { agent: string; text: string };
+    via?: string;
+  } | null;
   visited: string[];
   // The rounds you sent back, oldest first, with the state the agent had handed it to.
   sentBack: { n: number; at: string; state: string }[];
@@ -61,6 +67,7 @@ function answeredQuestion(events: readonly ItemEvent[]): Facts['answered'] {
     reason: String(answer.data.text ?? ''),
     at: answer.at,
     ...(asked ? { asked: { agent: asked.actor.name, text: String(asked.data.text ?? '') } } : {}),
+    ...(typeof answer.data.via === 'string' ? { via: answer.data.via } : {}),
   };
 }
 

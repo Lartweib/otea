@@ -11,7 +11,8 @@ import { timeText } from '../time.ts';
 export const QUESTION_ASKED = 'question_asked';
 export const QUESTION_ANSWERED = 'question_answered';
 
-export type QuestionAnswer = { text: string; at: string; by: string };
+// `via`: the agent that noted an answer the person gave in the chat (otea answer).
+export type QuestionAnswer = { text: string; at: string; by: string; via?: string };
 
 // A question and the moment it was asked in: the step (by id and by name then) and its round.
 export type ItemQuestion = {
@@ -50,7 +51,12 @@ export function questionsOf(events: readonly QuestionEvent[]): ItemQuestion[] {
     } else if (type === QUESTION_ANSWERED) {
       const asked = out.get(data.question);
       if (!asked || asked.answer) continue;
-      asked.answer = { text: String(data.text ?? ''), at, by: actor.name };
+      asked.answer = {
+        text: String(data.text ?? ''),
+        at,
+        by: actor.name,
+        ...(typeof data.via === 'string' ? { via: data.via } : {}),
+      };
     }
   }
   return [...out.values()];
@@ -81,7 +87,12 @@ const WAKE = 'otea wait --turn agent wakes you when they answer';
 
 // What otea ask says once the question is asked.
 export function askedText(id: string): string {
-  return `Asked the person on ${id}: the turn is theirs until they answer; the step, round and lease stay as they are. Tell them to answer it in Otea (on the item page or the phone): an answer in the chat does not reach the item. ${WAKE}; read it then: otea show ${id}`;
+  return `Asked the person on ${id}: the turn is theirs until they answer; the step, round and lease stay as they are. They answer it in Otea (on the item page or the phone); if they answer in the chat instead, put their words on it: otea answer ${id} "<their words>". ${WAKE}; read it then: otea show ${id}`;
+}
+
+// What otea answer says once the person's answer from the chat is on the question.
+export function chatAnswerText(id: string): string {
+  return `Noted the person's answer on ${id}, as given in the chat. The turn is yours again in the same round: address it, then hand off as the step says.`;
 }
 
 // What next and show say of an item whose question waits for the person.

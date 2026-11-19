@@ -49,8 +49,8 @@ describe("Otea's agent guide", () => {
       'in a background shell, which keeps your chat free',
       'Every request the person makes, in chat too, goes on a board first: otea create it',
       'A subagent releases what it holds before it ends',
-      // P4-R2-2: the person's answer is theirs to give, in Otea.
-      'tell them to answer it in Otea',
+      // P4-R2-2: the person's answer is theirs; one given in the chat goes on the question.
+      'an answer they give in the chat goes on it: otea answer <id> "<their words>"',
       // P2S-6, P8-R2-13, P8-R2-11: only a running wait hears the desk, and it is stopped safely.
       'Only a running wait hears the desk',
       'after a chat reply, wait again',

@@ -133,6 +133,14 @@ describe('what the sheet reads from the item', () => {
       at: ago(2),
       asked: { agent: 'kiln', text: '¿Liso o con musgo?' },
     });
+    // P4-R2-2: one given in the chat says which agent noted it.
+    const human = { kind: 'human', name: 'human' } as const;
+    const chat = [
+      events[0] as (typeof events)[number],
+      ev('question_answered', human, { question: 1, text: 'Con musgo', via: 'kiln' }, 2),
+    ];
+    const noted = factsOf(view({ state: 'sconcept', turn: 'agent', events: chat }), undefined, NOW);
+    expect(noted.answered?.via).toBe('kiln');
   });
 
   it('reads your own step: created by you, still where its type starts, nobody handed it', () => {
