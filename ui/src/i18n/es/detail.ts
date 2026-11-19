@@ -712,6 +712,12 @@ export const detail = {
   'bi.branch.drift':
     'Alguien subió commits a la rama después de la entrega: {list}. Aprobar aprueba solo lo entregado, {handed}.',
   'bi.branch.driftBy': '{commit} de {author}',
+  'bi.branch.diffOff': {
+    one: 'El diff adjunto no sale de lo entregado en {branch} ({tip}): {files} no coincide con esa punta. Aprobar aprueba lo entregado, no el diff.',
+    other:
+      'El diff adjunto no sale de lo entregado en {branch} ({tip}): {files} no coinciden con esa punta. Aprobar aprueba lo entregado, no el diff.',
+  },
+  'bi.branch.diffOffMore': '{count} más',
   'bi.branch.moved':
     'La rama cambió en el remoto después de la entrega: ahora está en {now}. Aprobar aprueba solo lo entregado, {handed}.',
   'bi.request.board': 'Tablero {name}',
