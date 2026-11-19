@@ -8,6 +8,7 @@ import {
   compareFiles,
   fileMarks,
   handedFields,
+  imagePairs,
   notesDock,
   partNames,
   phoneRounds,
@@ -100,6 +101,25 @@ describe('the rounds of the step under review, on the phone', () => {
       ['a.png', 'same'],
       ['saves.ts', 'same'],
       ['old.log', 'gone'],
+    ]);
+  });
+
+  // Comparar listed the files only; the rounds' pictures could not be seen together (P5-5).
+  it('pairs the pictures of two rounds: by name, else in their order, the rest alone', () => {
+    const logo1 = file('logo.png', 'image');
+    const v1 = file('post-v1.png', 'image');
+    const log = file('run.log', 'log');
+    const logo2 = file('logo.png', 'image');
+    const v2 = file('post-v2.png', 'image');
+    const extra = file('story.png', 'image');
+    const pairs = imagePairs([logo1, v1, log], [v2, logo2, extra]);
+    expect(pairs.map((p) => [p.before?.filename ?? null, p.after?.filename ?? null])).toEqual([
+      ['post-v1.png', 'post-v2.png'],
+      ['logo.png', 'logo.png'],
+      [null, 'story.png'],
+    ]);
+    expect(imagePairs([v1], []).map((p) => [p.before?.filename, p.after])).toEqual([
+      ['post-v1.png', undefined],
     ]);
   });
 

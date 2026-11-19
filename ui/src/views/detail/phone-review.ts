@@ -114,6 +114,27 @@ export function compareFiles(older: readonly Evidence[], newer: readonly Evidenc
   ];
 }
 
+// The pictures of two rounds, paired to be seen side by side (P5-5: Comparar listed file names only):
+// a picture with the same name in both; else the newer round's next picture with the older's next
+// one no name claims; what is left stands alone, the newer's in its place, the older's after.
+export function imagePairs(
+  older: readonly Evidence[],
+  newer: readonly Evidence[],
+): { before?: Evidence; after?: Evidence }[] {
+  const was = older.filter((e) => e.kind === 'image');
+  const now = newer.filter((e) => e.kind === 'image');
+  const named = new Set(now.map((e) => e.filename));
+  const used = new Set<Evidence>();
+  const pairs = now.map((after) => {
+    const before =
+      was.find((e) => !used.has(e) && e.filename === after.filename) ??
+      was.find((e) => !used.has(e) && !named.has(e.filename));
+    if (before) used.add(before);
+    return before ? { before, after } : { after };
+  });
+  return [...pairs, ...was.filter((e) => !used.has(e)).map((before) => ({ before }))];
+}
+
 // Each file of a round marked against the round before, by its id; nothing on a first round.
 // `blind`: the compare parts judged blind, by module id (blindPartsOf). Their files go unmarked: the
 // old round's image read «igual» and gave away which was old (P5-R2-2).

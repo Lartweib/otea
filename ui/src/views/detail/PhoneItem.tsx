@@ -48,6 +48,7 @@ import {
   fileMarks,
   type HandedField,
   handedFields,
+  imagePairs,
   notesDock,
   type PhoneRound,
   partNames,
@@ -527,6 +528,41 @@ function RoundView({
 
 // Comparar, on the phone: one column, the two rounds' notes in order and the files marked by what
 // changed; never two side by side.
+// The pictures of two rounds side by side, the older on the left, each under its round (P5-5).
+function ComparePictures({ older, newer }: { older: PhoneRound; newer: PhoneRound }) {
+  const pairs = imagePairs(older.evidence, newer.evidence);
+  if (pairs.length === 0) return null;
+  const side = (e: Evidence | undefined, n: number) => (
+    <figure>
+      {e ? (
+        <img src={evidenceFileUrl(e.id)} alt={e.filename} loading="lazy" />
+      ) : (
+        <span className="none">{t('phone.r.noPicture')}</span>
+      )}
+      <figcaption>
+        {t('bi.rounds.round', { n })}
+        {e ? ` · ${e.filename}` : ''}
+      </figcaption>
+    </figure>
+  );
+  return (
+    <section className="p-part" data-c>
+      <Lab x={`${older.n} → ${newer.n}`}>{t('phone.r.pictures')}</Lab>
+      {pairs.map((p) => (
+        <div
+          key={`${p.before?.id ?? '-'}:${p.after?.id ?? '-'}`}
+          className="p-cmp-pics"
+          role="group"
+          aria-label={t('phone.r.picturesAria', { a: older.n, b: newer.n })}
+        >
+          {side(p.before, older.n)}
+          {side(p.after, newer.n)}
+        </div>
+      ))}
+    </section>
+  );
+}
+
 function CompareView({ older, newer }: { older: PhoneRound; newer: PhoneRound }) {
   const changes = compareFiles(older.evidence, newer.evidence);
   const note = (r: PhoneRound) =>
@@ -549,6 +585,7 @@ function CompareView({ older, newer }: { older: PhoneRound; newer: PhoneRound })
           {note(newer)}
         </div>
       </section>
+      <ComparePictures older={older} newer={newer} />
       <section className="p-part" data-c>
         <Lab x={t('phone.r.changed', { a: older.n, b: newer.n })}>{t('sheet.evidence')}</Lab>
         {changes.length ? (
