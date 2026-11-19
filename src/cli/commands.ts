@@ -423,11 +423,12 @@ const TEMPLATE_LIST = (() => {
   return ['Templates (--template <key>):', ...lines].join('\n');
 })();
 
-// What init says to do next: the person opens the desk, which hands them the text for their agent's
-// chat; an agent setting the project up connects itself.
+// What init says to do next: the person opens the desk, in a terminal of their own or the desktop
+// app, which hands them the text for their agent's chat; an agent setting the project up connects
+// itself and never starts the desk, which would close with its session (P4-R3-9).
 export const INIT_NEXT = [
-  "Next: otea serve opens the desk, which gives you the text to paste into your agent's chat (otea prompt prints it here).",
-  'An agent setting itself up runs otea connect --as <name> --model <id> --effort <level>.',
+  "Next: run otea serve in a terminal of your own, or open the Otea desktop app: the desk gives you the text to paste into your agent's chat (otea prompt prints it here).",
+  'An agent setting itself up runs otea connect --as <name> --model <id> --effort <level>; it never starts the desk for the person (if it must, otea serve --no-open).',
 ];
 
 const init: Command = {
