@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { createItem } from '../app/items.ts';
 import { approveItem, sendBackItem } from '../app/next.ts';
 import { listAgents, processAlive, sessionEnded } from '../app/presence.ts';
@@ -174,17 +174,23 @@ describe('wait', () => {
     });
 
     it('returns an item once the lease on it expires, though nothing is written', async () => {
-      // TASKS-2 stays held, and TASKS-1 is claimed last with room for a slow start: a 1s lease
-      // could run out before the wait even begins, which a loaded machine did.
-      await otea('claim', 'TASKS-2', '--as', 'codex');
-      await otea('claim', 'TASKS-1', '--as', 'codex', '--ttl', '3s');
-      const waiting = startCli(repo.dir, 'wait', '--turn', 'agent', '--unclaimed', '--as', 'x');
-      expect(await settled(waiting)).toBe(false);
+      // The clock stands still until the test moves it past the lease; timers stay real, so the
+      // wait polls as it does. On the wall clock a loaded machine took longer than the lease from
+      // the claim to the first check, and the wait had returned before the test saw it waiting.
+      vi.useFakeTimers({ toFake: ['Date'] });
+      try {
+        await otea('claim', 'TASKS-2', '--as', 'codex');
+        await otea('claim', 'TASKS-1', '--as', 'codex', '--ttl', '1s');
+        const waiting = startCli(repo.dir, 'wait', '--turn', 'agent', '--unclaimed', '--as', 'x');
+        expect(await settled(waiting)).toBe(false);
 
-      await until(() => waiting.out() !== '', 8000);
+        vi.setSystemTime(Date.now() + 1500);
 
-      expect(await waiting.done).toBe(0);
-      expect(waiting.out()).toMatch(/^TASKS-1 {2}Hacerlo {2}agent {2}First\nThen keep going: /);
+        expect(await waiting.done).toBe(0);
+        expect(waiting.out()).toMatch(/^TASKS-1 {2}Hacerlo {2}agent {2}First\nThen keep going: /);
+      } finally {
+        vi.useRealTimers();
+      }
     });
   });
 
