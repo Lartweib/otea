@@ -235,11 +235,16 @@ const BUG_REPORTS: Template = {
       doer: 'any',
       reviewer: 'none',
       hand: [['fcommit', 'always', false]],
+      // A branch that no longer applies goes back to Arreglar, to be reviewed again (P1-R2-3).
+      ways: ['sfix'],
       take: w(
-        'Bring @{fbranch} into main without rewriting commits: a fast-forward push of main or, where main takes changes only through a PR, a PR merged with gh pr merge. Then delete the branch.',
-        'Lleva @{fbranch} a main sin reescribir commits: con fast-forward y push de main o, si main solo acepta cambios por PR, con un PR que mergeas con gh pr merge. Después borra la rama.',
+        'Bring @{fbranch} into main without rewriting commits: a fast-forward push of main or, where main takes changes only through a PR, a PR merged with gh pr merge. If it conflicts with main, do not resolve it here: take it back to @{sfix} with otea handoff <id> --way "@{sfix}" --reason "<what conflicts>", so the resolution is reviewed.',
+        'Lleva @{fbranch} a main sin reescribir commits: con fast-forward y push de main o, si main solo acepta cambios por PR, con un PR que mergeas con gh pr merge. Si choca con main, no lo resuelvas aquí: regrésalo a @{sfix} con otea handoff <id> --way "@{sfix}" --reason "<qué choca>", para que se revise la resolución.',
       ),
-      before: w('Write the short hash in @{fcommit}.', 'Escribe el hash corto en @{fcommit}.'),
+      before: w(
+        'Write the short hash in @{fcommit}. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone.',
+        'Escribe el hash corto en @{fcommit}. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre.',
+      ),
     },
   ],
   anytime: ['fkind', 'feffort', 'frisk', 'farea'],
@@ -992,9 +997,11 @@ const DESIGN: Template = {
         ['fkey', 'when', false, ['fblind', 'yes']],
         ['fcommit', 'when', false, ['frepo', 'yes']],
       ],
+      // A piece that no longer applies goes back to Crear, for the person to see again (P1-R2-3).
+      ways: ['screate'],
       take: w(
-        'The person approved it: bring @{fbranch} into main and push it. Add nothing the person did not see. A piece that is not in the repository has nothing to bring in: hand it off.',
-        'La persona la aprobó: integra @{fbranch} en main y empújala. No agregues nada que la persona no haya visto. Una pieza que no está en el repositorio no tiene nada que integrar: entrégala.',
+        'The person approved it: bring @{fbranch} into main and push it. Add nothing the person did not see. If it conflicts with main, do not resolve it here: take it back to @{screate} with otea handoff <id> --way "@{screate}" --reason "<what conflicts>", so the person sees it again. A piece that is not in the repository has nothing to bring in: hand it off.',
+        'La persona la aprobó: integra @{fbranch} en main y empújala. No agregues nada que la persona no haya visto. Si choca con main, no lo resuelvas aquí: regrésala a @{screate} con otea handoff <id> --way "@{screate}" --reason "<qué choca>", para que la persona la vea de nuevo. Una pieza que no está en el repositorio no tiene nada que integrar: entrégala.',
       ),
       before: w(
         'Write in @{fcommit} the short hash on main; with a blind comparison, say in @{fkey} what A and B were.',

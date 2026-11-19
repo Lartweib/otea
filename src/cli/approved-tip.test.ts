@@ -99,7 +99,7 @@ describe('the approved tip', () => {
     const branch = await push('--branch', BRANCH);
     expect(branch.code).toBe(19);
     expect(branch.out).toBe(
-      `push refused: CAM-1 is being landed in Integrar: the person approved ${BRANCH} at ${approved}, and this push writes changes nobody reviewed. Push only the approved commits, as they are or rebased onto main with the same result; for anything else, ask the person (otea ask CAM-1) to send CAM-1 back to Hacerlo so the change is reviewed again.\n`,
+      `push refused: CAM-1 is being landed in Integrar: the person approved ${BRANCH} at ${approved}, and this push writes changes nobody reviewed. Push only the approved commits, as they are or rebased onto main with the same result; for anything else, take CAM-1 back to Hacerlo (otea handoff CAM-1 --way "Hacerlo" --reason "<why>") so the change is reviewed again.\n`,
     );
 
     git('update-ref', `refs/remotes/origin/${BRANCH}`, BRANCH);
@@ -124,6 +124,23 @@ describe('the approved tip', () => {
     git('checkout', '-q', 'main');
     git('merge', '-q', '--ff-only', BRANCH);
     expect((await push('--branch', 'main')).code).toBe(0);
+  });
+
+  // A conflict in Integrar has a way out the agent takes itself (P1-R2-3): back to Hacerlo, with
+  // the reason, where the resolution is reviewed again; the item no longer waits free in Integrar.
+  it('lets the agent take a conflicting item back from Integrar to Hacerlo, saying why', async () => {
+    expect((await otea('claim', 'CAM-1')).code).toBe(0);
+    const back = await otea(
+      'handoff',
+      'CAM-1',
+      '--way',
+      'Hacerlo',
+      '--reason',
+      'the rebase conflicts with main in b.txt',
+    );
+    expect(back.code, back.err).toBe(0);
+    const shown = JSON.parse((await otea('show', 'CAM-1', '--json')).out);
+    expect(shown.item?.stateName ?? shown.stateName).toBe('Hacerlo');
   });
 
   it('refuses a merge into main that adds content of its own', async () => {

@@ -1,4 +1,5 @@
 import {
+  backWaysOf,
   type GateAction,
   gateAt,
   isClosed,
@@ -114,6 +115,11 @@ function reviewAgainText(def: BoardDefinition, id: string, position: Position): 
     return `ask the person (otea ask ${id}) to reopen ${id}${step ? ` to ${step}` : ''} so the change is reviewed again`;
   }
   const land = landStepOf(def);
+  // A land step with a way back lets the agent take the item back itself (P1-R2-3).
+  const back = land && stepById(def, backWaysOf(def, land.id).at(-1) ?? '');
+  if (back) {
+    return `take ${id} back to ${back.name} (otea handoff ${id} --way "${back.name}" --reason "<why>") so the change is reviewed again`;
+  }
   const from = def.steps.find(
     (step) => land !== undefined && step.id !== land.id && waysOf(def, step.id).includes(land.id),
   );
