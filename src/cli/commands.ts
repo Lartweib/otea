@@ -35,7 +35,7 @@ import { listDevices, revokeDevice } from '../app/devices.ts';
 import { handInText } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence, detachEvidence, evidenceReadPath } from '../app/evidence.ts';
-import { type Brings, checkGate, type GateCheck, protectedBases } from '../app/gates.ts';
+import { type Brings, checkGate, type GateCheck, protectedBases, type Tip } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import {
   forgetProjectPath,
@@ -220,6 +220,7 @@ import {
   commitsOver,
   currentBranch,
   inMainCheckout,
+  mergeTake,
   pushState,
   remoteOf,
   tipOf,
@@ -3093,7 +3094,7 @@ function commitsOption(value: string): { from: string; to: string } {
 const check: Command = {
   name: 'check',
   summary:
-    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 19 when refused, 2 for a gate nothing declares; repo names match whatever their case; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it. A push or merge into a base branch a board protects is checked against the items whose branches it brings in: --commits <remote>..<local> names the commits a push sends (the pre-push hook passes them), else the branch against the remote branch of the same name (origin/<branch>), or its upstream when the remote has none',
+    'Check whether the items matching the fields allow a gated action: exit 0 when allowed, 19 when refused, 2 for a gate nothing declares; repo names match whatever their case; it allows the action, with a note, when no item matches or the check cannot run. --branch defaults to the branch checked out, --repo to the name the project gives the repo checked out (otea repos list), refused when the project does not know it. A push or merge into a base branch a board protects is checked against the items whose branches it brings in: --commits <remote>..<local> names the commits a push sends (the pre-push hook passes them), else the branch against the remote branch of the same name (origin/<branch>), or its upstream when the remote has none. A merge of a branch the person approved fetches it from its remote and is refused when it is not the approved commit (or a rebase of it with the same result), or when the check cannot fetch it',
   args: [],
   options: {
     gate: { required: true, placeholder: 'action' },
@@ -3113,10 +3114,14 @@ const check: Command = {
       result = withProject(cwd, (project) => {
         // The branch is asked of git only when the check needs it.
         const branch = () => named || currentBranch(cwd);
-        const brings: Brings =
-          sent === undefined
-            ? () => branchesBrought(cwd, branch(), remoteOf(cwd, branch()))
-            : () => branchesBrought(cwd, sent.to, sent.from);
+        // A merge of an approved branch is checked against the remote as it is now (P3C-R3-1).
+        const takes = (tip: Tip, base?: string) => mergeTake(cwd, tip, base, sent?.to);
+        const brings: Brings = () => ({
+          ...(sent === undefined
+            ? branchesBrought(cwd, branch(), remoteOf(cwd, branch()))
+            : branchesBrought(cwd, sent.to, sent.from)),
+          takes,
+        });
         return checkGate(project, gate, gateFields(input, cwd, project, branch), brings);
       });
     } catch (error) {

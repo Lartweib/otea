@@ -33,6 +33,9 @@ import type { Context } from './context.ts';
 import { type Item, listItems, workflowOf } from './items.ts';
 import { mergedOf } from './merged.ts';
 import { itemOnBoard, type LiveBoard, liveBoards } from './next.ts';
+import { approvedTipOf, type Tip } from './tips.ts';
+
+export type { Tip };
 
 // How one item stands on a gated action: whether its state allows it, and which states do, each
 // by id and by name; on a board, `text` says it in the board's words (gateText).
@@ -74,12 +77,26 @@ export type Brought = {
   // remote has: `onto` names that base for a push of the item's own branch, else it is what the
   // remote has of the branch pushed. A rebase with the same result passes; a conflict never does.
   landsAs?: (landing: readonly Landing[], onto?: string) => boolean;
+  // What a merge of an approved branch takes, asked of its remote right now (P3C-R3-1): a forge
+  // merges the branch as the remote has it, which a clone without Otea's hook can push to after
+  // the approval. `base` is the branch it merges into.
+  takes?: (tip: Tip, base?: string) => MergeTake;
 };
 
-// The commit and tree of a branch an agent handed off for review (recorded with its handoff): what
-// the person approved, which is all the branch may bring in once it is approved. `unchanged`: a
-// main-only item handed off with nothing on the base the remote lacks, no code change (P2S-R3-3).
-export type Tip = { branch: string; commit: string; tree: string; unchanged?: true };
+// How the branch a merge takes stands with the tip the person approved: `held` when it lands as
+// approved (that commit, or a rebase onto the base with the same result); else the ref it was read
+// from, the commit it is at and the commits nobody reviewed, each with its author; `unknown` says
+// why git could not tell.
+export type MergeTake =
+  | { held: true }
+  | {
+      held: false;
+      ref: string;
+      commit: string;
+      added: readonly { commit: string; author: string }[];
+    }
+  | { unknown: string };
+
 export type Landing = { branch: string; tip?: Tip };
 export type Brings = () => readonly string[] | Brought;
 
@@ -95,27 +112,6 @@ function once(brings: Brings): Brings {
     asked ??= brings();
     return asked;
   };
-}
-
-function isTip(value: unknown): value is Tip {
-  if (value === null || typeof value !== 'object') return false;
-  const { branch, commit, tree } = value as Record<string, unknown>;
-  return typeof branch === 'string' && typeof commit === 'string' && typeof tree === 'string';
-}
-
-// What the person approved of an item's branch: the tip its last handoff into a review recorded
-// (P3C-R2-1). A later handoff that recorded none (made outside the repo) leaves nothing to hold the
-// branch to, never an older round's tip; a tip of another branch holds nothing either.
-export function approvedTipOf(ctx: Context, id: string, branch: string): Tip | undefined {
-  const handed = selectEvents(ctx.db, id)
-    .filter(({ type }) => type === 'transitioned')
-    .filter(({ data }) => {
-      const to = positionOf(String(data.to));
-      return !isClosed(to) && to.phase !== 'doing';
-    })
-    .at(-1);
-  const tip = handed?.data.tip;
-  return isTip(tip) && tip.branch === branch ? tip : undefined;
 }
 
 // How an approved item gets its changes reviewed again: sent back from its land step to the step
@@ -201,6 +197,7 @@ function boardVerdicts(
       const position = positionOf(item.state);
       const round = itemOnBoard(ctx, item, board.def).round;
       const allowedIn = workflowOf(ctx, item).gates?.[gate] ?? [];
+      const merged = mergedOf(ctx, item.id) !== undefined;
       const verdict: GateVerdict = {
         id: item.id,
         state: item.state,
@@ -208,19 +205,14 @@ function boardVerdicts(
         allowed: gateAt(board.def, position, gate).allowed,
         allowedIn,
         allowedInNames: allowedIn.map((state) => stateName(board.def, state)),
-        text: gateText(
-          board.def,
-          item.id,
-          position,
-          gate,
-          round,
-          mergedOf(ctx, item.id) !== undefined,
-        ),
+        text: gateText(board.def, item.id, position, gate, round, merged),
       };
       const unreviewed =
-        gate === 'push' && verdict.allowed && guard
-          ? landingPushRefusal(ctx, board.def, item, position, guard, brings)
-          : undefined;
+        !verdict.allowed || !guard
+          ? undefined
+          : gate === 'push'
+            ? landingPushRefusal(ctx, board.def, item, position, guard, brings)
+            : mergeRefusal(ctx, board.def, item, position, guard, brings, merged);
       if (unreviewed) Object.assign(verdict, { allowed: false, text: unreviewed });
       return { verdict, open: !isClosed(position), dropped: isDropped(position) };
     });
@@ -248,6 +240,45 @@ function landingPushRefusal(
     ? `, as they are or rebased onto ${base} with the same result`
     : ' as they are';
   return `push refused: ${item.id} is being landed in ${placeText(def, position)}: the person approved ${branch} at ${short(tip.commit)}, and this push writes changes nobody reviewed. Push only the approved commits${rebased}; for anything else, ${reviewAgainText(def, item.id, position)}.`;
+}
+
+// A merge of an item's own branch once the person approved it, while it is landed (or, on a board
+// with no land step, once it is Done and not merged yet): only what was approved, as the remote has
+// it now (P3C-R3-1). A forge merges the branch as the remote has it, whatever pushed there since,
+// so the gate asks the remote, and refuses when it cannot. Undefined when the merge may go: the
+// item is not being merged, its handoff recorded no tip, or the branch holds the approved one.
+function mergeRefusal(
+  ctx: Context,
+  def: BoardDefinition,
+  item: { id: string; fields: Record<string, unknown> },
+  position: Position,
+  guard: NonNullable<ReturnType<typeof guardedBranch>>,
+  brings: Brings,
+  merged: boolean,
+): string | undefined {
+  const why = gateAt(def, position, 'merge').why;
+  if (why !== 'landing' && (why !== 'done' || merged || landStepOf(def))) return undefined;
+  const branch = item.fields[guard.id];
+  if (typeof branch !== 'string' || branch === guard.guard.base) return undefined;
+  const tip = approvedTipOf(ctx, item.id, branch);
+  const takes = tip && !tip.unchanged ? brought(brings).takes : undefined;
+  if (!tip || !takes) return undefined;
+  const take = takes(tip, guard.guard.base);
+  if ('unknown' in take)
+    return `merge refused: could not check ${branch} against the commit the person approved of ${item.id}, ${short(tip.commit)}: ${take.unknown}. Merge nothing of it until this check answers; if it keeps failing, ask the person: otea ask ${item.id} "<question>".`;
+  if (take.held) return undefined;
+  const { added } = take;
+  const count = added.length === 1 ? '1 commit' : `${added.length} commits`;
+  const shown =
+    added
+      .slice(0, 5)
+      .map(({ commit, author }) => `${commit} by ${author}`)
+      .join(', ') + (added.length > 5 ? ', …' : '');
+  const what =
+    added.length > 0
+      ? `, with ${count} nobody reviewed: ${shown}`
+      : ', which is not what they approved';
+  return `merge refused: the person approved ${branch} at ${short(tip.commit)} for ${item.id}, but ${take.ref} is at ${take.commit}${what}. Merge nothing of it by any means, a forge's included (a script, a CLI or the PR's button): stop and ask the person, otea ask ${item.id} "<question>".`;
 }
 
 // Whether an item stands at or past the first step that works on the protected branch: one that

@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
-import type { Landing, Tip } from '../app/gates.ts';
+import type { Landing, MergeTake, Tip } from '../app/gates.ts';
 import { excludeFromGit } from '../app/project.ts';
 
 function git(cwd: string, ...args: string[]): string {
@@ -167,6 +167,123 @@ function landsAs(
     }).trim();
   }
   return tree !== undefined && tree === treeOf(cwd, tip);
+}
+
+// Runs git, giving back its output, or when it failed the first error line it wrote to stderr.
+function tried(cwd: string, ...args: string[]): { out: string } | { error: string } {
+  try {
+    return {
+      out: execFileSync('git', args, {
+        cwd,
+        encoding: 'utf8',
+        stdio: ['ignore', 'pipe', 'pipe'],
+      }).trim(),
+    };
+  } catch (error) {
+    const lines = String((error as { stderr?: unknown }).stderr ?? '')
+      .split(/\r?\n/)
+      .map((text) => text.trim())
+      .filter(Boolean);
+    const line = lines.find((text) => /^(fatal|error): /.test(text)) ?? lines[0] ?? '';
+    return { error: line.replace(/^(fatal|error): /, '') || `git ${args[0]} failed` };
+  }
+}
+
+// What a merge of the approved branch takes, as its remote has it right now (P3C-R3-1): a forge
+// merges the branch there, which a clone without Otea's hook may have pushed to since the person
+// approved it. The branch and the base it merges into are fetched from the remote the branch is
+// pushed to; a repo with no such remote, or a remote with no branch of that name, merges the branch
+// as this checkout has it. `given` is a commit the merge names (--commits), checked as well. Held
+// when each is the approved commit, or a rebase of it onto the base with the same result; never
+// throws: what git cannot tell is `unknown`, for the gate to refuse.
+export function mergeTake(cwd: string, tip: Tip, base?: string, given?: string): MergeTake {
+  try {
+    const { branch } = tip;
+    const remote = pushRemote(cwd, branch);
+    const remotes = git(cwd, 'remote').split(/\r?\n/).filter(Boolean);
+    const takes: { ref: string; at: string }[] = [];
+    let start: string | undefined;
+    if (remotes.includes(remote)) {
+      const heads = [branch, ...(base ? [base] : [])].map((name) => `refs/heads/${name}`);
+      const listed = tried(cwd, 'ls-remote', '--heads', remote, ...heads);
+      if ('error' in listed) return { unknown: `git could not reach ${remote} (${listed.error})` };
+      const there = new Map(
+        listed.out
+          .split(/\r?\n/)
+          .filter(Boolean)
+          .map((line) => {
+            const [commit = '', ref = ''] = line.split('\t');
+            return [ref.slice('refs/heads/'.length), commit] as const;
+          }),
+      );
+      const fetch = [...there.keys()]
+        .filter((name) => commitOf(cwd, there.get(name) ?? '') === undefined)
+        .map((name) => `+refs/heads/${name}:refs/remotes/${remote}/${name}`);
+      if (fetch.length > 0) {
+        const fetched = tried(cwd, 'fetch', '--quiet', '--no-tags', remote, ...fetch);
+        if ('error' in fetched)
+          return { unknown: `git could not fetch it from ${remote} (${fetched.error})` };
+      }
+      const at = there.get(branch);
+      const here = commitOf(cwd, `refs/heads/${branch}`);
+      if (at) takes.push({ ref: `${remote}/${branch}`, at });
+      else if (here) takes.push({ ref: branch, at: here });
+      else return { unknown: `${remote} has no branch ${branch}, and neither has this checkout` };
+      const onto = base ? there.get(base) : undefined;
+      start = onto ?? (base ? commitOf(cwd, remoteOf(cwd, base)) : undefined);
+    } else {
+      const ref = remoteName(cwd, branch) ?? branch;
+      const at = commitOf(cwd, ref);
+      if (!at) return { unknown: `this checkout has no branch ${branch}` };
+      takes.push({ ref, at });
+      start = base ? (commitOf(cwd, remoteOf(cwd, base)) ?? commitOf(cwd, base)) : undefined;
+    }
+    if (given !== undefined) {
+      const at = commitOf(cwd, given);
+      if (!at) return { unknown: `${given} is not in this repository; fetch first` };
+      takes.push({ ref: given, at });
+    }
+    for (const { ref, at } of takes) {
+      if (landsAs(cwd, at, start, [{ branch, tip }])) continue;
+      return { held: false, ref, commit: at.slice(0, 7), added: addedSince(cwd, tip, at, start) };
+    }
+    return { held: true };
+  } catch (error) {
+    return { unknown: error instanceof Error ? error.message : String(error) };
+  }
+}
+
+// The commits `at` holds that the approved tip and the base do not, a rebased copy of an approved
+// one aside, each by short id with its author, oldest first; none when this checkout lacks the
+// approved commit.
+function addedSince(
+  cwd: string,
+  tip: Tip,
+  at: string,
+  start: string | undefined,
+): { commit: string; author: string }[] {
+  const approved = commitOf(cwd, tip.commit);
+  if (!approved) return [];
+  const listed = tried(
+    cwd,
+    'log',
+    '--no-merges',
+    '--cherry-pick',
+    '--right-only',
+    '--reverse',
+    '--format=%h%x09%an',
+    '--abbrev=7',
+    `${approved}...${at}`,
+    ...(start ? [`^${start}`] : []),
+  );
+  if ('error' in listed) return [];
+  return listed.out
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      const [commit = '', author = ''] = line.split('\t');
+      return { commit, author };
+    });
 }
 
 function treeOf(cwd: string, commit: string): string | undefined {
