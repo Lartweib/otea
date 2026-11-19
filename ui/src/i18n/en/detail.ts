@@ -682,6 +682,8 @@ export const detail = {
   'bi.branch.landed': 'merged in {step}',
   'bi.branch.landing': 'an agent lands it in {base} now, as the {step} step says',
   'bi.branch.landingOwn': 'an agent pushes {base} to the remote now',
+  'bi.branch.mergedOutside':
+    'in {base} already, merged outside Otea: an agent closes the {step} step',
   'bi.branch.landedOwn': 'pushed in {step}',
   'bi.branch.closed': 'no longer pushed',
   'bi.branch.noPush': 'no pushes in {step}',

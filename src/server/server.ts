@@ -61,6 +61,7 @@ import {
 } from '../app/topics.ts';
 import { topicsEverywhere } from '../app/topics-everywhere.ts';
 import { undoMove } from '../app/undo.ts';
+import { mergedOutside } from '../cli/merged-outside.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS } from '../core/agent-prompts.ts';
 import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
 import { OteaError } from '../core/errors.ts';
@@ -595,6 +596,12 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       .get('/items/:id/drift', async (c) =>
         c.json({ drift: await branchDrift(project, c.req.param('id')) }),
       )
+      // An item in its land step whose branch is in the base already, merged outside Otea (P1-R3-9):
+      // the page says so instead of «an agent lands it now». Asked of git here, as the CLI does.
+      .get('/items/:id/merged-outside', (c) => {
+        const merged = mergedOutside(project, project.root, getItem(project, c.req.param('id')));
+        return c.json({ merged: merged?.land ? merged : null });
+      })
       .get('/items/:id/opened', (c) =>
         c.json({ evidence: openedFiles(project, c.req.param('id')) }),
       )

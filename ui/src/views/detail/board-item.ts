@@ -1,3 +1,4 @@
+import type { MergedOutside } from '../../../../src/cli/merged-outside.ts';
 import type { ItemChoice } from '../../../../src/core/board/choices.ts';
 import {
   type GateAnswer,
@@ -381,8 +382,12 @@ export function branchStrip(
 // (P5-15). A branch that is the base itself is pushed, never merged (P2S-R3-2). Landing names the
 // land step, which may merge through the forge rather than push the base (P3C-R3-4); in review it
 // says what holds: agents leave it alone, and a push by anyone else shows on the page (P3C-R3-1).
-export function branchSaid(strip: BranchStrip): string {
+// `outside`: the PC saw the branch in the base already, merged outside Otea (P1-R3-9): nothing is
+// left to land, only to close the step.
+export function branchSaid(strip: BranchStrip, outside?: MergedOutside | null): string {
   const step = strip.step ?? '';
+  if (strip.key === 'landing' && outside && !strip.own)
+    return t('bi.branch.mergedOutside', { base: outside.base, step: outside.land ?? step });
   if (strip.key === 'landing')
     return strip.own
       ? t('bi.branch.landingOwn', { base: strip.base ?? '' })

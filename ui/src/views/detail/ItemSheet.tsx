@@ -65,6 +65,7 @@ import { boardFactsOf, factsOf, standAgentOf, standOf } from './facts.ts';
 import { pressInView, toastOf } from './frame.ts';
 import { History } from './History.tsx';
 import { historyOf } from './history.ts';
+import { useMergedOutside } from './merged-outside.ts';
 import { type MoveChoice, planMoves } from './moves.ts';
 import { NotesForm } from './NotesForm.tsx';
 import { AnchorPicker, clearOfToast, NotesSection, RoundNotesLine } from './NotesThread.tsx';
@@ -191,6 +192,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     : null;
   // While the person reviews it: what a clone without Otea's hook pushed since the handoff.
   const drift = useDrift(item.id, strip?.key === 'frozen', item.updatedAt);
+  // In its land step: whether git shows it merged outside Otea already (P1-R3-9).
+  const outside = useMergedOutside(item.id, strip?.key === 'landing', item.updatedAt);
   const split = live?.split;
   const childSummary =
     split && split.board !== SAME ? summaries.find((b) => b.id === split.board) : undefined;
@@ -768,7 +771,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               checks={
                 <>
                   {/* Its branch and where it stands: «fusionada» once merged, as on the desk (WF-3). */}
-                  <BranchLine strip={strip} drift={drift} />
+                  <BranchLine strip={strip} drift={drift} outside={outside} />
                   {hand.length ? (
                     <HandChecklist item={item} rows={hand} canWrite={app.session.canWrite} />
                   ) : null}
@@ -1070,7 +1073,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                   />
                 ) : null}
               </div>
-              <BranchLine strip={strip} drift={drift} />
+              <BranchLine strip={strip} drift={drift} outside={outside} />
               {block?.request ? (
                 <DraftRequestLine
                   request={block.request}

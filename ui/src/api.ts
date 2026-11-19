@@ -1,3 +1,4 @@
+import type { MergedOutside } from '../../src/cli/merged-outside.ts';
 import { withoutUndone } from '../../src/core/board/history.ts';
 import type { PerformanceView } from '../../src/core/board/performance.ts';
 import type { NotifyPrefs } from '../../src/core/notify/planner.ts';
@@ -254,6 +255,17 @@ export async function fetchDrift(id: string, signal: AbortSignal): Promise<Drift
     drift: Drift | null;
   };
   return body.drift;
+}
+
+// Whether git shows the branch of an item in its land step in the base already, merged outside
+// Otea (src/cli/merged-outside.ts, P1-R3-9): null otherwise.
+export async function fetchMergedOutside(
+  id: string,
+  signal: AbortSignal,
+): Promise<MergedOutside | null> {
+  const url = `/api/items/${encodeURIComponent(id)}/merged-outside`;
+  const body = (await (await get(url, signal)).json()) as { merged: MergedOutside | null };
+  return body.merged;
 }
 
 export async function postOpened(id: string, evidence: number): Promise<void> {
