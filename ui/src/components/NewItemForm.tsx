@@ -6,13 +6,17 @@ import { boardOfCollection, boardsOf, useBoards } from '../board-studio/home/boa
 import { t, tx } from '../i18n/i18n.ts';
 import {
   canSubmit,
+  createBlocked,
   type FormValues,
+  fieldLabel,
   initialValues,
   intakeParts,
   landingOf,
   ledeOf,
+  missingToCreate,
   nextId,
   payloadOf,
+  startCollection,
   startMessage,
   startOf,
 } from '../intake.ts';
@@ -118,6 +122,22 @@ export function IntakeForm({
     : [];
   const live = useStudioBoard(collection.name)?.live;
   const landing = type ? landingOf(type, values, live) : undefined;
+  const blocked =
+    type === undefined
+      ? undefined
+      : createBlocked({
+          missing: missingToCreate(type, values).map(
+            (field) => fieldWord(type, field) ?? fieldLabel(field),
+          ),
+          parent:
+            needsParent && !parent
+              ? {
+                  item: parentBoard?.item ?? '',
+                  board: parentBoard?.name ?? '',
+                  open: parentChoices.length,
+                }
+              : undefined,
+        });
   const ready =
     type !== undefined &&
     canSubmit(type, values) &&
@@ -374,13 +394,20 @@ export function IntakeForm({
       ) : null}
       {start?.incomplete ? <p className="fnote">{startMessage(start, type)}</p> : null}
       <div className="fbtns" data-c="">
-        <Button type="submit" variant="primary" disabled={!ready || posting}>
+        <Button
+          type="submit"
+          variant="primary"
+          disabled={!ready || posting}
+          aria-describedby="intake-why"
+        >
           {t(posting ? 'intake.creating' : 'intake.create')}
         </Button>
         <Button variant="quiet" disabled={posting} onClick={onCancel}>
           {t('common.cancel')}
         </Button>
-        <span className="hint">{t('intake.hint', { board: collection.name })}</span>
+        <span className="hint" id="intake-why" aria-live="polite">
+          {(!posting && blocked) || t('intake.hint', { board: collection.name })}
+        </span>
       </div>
       {error ? (
         <p className="action-error" role="alert">
@@ -403,9 +430,14 @@ type NewItemFormProps = {
 export function NewItemForm({ board, parent, onCancel, onCreated }: NewItemFormProps) {
   const app = useApp();
   const collections = app.collections;
-  // A part's Crear names the board it lands on (Tareas de repo), not its parent's.
-  const wanted = board ?? parent?.collection;
-  const first = collections.find(({ name }) => name === wanted) ?? collections[0];
+  const summaries = boardsOf(useBoards(app.version));
+  // A part's Crear names the board it lands on (Tareas de repo), not its parent's; else the board on
+  // screen, else the person's own first board before the built-in Pedidos.
+  const first = startCollection(collections, {
+    asked: board ?? parent?.collection,
+    onScreen: app.route.view === 'board' ? app.route.board : undefined,
+    builtins: new Set(summaries.flatMap((b) => (b.builtin && b.collection ? [b.collection] : []))),
+  });
   return (
     <div className="nform">
       <div className="sheet-bar" data-c="">
