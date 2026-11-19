@@ -66,6 +66,7 @@ import { historyOf } from './history.ts';
 import { type MoveChoice, planMoves } from './moves.ts';
 import { NotesForm } from './NotesForm.tsx';
 import { AnchorPicker, clearOfToast, NotesSection, RoundNotesLine } from './NotesThread.tsx';
+import { draftKeyOf } from './note-draft.ts';
 import {
   anchorPieces,
   notedOn,
@@ -1038,6 +1039,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                     }
                     button={notes.button}
                     belowTop={notes.below}
+                    draft={draftKeyOf(item.id, notes.choice.move.to)}
                     onSend={send}
                     onCancel={() => setNotes({ ...notes, open: false })}
                     onGone={() => setNotes((n) => (n && !n.open ? null : n))}
