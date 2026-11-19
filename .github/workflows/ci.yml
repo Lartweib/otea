@@ -20,18 +20,6 @@ jobs:
     # A run takes under 5 minutes; a hang should fail long before the 6-hour default.
     timeout-minutes: 15
     steps:
-      - name: Diagnose Windows Defender (temporary, do not merge)
-        if: runner.os == 'Windows'
-        shell: pwsh
-        run: |
-          Get-MpComputerStatus | Select-Object AMServiceEnabled,AntivirusEnabled,RealTimeProtectionEnabled,BehaviorMonitorEnabled,OnAccessProtectionEnabled,IoavProtectionEnabled,AMRunningMode | Format-List
-          $p = Get-MpPreference
-          "DisableRealtimeMonitoring: $($p.DisableRealtimeMonitoring)"
-          "ExclusionPath: $($p.ExclusionPath -join '; ')"
-          "ExclusionProcess: $($p.ExclusionProcess -join '; ')"
-          "TEMP: $env:TEMP  RUNNER_TEMP: $env:RUNNER_TEMP  WORKSPACE: $env:GITHUB_WORKSPACE"
-          (Get-CimInstance Win32_Processor | Measure-Object -Property NumberOfLogicalProcessors -Sum).Sum
-          Get-PSDrive -PSProvider FileSystem | Format-Table Name,Used,Free
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
@@ -39,6 +27,13 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+        if: runner.os != 'Windows'
+      # Experiment (do not merge): the tests' temp repos on the runner's local disk D: instead of C:.
+      - run: npm run check
+        if: runner.os == 'Windows'
+        env:
+          TEMP: ${{ runner.temp }}
+          TMP: ${{ runner.temp }}
 
   # The desktop app is its own package. Here its types are checked and its bundle built: the
   # Electron binary is not downloaded, and its pure parts already run in the check job's tests. The
