@@ -30,6 +30,16 @@ export function currentBranch(cwd: string): string {
   }
 }
 
+// The branch checked out in the repo at cwd; undefined outside a repo or on a detached HEAD (a
+// rebase under way), where git names none.
+export function checkedOutBranch(cwd: string): string | undefined {
+  try {
+    return git(cwd, 'symbolic-ref', '--short', '--quiet', 'HEAD') || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 // How many commits `branch` holds over the first of `bases` the repo at cwd has: the branch as it
 // is here, or else on origin. Undefined when the repo has neither, or cwd is no repo.
 export function commitsOver(
@@ -413,10 +423,7 @@ export function pushState(cwd: string, branch: string): PushState | undefined {
   const push = pushRemote(cwd, branch);
   if (!here) {
     if (remote) return { kind: 'pushed' };
-    let on: string | undefined;
-    try {
-      on = git(cwd, 'symbolic-ref', '--short', 'HEAD') || undefined;
-    } catch {}
+    const on = checkedOutBranch(cwd);
     return on === undefined ? { kind: 'missing' } : { kind: 'missing', on };
   }
   if (remote) {
