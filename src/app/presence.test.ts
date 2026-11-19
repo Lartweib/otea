@@ -627,5 +627,60 @@ describe('agent presence', () => {
       ask(T0);
       expect(ask(T0_20S).working).toContain('ana');
     });
+
+    // P4-R3-2: a session that took the name, worked and ended with /exit (its MCP server and its
+    // wait gone, a lease still held) left the name «taken by a session working now» for minutes,
+    // and a restart was handed ana-2; or it was told the name acted moments ago, and asked the
+    // person which name to take.
+    describe('once the session it was handed to ended', () => {
+      const gone = () => false;
+      const work = (session?: number) => {
+        hearAgent(
+          ctx.db,
+          { agent: 'ana', channel: 'mcp', harness: CLAUDE_CODE, session: 101, folder: FOLDER },
+          at(T0_20S),
+        );
+        waitBeat(
+          ctx.db,
+          { agent: 'ana', channel: 'cli', waiter: 500, folder: FOLDER },
+          at(T0_20S),
+        ).run();
+        claimItem(ctx, { id: 'TASKS-1', actor: { kind: 'agent', name: 'ana' } }, at(T0_20S));
+        seeAgent(ctx.db, { agent: 'ana', channel: 'cli', folder: FOLDER }, at(T1));
+        return session;
+      };
+      const restart = (session?: number) =>
+        offerName(ctx.db, { folder: FOLDER, harness: 'claude-code', session }, at(T2), gone);
+
+      beforeEach(() => {
+        addCollection(ctx, { name: 'tasks' });
+        const task = { collection: 'tasks', fields: { description: 'Details' }, actor: ana };
+        createItem(ctx, { ...task, title: 'First' }, at(T0));
+      });
+
+      it('gives it back to a command-line whoami, with no word of moments ago', () => {
+        ask(T0);
+        work();
+        expect(restart()).toMatchObject({ name: 'ana', lately: false, suggested: null });
+      });
+
+      it('gives it back when it was handed to an MCP server now gone', () => {
+        ask(T0, 101);
+        work(101);
+        expect(restart(202)).toMatchObject({ name: 'ana', lately: false, suggested: null });
+      });
+
+      it('still hands another name while that session runs', () => {
+        ask(T0);
+        work();
+        const later = offerName(
+          ctx.db,
+          { folder: FOLDER, harness: 'claude-code' },
+          at(T2),
+          (pid) => pid === 101,
+        );
+        expect(later).toMatchObject({ name: null, suggested: 'ana-2' });
+      });
+    });
   });
 });
