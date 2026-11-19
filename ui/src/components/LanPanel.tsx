@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useState } from 'react';
-import { fetchLan, newPairingCode, openLan, revokeDevice } from '../api.ts';
+import { useCallback, useEffect, useRef, useState } from 'react';
+import { fetchLan, freshPairingCode, newPairingCode, openLan, revokeDevice } from '../api.ts';
 import { useApp } from '../app/context.tsx';
 import { agoLabel, momentLabel } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
@@ -96,16 +96,22 @@ export function LanPanel({ canManage }: LanPanelProps) {
   const [failure, setFailure] = useState<string | undefined>();
   const [revoked, setRevoked] = useState<ReadonlyMap<string, Device>>(new Map());
   const [now, setNow] = useState(Date.now);
+  const opened = useRef(false);
 
+  // The dialog opens on a code with its whole lifetime ahead, as its lead says (P7-R3-5): the one
+  // otea serve issued may have run half out by then. Every load after that only reads it.
   const load = useCallback(
-    (signal: AbortSignal) =>
-      fetchLan(signal, address).then(
+    (signal: AbortSignal) => {
+      const asked = opened.current ? fetchLan(signal, address) : freshPairingCode(address);
+      opened.current = true;
+      return asked.then(
         (value) => setView({ status: 'ready', value }),
         (error: unknown) => {
           if (signal.aborted) return;
           setView({ status: 'failed', message: error instanceof Error ? error.message : '' });
         },
-      ),
+      );
+    },
     [address],
   );
 

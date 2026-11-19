@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   AttemptLimiter,
+  CODE_KEPT_MS,
   CODE_TTL_MS,
   formatCode,
   isLoopback,
@@ -87,6 +88,65 @@ describe('pairing codes', () => {
 
   it('refuses every code while none was issued', () => {
     expect(new PairingCodes().redeem('')).toBe('wrong');
+  });
+});
+
+// P7-R3-5: the pairing dialog said «Caduca en 10 minutos» over a code otea serve had issued minutes
+// before. It opens on a fresh code, unless the current one may be in someone's hands right now.
+describe('the code the pairing dialog opens on', () => {
+  it('is a new one, with its whole lifetime ahead, once the current one is a while old', () => {
+    let now = 0;
+    const codes = new PairingCodes(() => now);
+    const old = codes.issue();
+    now = 4 * 60 * 1000;
+
+    const fresh = codes.fresh();
+
+    expect(fresh.code).not.toBe(old.code);
+    expect(fresh.expiresAt).toBe(now + CODE_TTL_MS);
+    expect(codes.current()).toEqual(fresh);
+    expect(codes.check(old.code)).toBe('wrong');
+  });
+
+  it('is a new one when there is none, or the last one ran out', () => {
+    let now = 0;
+    const codes = new PairingCodes(() => now);
+
+    expect(codes.fresh().expiresAt).toBe(CODE_TTL_MS);
+    now = CODE_TTL_MS;
+    expect(codes.fresh().expiresAt).toBe(2 * CODE_TTL_MS);
+  });
+
+  it('keeps a code issued a moment ago: another tab or otea serve just showed it', () => {
+    let now = 0;
+    const codes = new PairingCodes(() => now);
+    const shown = codes.issue();
+    now = CODE_KEPT_MS - 1;
+
+    expect(codes.fresh()).toEqual(shown);
+  });
+
+  it('keeps a code a phone read a moment ago, however old: the phone is pairing with it', () => {
+    let now = 0;
+    const codes = new PairingCodes(() => now);
+    const shown = codes.issue();
+    now = 5 * 60 * 1000;
+    expect(codes.check(shown.code)).toBe('ok');
+    now += CODE_KEPT_MS - 1;
+
+    expect(codes.fresh()).toEqual(shown);
+    now += 1;
+    expect(codes.fresh().code).not.toBe(shown.code);
+  });
+
+  it('does not keep a code only because someone tried a wrong one', () => {
+    let now = 0;
+    const codes = new PairingCodes(() => now);
+    const shown = codes.issue();
+    now = 5 * 60 * 1000;
+    expect(codes.check('AAAAAAAA')).toBe('wrong');
+
+    expect(codes.fresh().code).not.toBe(shown.code);
   });
 });
 
