@@ -125,3 +125,26 @@ describe('Sin estimar', () => {
     expect(phone).not.toContain('mx-guess');
   });
 });
+
+// P1-R3-7: clicking an item's id opened the item, while picking it took a click on its title;
+// «Haz clic en los ítems para elegirlos» did not say where.
+describe('the Matrix hint', () => {
+  const props = { ticked: [], onTick: () => undefined, onOpen: () => undefined };
+  const hint = () => {
+    const html = renderToStaticMarkup(
+      <MatrixView collection="Criaturas" def={weighed()} items={[]} {...props} />,
+    );
+    return /class="mx-hint"[^>]*>([^<]*)</.exec(html)?.[1];
+  };
+
+  it('says a click on the title picks an item, and its id opens it', () => {
+    setLanguage('es');
+    expect(hint()).toBe(
+      'Haz clic en el título de un ítem para elegirlo (su id lo abre) y después Fijar el orden o Poner arriba: los agentes los toman primero. Un paso que haces o revisas tú sigue en Te toca.',
+    );
+    setLanguage('en');
+    expect(hint()).toBe(
+      'Click an item’s title to pick it (its id opens it), then Set the order or Put on top: agents take them first. A step you do or review yourself stays in Your turn.',
+    );
+  });
+});

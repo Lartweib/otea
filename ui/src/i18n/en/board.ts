@@ -155,7 +155,7 @@ export const board = {
   'matrix.across': 'Across',
   'matrix.up': 'Up',
   'matrix.hint':
-    'Click items to pick them, then Set the order or Put on top: agents take them first. A step you do or review yourself stays in Your turn.',
+    'Click an item’s title to pick it (its id opens it), then Set the order or Put on top: agents take them first. A step you do or review yourself stays in Your turn.',
   'matrix.aside': 'Not estimated',
   'matrix.asideNone': 'Every open item has both values.',
   'matrix.order': 'Your order',

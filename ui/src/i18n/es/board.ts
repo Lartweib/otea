@@ -161,7 +161,7 @@ export const board = {
   'matrix.across': 'A lo ancho',
   'matrix.up': 'Hacia arriba',
   'matrix.hint':
-    'Haz clic en los ítems para elegirlos y después Fijar el orden o Poner arriba: los agentes los toman primero. Un paso que haces o revisas tú sigue en Te toca.',
+    'Haz clic en el título de un ítem para elegirlo (su id lo abre) y después Fijar el orden o Poner arriba: los agentes los toman primero. Un paso que haces o revisas tú sigue en Te toca.',
   'matrix.aside': 'Sin estimar',
   'matrix.asideNone': 'Todos los ítems abiertos tienen los dos valores.',
   'matrix.order': 'Tu orden',
