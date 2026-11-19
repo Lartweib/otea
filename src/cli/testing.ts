@@ -180,6 +180,11 @@ export function seedOnce(seed: (otea: Cli, dir: string) => Promise<void>): {
 // it once: seeding it before each test took a loaded Windows runner past the hook's 30s.
 export type CheckoutWithOrigin = { repo: TempRepo; origin: string; aside: string };
 
+// The one hook that seeds runs, once per file, the ~40 git spawns and CLI commands a hook before
+// each test used to; a Windows runner that stalls for half a minute (other suites run 9 times
+// slower then) has taken it past the 30s every other hook gets. It alone gets more.
+export const SEED_TIMEOUT_MS = 90_000;
+
 export function seedOnceWithOrigin(seed: (dir: string, origin: string) => Promise<void>): {
   fresh: () => CheckoutWithOrigin;
 } {
@@ -199,7 +204,7 @@ export function seedOnceWithOrigin(seed: (dir: string, origin: string) => Promis
     // A clone checks out main, whatever git's default branch name is where the test runs.
     execFileSync('git', ['--git-dir', origin, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
     await seed(dir, origin);
-  });
+  }, SEED_TIMEOUT_MS);
   afterAll(() => {
     if (template) removeFolder(template);
   });
