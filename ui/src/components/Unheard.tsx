@@ -30,3 +30,14 @@ export function UnheardMark({ busy }: { busy: readonly string[] }) {
     </span>
   );
 }
+
+// In its place on a row an agent set aside for later: who did, in grey, for no agent is coming to
+// it until it is taken up again (P7-R3-1).
+export function SetAsideMark({ by }: { by: string }) {
+  return (
+    <span className="mpt" data-aside="">
+      <span className="sep">·</span>
+      <span className="calm">{t('listen.setAside', { agent: by })}</span>
+    </span>
+  );
+}

@@ -179,6 +179,11 @@ describe('a refusal from the server', () => {
         { kind: 'not_stuck', item: 'ERR-1', holder: 'kiln' },
         'ERR-1 no está atascado: kiln lo tiene reservado.',
       ],
+      [
+        'invalid_transition',
+        { kind: 'not_set_aside', item: 'ERR-1' },
+        'ERR-1 ya no está apartado.',
+      ],
       ['item_closed', { kind: 'closed', item: 'ERR-1' }, 'ERR-1 ya terminó: no admite cambios.'],
       [
         'invalid_transition',

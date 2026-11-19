@@ -224,6 +224,34 @@ describe('a row’s call to act', () => {
     });
   });
 
+  // P7-R3-1: «espera a un agente» on an item the only agent had set aside for later.
+  it('says on the way which agent set it aside for later, with no alarm beside it', () => {
+    setLanguage('es');
+    const aside = item({
+      id: 'U',
+      turn: 'agent',
+      state: 'accepted',
+      setAside: { by: 'claude-haiku', at: ago(5) },
+    });
+    expect(rowCall(aside, 'encamino', ctx()).sub).toEqual({
+      key: 'toca.sub.setAside',
+      agent: 'claude-haiku',
+    });
+    const idle = { name: 'claude-haiku', harness: null, holding: [], lastSeen: ago(30) };
+    const agents = [{ ...idle, live: true, waiting: false }];
+    const out = html(rows(tocaBlocks({ ...app([aside]), agents }, false))[0]);
+    expect(out).toContain('<small><b>claude-haiku</b> lo dejó para más adelante');
+    expect(out).not.toContain('data-unheard');
+    expect(out).not.toContain('espera a un agente');
+    // The phone hides the call to act: the row's own line says it, calmly.
+    const phone = { encamino: true, onFold: () => undefined };
+    const onPhone = html(rows(tocaBlocks({ ...app([aside]), agents }, false, { phone }))[0]);
+    expect(onPhone).toContain(
+      '<span class="mpt" data-aside=""><span class="sep">·</span><span class="calm">apartado por claude-haiku</span></span>',
+    );
+    expect(out).not.toContain('data-aside');
+  });
+
   it('says on the way what comes next: your review, more agent work, the close, or a blocker', () => {
     setLanguage('es');
     // fixing → verify, yours: it comes back for your review.

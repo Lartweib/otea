@@ -364,9 +364,14 @@
   color: var(--rule-2);
 }
 /* «nadie está escuchando» never gives way with an ellipsis: the board name does (P8-R2-7); in the
-   queue behind an agent at work on another item it reads calm, in grey (P7-R2-12) */
-.m .mpt[data-unheard] {
+   queue behind an agent at work on another item it reads calm, in grey (P7-R2-12). Who set the item
+   aside for later gives way last, and only once it alone is wider than the row (P7-R3-1). */
+.m .mpt[data-unheard],
+.m .mpt[data-aside] {
   flex: none;
+}
+.m .mpt[data-aside] {
+  max-width: 100%;
 }
 .m .mpt[data-unheard] > :last-child {
   overflow: visible;

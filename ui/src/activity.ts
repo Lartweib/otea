@@ -2,6 +2,7 @@ import { isClosed, positionOf } from '../../src/core/board/engine.ts';
 import { relayOf } from './format.ts';
 import { t } from './i18n/i18n.ts';
 import { activeLease } from './lease.ts';
+import { isSetAside, SET_ASIDE_LIFTED } from './set-aside.ts';
 import type { CollectionView, Item, ItemEvent, Turn } from './types.ts';
 
 // An event of the project's log, as GET /api/events serves it: an item event that names its item.
@@ -58,6 +59,8 @@ export type Phrase =
   | { key: 'activity.released' }
   | { key: 'activity.restarted' }
   | { key: 'activity.reassigned'; agent: string }
+  | { key: 'activity.setAside' }
+  | { key: 'activity.resumed' }
   | { key: 'activity.handed'; state: string; name?: string }
   | {
       key: 'activity.moved' | 'activity.sentBack' | 'activity.approved' | 'activity.closed';
@@ -131,8 +134,11 @@ function phraseOf(
       return { kind: 'lease', phrase: { key: 'activity.restarted' } };
     if (event.actor.kind === 'human' && data.cause === 'reassign')
       return { kind: 'lease', phrase: { key: 'activity.reassigned', agent: text(data.next) } };
+    if (isSetAside(event)) return { kind: 'lease', phrase: { key: 'activity.setAside' } };
     return { kind: 'lease', phrase: { key: 'activity.released' } };
   }
+  // Retomar on an item an agent set aside (feedLines keeps only that lift).
+  if (type === SET_ASIDE_LIFTED) return { kind: 'lease', phrase: { key: 'activity.resumed' } };
   if (type === 'transitioned') {
     const state = text(data.to);
     const name = named(data.toName);
@@ -200,14 +206,22 @@ function named(value: unknown): { name?: string } {
   return typeof value === 'string' && value !== '' ? { name: value } : {};
 }
 
-// The feed, newest first. A lease released on a handoff is not drawn apart: the handoff says it.
+// A lease released on a handoff is not drawn apart: the handoff says it. Nor is a set-aside lifted
+// by what the person did there (a note, an answer, the order) or by what it waited for closing:
+// that act has its own line. Retomar has none but its lift.
+function drawn({ type, data }: FeedEvent): boolean {
+  if (type === 'released') return data.cause !== 'handoff';
+  return type !== SET_ASIDE_LIFTED || data.cause === 'resume';
+}
+
+// The feed, newest first.
 export function feedLines(
   events: readonly FeedEvent[],
   turnOf: TurnOf,
   rankOf?: RankOf,
 ): FeedLine[] {
   return events
-    .filter((event) => !(event.type === 'released' && event.data.cause === 'handoff'))
+    .filter(drawn)
     .map((event) => {
       const relay = relayOf(event);
       const agent = relay ? relay.via : event.actor.kind === 'agent' ? event.actor.name : null;

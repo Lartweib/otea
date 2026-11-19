@@ -212,6 +212,24 @@ describe('the standfirst (mock:2670-2678)', () => {
     );
   });
 
+  // P7-R3-1: «Espera a un agente» on an item the only agent had set aside: nobody was coming.
+  it('says which agent set it aside for later, rather than that it waits for one', () => {
+    expect(standOf({ ...base, agent: null, look: 'queued', aside: 'claude-haiku' })).toEqual({
+      key: 'sheet.stand.setAside',
+      agent: 'claude-haiku',
+    });
+    expect(standOf({ ...base, look: 'waiting', aside: 'claude-haiku' }).key).toBe(
+      'sheet.stand.setAside',
+    );
+    expect(standOf({ ...base, look: 'queued', aside: 'kiln', reopened: 'x' }).key).toBe(
+      'sheet.stand.setAside',
+    );
+    expect(standOf({ ...base, look: 'queued', aside: 'kiln', archived: 'Errores' }).key).toBe(
+      'sheet.stand.archived',
+    );
+    expect(standOf({ ...base, look: 'yours', aside: 'kiln' }).key).toBe('sheet.stand.handed');
+  });
+
   it('says waiting, working, its children', () => {
     expect(standOf({ ...base, look: 'queued' }).key).toBe('sheet.stand.waits');
     expect(standOf({ ...base, look: 'queued', agent: null }).key).toBe('sheet.stand.waitsAgent');

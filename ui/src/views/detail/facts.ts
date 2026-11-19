@@ -250,10 +250,14 @@ export function standOf(o: {
   reopened?: string | undefined;
   // Done by you: its last step was yours and you closed it (P4-R3-3).
   byYou?: boolean;
+  // The agent that set it aside for later: it says so, never that it waits for one (P7-R3-1).
+  aside?: string | undefined;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
   if (o.archived !== undefined) return { key: 'sheet.stand.archived', board: o.archived };
+  const waitsAgent = o.look === 'queued' || o.look === 'waiting' || o.look === 'stuck';
+  if (o.aside !== undefined && waitsAgent) return { key: 'sheet.stand.setAside', agent: o.aside };
   const agentTurn = o.look === 'working' || o.look === 'queued' || o.look === 'stuck';
   if (o.reopened !== undefined && agentTurn) {
     // Quoted inside a sentence of its own: its closing stop would double the sentence's.

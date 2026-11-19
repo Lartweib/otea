@@ -198,6 +198,38 @@ describe('the item sheet', () => {
     expect(silent).toContain('>Espera a un agente. Nadie está escuchando.</span></p>');
   });
 
+  // P7-R3-1: the only agent set it aside for later, and the header said «Espera a un agente» with
+  // «Nadie está escuchando»: the person waited for nothing.
+  it('says which agent set it aside for later, offers Retomar, and raises no alarm', () => {
+    setLanguage('es');
+    const haiku = { kind: 'agent', name: 'claude-haiku' } as const;
+    const aside: ItemView = {
+      ...item,
+      state: 'fixing',
+      turn: 'agent',
+      events: [
+        ev('claimed', haiku, { holder: 'claude-haiku' }, 20),
+        ev('released', haiku, { holder: 'claude-haiku', cause: 'later' }, 10),
+      ],
+      setAside: { by: 'claude-haiku', at: ago(10) },
+    };
+    const lone = { name: 'claude-haiku', harness: null, holding: [], lastSeen: ago(30) };
+    const silent = { ...app, agents: [{ ...lone, live: true, waiting: false }] } as App;
+    const html = render(aside, silent);
+    expect(html).toContain('<b>claude-haiku</b> lo dejó para más adelante.');
+    expect(html).not.toContain('Espera a un agente');
+    expect(html).not.toContain('data-unheard');
+    expect(html).not.toContain('Nadie está escuchando');
+    expect(html).toMatch(/<button[^>]*data-resume=""[^>]*>Retomar<\/button>/);
+    expect(html).toContain('Retomar · vuelve a la cola de');
+    expect(html).toContain('también para claude-haiku');
+    // Once taken up again, it waits for an agent, and says so while nobody listens.
+    const { setAside: _lifted, ...back } = aside;
+    const backHtml = render(back, silent);
+    expect(backHtml).toContain('Espera a <b>claude-haiku</b>. Nadie está escuchando.');
+    expect(backHtml).not.toContain('data-resume');
+  });
+
   it('lets the person free a live lease, and says how long it has left, not the item’s age', () => {
     const held: ItemView = {
       ...item,

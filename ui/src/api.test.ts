@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchItem, reassignItem, restartItem, undoRelease } from './api.ts';
+import { fetchItem, reassignItem, restartItem, resumeItem, undoRelease } from './api.ts';
 
 // Retomar, Reasignar and their Deshacer, as the UI asks the server.
 
@@ -36,6 +36,15 @@ describe('a stuck item, from the UI', () => {
     stubFetch();
     await undoRelease('ERR-7');
     expect(calls).toEqual([{ path: '/api/items/ERR-7/undo', body: { release: true } }]);
+  });
+});
+
+// P7-R3-1: an item an agent set aside for later, taken up again by the person (Retomar).
+describe('an item set aside for later, from the UI', () => {
+  it('takes it up again through the resume route', async () => {
+    stubFetch();
+    await resumeItem('ERR-7');
+    expect(calls).toEqual([{ path: '/api/items/ERR-7/resume', body: {} }]);
   });
 });
 

@@ -65,7 +65,7 @@ import { takePick } from './pick-intent.ts';
 // … · Comparar), the rest folded under Detalles and Lo pedido, and Aprobar and Devolver docked at
 // the bottom at 48 px. Devolver… opens a sheet from below with the note focused; it leaves the way
 // it came. An item that is not on your turn is read only: the stuck one keeps Retomar and
-// Reasignar, nothing closes or discards it here.
+// Reasignar, one an agent set aside keeps Retomar, nothing closes or discards it here.
 
 type PhoneItemProps = {
   item: ItemView;
@@ -852,7 +852,8 @@ export function PhoneItem(p: PhoneItemProps) {
           />
         </section>
       ) : null}
-      {docked ? null : (
+      {/* Set aside for later, Retomar stays in view above the docked note (P7-R3-1). */}
+      {docked && p.mode !== 'aside' ? null : (
         <Acts
           item={item}
           type={p.type}

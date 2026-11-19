@@ -48,6 +48,9 @@ export type Item = {
   lease: Lease | null;
   // A lease that ran out with nobody releasing it; lease is null then.
   expiredLease?: Lease;
+  // While an agent has it set aside for later (otea release --later, app/set-aside.ts): that agent
+  // and when. Its next and wait leave the item out until it lifts (Retomar, or what the person does).
+  setAside?: { by: string; at: string };
   // The item's relations, read from it, and a parent's children summary; absent when it has none.
   relations?: RelationRef[];
   children?: ChildrenSummary;

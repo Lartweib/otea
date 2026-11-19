@@ -162,6 +162,11 @@ describe('the note dock on the phone', () => {
     expect(notesDock('moves', true)).toBe(true);
     expect(notesDock('moves', false)).toBe(false);
   });
+
+  // P7-R3-1: a note takes up an item an agent set aside, as Retomar does above it.
+  it('stays on an item an agent set aside for later', () => {
+    expect(notesDock('aside', true)).toBe(true);
+  });
 });
 
 describe('partNames: which part of the board each file was attached to', () => {

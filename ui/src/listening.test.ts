@@ -51,6 +51,12 @@ describe('unheard', () => {
     expect(unheard(item({ lease }), [agent('a')], NOW)).toBe(false);
     expect(unheard(item({ lease }), [agent('a', { lastSeen: ago(10) })], NOW)).toBe(true);
   });
+
+  // P7-R3-1: the only agent set it aside for later; the desk says that instead of an alarm.
+  it('leaves alone an item an agent set aside for later', () => {
+    const setAside = { by: 'a', at: ago(3) };
+    expect(unheard(item({ setAside }), [agent('a')], NOW)).toBe(false);
+  });
 });
 
 // P7-R2-12: every queued item read «nadie está escuchando» in red while the only agent worked on

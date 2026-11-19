@@ -19,6 +19,7 @@ import {
   withdrawNote as postNoteWithdraw,
   reassignItem,
   restartItem,
+  resumeItem,
   undoMove,
   undoRelease,
   unlinkItems,
@@ -109,6 +110,9 @@ export type AppActions = {
   // ran out comes back while the toast is up.
   restart(id: string, toast: string): Promise<void>;
   reassign(id: string, agent: string, toast: string): Promise<void>;
+  // An item an agent set aside for later, taken up again (Retomar): nothing moves, so the toast
+  // comes at once, with nothing to undo.
+  resume(id: string, toast: string): Promise<void>;
   link(id: string, kind: RelationView, other: string): Promise<void>;
   unlink(id: string, relation: RelatedItem): Promise<void>;
   newItem(o?: { board?: string; parent?: IntakeParent }): void;
@@ -233,6 +237,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await Q.run(() => reassignItem(id, agent));
         await landed();
         toast({ msg: message, id, undo: () => void Q.run(() => undoRelease(id)) });
+      },
+      async resume(id, message) {
+        await Q.run(() => resumeItem(id));
+        toast({ msg: message, id });
       },
       async link(id, kind, other) {
         await Q.run(() => linkItems(linkRequestOf(id, kind, other)));

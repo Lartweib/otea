@@ -332,6 +332,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     question: facts.question,
     plan,
     asks: !!item.asks,
+    aside: !!item.setAside,
   });
   // Reviewing an item that carries options, you pick one as you approve: the ways on are named for
   // the pick, and the moves keep the rest (the send-backs, the closes).
@@ -356,6 +357,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     archived: item.archived?.board,
     reopened: onBoard?.reopened?.why,
     byYou: !!closedBy?.doneByPerson,
+    aside: item.setAside?.by,
   });
   const standWords = tx(
     stand.key as 'sheet.stand.handedRound',

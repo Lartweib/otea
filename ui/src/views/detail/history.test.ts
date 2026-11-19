@@ -194,6 +194,59 @@ describe('the history of a stuck item you took in hand', () => {
   });
 });
 
+// P7-R3-1: an agent's set-aside read «Soltó la reserva», and what took it up again read as its type.
+describe('an item set aside for later, and back for the agents, in the history', () => {
+  afterEach(() => setLanguage('en'));
+  const haiku = { kind: 'agent', name: 'claude-haiku' } as const;
+  const lifted = (cause: string, actor: ItemEvent['actor'] = you, extra = {}) =>
+    ev('set_aside_lifted', actor, { by: 'claude-haiku', cause, ...extra }, 2);
+
+  it('says the agent set it aside, and why it came back, in the words of who did it', () => {
+    setLanguage('es');
+    const lines = historyOf(
+      [
+        ev('released', haiku, { holder: 'claude-haiku', cause: 'later' }, 9),
+        lifted('resume', you, { channel: 'ui' }),
+      ],
+      bug,
+      word,
+      NOW,
+    );
+    expect(lines.map((l) => [l.text, l.who, l.dot])).toEqual([
+      ['Vuelve a estar para los agentes: lo retomaste', 'tú', 'you'],
+      ['Lo dejó para más adelante', 'claude-haiku', 'agent'],
+    ]);
+  });
+
+  it('says each cause, naming nobody when what it waited for closed', () => {
+    setLanguage('es');
+    const kiln = { kind: 'agent', name: 'kiln' } as const;
+    const said = (e: ItemEvent) => {
+      const [line] = historyOf([e], bug, word, NOW);
+      return [line?.text, line?.who];
+    };
+    expect(said(lifted('parts', kiln, { after: 'TAR-2' }))).toEqual([
+      'Vuelve a estar para los agentes: se cerraron sus partes',
+      '',
+    ]);
+    expect(said(lifted('blockers', you, { after: 'ERR-3' }))).toEqual([
+      'Vuelve a estar para los agentes: se cerró lo que lo bloqueaba',
+      '',
+    ]);
+    expect(said(lifted('note', you, { note: 2 }))[0]).toBe(
+      'Vuelve a estar para los agentes: le dejaste una nota',
+    );
+    expect(said(lifted('answer'))[0]).toBe('Vuelve a estar para los agentes: respondiste');
+    expect(said(lifted('order'))[0]).toBe(
+      'Vuelve a estar para los agentes: lo elegiste en el orden',
+    );
+    expect(said(lifted('pin'))[0]).toBe('Vuelve a estar para los agentes: lo pusiste arriba');
+    setLanguage('en');
+    expect(said(lifted('resume'))[0]).toBe('Back for the agents: you took it up again');
+    expect(said(lifted('something_new'))[0]).toBe('Back for the agents');
+  });
+});
+
 describe('a move the board made in the history', () => {
   afterEach(() => setLanguage('en'));
 

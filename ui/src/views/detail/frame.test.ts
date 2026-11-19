@@ -8,6 +8,7 @@ import {
   penPath,
   penReaches,
   pressInView,
+  resumedToastOf,
   shortTitle,
   stuckToastOf,
   toastOf,
@@ -90,6 +91,13 @@ describe('the toast after a move, and its Undo', () => {
     expect(stuckToastOf({ title: 'X', state: 'En arreglo', agent: 'quill' })).toBe(
       'Le dejaste «X» a quill.',
     );
+    setLanguage('en');
+  });
+
+  it('says an item set aside for later was taken up again, for the agents to see', () => {
+    expect(resumedToastOf('X')).toBe('You took “X” up again: the agents see it once more.');
+    setLanguage('es');
+    expect(resumedToastOf('X')).toBe('Retomaste «X»: los agentes lo verán otra vez.');
     setLanguage('en');
   });
 

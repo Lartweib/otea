@@ -11,6 +11,16 @@ describe('what stands for the moves', () => {
     expect(actsModeOf(o)).toBe('moves');
     expect(actsModeOf({ ...o, asks: true, canWrite: false })).toBe('read');
   });
+
+  // P7-R3-1: an item an agent set aside offers Retomar, not the receipt of a step on its way.
+  it('offers Retomar on an item an agent set aside for later, and only to who may write', () => {
+    const o = { canWrite: true, question: false, plan: none, aside: true };
+    expect(actsModeOf({ ...o, look: 'queued' })).toBe('aside');
+    expect(actsModeOf({ ...o, look: 'waiting' })).toBe('aside');
+    expect(actsModeOf({ ...o, look: 'queued', canWrite: false })).toBe('read');
+    expect(actsModeOf({ ...o, look: 'queued', aside: false })).toBe('receipt');
+    expect(actsModeOf({ ...o, look: 'yours' })).toBe('moves');
+  });
 });
 
 describe('the box to answer a question in', () => {

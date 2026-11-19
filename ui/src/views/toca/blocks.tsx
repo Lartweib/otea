@@ -3,7 +3,7 @@ import type { FeedEvent } from '../../activity.ts';
 import { type App, typeOfItem } from '../../app/context.tsx';
 import { onPublishedBoard, publishedDefinition } from '../../board-studio/home/boards-store.ts';
 import { Prof } from '../../components/Prof.tsx';
-import { UnheardMark } from '../../components/Unheard.tsx';
+import { SetAsideMark, UnheardMark } from '../../components/Unheard.tsx';
 import { mainPath } from '../../derive/path.ts';
 import {
   agentOf,
@@ -91,6 +91,7 @@ export type SubKey =
   | 'toca.sub.waitsFor'
   | 'toca.sub.waitsAgent'
   | 'toca.sub.waitsKids'
+  | 'toca.sub.setAside'
   | 'toca.sub.didIt'
   | 'toca.sub.closedBy'
   | 'toca.sub.closedByYou';
@@ -165,6 +166,8 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
     }
     case 'encamino': {
       const act = onTheWay(item, ctx);
+      // Set aside for later: who did, never «espera a un agente» (P7-R3-1).
+      if (item.setAside) return { act, sub: sub('toca.sub.setAside', item.setAside.by) };
       const holder = activeLease(item.lease, now)?.holder;
       if (holder) return { act, sub: sub('toca.sub.does', holder) };
       if ((item.children?.open ?? 0) > 0) return { act, sub: sub('toca.sub.waitsKids') };
@@ -289,6 +292,8 @@ function TocaRow({
           {sec === 'encamino' && unheard(it, app.agents, app.now) ? (
             <UnheardMark busy={busyAgents(app.agents, app.all, app.now)} />
           ) : null}
+          {/* The phone hides the call to act, which says who set it aside on the desk. */}
+          {phone && sec === 'encamino' && it.setAside ? <SetAsideMark by={it.setAside.by} /> : null}
         </div>
         {delivered && (delivered.note || files) ? (
           <div className="p-said" data-leaf="">

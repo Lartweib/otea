@@ -96,6 +96,11 @@ export function stuckToastOf(o: { title: string; state: string; agent?: string }
     : t('sheet.toast.restarted', { title, state: o.state });
 }
 
+// The toast after Retomar on an item an agent set aside for later.
+export function resumedToastOf(title: string): string {
+  return t('sheet.toast.resumed', { title: shortTitle(title) });
+}
+
 // The item the sheet holds: the one asked for once the server has answered, null when it has no
 // such item (the sheet then says so; it never keeps the item open before), else what it held, so a
 // swap waits for the next item and a close shows what it showed until it is gone.

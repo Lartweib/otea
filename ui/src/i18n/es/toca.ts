@@ -65,6 +65,7 @@ export const toca = {
   'toca.sub.waitsFor': 'espera a {agent}',
   'toca.sub.waitsAgent': 'espera a un agente',
   'toca.sub.waitsKids': 'espera a sus hijos',
+  'toca.sub.setAside': '{agent} lo dejó para más adelante',
   'toca.sub.didIt': 'lo hizo {agent}',
   'toca.sub.closedBy': 'lo cerró {agent}',
   'toca.sub.closedByYou': 'cerrado por ti',
