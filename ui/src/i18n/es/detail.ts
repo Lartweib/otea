@@ -823,6 +823,7 @@ export const detail = {
     other: '{count} notas mientras la hacía',
   },
   'notes.sent': 'Le dejaste una nota a {agent} en «{title}».',
+  'notes.sentAny': 'Le dejaste una nota al agente en «{title}».',
   'notes.failed': 'No se envió la nota. Vuelve a intentarlo.',
   'notes.h.left': 'Le dejaste una nota',
   'notes.h.on': 'sobre {file}',

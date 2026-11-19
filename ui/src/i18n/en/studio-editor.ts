@@ -207,7 +207,7 @@ export const studioEditor = {
     'You cannot hand it off without {part}, and each round you have to bring a new version.',
   'bs.editor.hand.check': 'Every box has to be ticked.',
   'bs.editor.toast.part_removed': 'You removed {part} from {where}.',
-  'bs.editor.toast.from_form': 'the form',
+  'bs.editor.toast.part_removed_form': 'You removed {part} from the form.',
   'bs.editor.toast.from_any': 'any time',
   'bs.editor.toast.step_removed': 'You removed the step {step}.',
   'bs.editor.toast.step_removed_items': {

@@ -205,7 +205,7 @@ export const studioEditor = {
     'No puedes entregarlo sin {part}, y en cada ronda tienes que traer una versión nueva.',
   'bs.editor.hand.check': 'Hacen falta todas las casillas marcadas.',
   'bs.editor.toast.part_removed': 'Quitaste {part} de {where}.',
-  'bs.editor.toast.from_form': 'el formulario',
+  'bs.editor.toast.part_removed_form': 'Quitaste {part} del formulario.',
   'bs.editor.toast.from_any': 'cualquier momento',
   'bs.editor.toast.step_removed': 'Quitaste el paso {step}.',
   'bs.editor.toast.step_removed_items': {

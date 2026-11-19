@@ -1,6 +1,7 @@
 import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { startsWith } from '../../../../src/core/board/engine.ts';
 import {
+  type BoardDefinition,
   CHOICE_KINDS,
   EVIDENCE_SHOWS,
   type EvidenceKind,
@@ -190,6 +191,20 @@ export function PartRow({ entry }: { entry: RowEntry }) {
   );
 }
 
+// What Quitar says once the part is gone: from the step, by its name, from the form («del
+// formulario», never «de el formulario») or from any time.
+export function removedSays(name: string, at: PartPlace, def: BoardDefinition): ReactNode {
+  const part = <b>{name}</b>;
+  if (at.type === 'form') return tx('bs.editor.toast.part_removed_form', { part });
+  const where =
+    at.type === 'step' ? (
+      <b>{def.steps.find((s) => s.id === at.step)?.name ?? ''}</b>
+    ) : (
+      t('bs.editor.toast.from_any')
+    );
+  return tx('bs.editor.toast.part_removed', { part, where });
+}
+
 function Field({ label, children }: { label: string; children: ReactNode }) {
   return (
     // biome-ignore lint/a11y/noLabelWithoutControl: the control is the child
@@ -310,12 +325,6 @@ function PartEditor({ entry, part }: { entry: RowEntry; part: Part }) {
   }
 
   const at: PartPlace = entry.at;
-  const where =
-    at.type === 'step'
-      ? (def.steps.find((s) => s.id === at.step)?.name ?? '')
-      : at.type === 'form'
-        ? t('bs.editor.toast.from_form')
-        : t('bs.editor.toast.from_any');
   out.push(
     <div key="foot" className="se-hfoot">
       <button
@@ -324,13 +333,7 @@ function PartEditor({ entry, part }: { entry: RowEntry; part: Part }) {
         onClick={() => {
           setOpenRow(null);
           draft.mutate((d) => removePart(d, at, ref));
-          toast({
-            msg: tx('bs.editor.toast.part_removed', {
-              part: <b>{part.name}</b>,
-              where: at.type === 'step' ? <b>{where}</b> : where,
-            }),
-            undo: draft.undo,
-          });
+          toast({ msg: removedSays(part.name, at, def), undo: draft.undo });
         }}
       >
         {t(
