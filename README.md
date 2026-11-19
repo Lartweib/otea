@@ -101,7 +101,7 @@ Agents claim an item before working it. A lease is atomic: while one agent holds
 
 A lease that ran out without a release leaves its item stuck (**Atasco** in the web UI). There the person either puts it back in the queue of its step for any agent to claim (**Retomar**, `POST /api/items/:id/restart`) or leaves it for a named agent (**Reasignar**, `POST /api/items/:id/reassign` with `{"agent"}`). Both drop the lease that ran out and write a `released` event by the human with `cause` `restart` or `reassign` (and `next`, the agent it is left for); `otea show` reads them as `(back in the queue)` and `(left for <agent>)`. The agent named is expected, not enforced: any agent may still claim the item, but `otea next` offers it only to that agent, and `otea show` tells any other `Left for <agent>: pick another item.` (and that agent `The person left it for you.`) until an agent claims or moves it. An item whose lease is still running, or that has none, is refused (409, `not_stuck`). While its toast is up, `POST /api/items/:id/undo` with `{"release": true}` gives the lease back as it was (with `{"from"}` it takes back a move, as before); like moves, these writes need the session, JSON and the server's own origin.
 
-`otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. Agents act through the CLI, so it only makes the moves a board gives agents. Approving a step the person reviews (`Hacerlo (en revisión)` -> `Integrar` on Encargos; a review reads in the board's language, and `(in review)` is accepted too) is the person's, in the web UI: `otea approve`, `otea move` and `otea relay` refuse it with exit code 7 (`forbidden`).
+`otea update` changes fields of an open item (a blank value clears an optional field) and records the old and new values in the timeline; items in a closed state (turn `none`) cannot be updated. A long or multi-line value comes from a file with `--field-file "<name>=<file>"`, or from stdin with `<name>=-` (`otea create` takes it too); a UTF-8 BOM and the line break that ends the file are left out. `--description` fills the board's description field where it has one (Descripción on Errores); a board without one (Cambios) refuses it. Agents act through the CLI, so it only makes the moves a board gives agents. Approving a step the person reviews (`Hacerlo (en revisión)` -> `Integrar` on Encargos; a review reads in the board's language, and `(in review)` is accepted too) is the person's, in the web UI: `otea approve`, `otea move` and `otea relay` refuse it with exit code 7 (`forbidden`).
 
 A board is named in any case wherever a command takes one (`--collection encargos` is Encargos, and so is `otea board encargos`), as its steps and fields are in `otea list --state/--field`: board names are unique whatever their case.
 
@@ -410,9 +410,11 @@ An agent the person asks for a board starts the same thing from the CLI or MCP (
 
 ```sh
 otea board draft --new "Piezas" --why "The game's screens, reviewed by looking" --template design   # PED-1, starting from Diseño visual
-otea board draft PED-1 > board.json          # the draft to start from: every key a board takes
-otea board draft PED-1 --file board.json     # check it as a board and hand it in on the Pedido
+otea board draft PED-1 > "$TMPDIR/board.json"          # the draft to start from: every key a board takes
+otea board draft PED-1 --file "$TMPDIR/board.json"     # check it as a board and hand it in on the Pedido
 ```
+
+- The Pedido's instructions name a file in the temp folder (`otea-PED-1-board.json`), so no `board.json` is left in the repo. A `board.json` with a UTF-8 BOM (PowerShell 5's `Out-File -Encoding utf8`) reads as any other.
 
 - The shape of `board.json` is published as a JSON Schema, [`schemas/board.schema.json`](schemas/board.schema.json), each key with what it is for and an example: check a draft against it before handing it in. It is generated from the board's zod schema (`src/core/board/schema.ts`), and a test keeps the two together.
 - A file that is not a board is refused (exit 9, `invalid_board`) with one line per problem: where, in the board's terms (`step 2 "Fix" › handoff 1 (fsteps) › req`), what was expected and what it found, what the key is for with an example, and the JSON path (`[steps.1.hand.0.req]`). Then it points at the draft to start from, the schema, and Studio, where the person can finish what is hard to say in JSON.

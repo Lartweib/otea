@@ -87,7 +87,14 @@ function parse(argv: string[]): { values: Values; positionals: string[] } {
     const args = withOptionalValues(argv);
     return parseArgs({ args, options: PARSE_OPTIONS, allowPositionals: true, strict: true });
   } catch (error) {
-    throw new UsageError(error instanceof Error ? error.message : String(error));
+    const message = error instanceof Error ? error.message : String(error);
+    // Agents reach for --field <name> --value <value>: say how a field is given instead.
+    if (/^Unknown option '--value'/.test(message)) {
+      throw new UsageError(
+        'There is no --value: give a field as --field "<name>=<value>", or a long one from a file with --field-file "<name>=<file>"',
+      );
+    }
+    throw new UsageError(message);
   }
 }
 
@@ -124,7 +131,7 @@ function validate(command: Command, values: Values, args: string[]): void {
 }
 
 // What a command reads as a path, which Git Bash's conversion leaves a real path of.
-const PATH_OPTIONS = new Set(['file', 'log', 'join']);
+const PATH_OPTIONS = new Set(['file', 'log', 'join', 'field-file']);
 const PATH_ARGS = new Set(['path', 'path?', 'file', 'old', 'new']);
 
 // Git Bash (MSYSTEM set) hands a Windows program an argument that starts with / as a path under

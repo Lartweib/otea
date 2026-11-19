@@ -22,7 +22,12 @@ import { mcpWords } from './words.ts';
 export { AGENT_COMMANDS, CLI_ONLY_COMMANDS, toolName } from './commands.ts';
 
 // A tool call answers once, so it cannot follow the event log.
-export const OMITTED_OPTIONS: Readonly<Record<string, readonly string[]>> = { events: ['follow'] };
+// --field-file reads a file or stdin for a long value, which a tool call carries as it is.
+export const OMITTED_OPTIONS: Readonly<Record<string, readonly string[]>> = {
+  events: ['follow'],
+  create: ['field-file'],
+  update: ['field-file'],
+};
 
 // Clients time out long tool calls, so a wait gives up after this unless told otherwise, and never
 // waits longer than the cap.

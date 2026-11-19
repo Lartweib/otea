@@ -1,4 +1,5 @@
 import { writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -9,6 +10,9 @@ import { openProject } from '../app/project.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+
+// Where the agent is told to keep its board.json: the temp folder, out of the repo.
+const draftFile = (id: string) => `"${join(tmpdir(), `otea-${id}-board.json`)}"`;
 
 // An agent the person asked for a board starts the same flow Studio's "Que lo esboce un agente"
 // does: otea board draft --new makes the waiting board and its Pedido, held by the agent; the
@@ -67,7 +71,7 @@ describe('otea board draft --new', () => {
     expect(out).toContain(item);
     expect(out).toContain('waits in Studio for the person to try and publish');
     expect(out).toContain(`/#/studio/board/${board?.id}`);
-    expect(out).toContain(`otea board draft ${item} > board.json`);
+    expect(out).toContain(`otea board draft ${item} > ${draftFile(item)}`);
   });
 
   it('answers the board and the Pedido with --json, and the draft to start from after', async () => {
@@ -108,6 +112,20 @@ describe('otea board draft --new', () => {
       listBoardSummaries(project).find(({ name }) => name === 'Criaturas'),
     );
     expect(arrived?.status).not.toBe('waiting');
+  });
+
+  it('reads a board.json with a UTF-8 BOM, as PowerShell 5 writes it', async () => {
+    const start = JSON.parse(
+      (await otea('board', 'draft', '--new', 'Borrador', '--why', 'Para probar', '--json')).out,
+    );
+    const definition = JSON.parse((await otea('board', 'draft', start.item)).out);
+    const file = join(repo.dir, 'board.json');
+    writeFileSync(file, `\uFEFF${JSON.stringify({ ...definition, name: 'Criaturas' })}`);
+
+    const { code, err } = await otea('board', 'draft', start.item, '--file', 'board.json');
+
+    expect(err).toBe('');
+    expect(code).toBe(0);
   });
 
   it('makes nothing when the file is not a board, saying what is wrong', async () => {
