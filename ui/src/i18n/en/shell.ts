@@ -43,6 +43,9 @@ export const shell = {
   'shell.flag.noMcp': 'MCP not connected',
   'shell.flag.noMcpTip':
     "It asked to connect over MCP (otea connect), but its harness never loaded Otea's server: it was declined when asked, or never added. It still works through the otea command.",
+  'shell.flag.mcpUnused': 'connected by CLI, MCP unused',
+  'shell.flag.mcpUnusedTip':
+    "Its harness loaded Otea's MCP server, but this agent works with the otea command. It works the same: nothing needs fixing.",
   'shell.noAgents': 'No agent connected yet.',
   'shell.cli': 'CLI',
   'shell.activity': 'See activity',

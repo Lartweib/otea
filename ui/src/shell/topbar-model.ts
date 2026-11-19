@@ -110,6 +110,8 @@ export type AgentRow = {
   waiting: boolean;
   // It asked for MCP (otea connect) and its harness never loaded Otea's server.
   mcpMissing: boolean;
+  // Its harness loaded Otea's server, and it works through the command line (P6-R2-10).
+  mcpUnused: boolean;
   state: AgentDoing;
   // Since when it is in that state, and the item it is about (none while idle with no past act).
   since: number;
@@ -168,7 +170,8 @@ export function agentRows(
         quiet,
         working,
         waiting: a.waiting !== false,
-        mcpMissing: a.mcpMissing === true,
+        mcpMissing: a.mcp ? a.mcp === 'missing' : a.mcpMissing === true,
+        mcpUnused: a.mcp === 'unused',
         state,
         since: st.since,
         item: st.item ? { id: st.item.id, title: st.item.title, look: lookOf(st.item, now) } : null,

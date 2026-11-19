@@ -423,6 +423,16 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN listening_waiter INTEGER;
   `,
+  // When each harness last loaded Otea's MCP server (its client's initialize), keyed by the
+  // harness: the desk says MCP is missing or unused for every agent of that harness, whatever name
+  // it took, and otea connect --check goes green on the load alone.
+  `
+  CREATE TABLE mcp_loads (
+    harness TEXT PRIMARY KEY,
+    name TEXT NOT NULL,
+    at TEXT NOT NULL
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

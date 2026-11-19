@@ -304,6 +304,30 @@ describe('the agents menu', () => {
     expect(menu()).not.toContain('MCP sin conectar');
   });
 
+  // P6-R2-10: the harness loaded the server, the agent used the command line, and the desk said
+  // «MCP sin conectar» as if the config were broken.
+  it('says in grey that an agent works by CLI with MCP unused, once its harness loaded it', () => {
+    setLanguage('es');
+    const rows = agentRows([agent('Quill', { mcp: 'unused', profile: opus })], items, NOW);
+    const html = renderIn(
+      testApp(),
+      createElement(AgentsMenuBody, {
+        project: 'Hollowmere',
+        rows,
+        counts: agentCounts(rows),
+        now: NOW,
+        onOpen: () => undefined,
+        onActivity: () => undefined,
+        onConnect: () => undefined,
+        onPerformance: () => undefined,
+      }),
+    );
+    expect(html).toMatch(
+      /<span class="flag soft" title="Su harness cargó el servidor MCP de Otea[^"]*">conectado por CLI, MCP sin usar<\/span>/,
+    );
+    expect(html).not.toContain('MCP sin conectar');
+  });
+
   it('marks a profile missing in warn, unconfirmed or just changed in grey', () => {
     const html = menu();
     expect(html).toMatch(/<span class="flag"><svg[\s\S]*?<\/svg>sin perfil<\/span>/);

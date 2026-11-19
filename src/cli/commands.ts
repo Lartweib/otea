@@ -89,9 +89,11 @@ import {
   endWaiter,
   endWaiting,
   type Harness,
+  harnessKey,
   hearAgent,
   LISTEN_BEAT_MS,
   listAgents,
+  mcpLoaded,
   type NameAdvice,
   nameFor,
   offerName,
@@ -184,6 +186,7 @@ import {
   markMcpAsked,
   type ProfileView,
   profileView,
+  selectMcpLoads,
 } from '../store/queries.ts';
 import {
   type Command,
@@ -712,17 +715,37 @@ function mcpInstructionText(entry: McpEntry): string[] {
 // What otea connect --check says: whether the agent named (or any agent) was heard through Otea's
 // MCP server in this project.
 function mcpCheck(project: Project, agent: string | undefined, now = systemClock): Output {
-  const heard = listAgents(project.db, now)
+  const agents = listAgents(project.db, now);
+  const heard = agents
     .filter(({ name, mcpAt }) => mcpAt !== null && (agent === undefined || name === agent))
     .sort((a, b) => Date.parse(b.mcpAt ?? '') - Date.parse(a.mcpAt ?? ''));
+  // The harnesses that loaded the server: the agent's own (as its client or its profile names
+  // it), or any without --as.
+  const mine = agents.find(({ name }) => name === agent);
+  const named = [mine?.harness, mine?.profile?.harness].filter(
+    (each): each is string => Boolean(each) && each?.toLowerCase() !== 'cli',
+  );
+  const loads = selectMcpLoads(project.db).filter(
+    ({ harness }) => agent === undefined || named.some((each) => harnessKey(each) === harness),
+  );
   const data = {
-    connected: heard.length > 0,
+    connected: heard.length > 0 || loads.length > 0,
     agents: heard.map(({ name, harness, mcpAt }) => ({ name, harness, mcpAt })),
+    loaded: loads.map(({ name, at }) => ({ harness: name, at })),
   };
   if (heard.length > 0) {
     const lines = heard.map(
       ({ name, harness, mcpAt }) =>
         `MCP works: ${name} was heard through Otea's MCP server ${timeText(mcpAt ?? '')}${harness ? ` (${harness})` : ''}`,
+    );
+    return { data, text: lines.join('\n') };
+  }
+  // Loaded, and no tool called through it yet: the agent may keep to the otea command, which does
+  // the same (P4-R2-10).
+  if (loads.length > 0) {
+    const lines = loads.map(
+      ({ name, at }) =>
+        `MCP works: ${name} loaded Otea's MCP server ${timeText(at)}; no agent has called its tools yet. The otea command does the same, so the agent may use either.`,
     );
     return { data, text: lines.join('\n') };
   }
@@ -2811,8 +2834,16 @@ const mcp: Command = {
     // The client names its harness as it connects. Its agent is heard from its first call: a
     // harness that only loads the server (a background service, a session that never calls Otea)
     // is no agent at work, and shows as none.
+    // The load is noted for its harness, though (P4-R2-10): otea connect --check and the desk can
+    // tell the server works there before any tool is called.
     const greeted = (harness: Harness | undefined) => {
       client = harness;
+      if (!harness) return;
+      try {
+        withProject(cwd, (project) => mcpLoaded(project.db, harness));
+      } catch {
+        // No project yet: every tool call will say so.
+      }
     };
     // The names this server heard that were unknown before it did: one whose first call fails is
     // forgotten again, so a failed call leaves no agent «sin perfil» on the desk (P2S-R2-3).

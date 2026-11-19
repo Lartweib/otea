@@ -448,6 +448,11 @@ export function AgentsMenuBody({
                   {t('shell.flag.noMcp')}
                 </span>
               ) : null}
+              {a.mcpUnused ? (
+                <span className="flag soft" title={t('shell.flag.mcpUnusedTip')}>
+                  {t('shell.flag.mcpUnused')}
+                </span>
+              ) : null}
             </span>
             <RowDoing row={a} now={now} />
           </span>

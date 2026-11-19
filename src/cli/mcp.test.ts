@@ -136,6 +136,31 @@ describe('mcp', () => {
     }
   });
 
+  // P4-R2-10: the harness loaded the server, the agent kept to the command line, and
+  // connect --check stayed red until an explicit tool call.
+  it('tells connect --check the server was loaded, before any tool call', async () => {
+    const client = new Client({ name: 'claude-code', version: '2.1.0' });
+    await client.connect(
+      new StdioClientTransport({
+        command: process.execPath,
+        args: ARGS,
+        cwd: repo.dir,
+        env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+        stderr: 'pipe',
+      }),
+    );
+    try {
+      // initialize, then initialized, then this: the server has noted the load by now.
+      await client.listTools();
+      const said = await otea('connect', '--check');
+
+      expect(said.code).toBe(0);
+      expect(said.out).toMatch(/^MCP works: claude-code loaded Otea's MCP server /);
+    } finally {
+      await client.close();
+    }
+  });
+
   it('refuses a second open session the name another session works under', async () => {
     const open = async (wrap: string[] = []) => {
       const client = new Client({ name: 'claude-code', version: '2.1.0' });
