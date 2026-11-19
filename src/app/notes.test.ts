@@ -429,10 +429,13 @@ describe('comments the person leaves while reviewing', () => {
       now,
     );
     expect(comment).toMatchObject({ round: 1, review: { for: { step: 'sconcept', round: 2 } } });
-    // Nothing reaches the agent while you review.
+    // Nothing reaches the agent while you review, and a list does not count it as unanswered
+    // before it is sent (P5-8).
     expect(noteWaiting(ctx, 'kiln')).toBeUndefined();
+    expect(notesSummary(ctx, getItem(ctx, item.id))?.unanswered ?? 0).toBe(0);
 
     sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui', reason: 'Otra vez' }, now);
+    expect(notesSummary(ctx, getItem(ctx, item.id))).toMatchObject({ unanswered: 1 });
     claimItem(ctx, { id: item.id, actor: kiln }, now);
     expect(agentNotes(ctx, item.id)?.notes.map(({ note }) => note)).toEqual([1]);
     expect(notesView(ctx, item.id, { round: 2 }).notes.map(({ note }) => note)).toEqual([1]);
