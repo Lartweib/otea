@@ -1257,11 +1257,14 @@ const next: Command = {
       });
       const offered = answer.item === null ? undefined : getItem(project, answer.item);
       const outside = offered && mergedOutsideLine(project, input.cwd, offered);
+      // Offered work in the shared main checkout says so before the agent starts (P6-R2-3).
+      const shared = offered && sharedCheckoutLine(project, input, offered.id);
       // It always ends with the exact command to keep waiting: told only to wait, agents ended
       // their turn, and the person's answer on the desk went unheard.
       const text = [
         ...(outside ? [outside] : []),
         answer.text,
+        ...(shared ? [shared] : []),
         ...topicLines(project, actor.name),
         profileReminder(profile, actor.name, channel),
         keepWaitingLine(actor.name, channel, { idle: answer.idle === true, collection }),
@@ -1755,9 +1758,12 @@ const wait: Command = {
   },
 };
 
-// An agent that claims in the repo's main checkout while other agents hold work in the project is
-// told to work in its own worktree (P1-15): two agents in one checkout change each other's files.
-function sharedCheckoutLine(project: Project, input: Input): string | undefined {
+// An agent that claims, or is offered, an item in the repo's main checkout is told to work in its
+// own worktree (P1-15, P6-R2-3) while other agents hold work in the project (two agents in one
+// checkout change each other's files), or while that checkout sits on another open item's branch
+// (switching it here changes that item's work, as Integrar left it twice).
+function sharedCheckoutLine(project: Project, input: Input, id?: string): string | undefined {
+  if (!inMainCheckout(input.cwd)) return undefined;
   const me = input.actor.name;
   const others = [
     ...new Set(
@@ -1766,9 +1772,40 @@ function sharedCheckoutLine(project: Project, input: Input): string | undefined 
         .map(({ name }) => name),
     ),
   ];
-  if (others.length === 0 || !inMainCheckout(input.cwd)) return undefined;
-  const who = others.join(', ');
-  return `${who} also holds work in this project, and you are in the repository's main checkout: do your work on your own branch in your own git worktree (git worktree add ../<folder> -b <branch>), never in files another agent is changing.`;
+  let on: string | undefined;
+  try {
+    on = currentBranch(input.cwd);
+  } catch {}
+  const holder = on === undefined ? undefined : openItemOn(project, on, id);
+  const lines: string[] = [];
+  if (holder && on) {
+    lines.push(
+      `This is the repository's main checkout, and it is on ${on}, the branch of ${holder}: do ${id ?? 'this item'} in its own git worktree (git worktree add ../<folder> -b <branch>) and leave ${holder}'s branch as it is.`,
+    );
+  }
+  if (others.length > 0) {
+    lines.push(
+      `${others.join(', ')} also holds work in this project, and you are in the repository's main checkout: do your work on your own branch in your own git worktree (git worktree add ../<folder> -b <branch>), never in files another agent is changing.`,
+    );
+  }
+  return lines.length > 0 ? lines.join('\n') : undefined;
+}
+
+// The open board item, other than `except`, whose protected branch is `branch` (never a base a
+// board protects: the base is every item's).
+function openItemOn(project: Project, branch: string, except?: string): string | undefined {
+  for (const board of liveBoards(project)) {
+    const guard = guardedBranch(board.def);
+    if (!guard || guard.guard.base === branch) continue;
+    const found = listItems(project, { collection: board.collection }).find(
+      (item) =>
+        item.id !== except &&
+        !isClosed(positionOf(item.state)) &&
+        String(item.fields[guard.id] ?? '').trim() === branch,
+    );
+    if (found) return found.id;
+  }
+  return undefined;
 }
 
 const claim: Command = {
@@ -1785,7 +1822,7 @@ const claim: Command = {
     return withAgent(input, (project) => {
       requireProfile(project.db, actor.name, { channel: input.channel });
       const claimed = itemResult(project, claimItem(project, lease));
-      const shared = sharedCheckoutLine(project, input);
+      const shared = sharedCheckoutLine(project, input, id);
       return shared ? { ...claimed, text: `${claimed.text}\n${shared}` } : claimed;
     });
   },
