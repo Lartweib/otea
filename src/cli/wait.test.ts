@@ -5,6 +5,7 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { sendBackItem } from '../app/next.ts';
 import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
@@ -179,6 +180,75 @@ describe('wait', () => {
 
       expect(await waiting.done).toBe(0);
       expect(waiting.out()).toMatch(/^TASKS-1 {2}Hacerlo {2}agent {2}First\nThen keep going: /);
+    });
+  });
+
+  // P4-R2-1: an agent whose own question waits for the person still hears the rest of its work.
+  describe('while its own question waits for the person', () => {
+    const sendBack = (id: string) => {
+      const project = openProject(repo.dir);
+      try {
+        sendBackItem(project, {
+          id,
+          actor: { kind: 'human', name: 'human' },
+          channel: 'ui',
+          reason: 'Más corto',
+        });
+      } finally {
+        project.db.close();
+      }
+    };
+    const waitForWork = () =>
+      otea('wait', '--turn', 'agent', '--unclaimed', '--as', 'claude', '--timeout', '5s');
+
+    it('wakes for a send-back of an item it handed off', async () => {
+      await otea('claim', 'TASKS-1');
+      await otea('handoff', 'TASKS-1');
+      await otea('claim', 'TASKS-2');
+      await otea('ask', 'TASKS-2', '¿Azul o verde?');
+      sendBack('TASKS-1');
+
+      const { code, out } = await waitForWork();
+
+      expect(code).toBe(0);
+      expect(out).toMatch(/^TASKS-1 {2}Hacerlo {2}agent {2}First\n/);
+    });
+
+    it('wakes for a send-back of its work that came before it asked', async () => {
+      await otea('claim', 'TASKS-1');
+      await otea('handoff', 'TASKS-1');
+      sendBack('TASKS-1');
+      await otea('claim', 'TASKS-2');
+      await otea('ask', 'TASKS-2', '¿Azul o verde?');
+
+      const { code, out } = await waitForWork();
+
+      expect(code).toBe(0);
+      expect(out).toMatch(/^TASKS-1 /);
+    });
+
+    it('wakes for work that arrives after it asked, not for the item it asked about', async () => {
+      await otea('claim', 'TASKS-2');
+      await otea('ask', 'TASKS-2', '¿Azul o verde?');
+      await otea('create', '--collection', 'tasks', '--title', 'Third', '--description', 'D');
+
+      const { code, out } = await waitForWork();
+
+      expect(code).toBe(0);
+      expect(out).toMatch(/^TASKS-3 /);
+    });
+
+    it('does not wake for its sent-back item while it asks the person about it', async () => {
+      await otea('claim', 'TASKS-1');
+      await otea('handoff', 'TASKS-1');
+      sendBack('TASKS-1');
+      await otea('claim', 'TASKS-1');
+      await otea('ask', 'TASKS-1', '¿Cuánto más corto?');
+
+      const { code, err } = await otea('wait', '--turn', 'agent', '--timeout', '1s');
+
+      expect(code).toBe(13);
+      expect(err).toContain('your question on TASKS-1');
     });
   });
 

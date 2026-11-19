@@ -18,6 +18,7 @@ import {
   type ItemRecord,
   selectEvents,
   selectEventsOfTypes,
+  selectStateEntries,
 } from '../store/queries.ts';
 import { askingItems } from './asking.ts';
 import type { Context } from './context.ts';
@@ -178,4 +179,32 @@ export function askedByAgent(ctx: Context, agent: string): string[] {
     .filter(([, open]) => open.by === agent)
     .sort(([, a], [, b]) => a.at.localeCompare(b.at))
     .map(([id]) => id);
+}
+
+// While a question this agent asked waits for the person, the agent work that still wakes its wait
+// (P4-R2-1): an item sent back that it worked on, and work that reached its state after it first
+// asked. Work already free when it asked does not: it would wake the agent at once, only for it to
+// end its turn there with the answer unread. Undefined while no question of its waits.
+export function wakesWhileAsking(
+  ctx: Context,
+  agent: string,
+): ((item: { id: string; createdAt: string }) => boolean) | undefined {
+  const asking = askingItems(ctx.db);
+  const asked = [...asking.values()]
+    .filter((open) => open.by === agent)
+    .map(({ at }) => at)
+    .sort()[0];
+  if (asked === undefined) return undefined;
+  const entered = selectStateEntries(ctx.db);
+  return (item) => {
+    // An item a question waits on is the person's until they answer it.
+    if (asking.has(item.id)) return false;
+    if ((entered.get(item.id) ?? item.createdAt) > asked) return true;
+    const record = requireItem(ctx.db, item.id);
+    const board = liveBoardOf(ctx, record.collection);
+    if (!board || itemOnBoard(ctx, record, board.def).sentBack === undefined) return false;
+    return selectEvents(ctx.db, item.id).some(
+      ({ actor }) => actor.kind === 'agent' && actor.name === agent,
+    );
+  };
 }
