@@ -72,6 +72,7 @@ import {
   createdTextOf,
   dropItem,
   handoffItem,
+  laterLine,
   liveBoardOf,
   liveBoards,
   mergeFirstFor,
@@ -1942,7 +1943,13 @@ const wait: Command = {
       const row = 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
       // A parent whose parts wait to be merged: the merges are what the agent does now.
       const merges = 'text' in found ? undefined : mergeFirstFor(project, found.id);
-      const woke = merges === undefined ? row : { ...row, text: `${row.text}\n${merges}` };
+      // The item it just let go of: how to set it aside, if the person wants it later (P3C-R3-2).
+      const later =
+        'text' in found || input.actor.kind !== 'agent'
+          ? undefined
+          : laterLine(project, found.id, me);
+      const added = [merges, later].filter((line) => line !== undefined);
+      const woke = added.length === 0 ? row : { ...row, text: [row.text, ...added].join('\n') };
       // While topics are on, what woke the agent reminds it to record side questions.
       const reminded = 'topics' in found ? woke : withTopicsReminder(project, input.actor, woke);
       // An agent woken on its turn reads what woke it, then waits again: told so in exact words.
@@ -2403,7 +2410,7 @@ const answer: Command = {
 const release: Command = {
   name: 'release',
   summary:
-    'Drop the lease you hold on an item; moving it off the agent turn releases it too. --later sets it aside for you (next and wait skip it) until it moves or you claim it again',
+    'Drop the lease you hold on an item; moving it off the agent turn releases it too. --later sets it aside for you (next and wait skip it), held or one you let go of, until it moves or you claim it again',
   args: ['id'],
   options: { later: { flag: true } },
   execute: (input) => {
