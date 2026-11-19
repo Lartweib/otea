@@ -135,7 +135,7 @@ function Figures({ shown }: { shown: readonly Evidence[] }) {
 
 // What the round hands in: the step's fields with their values, and the round's files the images
 // above do not show.
-function Delivered({ round }: { round: RoundShown }) {
+export function Delivered({ round }: { round: RoundShown }) {
   const { fields, files } = round;
   if (fields.length === 0 && files.length === 0) return null;
   return (

@@ -21,6 +21,7 @@ import {
   pileOf,
   pileSide,
   pileView,
+  plainLines,
   releaseDirection,
   resist,
   roundEvidence,
@@ -715,6 +716,33 @@ describe('deliveredFields: the fields the step hands in, with their values', () 
       { ref: 'fplan', name: 'Plan', value: 'Tres pasos.' },
     ]);
     expect(deliveredFields(def, { ...view, fields: { fplan: ' ' } }, (_f, v) => v)).toEqual([]);
+  });
+
+  // The card read a Brief raw: «**Problema:**» with its asterisks (P7-11). A long field is Markdown:
+  // the card reads its lines without the marks, in the same four lines.
+  it('reads a long field without its Markdown marks', () => {
+    const def = cambios();
+    const view = {
+      state: 'sanalyse__review',
+      fields: {
+        fplan:
+          '## Plan\n\n**Problema:** nadie sabe qué _hizo_ el equipo.\n\n- uno con `user_name`\n+ dos\n\n| A | B |\n|---|---|\n| 1 | 2 |',
+      },
+    };
+    expect(deliveredFields(def, view, (_f, v) => v)).toEqual([
+      {
+        ref: 'fplan',
+        name: 'Plan',
+        value:
+          'Plan\nProblema: nadie sabe qué hizo el equipo.\n· uno con user_name\n+ dos\nA · B\n1 · 2',
+      },
+    ]);
+  });
+
+  it('reads an option’s costs with a minus, not as bullets', () => {
+    expect(plainLines('### A · Una (recomendada)\n+ rápida\n- cara', { signs: true })).toBe(
+      'A · Una (recomendada)\n+ rápida\n− cara',
+    );
   });
 
   it('says a choice in its words', () => {
