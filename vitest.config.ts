@@ -14,6 +14,8 @@ const SPAWNS_PROCESSES = [
   'src/server/projects.test.ts',
   'src/server/desk-only.test.ts',
   'src/server/boards.test.ts',
+  'src/server/drift.test.ts',
+  'src/server/hub.test.ts',
   'desktop/src/shims.test.ts',
 ];
 

@@ -6,15 +6,15 @@ import { approveItem, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { stateOf } from '../core/board/engine.ts';
 import { updateItemState } from '../store/queries.ts';
-import { type Cli, cliAt, declareProfiles, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, declareProfiles, seedOnceWithOrigin, type TempRepo } from './testing.ts';
 
 // A forge merge (a script, a CLI or the PR's button) merges the branch as the remote has it, which
 // a teammate's clone without Otea's hook can still push to after the approval (P3C-R3-1): the merge
 // gate fetches the branch and lets the merge go only when it is what the person approved.
 describe('the merge gate on an approved branch', () => {
   let repo: TempRepo;
-  let remote: TempRepo;
-  let teammate: TempRepo;
+  let origin: string;
+  let teammate: string;
   let otea: Cli;
   const BRANCH = 'feat/bill-102';
   const gitAt =
@@ -29,15 +29,15 @@ describe('the merge gate on an approved branch', () => {
   const merge = (...argv: string[]) =>
     otea('check', '--gate', 'merge', '--branch', BRANCH, ...argv);
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    remote = tempGitRepo();
-    teammate = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'quill' });
-    const person = cliAt(repo.dir);
-    await person('init', '--template', 'none');
+  // The agent handed off CAM-1 on BRANCH, pushed, and the person approved it into Integrar: seeded
+  // once, each test gets its own copy of the checkout and of origin.
+  const seeded = seedOnceWithOrigin(async (dir, bare) => {
+    const otea = cliAt(dir, { OTEA_AGENT: 'quill' });
+    const person = cliAt(dir);
+    const git = gitAt(dir);
+    await person('init', '--local', '--template', 'none');
     await person('board', 'add', 'Cambios', '--template', 'changes');
-    declareProfiles(repo.dir, 'quill');
+    declareProfiles(dir, 'quill');
     await otea(
       'create',
       '--collection',
@@ -49,22 +49,18 @@ describe('the merge gate on an approved branch', () => {
       '--field',
       `Rama=${BRANCH}`,
     );
-    const bare = join(remote.dir, 'origin.git');
-    execFileSync('git', ['init', '-q', '--bare', bare]);
-    // A clone checks out main, whatever git's default branch name is where the test runs.
-    execFileSync('git', ['--git-dir', bare, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
-    writeFileSync(join(repo.dir, 'a.txt'), 'root\n');
+    writeFileSync(join(dir, 'a.txt'), 'root\n');
     git('add', 'a.txt');
     git('commit', '-q', '-m', 'root');
     git('branch', '-M', 'main');
     git('remote', 'add', 'origin', bare);
     git('push', '-q', '--no-verify', 'origin', 'main');
     git('checkout', '-q', '-b', BRANCH);
-    writeFileSync(join(repo.dir, 'b.txt'), 'facturas\n');
+    writeFileSync(join(dir, 'b.txt'), 'facturas\n');
     git('add', 'b.txt');
     git('commit', '-q', '-m', 'facturas');
     git('push', '-q', '--no-verify', '-u', 'origin', BRANCH);
-    const project = openProject(repo.dir);
+    const project = openProject(dir);
     try {
       const doit = liveBoardOf(project, 'Cambios')?.def.steps.find(
         ({ name }) => name === 'Hacerlo',
@@ -79,12 +75,12 @@ describe('the merge gate on an approved branch', () => {
     } finally {
       project.db.close();
     }
-    writeFileSync(join(repo.dir, 'facturas.diff'), 'diff --git a/b.txt b/b.txt\n+facturas\n');
+    writeFileSync(join(dir, 'facturas.diff'), 'diff --git a/b.txt b/b.txt\n+facturas\n');
     expect((await otea('claim', 'CAM-1')).code).toBe(0);
     expect((await otea('attach', 'CAM-1', 'facturas.diff')).code).toBe(0);
     const handed = await otea('handoff', 'CAM-1', '--note', 'facturas');
     expect(handed.code, handed.err).toBe(0);
-    const approving = openProject(repo.dir);
+    const approving = openProject(dir);
     try {
       approveItem(approving, {
         id: 'CAM-1',
@@ -96,18 +92,19 @@ describe('the merge gate on an approved branch', () => {
     }
   });
 
-  afterEach(() => {
-    repo.remove();
-    remote.remove();
-    teammate.remove();
+  beforeEach(() => {
+    ({ repo, origin, aside: teammate } = seeded.fresh());
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'quill' });
   });
+
+  afterEach(() => repo.remove());
 
   // A teammate pushes to the branch from a clone with no hook, after the person approved it.
   const teammatePushes = () => {
-    gitAt(teammate.dir)('clone', '-q', join(remote.dir, 'origin.git'), 'clone');
-    const diego = gitAt(join(teammate.dir, 'clone'), 'Diego');
+    gitAt(teammate)('clone', '-q', origin, 'clone');
+    const diego = gitAt(join(teammate, 'clone'), 'Diego');
     diego('checkout', '-q', BRANCH);
-    writeFileSync(join(teammate.dir, 'clone', 'c.txt'), 'never reviewed\n');
+    writeFileSync(join(teammate, 'clone', 'c.txt'), 'never reviewed\n');
     diego('add', 'c.txt');
     diego('commit', '-q', '-m', 'quick fix');
     diego('push', '-q', '--no-verify', 'origin', BRANCH);
@@ -154,9 +151,9 @@ describe('the merge gate on an approved branch', () => {
 
   // main moved on the remote; the agent rebased the approved branch onto it and pushed it.
   const rebaseOntoMovedMain = (extra?: string) => {
-    const other = gitAt(join(teammate.dir, 'clone'), 'Lucía');
-    gitAt(teammate.dir)('clone', '-q', join(remote.dir, 'origin.git'), 'clone');
-    writeFileSync(join(teammate.dir, 'clone', 'd.txt'), 'meanwhile\n');
+    const other = gitAt(join(teammate, 'clone'), 'Lucía');
+    gitAt(teammate)('clone', '-q', origin, 'clone');
+    writeFileSync(join(teammate, 'clone', 'd.txt'), 'meanwhile\n');
     other('add', 'd.txt');
     other('commit', '-q', '-m', 'meanwhile on main');
     other('push', '-q', '--no-verify', 'origin', 'main');
@@ -185,7 +182,7 @@ describe('the merge gate on an approved branch', () => {
   });
 
   it('refuses, saying it could not check, when it cannot fetch the branch', async () => {
-    git('remote', 'set-url', 'origin', join(remote.dir, 'gone.git'));
+    git('remote', 'set-url', 'origin', join(teammate, 'gone.git'));
     const checked = await merge();
     expect(checked.code).toBe(19);
     expect(checked.out).toContain('could not check');
