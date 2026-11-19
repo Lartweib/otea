@@ -15,6 +15,7 @@ import {
   type NameOffer,
   type ProfileView,
   profileView,
+  saveMcpLoad,
   saveNameOffer,
   saveProfile,
   selectAgents,
@@ -22,6 +23,7 @@ import {
   selectListener,
   selectListenerProcesses,
   selectListening,
+  selectMcpLoads,
   selectNameOffers,
   selectProfileChanges,
   selectWaiting,
@@ -101,6 +103,11 @@ export type AgentPresence = {
   // it was never added.
   mcpAt: string | null;
   mcpMissing: boolean;
+  // MCP as the desk tells it (P2S-R2-6, P6-R2-10): `missing` while it, or another agent of its
+  // harness, asked for the server (otea connect) and that harness never loaded it since; `unused`
+  // once the harness loaded it (or another agent of it was heard through it) while this agent
+  // still works through the command line; null when nobody asked, or it was heard through it.
+  mcp: 'missing' | 'unused' | null;
   // The folder it was last seen working from (null before any).
   folder: string | null;
 };
@@ -315,6 +322,14 @@ export function quietVoices(
     .map(([name]) => name);
 }
 
+// A harness loaded Otea's MCP server (its client's initialize): every agent of that harness can
+// reach it, whatever name it took, and otea connect --check says the server works.
+export function mcpLoaded(db: DatabaseSync, harness: Harness, now: Clock = systemClock): void {
+  const key = harnessKey(harness.name);
+  if (key === '') return;
+  saveMcpLoad(db, { harness: key, name: harness.name, at: now() });
+}
+
 // A profile's harness is the MCP client's: when the client names another one, the profile follows.
 function followClient(db: DatabaseSync, { agent, channel, harness }: Sighting, at: string): void {
   if (channel !== 'mcp' || !harness) return;
@@ -351,37 +366,74 @@ export function listAgents(
     if (session === null && waiter === null) return false;
     return !(session !== null && alive(session)) && !(waiter !== null && alive(waiter));
   };
-  const agents = selectAgents(db).map(
-    ({ name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, mcpAskedAt, folder }) => {
-      const held = holding.get(name) ?? [];
-      const heardAt = heard.get(name);
-      const gone = heardAt !== undefined && silenced(name);
-      const listening = within(heardAt) && !gone;
-      // Its session ended: it was last heard through a listener now gone, and did nothing since.
-      const ended = gone && Date.parse(lastSeen) <= Date.parse(heardAt);
-      // It acted lately (a command-line agent between its commands); a profile given for it by
-      // the person, with no sighting of its own, is no act.
-      const active = connectedAt !== null && since(lastSeen, ACTIVE_WINDOW_MS);
-      const declared = findProfile(db, name);
-      return {
-        name,
-        harness,
-        harnessVersion,
-        connectedAt,
-        holding: held,
-        lastSeen,
-        live: !ended && (listening || held.length > 0 || active),
-        listening,
-        waiting: within(waits.get(name)) && !gone,
-        profile: declared ? profileView(declared.profile) : null,
-        profileConfirmed: declared?.confirmed ?? false,
-        profileChangedAt: profileChangedAt(db, name),
-        mcpAt: mcpAt ?? null,
-        mcpMissing: Boolean(mcpAskedAt) && !mcpAt,
-        folder: folder ?? null,
-      };
-    },
-  );
+  const records = selectAgents(db);
+  const declaredOf = new Map(records.map(({ name }) => [name, findProfile(db, name)]));
+  // The harness an agent works through, as one key: its MCP client's, else the one it declared.
+  const keyOf = ({ name, harness }: (typeof records)[number]): string | null => {
+    const named =
+      harness && harness.toLowerCase() !== 'cli' ? harness : declaredOf.get(name)?.profile.harness;
+    return named ? harnessKey(named) : null;
+  };
+  // Per harness: the latest ask for MCP, and the latest time one of its agents was heard through it.
+  const latest = (
+    into: Map<string, string>,
+    key: string | null,
+    value: string | null | undefined,
+  ) => {
+    if (!key || key === 'cli' || !value) return;
+    const known = into.get(key);
+    if (known === undefined || known < value) into.set(key, value);
+  };
+  const asks = new Map<string, string>();
+  const mcpHeard = new Map<string, string>();
+  for (const record of records) {
+    latest(asks, keyOf(record), record.mcpAskedAt);
+    latest(mcpHeard, keyOf(record), record.mcpAt);
+  }
+  const loads = new Map(selectMcpLoads(db).map((load) => [load.harness, load.at]));
+  const mcpOf = (record: (typeof records)[number]): AgentPresence['mcp'] => {
+    if (record.mcpAt) return null;
+    const key = keyOf(record);
+    const asked = [record.mcpAskedAt, key ? asks.get(key) : undefined]
+      .filter((each): each is string => Boolean(each))
+      .sort()
+      .at(-1);
+    if (asked === undefined) return null;
+    const since = [key ? loads.get(key) : undefined, key ? mcpHeard.get(key) : undefined];
+    return since.some((each) => each !== undefined && each >= asked) ? 'unused' : 'missing';
+  };
+  const agents = records.map((record) => {
+    const { name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, folder } = record;
+    const held = holding.get(name) ?? [];
+    const heardAt = heard.get(name);
+    const gone = heardAt !== undefined && silenced(name);
+    const listening = within(heardAt) && !gone;
+    // Its session ended: it was last heard through a listener now gone, and did nothing since.
+    const ended = gone && Date.parse(lastSeen) <= Date.parse(heardAt);
+    // It acted lately (a command-line agent between its commands); a profile given for it by
+    // the person, with no sighting of its own, is no act.
+    const active = connectedAt !== null && since(lastSeen, ACTIVE_WINDOW_MS);
+    const declared = declaredOf.get(name);
+    const mcp = mcpOf(record);
+    return {
+      name,
+      harness,
+      harnessVersion,
+      connectedAt,
+      holding: held,
+      lastSeen,
+      live: !ended && (listening || held.length > 0 || active),
+      listening,
+      waiting: within(waits.get(name)) && !gone,
+      profile: declared ? profileView(declared.profile) : null,
+      profileConfirmed: declared?.confirmed ?? false,
+      profileChangedAt: profileChangedAt(db, name),
+      mcpAt: mcpAt ?? null,
+      mcpMissing: mcp === 'missing',
+      mcp,
+      folder: folder ?? null,
+    };
+  });
   return agents.sort(
     (a, b) =>
       Number(b.live) - Number(a.live) ||
@@ -395,18 +447,16 @@ export function listAgents(
 export function presenceSignature(db: DatabaseSync, now: Clock = systemClock): string {
   const agents = listAgents(db, now).sort((a, b) => a.name.localeCompare(b.name));
   return JSON.stringify(
-    agents.map(
-      ({ name, harness, holding, lastSeen, profile, profileConfirmed, waiting, mcpMissing }) => [
-        name,
-        harness,
-        holding,
-        lastSeen,
-        profile,
-        profileConfirmed,
-        waiting,
-        mcpMissing,
-      ],
-    ),
+    agents.map(({ name, harness, holding, lastSeen, profile, profileConfirmed, waiting, mcp }) => [
+      name,
+      harness,
+      holding,
+      lastSeen,
+      profile,
+      profileConfirmed,
+      waiting,
+      mcp,
+    ]),
   );
 }
 
@@ -441,7 +491,7 @@ export type NameAdvice = {
 
 // A harness as one key, however it is written: "Claude Code" is claude-code, and "Open Code 2.0"
 // is opencode, its version left out.
-const harnessKey = (name: string) =>
+export const harnessKey = (name: string) =>
   name
     .toLowerCase()
     .replace(/[\s_-]*v?\d+(?:\.\d+)*$/, '')

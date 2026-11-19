@@ -13,6 +13,7 @@ import {
   endWaiting,
   hearAgent,
   listAgents,
+  mcpLoaded,
   nameFor,
   offerName,
   ownerGone,
@@ -225,6 +226,7 @@ describe('agent presence', () => {
           profileChangedAt: null,
           mcpAt: T0,
           mcpMissing: false,
+          mcp: null,
           folder: null,
         },
       ]);
@@ -239,6 +241,51 @@ describe('agent presence', () => {
 
       seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T5));
       expect(listAgents(ctx.db, at(T5))[0]).toMatchObject({ mcpAt: T5, mcpMissing: false });
+    });
+
+    // P2S-R2-6, P4-R2-3: «MCP sin conectar» was tied to the name that ran connect, so a session
+    // that took another name stopped warning though its harness still had not loaded the server.
+    describe('MCP by harness', () => {
+      const as = (agent: string, harness: string) =>
+        declareProfile(
+          ctx.db,
+          { agent, channel: 'cli', given: harness, model: 'claude-haiku-4-5', effort: 'high' },
+          at(T0),
+        );
+      const mcp = (name: string) => listAgents(ctx.db, at(T2)).find((a) => a.name === name)?.mcp;
+
+      it('warns for every agent of the harness that asked for MCP and never loaded it', () => {
+        as('espiga', 'claude-code');
+        markMcpAsked(ctx.db, 'espiga', T0);
+        as('espiga-2', 'Claude Code');
+        seeAgent(ctx.db, { agent: 'espiga-2', channel: 'cli', harness: CLI_HARNESS }, at(T1));
+        as('oc', 'opencode');
+        seeAgent(ctx.db, { agent: 'oc', channel: 'cli', harness: CLI_HARNESS }, at(T1));
+
+        expect(mcp('espiga-2')).toBe('missing');
+        expect(listAgents(ctx.db, at(T2)).find((a) => a.name === 'espiga-2')?.mcpMissing).toBe(
+          true,
+        );
+        expect(mcp('oc')).toBeNull();
+      });
+
+      // P6-R2-10, P4-R2-10: the harness loaded the server, the agent uses the command line.
+      it('says MCP is unused, not missing, once the harness loaded the server since', () => {
+        as('espiga', 'claude-code');
+        markMcpAsked(ctx.db, 'espiga', T0);
+        mcpLoaded(ctx.db, { name: 'claude-code', version: '2.1.0' }, at(T1));
+
+        expect(mcp('espiga')).toBe('unused');
+        expect(listAgents(ctx.db, at(T2))[0]?.mcpMissing).toBe(false);
+      });
+
+      it('says nothing once the agent is heard through the server', () => {
+        as('espiga', 'claude-code');
+        markMcpAsked(ctx.db, 'espiga', T0);
+        hearAgent(ctx.db, { agent: 'espiga', channel: 'mcp', harness: CLAUDE_CODE }, at(T1));
+
+        expect(mcp('espiga')).toBeNull();
+      });
     });
 
     it('hears an agent on every beat of its wait', () => {

@@ -25,6 +25,9 @@ export type Agent = {
   // It asked to connect over MCP (otea connect) and was never heard through Otea's MCP server: its
   // harness declined the server, or it was never added. Absent from an older server.
   mcpMissing?: boolean;
+  // MCP as the server tells it: missing (asked, never loaded by its harness), or unused (loaded,
+  // and this agent works through the command line). Absent from an older server.
+  mcp?: 'missing' | 'unused' | null;
 };
 
 // What an agent declares it runs as, as declared, with the family its model groups under.
@@ -116,6 +119,9 @@ export function parseAgents(body: unknown): Agent[] {
         ...('listening' in each ? { listening: each.listening === true } : {}),
         ...('waiting' in each ? { waiting: each.waiting === true } : {}),
         ...('mcpMissing' in each ? { mcpMissing: each.mcpMissing === true } : {}),
+        ...('mcp' in each
+          ? { mcp: each.mcp === 'missing' || each.mcp === 'unused' ? each.mcp : null }
+          : {}),
       },
     ];
   });
