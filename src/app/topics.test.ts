@@ -164,6 +164,63 @@ describe('a topic', () => {
   });
 });
 
+// P4-R2-5: a follow-up became a topic of its own, apart from the one it follows.
+describe('a follow-up', () => {
+  it('goes on the topic it follows as a new question, the agent turn again', () => {
+    addTopic(ctx, { question: '¿Cuánto cuesta el envío?', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-1', summary: 'Cinco euros.', actor: quill }, now);
+    later(1000);
+    const followed = addTopic(
+      ctx,
+      { to: 'tem-1', question: '¿Y en moto?', actor: { kind: 'agent', name: 'ink' } },
+      now,
+    );
+
+    expect(followed).toMatchObject({ id: 'TEM-1', state: 'open', turn: 'agent', agent: 'ink' });
+    expect(followed.turns.map(({ kind, text }) => `${kind} ${text}`)).toEqual([
+      'question ¿Cuánto cuesta el envío?',
+      'answer Cinco euros.',
+      'question ¿Y en moto?',
+    ]);
+    expect(listTopics(ctx, { all: true }, now).map(({ id }) => id)).toEqual(['TEM-1']);
+    const answered = answerTopic(
+      ctx,
+      { id: 'TEM-1', summary: 'Tres euros.', actor: { kind: 'agent', name: 'ink' } },
+      now,
+    );
+    expect(answered.turns.map(({ kind }) => kind)).toEqual([
+      'question',
+      'answer',
+      'question',
+      'answer',
+    ]);
+  });
+
+  it('opens a closed topic again', () => {
+    addTopic(ctx, { question: 'q', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-1', summary: 's', actor: quill }, now);
+    closeTopic(ctx, { id: 'TEM-1', actor: fede }, now);
+
+    expect(addTopic(ctx, { to: 'TEM-1', question: '¿Y?', actor: quill }, now).state).toBe('open');
+  });
+
+  it('is refused on a topic that became a task, and on one that does not exist', () => {
+    seedItem('TAR-1');
+    addTopic(ctx, { question: 'q', actor: quill }, now);
+    convertTopic(ctx, { id: 'TEM-1', item: 'TAR-1', actor: fede }, now);
+
+    expect(() => addTopic(ctx, { to: 'TEM-1', question: '¿Y?', actor: quill }, now)).toThrow(
+      expect.objectContaining({
+        code: 'invalid_transition',
+        message: expect.stringContaining('TAR-1'),
+      }),
+    );
+    expect(() => addTopic(ctx, { to: 'TEM-9', question: '¿Y?', actor: quill }, now)).toThrow(
+      expect.objectContaining({ code: 'not_found' }),
+    );
+  });
+});
+
 describe('topics and items', () => {
   it('turns into a task, linked both ways', () => {
     seedItem('TAR-1');
