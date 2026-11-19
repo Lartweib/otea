@@ -26,6 +26,7 @@ describe('templates', () => {
       'todos:Pendientes',
       'bug-reports:Errores',
       'changes:Cambios',
+      'mainline:Código en main',
       'research:Investigación',
       'decisions:Decisiones',
       'content:Contenido',
@@ -220,8 +221,8 @@ describe('the official catalogue', () => {
     expect(wanted.filter((kind) => !used.has(kind))).toEqual([]);
   });
 
-  it('offers exactly the ten starter templates, none named after a way of working', () => {
-    expect(LISTED_KEYS).toHaveLength(10);
+  it('offers exactly the eleven starter templates, none named after a way of working', () => {
+    expect(LISTED_KEYS).toHaveLength(11);
     for (const gone of [
       'playtest',
       'resume',

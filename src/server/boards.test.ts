@@ -51,6 +51,7 @@ describe('the boards API', () => {
       'todos',
       'bug-reports',
       'changes',
+      'mainline',
       'research',
       'decisions',
       'content',
