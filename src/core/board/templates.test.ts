@@ -328,10 +328,14 @@ describe('templates that fit the work', () => {
       step: own?.id,
       phase: 'doing',
     });
-    // The person closes it from there (or passes it to an agent); an agent that finds the
-    // to-do is the person's takes it back there, with a reason, instead of asking.
-    expect(waysOf(def, own?.id ?? '')).toEqual([doIt?.id, DONE]);
+    // The person closes it from there, and only once it is no longer theirs passes it to an agent
+    // (P4-R3-1); an agent that finds the to-do is the person's takes it back there, with a
+    // reason, instead of asking.
+    expect(waysOf(def, own?.id ?? '', facts({ [mine?.id ?? '']: 'yes' }))).toEqual([DONE]);
+    expect(waysOf(def, own?.id ?? '', facts({ [mine?.id ?? '']: 'no' }))).toEqual([doIt?.id, DONE]);
     expect(backWaysOf(def, doIt?.id ?? '')).toEqual([own?.id]);
+    // Taken back, it is made theirs first, so it leads to Hecho there too.
+    expect(doIt?.instructions.take).toContain(`otea update <id> --field "@[${mine?.id}]=yes"`);
   });
 
   it('asks a command-line change of Cambios for its terminal output, never for screenshots', () => {

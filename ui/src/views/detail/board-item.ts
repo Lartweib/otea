@@ -5,6 +5,7 @@ import {
   isClosed,
   isLandStep,
   type Linked,
+  leadOf,
   NOTE_REF,
   positionOf,
   reopenedAt,
@@ -640,8 +641,13 @@ export function ownStepOf(
 }
 
 // The button that ends your own step: the step's own name, the action you take ("Triar",
-// "Decidir", "Aprobar el merge"), whatever it hands; Entregar only for a step with no name.
-export function deliverLabel(step: Step): string {
+// "Decidir", "Aprobar el merge"), whatever it hands; Entregar only for a step with no name. While
+// the step leads the item to Hecho (a to-do the person does, P4-R3-1), Marcar hecho.
+export function deliverLabel(
+  step: Step,
+  on?: { def: BoardDefinition; fields: Record<string, unknown> },
+): string {
+  if (on && leadOf(on.def, step, { fields: on.fields }) === DONE) return t('sheet.move.own');
   return step.name.trim() || t('bi.move.deliver');
 }
 

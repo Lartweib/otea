@@ -226,7 +226,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     ownStep && planned.primary
       ? {
           ...planned.primary,
-          label: deliverLabel(ownStep),
+          label: deliverLabel(ownStep, live ? { def: live, fields: item.fields } : undefined),
           deliver: true,
           ...(held ? { blocked: held } : {}),
           move: {

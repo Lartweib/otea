@@ -68,13 +68,35 @@ function positionAt(target: Target): Position {
 }
 
 // The ways out of a step: the default (the next step, or Hecho) first, then the alternatives that
-// still lead somewhere later, each once.
-export function waysOf(def: BoardDefinition, stepId: string): Target[] {
+// still lead somewhere later, each once. With the item's facts, a lead that holds is the default
+// and the next step is left out unless the step lists it; without them, every way it may take.
+export function waysOf(
+  def: BoardDefinition,
+  stepId: string,
+  facts?: Pick<ItemFacts, 'fields'>,
+): Target[] {
   const index = stepIndex(def, stepId);
   const step = def.steps[index];
   if (!step) return [];
   const later = (target: Target) => target === DONE || stepIndex(def, target) > index;
-  return [...new Set([defaultWay(def, stepId), ...step.ways.filter(later)])];
+  const rest = step.ways.filter(later);
+  if (facts === undefined) {
+    const lead = step.lead && later(step.lead.to) ? [step.lead.to] : [];
+    return [...new Set([defaultWay(def, stepId), ...rest, ...lead])];
+  }
+  return [...new Set([leadOf(def, step, facts) ?? defaultWay(def, stepId), ...rest])];
+}
+
+// Where the step leads the item while its lead's value holds: a later step or Hecho.
+export function leadOf(
+  def: BoardDefinition,
+  step: Step,
+  facts: Pick<ItemFacts, 'fields'>,
+): Target | undefined {
+  const lead = step.lead;
+  if (!lead || !whenHolds(def, facts, lead.when.part, lead.when.value)) return undefined;
+  const later = lead.to === DONE || stepIndex(def, lead.to) > stepIndex(def, step.id);
+  return later ? lead.to : undefined;
 }
 
 // The earlier steps the doer may take the item back to ("o regresarlo a…"), in row order.
@@ -405,7 +427,7 @@ export function handoff(
     if (!options.reason?.trim()) return { ok: false, code: 'reason_required' };
     return { ok: true, to: { step: options.way, phase: 'doing' }, back: true };
   }
-  const ways = waysOf(def, step.id);
+  const ways = waysOf(def, step.id, facts);
   if (options.way !== undefined && !ways.includes(options.way))
     return { ok: false, code: 'bad_way' };
   const check = handoffCheck(def, step.id, facts);
@@ -431,7 +453,7 @@ export function approve(
 ): MoveResult {
   if (isClosed(position) || position.phase === 'doing') return { ok: false, code: 'not_review' };
   if (ownWork(by, facts?.did)) return { ok: false, code: 'own_work' };
-  const ways = waysOf(def, position.step);
+  const ways = waysOf(def, position.step, facts);
   if (ways.length === 0) return { ok: false, code: 'unknown_step' };
   if (way !== undefined && !ways.includes(way)) return { ok: false, code: 'bad_way' };
   const step = stepById(def, position.step);
@@ -462,8 +484,9 @@ export function sendBack(
 }
 
 // Where a new item starts: the first step, or the step after it when the first is skipped for an
-// item created with everything its Entrega asks for (only a first step nobody reviews). Only at
-// creation: a send-back into that step never skips it.
+// item created with everything its Entrega asks for (only a first step nobody reviews, and never
+// while its lead holds: the item is that step's own). Only at creation: a send-back into that step
+// never skips it.
 export function initialPosition(
   def: BoardDefinition,
   facts: ItemFacts,
@@ -472,6 +495,7 @@ export function initialPosition(
   if (!first) return { position: { closed: DONE }, skipped: false };
   const start: Position = { step: first.id, phase: 'doing' };
   if (!first.skipWhenReady || first.reviewer !== 'none') return { position: start, skipped: false };
+  if (leadOf(def, first, facts) !== undefined) return { position: start, skipped: false };
   if (missingOf(def, first, facts).length > 0) return { position: start, skipped: false };
   return { position: positionAt(defaultWay(def, first.id)), skipped: true };
 }

@@ -49,6 +49,7 @@ import {
   backWithComments,
   boardBlockOf,
   boardFieldInput,
+  boardMoves,
   boardStart,
   boardState,
   liveBoardOf,
@@ -304,7 +305,12 @@ export function showItem(
   const item = getItem(ctx, id, () => at);
   const type = typeOfItem(ctx, item);
   const children = childrenOf(ctx, item.id, at);
-  const { gates, ...moves } = itemMoves(type, item.state, item.fields, performer);
+  const { gates, ...offered } = itemMoves(type, item.state, item.fields, performer);
+  const moves = {
+    ...offered,
+    transitions: boardMoves(ctx, item, offered.transitions),
+    relayable: boardMoves(ctx, item, offered.relayable),
+  };
   const board = boardBlockOf(ctx, item);
   const archived = archivedBoardOf(ctx.db, item.id);
   const archivedId =

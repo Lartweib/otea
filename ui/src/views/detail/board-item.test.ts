@@ -779,6 +779,22 @@ describe('the person’s own step', () => {
     expect(deliverLabel(empty)).toBe('Aprobar el merge');
   });
 
+  // P4-R3-1: the person's own to-do («Lo hago yo»: sí) leads to Hecho, and its button says so.
+  it('names the hand-off Marcar hecho while the step leads the item to Hecho', () => {
+    setLanguage('es');
+    const def = errores();
+    const triage = ownStepOf(def, { state: 'striage', turn: 'human' });
+    if (!triage) throw new Error('no own step');
+    def.parts.fmine = { id: 'fmine', name: 'Lo hago yo', kind: 'yesno', hint: '', options: [] };
+    const own = {
+      ...triage,
+      ways: ['done'],
+      lead: { to: 'done', when: { part: 'fmine', value: 'yes' } },
+    };
+    expect(deliverLabel(own, { def, fields: { fmine: 'yes' } })).toBe('Marcar hecho');
+    expect(deliverLabel(own, { def, fields: { fmine: 'no' } })).toBe('Triar');
+  });
+
   it('fills a level, a yes or no and a choice from their values, and types numbers and dates', () => {
     setLanguage('es');
     const part = (kind: Part['kind'], options: Part['options'] = []): Part => ({
