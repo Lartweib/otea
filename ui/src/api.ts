@@ -1,6 +1,7 @@
 import { withoutUndone } from '../../src/core/board/history.ts';
 import type { PerformanceView } from '../../src/core/board/performance.ts';
 import type { NotifyPrefs } from '../../src/core/notify/planner.ts';
+import type { Drift } from '../../src/server/drift.ts';
 import type { FeedEvent } from './activity.ts';
 import { apiUrl } from './base.ts';
 import type { WrittenBrief } from './brief.ts';
@@ -244,6 +245,15 @@ export async function fetchOpened(id: string, signal: AbortSignal): Promise<numb
     evidence: number[];
   };
   return body.evidence;
+}
+
+// What a clone without Otea's hook pushed to the branch of an item in review since its handoff
+// (src/server/drift.ts): null when nothing moved, or when the PC cannot tell.
+export async function fetchDrift(id: string, signal: AbortSignal): Promise<Drift | null> {
+  const body = (await (await get(`/api/items/${encodeURIComponent(id)}/drift`, signal)).json()) as {
+    drift: Drift | null;
+  };
+  return body.drift;
 }
 
 export async function postOpened(id: string, evidence: number): Promise<void> {

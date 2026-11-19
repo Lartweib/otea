@@ -69,6 +69,7 @@ import { TURNS, type Turn } from '../core/workflow.ts';
 import { type EventFilter, itemOfClientKey, selectStateEntries } from '../store/queries.ts';
 import { boardsApi } from './boards.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
+import { branchDrift } from './drift.ts';
 import {
   errorBody,
   ForbiddenHost,
@@ -588,6 +589,12 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       })
       // The files the person opened in the reader (app/opened.ts), on the desk or the phone: what
       // Aprobar counts as left unopened, the same on every device. No event, no feed change.
+      // What a clone without Otea's hook pushed to the branch of an item in review since its
+      // handoff (P3C-R3-1): the desk says so before the person approves. Asked of the remote, so
+      // the page asks for it apart from the item.
+      .get('/items/:id/drift', async (c) =>
+        c.json({ drift: await branchDrift(project, c.req.param('id')) }),
+      )
       .get('/items/:id/opened', (c) =>
         c.json({ evidence: openedFiles(project, c.req.param('id')) }),
       )
