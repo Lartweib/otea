@@ -13,7 +13,7 @@ export const AGENT_GUIDE = [
   '8. Never push to a branch the item\'s "Branch" lines do not allow.',
   '9. Answer every note from the person (otea reply) before you hand off.',
   '10. Ask the person only with otea ask <id> "<question>" (MCP: ask), and tell them to answer it in Otea, not in the chat.',
-  '11. To propose a new board, run otea board draft --new "<name>" --why "<what it is for>" --template <key> (MCP: board_draft) after asking the person one question at a time how they work; the person publishes it.',
+  '11. To propose a new board, run otea board draft --new "<name>" --why "<what it is for>" --template <key> (MCP: board_draft) after asking the person one question at a time how they work; to change a published board (a field, a step), --change <board> instead of --new; the person publishes it.',
   '12. Keep going until the person stops you: after each handoff run otea next again; when it has nothing, wait in a background shell, which keeps your chat free (the MCP wait tool holds it): $ otea wait --turn agent --unclaimed --as <name>; then otea next. Only a running wait hears the desk: after a chat reply, wait again. Stop your wait by ending its shell or with --timeout, never by killing processes by name or pattern.',
 ].join('\n');
 

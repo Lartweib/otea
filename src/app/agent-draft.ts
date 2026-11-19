@@ -15,13 +15,15 @@ import { boardLang, isSetKey, type Lang } from '../core/board/templates.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { leaseExpiry } from '../core/lease.ts';
-import { findDraft, listBoards } from '../store/boards.ts';
+import { findDraft, listBoards, upsertDraft } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
   appendEvent,
   clearLease,
   type EvidenceRecord,
+  findCollection,
   findEvidence,
+  findItem,
   type ItemRecord,
   takeLease,
   updateItemState,
@@ -81,37 +83,17 @@ export function requestAgentDraft(
 ): { board: BoardRecord; item: string; others: BoardRecord[] } {
   ensureRequestsBoard(project, input.lang, now);
   return transaction(project.db, () => {
-    const requests = listBoards(project.db).find(({ builtin }) => builtin);
-    const collection = requests?.collection;
-    const live = collection ? liveBoardOf(project, collection) : undefined;
-    if (!collection || !live) throw new OteaError('not_found', 'The project has no Pedidos board');
-    const first = live.def.form[0]?.ref;
     const at = now();
-    const need = input.need.trim();
-    if (need === '') throw new OteaError('missing_fields', 'Say what the board is for');
-    const { actor, channel } = input.by ?? PERSON;
-    const { item } = insertNewItem(
+    const item = insertPedido(
       project,
       {
-        collection,
         title: draftTitle(input.lang, input.name),
-        fields: first ? { [first]: need } : {},
-        actor,
-        channel,
+        need: input.need,
+        agent: input.agent,
+        by: input.by ?? PERSON,
       },
       at,
     );
-    if (input.agent) {
-      const lease = { holder: input.agent, expiresAt: leaseExpiry(at, DRAFT_LEASE_TTL_MS) };
-      takeLease(project.db, item.id, lease, at);
-      appendEvent(project.db, {
-        itemId: item.id,
-        type: 'claimed',
-        actor,
-        at,
-        data: { ...lease, cause: 'assigned' },
-      });
-    }
     if (input.template !== undefined && isSetKey(input.template)) {
       // A set's boards are drafted together: the first waits on the Pedido, named as asked, and
       // the others come with it under the template's names, for the person to publish as one.
@@ -140,6 +122,45 @@ export function requestAgentDraft(
     );
     return { board, item: item.id, others: [] };
   });
+}
+
+// The Pedido a board is drafted on, on the project's Pedidos board: the need its first field, held
+// by the agent when one is named. Inside the caller's transaction.
+function insertPedido(
+  project: Project,
+  input: {
+    title: string;
+    need: string;
+    agent: string | null;
+    by: { actor: Actor; channel: Channel };
+  },
+  at: string,
+): ItemRecord {
+  const requests = listBoards(project.db).find(({ builtin }) => builtin);
+  const collection = requests?.collection;
+  const live = collection ? liveBoardOf(project, collection) : undefined;
+  if (!collection || !live) throw new OteaError('not_found', 'The project has no Pedidos board');
+  const need = input.need.trim();
+  if (need === '') throw new OteaError('missing_fields', 'Say what the board is for');
+  const first = live.def.form[0]?.ref;
+  const { actor, channel } = input.by;
+  const { item } = insertNewItem(
+    project,
+    { collection, title: input.title, fields: first ? { [first]: need } : {}, actor, channel },
+    at,
+  );
+  if (input.agent) {
+    const lease = { holder: input.agent, expiresAt: leaseExpiry(at, DRAFT_LEASE_TTL_MS) };
+    takeLease(project.db, item.id, lease, at);
+    appendEvent(project.db, {
+      itemId: item.id,
+      type: 'claimed',
+      actor,
+      at,
+      data: { ...lease, cause: 'assigned' },
+    });
+  }
+  return item;
 }
 
 // The board waiting on a Pedido, when there is one.
@@ -380,6 +401,79 @@ export function proposeAgentDraft(
     now,
   );
   if (input.text === undefined) return asked;
+  const submitted = submitAgentDraft(
+    project,
+    { id: asked.item, text: input.text, actor, channel },
+    now,
+  );
+  return { ...asked, board: getBoardRecord(project, asked.board.id), submitted };
+}
+
+// The Pedido's title when an agent proposes a change to a board already published.
+const CHANGE_TITLE: Readonly<Record<Lang, (name: string) => string>> = {
+  en: (name) => `Change the board ${name}`,
+  es: (name) => `Cambiar el tablero ${name}`,
+};
+
+export type ChangeInput = {
+  board: string;
+  need: string;
+  lang: Lang;
+  actor: Actor;
+  channel: Channel;
+  text?: string;
+};
+
+// An agent the person asked to change a published board (a field, a step) proposes it as it
+// proposes a new one (otea board draft --change): a Pedido it holds, and the board's draft waiting
+// on it, from the draft the person already has in Studio or else the board as published. The live
+// board keeps working as it is; the agent hands its board.json in on the Pedido, and the person
+// publishes the change in Studio, which closes the Pedido. A file that is not a board makes nothing.
+export function proposeBoardChange(
+  project: Project,
+  input: ChangeInput,
+  now = systemClock,
+): { board: BoardRecord; item: string; submitted?: Submitted } {
+  if (input.text !== undefined)
+    readDraftFile(
+      input.text,
+      'Nothing was made. Without --file it opens the change and its Pedido; then start from what otea board draft <id> prints',
+    );
+  ensureRequestsBoard(project, input.lang, now);
+  const asked = transaction(project.db, () => {
+    const collection = findCollection(project.db, input.board)?.name;
+    const live = collection ? liveBoardOf(project, collection) : undefined;
+    if (!live) throw new OteaError('not_found', `There is no published board "${input.board}"`);
+    const kept = findDraft(project.db, live.id);
+    const waiting = kept?.requestItem ? findItem(project.db, kept.requestItem) : undefined;
+    if (waiting && !isClosed(positionOf(waiting.state)))
+      throw new OteaError(
+        'already_exists',
+        `A draft of ${live.def.name} already waits on ${waiting.id}: hand it in there with otea board draft ${waiting.id} --file <board.json>`,
+      );
+    const at = now();
+    const { id: item } = insertPedido(
+      project,
+      {
+        title: CHANGE_TITLE[input.lang](live.def.name),
+        need: input.need,
+        agent: input.actor.name,
+        by: input,
+      },
+      at,
+    );
+    upsertDraft(project.db, {
+      boardId: live.id,
+      definition: kept?.definition ?? JSON.stringify(live.def),
+      baseVersion: kept ? kept.baseVersion : live.version,
+      updatedAt: at,
+      requestItem: item,
+      agentNote: null,
+    });
+    return { board: getBoardRecord(project, live.id), item };
+  });
+  if (input.text === undefined) return asked;
+  const { actor, channel } = input;
   const submitted = submitAgentDraft(
     project,
     { id: asked.item, text: input.text, actor, channel },

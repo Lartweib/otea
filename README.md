@@ -413,6 +413,8 @@ An agent the person asks for a board starts the same thing from the CLI or MCP (
 
 `--template <key>` starts the draft from a board of the catalogue (one board, never a set) instead of a blank one, so the agent adapts the closest template rather than writing a board from nothing.
 
+A change to a board already published (a field, a step) goes the same way: `otea board draft --change <board> --why "<what to change>"` makes a Pedido held by the agent, titled `Cambiar el tablero <board>`, and leaves the board's draft waiting on it. The draft starts from the one the person already has in Studio, or else from the board as published. The live board keeps working as it is. The agent hands its board.json in on the Pedido as above, and the person publishes the change in Studio, which closes the Pedido. While one change waits, a second is refused (`already_exists`) and names that Pedido.
+
 ```sh
 otea board draft --new "Piezas" --why "The game's screens, reviewed by looking" --template design   # PED-1, starting from Diseño visual
 otea board draft PED-1 > "$TMPDIR/board.json"          # the draft to start from: every key a board takes

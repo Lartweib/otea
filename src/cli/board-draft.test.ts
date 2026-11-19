@@ -340,3 +340,54 @@ describe('otea board draft --new', () => {
     }
   });
 });
+
+// P4-6: an agent asked to add a field to a published board proposes the change the same way: the
+// board's draft waits on a Pedido it holds, the live board keeps working, the person publishes.
+describe('otea board draft --change', () => {
+  let repo: ReturnType<typeof tempGitRepo>;
+  let otea: Cli;
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
+    await otea('init', '--local', '--template', 'none');
+    await cliAt(repo.dir)('board', 'add', 'Tareas', '--template', 'tasks');
+  });
+
+  afterEach(() => repo.remove());
+
+  it('opens the change on a Pedido the agent holds, and says how to hand it in', async () => {
+    const { code, out } = await otea(
+      'board',
+      'draft',
+      '--change',
+      'tareas',
+      '--why',
+      'Esfuerzo e Impacto para la Matriz',
+    );
+    expect(code).toBe(0);
+    const id = /\bPED-\d+\b/.exec(out)?.[0] ?? '';
+    expect(id).not.toBe('');
+    expect(out).toContain('The change to the board "Tareas" waits in Studio');
+    expect(out).toContain(`otea board draft ${id} > ${draftFile(id)}`);
+    const start = JSON.parse((await otea('board', 'draft', id)).out);
+    expect(start.name).toBe('Tareas');
+  });
+
+  it('takes a board or --new, not both, and asks what to change', async () => {
+    expect(
+      (await otea('board', 'draft', '--new', 'X', '--change', 'Tareas', '--why', 'x')).code,
+    ).toBe(2);
+    expect((await otea('board', 'draft', 'PED-1', '--change', 'Tareas', '--why', 'x')).code).toBe(
+      2,
+    );
+    const asked = await otea('board', 'draft', '--change', 'Tareas', '--json');
+    expect(JSON.parse(asked.err).error.code).toBe('missing_fields');
+  });
+
+  it('is how otea board says to change a published board', async () => {
+    expect((await otea('board')).out).toContain(
+      'to change a published board (a field, a step), --change <board> instead of --new',
+    );
+  });
+});

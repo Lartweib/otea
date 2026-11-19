@@ -7,6 +7,7 @@ import { renderUnicodeCompact } from 'uqr';
 import {
   draftToStartFrom,
   proposeAgentDraft,
+  proposeBoardChange,
   type Submitted,
   submitAgentDraft,
 } from '../app/agent-draft.ts';
@@ -1170,10 +1171,39 @@ function proposeBoard(input: Input, name: string): Output {
   });
 }
 
+// otea board draft --change: the agent the person asked to change a published board opens the
+// change on a Pedido it holds; the live board works on, and the person publishes it in Studio.
+function proposeChange(input: Input, board: string): Output {
+  const why = input.option('why')?.trim() ?? '';
+  const file = input.option('file');
+  return withAgent(input, (project) => {
+    if (why === '')
+      throw new OteaError('missing_fields', 'Say what to change: --why "<what to change>"');
+    const text = file === undefined ? undefined : draftFile(input.cwd, file);
+    const { actor, channel } = input;
+    const made = proposeBoardChange(project, {
+      board,
+      need: why,
+      lang: PROJECT_LANG,
+      actor,
+      channel,
+      ...(text === undefined ? {} : { text }),
+    });
+    const name = made.board.draft?.definition.name ?? board;
+    const studio = studioLink(project, made.board.id);
+    const lines = [
+      ...(made.submitted ? handedInLines(made.item, made.submitted) : []),
+      `The change to the board "${name}" waits in Studio for the person to try and publish, on the Pedido ${made.item} you hold; the board works as it is until then: ${studio}`,
+      ...(made.submitted ? [] : [handInText(made.item)]),
+    ];
+    return { data: { ...made, studio }, text: lines.join('\n') };
+  });
+}
+
 const boardDraft: Command = {
   name: 'board draft',
   summary:
-    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong (the board keeps the name it was asked for; the name in the file is not used). To propose a new board the person asked you for, --new <name> --why "<what it is for>" (and --template <key> to start from a catalogue board, or from a set such as ideas or repos, which makes its other boards with it; --file to hand it in at once) makes it and its Pedido, which you hold; the person publishes it in Studio',
+    'Draft the board a Pedido asks for: without --file, print the draft to start from (JSON); with --file, check it as a board and hand it in on the Pedido as board.json, saying what is still wrong (the board keeps the name it was asked for; the name in the file is not used). To propose a new board the person asked you for, --new <name> --why "<what it is for>" (--template <key> to start from a catalogue board or a set such as ideas or repos, which makes its other boards with it; --file to hand it in at once) makes it and its Pedido, which you hold; --change <board> does the same for a change to a published board (a field, a step); the person publishes it in Studio',
   details: TEMPLATE_LIST,
   args: ['id?'],
   options: {
@@ -1181,15 +1211,23 @@ const boardDraft: Command = {
     new: { placeholder: 'name' },
     why: { placeholder: 'what it is for' },
     template: { placeholder: 'key' },
+    change: { placeholder: 'board' },
   },
   execute: (input) => {
     const [id] = input.args;
     const name = input.option('new');
-    if (name !== undefined && id !== undefined)
-      throw new UsageError('Give the Pedido or --new <name>, not both');
+    const change = input.option('change');
+    if ([id, name, change].filter((given) => given !== undefined).length > 1)
+      throw new UsageError('Give the Pedido, --new <name> or --change <board>, only one');
     if (name !== undefined) return proposeBoard(input, name);
+    if (change !== undefined) {
+      if (input.option('template') !== undefined)
+        throw new UsageError('--template goes with --new <name>');
+      return proposeChange(input, change);
+    }
     if (id === undefined) throw new UsageError('Give the Pedido, or --new <name> for a new board');
-    if (input.option('why') !== undefined) throw new UsageError('--why goes with --new <name>');
+    if (input.option('why') !== undefined)
+      throw new UsageError('--why goes with --new <name> or --change <board>');
     if (input.option('template') !== undefined)
       throw new UsageError('--template goes with --new <name>');
     const file = input.option('file');
