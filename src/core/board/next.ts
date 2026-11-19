@@ -1092,6 +1092,17 @@ export function forPersonText(all: readonly BoardDefinition[]): string {
   return FOR_PERSON[first?.title === TITLE_NAME.es ? 'es' : 'en'];
 }
 
+// What the person reads under a refused push that rewrites an item's branch (P1-R3-3): the same
+// way out as for the protected base, said in the board's language; never an agent's.
+const REWRITE_FOR_PERSON: Readonly<Record<Lang, string>> = {
+  en: "For the person: if you mean to rewrite the branch, push it yourself this once with git push --force-with-lease --no-verify, which skips Otea's check. An agent never uses --no-verify.",
+  es: 'Para la persona: si quieres reescribir la rama, súbela tú esta vez con git push --force-with-lease --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.',
+};
+
+export function rewriteForPersonText(def: BoardDefinition): string {
+  return REWRITE_FOR_PERSON[def.title === TITLE_NAME.es ? 'es' : 'en'];
+}
+
 // The line after a handoff or an approval: where the item stands now.
 export function handedText(
   def: BoardDefinition,
