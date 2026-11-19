@@ -430,7 +430,7 @@ export const detail = {
   'sheet.says.landsAny': 'an agent then merges it and pushes it to the remote',
   'sheet.says.unpushed': 'note: {branch} was never pushed to the remote',
   'sheet.says.closesUnmerged':
-    'it is Done, but nothing is merged yet: an agent merges its branch and records it',
+    'it is Done, but its branch is not merged yet: it still has to be merged and marked merged',
   'sheet.says.resume': 'back in the queue of {state}, for any agent',
   'sheet.says.free':
     'drops {agent}’s lease: back in the queue of {state}, and {agent} claims it again before going on',

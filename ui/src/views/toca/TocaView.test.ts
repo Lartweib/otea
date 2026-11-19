@@ -202,6 +202,9 @@ describe('a row’s call to act', () => {
       act: 'Hecho',
       sub: { key: 'toca.sub.didIt', agent: 'Kiln' },
     });
+    // Done with its branch not merged yet reads apart from a merged one (P3C-R2-6).
+    const unmerged = { ...done, merge: 'waiting' as const };
+    expect(rowCall(unmerged, 'cerrados', ctx(dFeed)).act).toBe('Aprobado, sin fusionar');
     const dropped = item({ id: 'R', turn: 'none', state: 'rejected', closes: 'discarded' });
     const rFeed = [moved('R', 'rejected', you, { reason: 'No.' })];
     expect(rowCall(dropped, 'cerrados', ctx(rFeed))).toEqual({

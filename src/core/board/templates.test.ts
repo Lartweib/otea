@@ -187,6 +187,13 @@ describe('requestsBoard', () => {
     expect(Object.values(es.parts).map(({ name }) => name)).toEqual(['Qué necesitas', 'Qué hice']);
     expect(requestsBoard('en').name).toBe('Requests');
   });
+
+  // A code change done on a Request would close Done with nothing merged (P8-R2-6).
+  it('sends a code change a board lands to that board', () => {
+    const take = requestsBoard('en').steps[0]?.instructions.take ?? '';
+    expect(take).toContain('is not done here');
+    expect(take).toContain('otea create --collection "<board>"');
+  });
 });
 
 describe('the Research template', () => {

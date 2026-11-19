@@ -71,9 +71,11 @@ import {
   dropItem,
   handoffItem,
   liveBoardOf,
+  liveBoards,
   mergeFirstFor,
   nextFor,
   offerableTo,
+  rowFactsOf,
   sendBackItem,
 } from '../app/next.ts';
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
@@ -885,7 +887,14 @@ const list: Command = {
       const filter = listFilter(input);
       const { state: _state, fields: _fields, ...stored } = filter;
       const items = listItems(project, stored).filter(readerFilter(project, filter));
-      const shown = items.map((item) => readable(project, item));
+      // Done with its branch not merged yet reads as the desk says it, never as merged (P6-R2-11).
+      const boards = liveBoards(project);
+      const shown = items.map((item) => {
+        const named = readable(project, item);
+        return rowFactsOf(project, item, boards).merge === 'waiting'
+          ? { ...named, state: `${named.state}, not merged` }
+          : named;
+      });
       const boardOf = boardsOf(project);
       // The person's order beside each item it places, as otea next takes them.
       const order = priorityOf(project.db);

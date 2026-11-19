@@ -262,6 +262,57 @@ describe('check', () => {
     );
   });
 
+  // Done with its branch not merged yet lists as the desk says it, never as merged (P6-R2-11).
+  it('lists a Done item whose branch is not merged yet apart from a merged one', async () => {
+    person(task, 'implementing');
+    await otea('move', task, 'implementing__review');
+    person(task, 'done');
+    const listed = await otea('list', '--collection', 'Tareas de repo');
+    expect(listed.out).toMatch(new RegExp(`${task}\\s+Done, not merged\\s`));
+    await otea('merged', task, '--commit', 'abc1234');
+    expect((await otea('list', '--collection', 'Tareas de repo')).out).not.toContain('not merged');
+  });
+
+  // An item that names no branch has none to freeze or push (P4-R2-4): the refusal says only that
+  // the review holds.
+  it('words the refusal without a branch when the item names none', async () => {
+    const none = (
+      await json(
+        'create',
+        '--collection',
+        'Tareas de repo',
+        '--parent',
+        'CHANGES-1',
+        '--title',
+        'Notes',
+        '--field',
+        `repo=${name}`,
+        '--field',
+        'branch=notes',
+      )
+    ).id;
+    person(none, 'implementing');
+    const project = openProject(repo.dir);
+    try {
+      // Rama left empty, as on a board where it is optional.
+      project.db
+        .prepare(
+          "UPDATE items SET fields = (SELECT json_group_object(key, CASE WHEN value = 'notes' THEN '' ELSE value END) FROM json_each(items.fields)) WHERE id = ?",
+        )
+        .run(none);
+    } finally {
+      project.db.close();
+    }
+    writeFileSync(join(repo.dir, 'out.log'), 'ok\n');
+    await otea('move', none, 'implementing__review');
+
+    const refused = await otea('attach', none, 'out.log');
+    expect(refused.code).toBe(4);
+    expect(refused.err).toContain(
+      `Not attached to ${none}: Implementar is being reviewed, so the reviewer reads only what was handed off. Attach it once it is sent back.`,
+    );
+  });
+
   describe('with the base branch protected', () => {
     const git = (...args: string[]) =>
       execFileSync('git', args, { cwd: repo.dir, stdio: 'pipe', encoding: 'utf8' }).trim();

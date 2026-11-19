@@ -52,7 +52,12 @@ export type BoardItem = {
   reopened?: { why: string; by: string; person: boolean; at: string };
 };
 
-type ItemLike = { state: string; createdAt: string; events: readonly ItemEvent[] };
+type ItemLike = {
+  state: string;
+  createdAt: string;
+  events: readonly ItemEvent[];
+  fields?: Readonly<Record<string, unknown>>;
+};
 
 // The item's history as the engine replays it (core/board/history.ts, as the server reads it).
 const historyFor = (def: BoardDefinition, events: readonly ItemEvent[], createdAt: string) =>
@@ -559,7 +564,11 @@ export function backOf(
   to: string,
 ): { agent: string | null; round: number; lands?: string; unmerged?: true; unpushed?: string } {
   const target = positionOf(to);
-  const branch = guardedBranch(def);
+  // Only an item that names its branch has one to merge (P5-R2-5, P4-R2-4): one that left it empty
+  // is told nothing of merging or pushing.
+  const guarded = guardedBranch(def);
+  const named = guarded && String(item.fields?.[guarded.id] ?? '').trim() !== '';
+  const branch = named ? guarded : undefined;
   const land = def.steps.find((s) => isLandStep(def, s.id));
   const unpushed = unpushedOf(item);
   const warn = unpushed === undefined ? {} : { unpushed };

@@ -147,7 +147,7 @@ describe('what an approve leads to, said before it acts', () => {
     const p = planMoves([fixed], { own: false, word });
     const unmerged = () => ({ agent: null, round: 0, unmerged: true as const });
     expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: unmerged }).tail).toBe(
-      'it is Done, but nothing is merged yet: an agent merges its branch and records it',
+      'it is Done, but its branch is not merged yet: it still has to be merged and marked merged',
     );
   });
 

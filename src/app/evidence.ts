@@ -3,7 +3,7 @@ import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSyn
 import { basename, join } from 'node:path';
 import type { Channel, Performer } from '../core/authority.ts';
 import { gateAt, isClosed, positionOf } from '../core/board/engine.ts';
-import { stepById } from '../core/board/model.ts';
+import { guardedBranch, stepById } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import {
   type EvidenceRole,
@@ -245,7 +245,7 @@ function sameSinceMoved(
 // never got. The person may still attach.
 function refuseWhileFrozen(
   project: Project,
-  item: { id: string; collection: string; state: string },
+  item: { id: string; collection: string; state: string; fields: Record<string, unknown> },
   actor: Actor,
 ): void {
   if (actor.kind !== 'agent') return;
@@ -255,9 +255,14 @@ function refuseWhileFrozen(
   if (isClosed(position) || position.phase === 'doing') return;
   if (gateAt(board.def, position, 'push').why !== 'review') return;
   const step = stepById(board.def, position.step)?.name ?? position.step;
+  // An item that names no branch has none to freeze or push (P4-R2-4): only the review holds.
+  const branch = guardedBranch(board.def);
+  const named = branch && String(item.fields[branch.id] ?? '').trim() !== '';
   throw new OteaError(
     'invalid_transition',
-    `Not attached to ${item.id}: its branch is frozen while ${step} is reviewed, so the reviewer reads only what was handed off. Push and attach once it is sent back.`,
+    named
+      ? `Not attached to ${item.id}: its branch is frozen while ${step} is reviewed, so the reviewer reads only what was handed off. Push and attach once it is sent back.`
+      : `Not attached to ${item.id}: ${step} is being reviewed, so the reviewer reads only what was handed off. Attach it once it is sent back.`,
     { kind: 'frozen_in_review', item: item.id, step },
   );
 }
