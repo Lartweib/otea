@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { addBoard } from './boards.ts';
-import { createItem, getItem, moveItem, showItem, updateItem } from './items.ts';
-import { handoffItem, liveBoardOf, nextFor } from './next.ts';
+import { createItem, getItem, moveItem, requireItem, showItem, updateItem } from './items.ts';
+import { boardBlockOf, handoffItem, liveBoardOf, nextFor } from './next.ts';
 import { memoryContext } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -89,5 +89,20 @@ describe('a to-do the person does themselves', () => {
     );
     expect(getItem(ctx, call.id).state).toBe(step('Tu parte'));
     expect(nextFor(ctx, 'kiln', {}, now).item).toBeNull();
+  });
+
+  // P4-R3-3: PEN-2, which she did herself after kiln took it back, said «Hecho; lo hizo kiln».
+  it('names the person as the one who did it when they closed their own step', () => {
+    const { ctx, ref, make } = todos();
+    const call = make('Llamar al proveedor');
+    nextFor(ctx, 'kiln', { claim: true }, now);
+    const back = { id: call.id, actor: kiln, channel: 'cli' as const, way: 'Tu parte' };
+    handoffItem(ctx, { ...back, reason: 'una llamada' }, now);
+    updateItem(ctx, { id: call.id, fields: { [ref('Lo que hice')]: 'Llamé' }, actor: you }, now);
+    handoffItem(ctx, { id: call.id, actor: you, channel: 'ui', way: 'Done' }, now);
+
+    const closed = boardBlockOf(ctx, requireItem(ctx.db, call.id))?.closedBy;
+    expect(closed?.doer).toBeUndefined();
+    expect(closed?.doneByPerson).toBe(true);
   });
 });

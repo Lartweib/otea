@@ -222,6 +222,8 @@ describe('the standfirst (mock:2670-2678)', () => {
   it('says done, by whom, and discarded', () => {
     expect(standOf({ ...base, look: 'done' }).key).toBe('sheet.stand.doneBy');
     expect(standOf({ ...base, look: 'done', agent: null }).key).toBe('sheet.stand.done');
+    // P4-R3-3: a step of yours you closed yourself names you, never the agent before you.
+    expect(standOf({ ...base, look: 'done', byYou: true }).key).toBe('sheet.stand.doneByYou');
     expect(standOf({ ...base, look: 'dropped' }).key).toBe('sheet.stand.dropped');
     // Why it was dropped, at the top, when the drop said why.
     expect(standOf({ ...base, look: 'dropped', why: 'No pasa en la versión actual.' })).toEqual({

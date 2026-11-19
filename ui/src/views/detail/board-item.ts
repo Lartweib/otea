@@ -121,7 +121,12 @@ export type ItemBoardBlock = {
   // While an agent does its step: that agent and its last sign of life.
   worker?: { name: string; lastSeen: string | null; holds: boolean };
   // Once closed: the agent that did the work and who approved it (app/next.ts closedByOf).
-  closedBy?: { doer?: string; reviewer?: { kind: 'human' | 'agent'; name: string } };
+  closedBy?: {
+    doer?: string;
+    reviewer?: { kind: 'human' | 'agent'; name: string };
+    // The person did its last step's work, a step of theirs (P4-R3-3).
+    doneByPerson?: true;
+  };
   // Once Done: that its branch was merged (otea merged).
   merged?: { at: string; by: string; branch?: string; pr?: string; commit?: string };
   // Each checklist that asks for proof, point by point (app/next.ts provedChecklists).

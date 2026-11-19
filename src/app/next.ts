@@ -508,11 +508,19 @@ function tickedOf(value: unknown): string[] {
 }
 
 // `doerProfile`: the profile the doer handed the work off under (P3C-R2-5), not the one it has now.
-export type ClosedBy = { doer?: string; doerProfile?: ProfileView; reviewer?: Actor };
+// `doneByPerson`: the person did its last step's work, a step of theirs (P4-R3-3); no agent is named.
+export type ClosedBy = {
+  doer?: string;
+  doerProfile?: ProfileView;
+  reviewer?: Actor;
+  doneByPerson?: true;
+};
 
 // Who did a closed item's work and who approved it: the last agent that handed the item off out of
 // a step's doing, and the last one that moved it out of a review (or, for a step nobody reviews
 // that the person closed, the person). An agent that only landed it (the land step) did not do it.
+// When the last step's work was the person's own (a step they do), they did it, not an agent that
+// handed it to them before (P4-R3-3).
 function closedByOf(def: BoardDefinition, events: readonly EventRecord[]): ClosedBy {
   const out: ClosedBy = {};
   for (const event of events) {
@@ -524,6 +532,13 @@ function closedByOf(def: BoardDefinition, events: readonly EventRecord[]): Close
       out.doer = event.actor.name;
       if (event.profile) out.doerProfile = event.profile;
       else delete out.doerProfile;
+      delete out.doneByPerson;
+    }
+    const theirs = stepById(def, from.step)?.doer === 'you';
+    if (from.phase === 'doing' && event.actor.kind === 'human' && theirs && !landing) {
+      delete out.doer;
+      delete out.doerProfile;
+      out.doneByPerson = true;
     }
     if (from.phase === 'review') out.reviewer = event.actor;
   }

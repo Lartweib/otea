@@ -164,6 +164,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     const read = factsOf(item, type, now);
     const on = onBoard ? boardFactsOf(read, item, onBoard, ownStep !== undefined) : read;
     // A closed item was done by the agent that handed its work off, never by its reviewer.
+    if (closedBy?.doneByPerson) return { ...on, agent: null, handed: null };
     return closedBy?.doer ? { ...on, agent: closedBy.doer } : on;
   }, [item, type, now, onBoard, ownStep, closedBy]);
   const lane = onBoard?.route.lane ?? laneOf(item.turn);
@@ -351,6 +352,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     why: look === 'dropped' ? dropReason(item) : undefined,
     archived: item.archived?.board,
     reopened: onBoard?.reopened?.why,
+    byYou: !!closedBy?.doneByPerson,
   });
   const standWords = tx(
     stand.key as 'sheet.stand.handedRound',
