@@ -139,6 +139,38 @@ describe('modelPerformance', () => {
     expect(by('opus')).toMatchObject({ handoffs: 1, sentBack: 0 });
   });
 
+  // An agent that takes the item back itself, as Integrar does when main moved and the branch no
+  // longer applies, found no fault in the earlier handoff: only the person's send-backs count
+  // (P3C-R3-6).
+  it('never counts a way back an agent took itself against the step it returns to', () => {
+    const events = [
+      created(),
+      move('sconcept', 'sconcept__review', sonnet),
+      move('sconcept__review', 'sanimate', YOU),
+      move('sanimate', 'sconcept', opus, { reason: 'main moved: it conflicts in b.txt' }),
+    ];
+
+    const { rows } = modelPerformance([trail('CRI-1', events)]);
+
+    expect(rows.find((row) => row.family === 'sonnet')).toMatchObject({
+      handoffs: 1,
+      sentBack: 0,
+    });
+  });
+
+  it('counts the person taking it back while a later step is done', () => {
+    const events = [
+      created(),
+      move('sconcept', 'sconcept__review', sonnet),
+      move('sconcept__review', 'sanimate', YOU),
+      move('sanimate', 'sconcept', YOU, { reason: 'El concepto no sirve' }),
+    ];
+
+    const { rows } = modelPerformance([trail('CRI-1', events)]);
+
+    expect(rows.find((row) => row.family === 'sonnet')).toMatchObject({ sentBack: 1 });
+  });
+
   it('ignores steps the person did, and agents that declared no profile', () => {
     const events = [
       created(),

@@ -458,7 +458,7 @@ export const surfaces = {
   'perf.col.done': 'Items done',
   'perf.col.discards': 'Discards',
   'perf.col.time': 'To hand off',
-  'perf.tip.back': '{back} of {handoffs} handoffs came back for another round',
+  'perf.tip.back': '{back} of {handoffs} handoffs were sent back for another round',
   'perf.tip.rounds': 'rounds each finished step took, on average',
   'perf.tip.done': 'items in Done it handed off a step of',
   'perf.tip.discards': 'items discarded after its last handoff',
