@@ -587,6 +587,32 @@ const TODOS: Template = {
       ),
     },
     {
+      key: 'tmine',
+      kind: 'yesno',
+      name: w('I do it myself', 'Lo hago yo'),
+      hint: w(
+        'yes for something only you can do (take the photos, make a call): it stays with you and no agent is offered it',
+        'sí para algo que solo puedes hacer tú (sacar las fotos, hacer una llamada): queda contigo y no se le ofrece a ningún agente',
+      ),
+      initial: 'no',
+    },
+    {
+      key: 'timpact',
+      kind: 'level',
+      name: w('Impact', 'Impacto'),
+      hint: w('how much it matters to you', 'cuánto te importa'),
+    },
+    {
+      key: 'teffort',
+      kind: 'choice',
+      name: w('Effort', 'Esfuerzo'),
+      hint: w(
+        'how much work it looks like; an agent estimates it, you correct it',
+        'cuánto trabajo parece; lo estima un agente y tú lo corriges',
+      ),
+      ...EFFORT_SIZES,
+    },
+    {
       key: 'tresult',
       kind: 'long',
       name: w('What I did', 'Lo que hice'),
@@ -621,18 +647,36 @@ const TODOS: Template = {
   form: [
     ['twant', true],
     ['tdone', false],
+    ['tmine', false],
+    ['timpact', false],
   ],
   steps: [
+    // The person's own to-dos: an item made with «Lo hago yo» starts here, and is never offered to
+    // an agent; every other skips it and starts at Hacerlo. From here the person closes it, or
+    // passes it on to an agent (Hacerlo).
+    {
+      key: 'tself',
+      name: w('You do it', 'Lo haces tú'),
+      doer: 'you',
+      reviewer: 'none',
+      hand: [['tresult', 'when', false, ['tmine', 'yes']]],
+      ways: [DONE],
+      skip: true,
+    },
     {
       key: 'tdo',
       name: w('Do it', 'Hacerlo'),
       doer: 'any',
       reviewer: 'you',
-      hand: [['tresult', 'always', false]],
+      hand: [
+        ['tresult', 'always', false],
+        ['teffort', 'no', false],
+      ],
+      ways: ['tself'],
       note: w('what you did and what is still open', 'qué hiciste y qué quedó abierto'),
       take: w(
-        'Read @{twant}. If something is unclear, ask with otea ask, one question at a time and in plain words; do not guess. Do only what it asks.',
-        'Lee @{twant}. Si algo no está claro, pregunta con otea ask, una pregunta por vez y en palabras simples; no adivines. Haz solo lo que pide.',
+        'Read @{twant}. If something is unclear, ask with otea ask, one question at a time and in plain words; do not guess. Do only what it asks. If it is something only the person can do (take photos, make a call, go somewhere), do not ask: take it back to @{tself} with otea handoff <id> --way "@{tself}" --reason "<why it is theirs>". If @{tmine} is yes, the person already did it: hand it off as it is. Estimate @{teffort} if it is empty: the person weighs the to-dos on the Matrix.',
+        'Lee @{twant}. Si algo no está claro, pregunta con otea ask, una pregunta por vez y en palabras simples; no adivines. Haz solo lo que pide. Si es algo que solo puede hacer la persona (sacar fotos, hacer una llamada, ir a algún lado), no preguntes: regrésalo a @{tself} con otea handoff <id> --way "@{tself}" --reason "<por qué es suyo>". Si @{tmine} es sí, la persona ya lo hizo: entrégalo tal como está. Estima @{teffort} si está vacío: la persona pesa los pendientes en la Matriz.',
       ),
       before: w(
         'Write in @{tresult} what you did, in plain words, and add what the person needs to check it: @{timages} of how it looks, the @{tfiles} it opens, @{tlinks}. Meet each point of @{tdone}.',
@@ -645,7 +689,7 @@ const TODOS: Template = {
     },
   ],
   // What the agent made goes in whenever it has it: required only when the piece needs it.
-  anytime: ['tdone', 'timages', 'tfiles', 'tlinks'],
+  anytime: ['tdone', 'timages', 'tfiles', 'tlinks', 'timpact', 'teffort'],
   motives: [
     ['tnotneeded', w('No longer needed', 'Ya no hace falta')],
     ['trejected', w('Not this', 'No es esto')],
@@ -671,7 +715,11 @@ const TODOS: Template = {
     timages: 'main',
     tfiles: 'main',
     tlinks: 'side',
+    tmine: 'side',
+    timpact: 'side',
+    teffort: 'side',
   },
+  analysis: { effort: 'teffort', impact: 'timpact' },
 };
 
 const DECISIONS: Template = {
@@ -892,7 +940,7 @@ const DESIGN: Template = {
         'yes when the piece lives in the code (an interface, a sprite of the game): it is made on a branch and lands on main; no for an image that lives on its own',
         'sí cuando la pieza vive en el código (una interfaz, un sprite del juego): se hace en una rama y llega a main; no para una imagen que vive por su cuenta',
       ),
-      initial: 'yes',
+      initial: 'no',
     },
     {
       key: 'fbranch',
