@@ -74,7 +74,9 @@ describe('board moves from the CLI', () => {
     });
     const back = await mender('handoff', id, '--way', 'Triar', '--reason', 'no es un bug');
     expect(back.code).toBe(0);
-    expect(back.out.trim()).toBe(`Taken back. ${id} returns to Triar, round 2.\nNext: otea next`);
+    expect(back.out.trim()).toBe(
+      `Taken back. ${id} returns to Triar, round 2.\nThen keep going: otea next --as mender; when it has nothing, otea wait --turn agent --unclaimed --as mender in the background if you can.`,
+    );
   });
 
   it('asks for the note with exit 8, then keeps it', async () => {
@@ -91,7 +93,7 @@ describe('board moves from the CLI', () => {
     });
     const done = await mender('handoff', id, '--note', 'se enciende');
     expect(done.out.trim()).toBe(
-      `Handed off. ${id} waits for the person to review Arreglar.\nNext: otea next`,
+      `Handed off. ${id} waits for the person to review Arreglar.\nThen keep going: otea next --as mender; when it has nothing, otea wait --turn agent --unclaimed --as mender in the background if you can.`,
     );
     const shown = JSON.parse((await otea('show', id, '--json')).out);
     expect(shown.board.notes[0]).toMatchObject({ step: 'Arreglar', round: 1, note: 'se enciende' });

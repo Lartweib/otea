@@ -108,6 +108,10 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
     const noted = await otea('answer', 'CRI-1', 'Con musgo');
     expect(noted.code).toBe(0);
     expect(noted.out).toContain("Noted the person's answer on CRI-1, as given in the chat.");
+    // P3C-R3-9: after a chat answer an agent said it left a wait running, and started none.
+    expect(noted.out.trimEnd().split('\n').at(-1)).toBe(
+      'When you finish and otea next --as claude has nothing: otea wait --turn agent --unclaimed --as claude in the background if you can.',
+    );
     expect((await otea('next')).out).toContain('The person answered: "Con musgo"');
     expect((await otea('answer', 'CRI-1', 'Otra')).err).toContain('no question waits');
 

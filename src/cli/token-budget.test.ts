@@ -52,7 +52,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // The item rows below were raised with show, for the same names.
   create: { text: 20, json: 270, mcp: 270 },
   claim: { text: 25, json: 285, mcp: 285 },
-  handoff: { text: 25, json: 295, mcp: 295 },
+  // Raised for its last line, the exact commands to keep going and wait, as wait's: an agent said it
+  // left a wait running and started none (P3C-R3-9; measured at 50, and 308 in --json and MCP).
+  handoff: { text: 55, json: 340, mcp: 340 },
   attach: { text: 15, json: 90, mcp: 90 },
   // Raised for its last line, the exact command to keep going and wait again (measured at 60).
   wait: { text: 70, json: 285, mcp: 285 },
