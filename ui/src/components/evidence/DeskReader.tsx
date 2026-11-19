@@ -33,6 +33,9 @@ type PaneProps = {
   decide?: ReaderDecide | undefined;
   note?: ReaderNote | undefined;
   start?: ReaderPick | undefined;
+  // Opened to write a note on `start` (a line of the item page's inline diff): the focus starts
+  // in the note's box, not on the file list.
+  write?: boolean;
 };
 
 // The desk reader's page (the review mock, desk): the round's files listed on the left, each with
@@ -49,7 +52,9 @@ export function ReaderPane({
   decide,
   note,
   start,
+  write = false,
 }: PaneProps) {
+  const writing = write && note !== undefined;
   const roleWord = useSideWord();
   return (
     // biome-ignore lint/a11y/noStaticElementInteractions: ← and → step files from the list too (P5-9)
@@ -67,7 +72,7 @@ export function ReaderPane({
               className="rd-file"
               aria-current={i === at ? 'true' : undefined}
               // The reader opens with the focus on the file shown, never on Cerrar (P5-9).
-              data-autofocus={i === at ? '' : undefined}
+              data-autofocus={i === at && !writing ? '' : undefined}
               data-seen={seen.has(e.id) ? 'true' : undefined}
               onClick={() => onAt(i)}
             >
@@ -95,6 +100,7 @@ export function ReaderPane({
           decide={decide}
           note={note}
           start={start}
+          write={writing}
         />
       </div>
     </div>

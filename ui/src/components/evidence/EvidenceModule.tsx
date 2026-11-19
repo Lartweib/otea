@@ -160,7 +160,8 @@ export function NotableDiff({ evidence }: { evidence: Evidence }) {
       onClick={(e) => {
         const hit = pickAt(e.target);
         if (!hit) return;
-        const detail = { evidence: evidence.id, pick: hit.pick };
+        // To write a note on it: the reader opens with the focus in the note's box.
+        const detail = { evidence: evidence.id, pick: hit.pick, write: true };
         window.dispatchEvent(new CustomEvent(READ_AT, { detail }));
       }}
     >
