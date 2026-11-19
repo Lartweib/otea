@@ -885,6 +885,13 @@ export function takenBackText(
   return `Taken back. ${id} returns to ${targetName(def, stepId)}, round ${round}.`;
 }
 
+// The way to record the person's own decision to drop an item, where they may drop it through an
+// agent: the exact relay, so an agent the person told in the chat never dead-ends (P1-R3-4).
+function relayDropText(def: BoardDefinition, id: string): string {
+  if (def.drop.by === 'page') return '';
+  return ` If the person told you to drop it, relay their decision in their words: otea relay ${id} ${DROPPED_NAME} --quote "<the person's words>" --reason "<why>"${motiveFlag(def)}`;
+}
+
 // Why a discard was refused (engine drop codes), in the agent's words.
 export function dropRefusalText(
   def: BoardDefinition,
@@ -899,7 +906,7 @@ export function dropRefusalText(
     case 'motive_required':
       return `Not dropped ${id}: say which with${motiveFlag(def)}.`;
     case 'not_droppable':
-      return `Not dropped ${id}: only the person drops items here.`;
+      return `Not dropped ${id}: only the person drops items here.${relayDropText(def, id)}`;
     case 'not_relayable':
       return `Not relayed: on ${def.name} the person drops items from the item's page.`;
   }
