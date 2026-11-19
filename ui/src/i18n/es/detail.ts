@@ -420,6 +420,7 @@ export const detail = {
   'sheet.stand.workingRound': '{agent} lo está haciendo en la ronda {round}.',
   'sheet.stand.done': 'Hecho.',
   'sheet.stand.doneBy': 'Hecho; lo hizo {agent}.',
+  'sheet.stand.doneByYou': 'Hecho; lo hiciste tú.',
   'sheet.stand.dropped': 'Descartado.',
   'sheet.stand.droppedWhy': 'Descartado: {why}',
   'sheet.stand.archived':

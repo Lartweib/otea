@@ -248,6 +248,8 @@ export function standOf(o: {
   archived?: string | undefined;
   // Why it was reopened, while an agent redoes the step it was reopened to.
   reopened?: string | undefined;
+  // Done by you: its last step was yours and you closed it (P4-R3-3).
+  byYou?: boolean;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
@@ -287,6 +289,7 @@ export function standOf(o: {
         ? { key: 'sheet.stand.workingRound', ...a, round: o.round }
         : { key: 'sheet.stand.working', ...a };
     case 'done':
+      if (o.byYou) return { key: 'sheet.stand.doneByYou' };
       return o.agent ? { key: 'sheet.stand.doneBy', ...a } : { key: 'sheet.stand.done' };
     case 'dropped':
       return o.why ? { key: 'sheet.stand.droppedWhy', why: o.why } : { key: 'sheet.stand.dropped' };

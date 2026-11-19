@@ -185,7 +185,16 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
           sub: by ? sub('toca.sub.closedBy', by) : sub('toca.sub.closedByYou'),
         };
       }
-      const who = agentOf(item, feed);
+      // On a board, a step of yours you closed yourself: you did it, not the agent before you
+      // (P4-R3-3). A review you approved was the agent's work.
+      const closing = feed.findLast(
+        (e) => e.itemId === item.id && e.type === 'transitioned' && e.data.to === item.state,
+      );
+      const yours =
+        !!ctx.onBoard?.(item) &&
+        closing?.actor.kind === 'human' &&
+        !String(closing.data.from ?? '').endsWith('__review');
+      const who = yours ? null : agentOf(item, feed);
       return {
         // Done with its branch not merged yet reads apart from a merged one (P3C-R2-6).
         act: item.merge === 'waiting' ? t('boardView.approvedUnmerged') : t('toca.act.done'),

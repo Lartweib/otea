@@ -205,6 +205,14 @@ describe('a row’s call to act', () => {
       act: 'Hecho',
       sub: { key: 'toca.sub.didIt', agent: 'Kiln' },
     });
+    // P4-R3-3: on a board, a step of yours you closed yourself: you did it, not the agent before.
+    const mine = [
+      moved('D', 'own', agent('Kiln'), { from: 'fixing', reason: 'Es tuyo.', minutes: 40 }),
+      moved('D', 'fixed', you, { from: 'own', minutes: 5 }),
+    ];
+    expect(rowCall(done, 'cerrados', { ...ctx(mine), onBoard: () => true }).sub).toEqual({
+      key: 'toca.sub.closedByYou',
+    });
     // Done with its branch not merged yet reads apart from a merged one (P3C-R2-6).
     const unmerged = { ...done, merge: 'waiting' as const };
     expect(rowCall(unmerged, 'cerrados', ctx(dFeed)).act).toBe('Aprobado, sin fusionar');

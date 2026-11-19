@@ -411,6 +411,7 @@ export const detail = {
   'sheet.stand.reopenedWaits': 'Reopened: “{why}”. It waits for an agent.',
   'sheet.stand.workingRound': '{agent} is on it, in round {round}.',
   'sheet.stand.done': 'Done.',
+  'sheet.stand.doneByYou': 'Done; you did it.',
   'sheet.stand.doneBy': 'Done; {agent} did it.',
   'sheet.stand.dropped': 'Discarded.',
   'sheet.stand.droppedWhy': 'Discarded: {why}',
