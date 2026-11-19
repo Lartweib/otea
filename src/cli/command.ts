@@ -53,8 +53,8 @@ export type Input = {
   // The project the agent is pinned to ($OTEA_PROJECT_ID, written by otea connect): its writes to
   // any other project are refused.
   pin?: string | undefined;
-  // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log: only
-  // there may it print a secret (the sign-in link).
+  // Whether what the command prints goes to a terminal a person reads, not to a pipe or a log.
+  // serve --no-open prints the sign-in link on both, for an agent to relay; never under --json.
   terminal: boolean;
   warn(message: string): void;
   // Asks the person at the terminal and resolves with their answer, or with nothing when there is
