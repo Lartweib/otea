@@ -324,7 +324,12 @@ describe('mcp server', () => {
 
       const { id: _cliId, channel: _cliChannel, caption: _none, createdAt: _t1, ...same } = cli;
       expect(attached).toMatchObject({ ...same, id: 2, caption: 'Saved', channel: 'mcp' });
-      expect((await data('show', { id: 'TASKS-1' })).evidence).toEqual([cli, attached]);
+      // show adds where each file opens (P5-R2-4).
+      const path = expect.stringMatching(/[\\/]after\.png$/);
+      expect((await data('show', { id: 'TASKS-1' })).evidence).toEqual([
+        { ...cli, path },
+        { ...attached, path },
+      ]);
       expect((await json('show', 'TASKS-1')).events.at(-1)).toMatchObject({
         type: 'evidence_added',
         data: { evidenceId: 2, role: 'after', caption: 'Saved', channel: 'mcp' },

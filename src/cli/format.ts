@@ -207,6 +207,14 @@ function evidenceRow({ id, role, kind, filename, size, caption }: EvidenceRecord
   return [`#${id}`, role, kind, filename, byteSize(size), caption ?? ''];
 }
 
+// Where an agent opens the files, when show gives their paths (P5-R2-4): one line with the first
+// file's path as the example, since every path differs only by the number and the name. A path on
+// each row cost about 25 tokens a file on every show.
+function openLine(evidence: readonly (EvidenceRecord & { path?: string })[]): string[] {
+  const first = evidence.find((entry) => entry.path !== undefined);
+  return first?.path ? [`Open a file at its number and name: #${first.id} is ${first.path}`] : [];
+}
+
 // An attached entry, led by the module it went to.
 export function formatEvidence(evidence: EvidenceRecord): string {
   const [id = '', ...rest] = evidenceRow(evidence);
@@ -232,8 +240,9 @@ function evidenceLines(
   const groups = layout
     ? groupEvidence(layout, evidence, named)
     : { modules: [], others: evidence };
+  const open = openLine(evidence).map(indent);
   if (groups.modules.length === 0) {
-    return evidence.length > 0 ? ['Evidence:', indent(rows(evidence)), ''] : [];
+    return evidence.length > 0 ? ['Evidence:', indent(rows(evidence)), ...open, ''] : [];
   }
   const sections = groups.modules.map(({ module, evidence: held }) =>
     [moduleHeading(module, named), indent(held.length > 0 ? rows(held) : 'nothing yet')].join('\n'),
@@ -241,7 +250,7 @@ function evidenceLines(
   if (groups.others.length > 0) {
     sections.push(['other files', indent(rows(groups.others))].join('\n'));
   }
-  return ['Evidence:', indent(sections.join('\n')), ''];
+  return ['Evidence:', indent(sections.join('\n')), ...open, ''];
 }
 
 const VIEW_HEADING: Readonly<Record<RelationView, string>> = {

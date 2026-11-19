@@ -33,7 +33,7 @@ import { cropNote } from '../app/crop.ts';
 import { listDevices, revokeDevice } from '../app/devices.ts';
 import { handInText } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
-import { attachEvidence, detachEvidence } from '../app/evidence.ts';
+import { attachEvidence, detachEvidence, evidenceReadPath } from '../app/evidence.ts';
 import { type Brings, checkGate, type GateCheck, protectedBases } from '../app/gates.ts';
 import { boardGuide, type Guide, guideIndex, hintFor } from '../app/guide.ts';
 import {
@@ -998,6 +998,11 @@ const show: Command = {
       // Each event's profile is left to otea events: show stays within its token budget.
       const item = {
         ...shown,
+        // Each file with a path an agent can open, under its own name (P5-R2-4).
+        evidence: shown.evidence.map((entry) => {
+          const path = evidenceReadPath(project.dataDir, entry);
+          return path === undefined ? entry : { ...entry, path };
+        }),
         events: shown.events.map(({ profile: _profile, ...event }) => event),
         hint: hintFor(project, shown, actor.name),
         ...(gitHook === undefined ? {} : { gitHook }),
