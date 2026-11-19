@@ -122,6 +122,42 @@ describe('the thread of notes', () => {
     expect(html).not.toContain('todavía no contestó');
   });
 
+  // After the send-back took them, the comments still said «Va con la devolución; si apruebas…»,
+  // and their fold in the next round read «2 notas mientras la hacía» (P5-R2-11).
+  it('says a comment that went with the send-back waits for the agent, as any note does', () => {
+    setLanguage('es');
+    const went: ItemNote = {
+      ...base,
+      note: 3,
+      text: 'La sombra parpadea.',
+      at: ago(5),
+      delivered: { done: 1, of: 1 },
+      review: { for: { step: 'sdo', round: 3 } },
+    };
+    const html = renderToStaticMarkup(
+      <Thread
+        notes={[went]}
+        evidence={[gif]}
+        now={NOW}
+        agent="claude-d"
+        at={{ step: 'sdo', round: 3 }}
+      />,
+    );
+    expect(html).not.toContain('Va con la devolución');
+    expect(html).toContain('claude-d todavía no contestó.');
+    const fold = renderToStaticMarkup(
+      <RoundNotesLine
+        notes={[went, { ...went, note: 4 }]}
+        live={false}
+        evidence={[gif]}
+        now={NOW}
+        at={{ step: 'sdo', round: 3 }}
+      />,
+    );
+    expect(fold).toContain('2 comentarios de tu revisión');
+    expect(fold).not.toContain('mientras la hacía');
+  });
+
   it('says in the reader’s foot, before any comment, what goes with a send-back (DR2-15)', () => {
     setLanguage('es');
     expect(t('notes.review.phone')).toBe(

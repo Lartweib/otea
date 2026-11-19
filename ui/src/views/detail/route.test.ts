@@ -95,7 +95,9 @@ describe('the dips under your lane (mock:2645-2654)', () => {
     ]);
     expect(dips.map((d) => d.x)).toEqual([688, 648]);
     expect(dips[0]?.d).toBe('M674 64.5C674 84 702 84 702 64.5');
-    expect(dips.map((d) => d.label)).toEqual(['round 1 · sent back on Monday', undefined]);
+    // One label for the dips of a step, the latest send-back's: in round 3 «round 1 · sent back»
+    // stayed under the strip as if it were the news (P5-R2-7).
+    expect(dips.map((d) => d.label)).toEqual(['round 2 · sent back today', undefined]);
   });
 
   it('dips after the first step, which has no room before it', () => {

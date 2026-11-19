@@ -101,6 +101,10 @@ export type Dip = { x: number; d: string; label?: string };
 // Each round you sent back dips under your lane before its step; a second at the same step sits 40
 // px further back, and only the first carries the label.
 export function dipsOf(g: RouteGeom, dips: readonly DipSpec[]): Dip[] {
+  // A step's dips carry one label, in the first one's place: the latest send-back's. In round 3,
+  // «ronda 1 · devuelta hoy» stayed under the strip as if it were the news (P5-R2-7).
+  const latest = new Map<number, string>();
+  for (const dp of dips) latest.set(dp.at, dp.label);
   const count = new Map<number, number>();
   const out: Dip[] = [];
   for (const dp of dips) {
@@ -114,7 +118,7 @@ export function dipsOf(g: RouteGeom, dips: readonly DipSpec[]): Dip[] {
     out.push({
       x,
       d: `M${x - 14} ${y}C${x - 14} 84 ${x + 14} 84 ${x + 14} ${y}`,
-      ...(k === 1 ? { label: dp.label } : {}),
+      ...(k === 1 ? { label: latest.get(dp.at) ?? dp.label } : {}),
     });
   }
   return out;

@@ -682,7 +682,15 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   if (agentStep && roundNotes.length)
     sections.unshift({
       key: 'notes',
-      node: <NotesSection notes={roundNotes} evidence={item.evidence} now={now} agent={noteTo} />,
+      node: (
+        <NotesSection
+          notes={roundNotes}
+          evidence={item.evidence}
+          now={now}
+          agent={noteTo}
+          at={{ step: agentStep.id, round }}
+        />
+      ),
     });
   const lines = historyOf(item.events, type, word, now, live);
   const stateShown = word(item.state);
