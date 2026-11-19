@@ -30,6 +30,24 @@ export type Matrix = {
   placed: number;
 };
 
+// The words of a step of a scale. A level reads in the language on screen; when it plays the
+// effort, as sizes (Pequeño … Enorme), as the templates' own Esfuerzo does: «Esfuerzo: Crítica»
+// read as a priority (P4-R2-11). Any other scale keeps its own names.
+export function scaleWord(
+  def: BoardDefinition,
+  role: ScaleRole,
+  value: string,
+  name: string,
+): string {
+  const part = rolePart(def, role);
+  if (part?.kind !== 'level') return name;
+  const word =
+    role === 'effort'
+      ? t(`matrix.size.${value}` as 'matrix.size.low')
+      : t(`bs.level.${value}` as 'bs.level.low');
+  return word.charAt(0).toLocaleUpperCase() + word.slice(1);
+}
+
 // The axes a person picked, kept only while both are still mapped and differ; else the default.
 export function axesOf(def: BoardDefinition, picked: Partial<Axes> = {}): Axes | undefined {
   const scales = mappedScales(def);

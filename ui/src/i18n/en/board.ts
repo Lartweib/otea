@@ -159,6 +159,10 @@ export const board = {
   'matrix.aside': 'Not estimated',
   'matrix.asideNone': 'Every open item has both values.',
   'matrix.order': 'Your order',
+  'matrix.size.low': 'small',
+  'matrix.size.medium': 'medium',
+  'matrix.size.high': 'large',
+  'matrix.size.critical': 'huge',
   'matrix.orderNone': 'Pick items, then Set the order.',
   'matrix.top': 'Top',
   'matrix.label': '{x} across, {y} up',
@@ -250,6 +254,7 @@ export const board = {
   'boardView.tray.aria': 'Bulk moves',
   'boardView.tray.selected': { one: 'selected', other: 'selected' },
   'boardView.tray.inState': '{count} in {state}',
+  'boardView.tray.inReview': '{count} in review at {state}',
   'boardView.tray.noneShared': {
     one: 'This item has no moves here.',
     other: 'These {count} share no move.',

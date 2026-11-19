@@ -1,6 +1,7 @@
 import { moveVariants } from '../../actions.ts';
 import { t } from '../../i18n/i18n.ts';
 import type { Item, Move } from '../../types.ts';
+import { stepKeyOf } from './model.ts';
 
 // The tray under ticked rows (SPEC §10.1, mock:3738-3844, today's bulk.ts): what its buttons say
 // and in what order, what its count line says, and whether a run can be undone.
@@ -53,13 +54,34 @@ export function trayButtons(moves: readonly Move[], word: (state: string) => str
   return ordered.map((b, i) => (i === first ? { ...b, closeAs: true } : b));
 }
 
-// "2 en Comprobado · 1 en Triaje": each state with how many, in the order they were ticked.
+// "2 en Comprobado · 1 en Triaje": each state with how many, in the order they were ticked. A
+// step's review is named apart from its doing («1 en Hacerlo · 2 en revisión de Hacerlo»), its
+// two review phases (an agent's and yours) as one.
 export function trayStates(items: readonly Item[], word: (state: string) => string): string {
-  const by = new Map<string, number>();
-  for (const it of items) by.set(it.state, (by.get(it.state) ?? 0) + 1);
-  return [...by]
-    .map(([state, count]) => t('boardView.tray.inState', { count, state: word(state) }))
+  const by = new Map<string, { step: string; review: boolean; count: number }>();
+  for (const it of items) {
+    const step = stepKeyOf(it.state);
+    const review = step !== it.state;
+    const key = review ? `${step}__review` : it.state;
+    const seen = by.get(key);
+    if (seen) seen.count += 1;
+    else by.set(key, { step: review ? step : it.state, review, count: 1 });
+  }
+  return [...by.values()]
+    .map(({ step, review, count }) =>
+      t(review ? 'boardView.tray.inReview' : 'boardView.tray.inState', {
+        count,
+        state: word(step),
+      }),
+    )
     .join(' · ');
+}
+
+// A state as the tray's menus name it: a step's review apart from its doing («Hacerlo · en
+// revisión»), the step alone otherwise.
+export function stateSaid(state: string, word: (state: string) => string): string {
+  const step = stepKeyOf(state);
+  return step === state ? word(state) : t('state.inReview', { step: word(step) });
 }
 
 // The row of buttons: the moves the selection shares, the main one first; the closing moves

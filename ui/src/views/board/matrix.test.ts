@@ -11,6 +11,7 @@ import {
   orderedSaid,
   orderList,
   quadrantOf,
+  scaleWord,
 } from './matrix.ts';
 
 function weighed(): BoardDefinition {
@@ -134,5 +135,25 @@ describe('the quadrants', () => {
     expect(quadrantOf(m, cell(2, 3))).toBe('slowRisky');
     const other = { ...m, axes: { x: 'impact', y: 'risk' } as const };
     expect(quadrantOf(other, cell(0, 0))).toBeUndefined();
+  });
+});
+
+// P4-R2-11: a «Nivel» field from Studio playing the effort role read «Esfuerzo: Crítica», a priority
+// word; an effort reads as a size, as the templates' own Esfuerzo does.
+describe('the words of a scale', () => {
+  it('says a level as sizes when it is the effort, as a level otherwise, and a choice by its name', () => {
+    setLanguage('es');
+    const def = weighed();
+    def.parts.flevel = { id: 'flevel', name: 'Nivel', kind: 'level', hint: '', options: [] };
+    def.analysis = { effort: 'flevel', risk: 'frisk' };
+    expect(
+      ['low', 'medium', 'high', 'critical'].map((v) => scaleWord(def, 'effort', v, v)),
+    ).toEqual(['Pequeño', 'Mediano', 'Grande', 'Enorme']);
+    expect(scaleWord(def, 'risk', 'critical', 'critical')).toBe('Crítica');
+    def.analysis = { effort: 'feffort' };
+    expect(scaleWord(def, 'effort', 'cs', 'S')).toBe('S');
+    setLanguage('en');
+    def.analysis = { effort: 'flevel' };
+    expect(scaleWord(def, 'effort', 'critical', 'critical')).toBe('Huge');
   });
 });

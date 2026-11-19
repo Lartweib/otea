@@ -21,7 +21,14 @@ import { reduced } from '../../motion/reduced.ts';
 import { stateWordIn } from '../../preset-words.ts';
 import type { CollectionView, Item, Move } from '../../types.ts';
 import { useStudioBoard } from './studio-board.tsx';
-import { type TrayButton, trayButtons, trayGroups, trayNotice, trayStates } from './tray.ts';
+import {
+  stateSaid,
+  type TrayButton,
+  trayButtons,
+  trayGroups,
+  trayNotice,
+  trayStates,
+} from './tray.ts';
 
 // The tray (SPEC §10.1, mock:478-494, 3738-3844): docked at the foot of the table while rows are
 // ticked, centred on the board's column and carried with it. A line leads, the surface unrolls.
@@ -488,7 +495,7 @@ export function Tray({
             {t('boardView.tray.keepN', {
               count: n.ids.length,
               id: n.ids[0] ?? '',
-              state: word(n.state),
+              state: stateSaid(n.state, word),
             })}
           </MenuItem>
         ))}
