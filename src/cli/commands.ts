@@ -2063,13 +2063,21 @@ const ask: Command = {
 
 const release: Command = {
   name: 'release',
-  summary: 'Drop the lease you hold on an item; moving it off the agent turn releases it too',
+  summary:
+    'Drop the lease you hold on an item; moving it off the agent turn releases it too. --later sets it aside for you (next and wait skip it) until it moves or you claim it again',
   args: ['id'],
-  options: {},
+  options: { later: { flag: true } },
   execute: (input) => {
     const [id = ''] = input.args;
     const { actor } = input;
-    return withAgent(input, (project) => itemResult(project, releaseItem(project, { id, actor })));
+    const later = input.flag('later');
+    return withAgent(input, (project) => {
+      const item = releaseItem(project, { id, actor, later });
+      const released = itemResult(project, item);
+      if (!later) return released;
+      const aside = `Set ${item.id} aside: otea next and otea wait --unclaimed leave it out for you until it moves or you claim it again (otea claim ${item.id}).`;
+      return { ...released, text: `${released.text}\n${aside}` };
+    });
   },
 };
 

@@ -126,6 +126,7 @@ function releaseCause(data: Event['data']): string {
   if (data.cause === 'handoff') return 'handed off';
   if (data.cause === 'restart') return 'back in the queue';
   if (data.cause === 'reassign') return `left for ${String(data.next)}`;
+  if (data.cause === 'later') return 'set aside for later';
   return 'released';
 }
 

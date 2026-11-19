@@ -338,6 +338,31 @@ describe('wait', () => {
     });
   });
 
+  // P3C-R2-4: an item the person wants for later no longer wakes the agent's wait at once.
+  it('leaves out an item the agent set aside with release --later, until it takes it up again', async () => {
+    await otea('claim', 'TASKS-2', '--as', 'codex');
+    await otea('claim', 'TASKS-1');
+    const released = await otea('release', 'TASKS-1', '--later');
+    expect(released.code).toBe(0);
+    expect(released.out).toContain('Set TASKS-1 aside');
+
+    const waited = await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '1s');
+    expect(waited.code).toBe(13);
+    const next = await otea('next');
+    expect(next.out).toContain('Nothing to do');
+    expect(next.out).toContain(
+      'You set aside TASKS-1 for later: otea claim TASKS-1 takes it up again.',
+    );
+    // Another agent may take it.
+    expect((await otea('wait', '--turn', 'agent', '--unclaimed', '--as', 'gemini')).out).toMatch(
+      /^TASKS-1 /,
+    );
+
+    await otea('claim', 'TASKS-1');
+    await otea('release', 'TASKS-1');
+    expect((await otea('wait', '--turn', 'agent', '--unclaimed')).out).toMatch(/^TASKS-1 /);
+  });
+
   it('fails with timeout (exit 13) when nothing reaches the turn in time', async () => {
     const started = Date.now();
     const { code, out, err } = await otea('wait', '--turn', 'human', '--timeout', '1s', '--json');

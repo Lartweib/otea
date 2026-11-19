@@ -11,7 +11,9 @@ import { type Item, present, requireWritableItem, systemClock, workflowOf } from
 import { takeItem } from './lease-take.ts';
 import { assertMayClaim, liveBoardOf } from './next.ts';
 
-export type LeaseInput = { id: string; actor: Actor; ttlMs?: number };
+// `later`: on a release, the agent sets the item aside for later (P3C-R2-4): next and wait leave it
+// out for that agent until it moves or the agent claims it again.
+export type LeaseInput = { id: string; actor: Actor; ttlMs?: number; later?: boolean };
 
 function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {
   const lease = activeLease(item.lease, at);
@@ -66,7 +68,7 @@ export function releaseItem(ctx: Context, input: LeaseInput, now = systemClock):
     const current = activeLease(item.lease, at);
     if (current?.holder !== input.actor.name) throw notHolder(item, input.actor, at);
     clearLease(db, item.id);
-    const data = { holder: current.holder, cause: 'release' };
+    const data = { holder: current.holder, cause: input.later ? 'later' : 'release' };
     appendEvent(db, { itemId: item.id, type: 'released', actor: input.actor, at, data });
     return present({ ...item, lease: null }, workflowOf(ctx, item), at);
   });
