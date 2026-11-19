@@ -14,7 +14,8 @@ export const UNKNOWN = 'unknown';
 export const isUnknown = (value: string) => value === UNKNOWN;
 
 // Model ids grouped for analysis: the first rule that matches names the family; an id none matches
-// is its own family. Extend it as new lines of models appear.
+// is its own family, without the provider a harness may name before it. Extend it as new lines of
+// models appear.
 const FAMILIES: readonly [RegExp, (match: RegExpMatchArray) => string][] = [
   [/\b(opus|sonnet|haiku|fable)\b/, (m) => m[1] ?? ''],
   [/^gpt-(\d+)/, (m) => `gpt-${m[1]}`],
@@ -23,7 +24,8 @@ const FAMILIES: readonly [RegExp, (match: RegExpMatchArray) => string][] = [
 ];
 
 export function modelFamily(model: string): string {
-  const id = model.toLowerCase();
+  // A harness may name the provider before the model (opencode/big-pickle): the model is the same.
+  const id = model.toLowerCase().replace(/^.*\//, '');
   if (id === UNKNOWN) return UNKNOWN;
   for (const [pattern, family] of FAMILIES) {
     const match = id.match(pattern);
