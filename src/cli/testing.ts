@@ -107,10 +107,15 @@ export type TempRepo = {
 };
 
 export function tempGitRepo(): TempRepo {
-  const dir = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-cli-')));
+  const dir = tempFolder();
   execFileSync('git', ['init', '--quiet'], { cwd: dir, stdio: 'ignore' });
   return tempRepoAt(dir);
 }
+
+const tempFolder = () => realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-cli-')));
+
+// A process that just ended can hold the folder a moment longer on Windows.
+const removeFolder = (dir: string) => rmSync(dir, { recursive: true, force: true, maxRetries: 10 });
 
 function tempRepoAt(dir: string): TempRepo {
   return {
@@ -120,8 +125,7 @@ function tempRepoAt(dir: string): TempRepo {
       mkdirSync(dirname(target), { recursive: true });
       writeFileSync(target, content);
     },
-    // A process that just ended can hold the folder a moment longer on Windows.
-    remove: () => rmSync(dir, { recursive: true, force: true, maxRetries: 10 }),
+    remove: () => removeFolder(dir),
   };
 }
 
@@ -135,7 +139,7 @@ export async function seededLocalRepo(seed: (dir: string) => Promise<void>): Pro
   await seed(template.dir);
   return {
     fresh: () => {
-      const dir = realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-cli-')));
+      const dir = tempFolder();
       cpSync(template.dir, dir, { recursive: true });
       return tempRepoAt(dir);
     },
@@ -164,6 +168,49 @@ export function seedOnce(seed: (otea: Cli, dir: string) => Promise<void>): {
       if (!seeded) throw new Error('seedOnce: the project is not seeded yet');
       const repo = seeded.fresh();
       return { repo, otea: cliAt(repo.dir, agent) };
+    },
+  };
+}
+
+// A checkout with a local project and the bare repo it pushes to, side by side in one temp folder,
+// seeded once by `seed` for the enclosing describe block. `seed` gets the checkout (git init done)
+// and the path of the bare repo (made, HEAD on main), and adds it as origin. `fresh` hands each test
+// its own copy of the folder, origin pointing at the copy's bare repo, with an empty folder beside
+// them (`aside`) for another clone. Suites whose every test starts from the same pushed branch seed
+// it once: seeding it before each test took a loaded Windows runner past the hook's 30s.
+export type CheckoutWithOrigin = { repo: TempRepo; origin: string; aside: string };
+
+export function seedOnceWithOrigin(seed: (dir: string, origin: string) => Promise<void>): {
+  fresh: () => CheckoutWithOrigin;
+} {
+  const layout = (root: string) => ({
+    dir: join(root, 'checkout'),
+    origin: join(root, 'origin.git'),
+    aside: join(root, 'aside'),
+  });
+  let template: string | undefined;
+  beforeAll(async () => {
+    template = tempFolder();
+    const { dir, origin, aside } = layout(template);
+    mkdirSync(dir);
+    mkdirSync(aside);
+    execFileSync('git', ['init', '--quiet'], { cwd: dir, stdio: 'ignore' });
+    execFileSync('git', ['init', '--quiet', '--bare', origin], { stdio: 'ignore' });
+    // A clone checks out main, whatever git's default branch name is where the test runs.
+    execFileSync('git', ['--git-dir', origin, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
+    await seed(dir, origin);
+  });
+  afterAll(() => {
+    if (template) removeFolder(template);
+  });
+  return {
+    fresh: () => {
+      if (!template) throw new Error('seedOnceWithOrigin: the checkout is not seeded yet');
+      const root = tempFolder();
+      cpSync(template, root, { recursive: true });
+      const { dir, origin, aside } = layout(root);
+      execFileSync('git', ['remote', 'set-url', 'origin', origin], { cwd: dir, stdio: 'ignore' });
+      return { repo: { ...tempRepoAt(dir), remove: () => removeFolder(root) }, origin, aside };
     },
   };
 }

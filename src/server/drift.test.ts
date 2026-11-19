@@ -4,7 +4,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { liveBoardOf } from '../app/next.ts';
 import { openProject, type Project } from '../app/project.ts';
-import { cliAt, declareProfiles, type TempRepo, tempGitRepo } from '../cli/testing.ts';
+import { cliAt, declareProfiles, seedOnceWithOrigin, type TempRepo } from '../cli/testing.ts';
 import { stateOf } from '../core/board/engine.ts';
 import { updateItemState } from '../store/queries.ts';
 import { createServer, type OteaServer } from './server.ts';
@@ -14,8 +14,8 @@ import { LOCAL_HOST, SESSION_COOKIE, TOKEN } from './testing.ts';
 // desk asks the remote, and says so before the person approves, naming who pushed what.
 describe('GET /api/items/:id/drift', () => {
   let repo: TempRepo;
-  let remote: TempRepo;
-  let teammate: TempRepo;
+  let origin: string;
+  let teammate: string;
   let project: Project;
   let server: OteaServer;
   const BRANCH = 'feat/bill-102';
@@ -38,15 +38,15 @@ describe('GET /api/items/:id/drift', () => {
     return ((await response.json()) as { drift: unknown }).drift;
   };
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    remote = tempGitRepo();
-    teammate = tempGitRepo();
-    const otea = cliAt(repo.dir, { OTEA_AGENT: 'quill' });
-    const person = cliAt(repo.dir);
-    await person('init', '--template', 'none');
+  // The agent handed off CAM-1 on BRANCH and pushed it: seeded once, each test gets its own copy of
+  // the checkout and of origin.
+  const seeded = seedOnceWithOrigin(async (dir, bare) => {
+    const otea = cliAt(dir, { OTEA_AGENT: 'quill' });
+    const person = cliAt(dir);
+    const git = gitAt(dir);
+    await person('init', '--local', '--template', 'none');
     await person('board', 'add', 'Cambios', '--template', 'changes');
-    declareProfiles(repo.dir, 'quill');
+    declareProfiles(dir, 'quill');
     await otea(
       'create',
       '--collection',
@@ -58,21 +58,18 @@ describe('GET /api/items/:id/drift', () => {
       '--field',
       `Rama=${BRANCH}`,
     );
-    const bare = join(remote.dir, 'origin.git');
-    execFileSync('git', ['init', '-q', '--bare', bare]);
-    execFileSync('git', ['--git-dir', bare, 'symbolic-ref', 'HEAD', 'refs/heads/main']);
-    writeFileSync(join(repo.dir, 'a.txt'), 'root\n');
+    writeFileSync(join(dir, 'a.txt'), 'root\n');
     git('add', 'a.txt');
     git('commit', '-q', '-m', 'root');
     git('branch', '-M', 'main');
     git('remote', 'add', 'origin', bare);
     git('push', '-q', '--no-verify', 'origin', 'main');
     git('checkout', '-q', '-b', BRANCH);
-    writeFileSync(join(repo.dir, 'b.txt'), 'facturas\n');
+    writeFileSync(join(dir, 'b.txt'), 'facturas\n');
     git('add', 'b.txt');
     git('commit', '-q', '-m', 'facturas');
     git('push', '-q', '--no-verify', '-u', 'origin', BRANCH);
-    const opened = openProject(repo.dir);
+    const opened = openProject(dir);
     try {
       const doit = liveBoardOf(opened, 'Cambios')?.def.steps.find(({ name }) => name === 'Hacerlo');
       if (!doit) throw new Error('no Hacerlo');
@@ -85,11 +82,15 @@ describe('GET /api/items/:id/drift', () => {
     } finally {
       opened.db.close();
     }
-    writeFileSync(join(repo.dir, 'facturas.diff'), 'diff --git a/b.txt b/b.txt\n+facturas\n');
+    writeFileSync(join(dir, 'facturas.diff'), 'diff --git a/b.txt b/b.txt\n+facturas\n');
     expect((await otea('claim', 'CAM-1')).code).toBe(0);
     expect((await otea('attach', 'CAM-1', 'facturas.diff')).code).toBe(0);
     const handed = await otea('handoff', 'CAM-1', '--note', 'facturas');
     expect(handed.code, handed.err).toBe(0);
+  });
+
+  beforeEach(() => {
+    ({ repo, origin, aside: teammate } = seeded.fresh());
     project = openProject(repo.dir);
     server = createServer(project, { token: TOKEN });
   });
@@ -97,8 +98,6 @@ describe('GET /api/items/:id/drift', () => {
   afterEach(() => {
     project.db.close();
     repo.remove();
-    remote.remove();
-    teammate.remove();
   });
 
   it('says nothing while the remote branch is the one handed off', async () => {
@@ -107,10 +106,10 @@ describe('GET /api/items/:id/drift', () => {
 
   it('names the commits pushed to the branch after the handoff, and who pushed them', async () => {
     const handed = git('rev-parse', '--short=7', BRANCH);
-    gitAt(teammate.dir)('clone', '-q', join(remote.dir, 'origin.git'), 'clone');
-    const diego = gitAt(join(teammate.dir, 'clone'), 'Diego');
+    gitAt(teammate)('clone', '-q', origin, 'clone');
+    const diego = gitAt(join(teammate, 'clone'), 'Diego');
     diego('checkout', '-q', BRANCH);
-    writeFileSync(join(teammate.dir, 'clone', 'c.txt'), 'never reviewed\n');
+    writeFileSync(join(teammate, 'clone', 'c.txt'), 'never reviewed\n');
     diego('add', 'c.txt');
     diego('commit', '-q', '-m', 'quick fix');
     diego('push', '-q', '--no-verify', 'origin', BRANCH);
@@ -125,7 +124,7 @@ describe('GET /api/items/:id/drift', () => {
   });
 
   it('says nothing when it cannot reach the remote', async () => {
-    git('remote', 'set-url', 'origin', join(remote.dir, 'gone.git'));
+    git('remote', 'set-url', 'origin', join(teammate, 'gone.git'));
     expect(await drift()).toBeNull();
   });
 });
