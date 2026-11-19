@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { es } from './es.ts';
 import { setLanguage, t } from './i18n.ts';
 
 afterEach(() => setLanguage('en'));
@@ -42,6 +43,17 @@ describe('the copy says one thing one way', () => {
     expect(t('toca.sub.hands', { agent: 'kiln' })).toBe('handed over by kiln');
     setLanguage('es');
     expect(t('projects.sub.hands', { agent: 'kiln' })).toBe(t('toca.sub.hands', { agent: 'kiln' }));
+  });
+
+  // The phone said «en el ordenador» (Spain) and Preferencias «en el equipo» (P7-R2-7): one neutral
+  // word for the computer Otea runs on.
+  it('calls the computer «equipo» in Spanish, never «ordenador»', () => {
+    const said = Object.entries(es).filter(([, value]) =>
+      JSON.stringify(value).includes('ordenador'),
+    );
+    expect(said.map(([key]) => key)).toEqual([]);
+    setLanguage('es');
+    expect(t('phone.desk')).toBe('Studio y Configuración están en el equipo.');
   });
 
   it('says an empty Atasco plainly', () => {

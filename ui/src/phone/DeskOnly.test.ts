@@ -41,7 +41,7 @@ describe('DeskOnly', () => {
     setLanguage('es');
     const html = render('settings');
     expect(html).toContain('<h1 class="display" data-leaf="">Configuración</h1>');
-    expect(html).toContain('Configuración está en el ordenador.');
+    expect(html).toContain('Configuración está en el equipo.');
     expect(html).toContain('Ir a Te toca');
   });
 });

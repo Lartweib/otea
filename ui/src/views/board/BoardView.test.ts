@@ -207,7 +207,7 @@ describe('a board on the phone (mobile mock 4)', () => {
 
   it('says at its foot where a board is edited', () => {
     expect(render('list', seed, true)).toContain(
-      'En el teléfono los tableros se leen. Pasos, campos y vistas se editan en el ordenador.',
+      'En el teléfono los tableros se leen. Pasos, campos y vistas se editan en el equipo.',
     );
     setLanguage('en');
     expect(render('list', seed, true)).toContain(
