@@ -118,24 +118,39 @@ function commonMark(source: string): string {
 // (class "paren"), so the text reads as it was written. GFM tables are drawn too, each cell read as
 // inline Markdown, in a box that scrolls sideways when the table is wider than the page.
 // `image`: where an image the document names by a relative path loads from, by its file name (a
-// file handed beside it, P5-7); undefined leaves it as written.
+// file handed beside it, P5-7); undefined leaves it as written. `missing`: the words for one that
+// loads from nowhere (its path as written), drawn in its place; it showed as an empty 0×0 box and
+// nothing said why (P5-R2-10).
 export function renderMarkdown(
   source: string,
   image?: (name: string) => string | undefined,
+  missing?: (path: string) => string,
 ): string {
   const html = blocks(source)
     .map(({ table, text, html }) => (table ? (html ?? '') : commonMark(text)))
     .join('')
     .replace(/<a href="([^"]*)"/g, '<a href="$1" target="_blank" rel="noopener noreferrer"');
   if (!image) return html;
-  return html.replace(/<img src="([^"]*)"/g, (whole, src: string) => {
+  return html.replace(/<img src="([^"]*)"([^>]*)>/g, (whole, src: string, rest: string) => {
     // A URL with a scheme, or a path from the root, is not beside the document.
     if (/^[a-z][a-z0-9+.-]*:/i.test(src) || src.startsWith('/') || src.startsWith('#'))
       return whole;
     const name = decodeName(src.split(/[?#]/)[0]?.split('/').at(-1) ?? '');
     const url = name ? image(name) : undefined;
-    return url ? `<img src="${url.replace(/"/g, '&quot;')}"` : whole;
+    if (url) return `<img src="${url.replace(/"/g, '&quot;')}"${rest}>`;
+    if (!missing) return whole;
+    // Its alt is already escaped by micromark; the words are plain text, escaped here.
+    const alt = /alt="([^"]*)"/.exec(rest)?.[1] ?? '';
+    return `<span class="md-noimg" role="img" aria-label="${alt}">${escapeText(missing(decodeName(src)))}</span>`;
   });
+}
+
+function escapeText(text: string): string {
+  return text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;');
 }
 
 function decodeName(text: string): string {

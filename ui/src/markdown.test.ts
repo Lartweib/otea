@@ -12,6 +12,20 @@ describe('images a document points at beside it (P5-7)', () => {
     expect(html).toContain('<img src="/api/evidence/8/file" alt="y" />');
     expect(html).toContain('<img src="falta.png" alt="n" />');
   });
+
+  // Two of three relative images came out as empty 0×0 boxes, and nothing said why (P5-R2-10).
+  it('says which image is missing, and how to show it, when given the words', () => {
+    const html = renderMarkdown(
+      '![Paleta](./img/palette.png) ![Fig](figura.png)',
+      (name) => (name === 'figura.png' ? '/api/evidence/7/file' : undefined),
+      (path) => `${path} <no adjunta>`,
+    );
+    expect(html).toContain('<img src="/api/evidence/7/file" alt="Fig" />');
+    expect(html).not.toContain('palette.png" alt');
+    expect(html).toContain(
+      '<span class="md-noimg" role="img" aria-label="Paleta">./img/palette.png &lt;no adjunta&gt;</span>',
+    );
+  });
 });
 
 describe('markdown', () => {
