@@ -74,7 +74,7 @@ describe('an agent’s questions to the person, read from the item’s events', 
 describe('what agents read of a question', () => {
   it('says the turn is the person’s once asked, and how to hear the answer', () => {
     expect(askedText('BUG-4')).toBe(
-      'Asked the person on BUG-4: the turn is theirs until they answer; the step, round and lease stay as they are. otea wait --turn agent wakes you when they answer; read it then: otea show BUG-4',
+      'Asked the person on BUG-4: the turn is theirs until they answer; the step, round and lease stay as they are. Tell them to answer it in Otea (on the item page or the phone): an answer in the chat does not reach the item. otea wait --turn agent wakes you when they answer; read it then: otea show BUG-4',
     );
     expect(waitAnswerText('BUG-4')).toBe(
       'BUG-4: the person answered your question. Read it: otea show BUG-4',

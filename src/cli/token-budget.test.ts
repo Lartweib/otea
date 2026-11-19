@@ -32,8 +32,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Matrix, a word agents did not know (measured at 449), and with claiming again once a lease ran
   // out and a subagent releasing what it holds before it ends (measured at 473), and with every
   // chat request going on a board first and waiting in a background shell (measured at 512).
-  // Raised to 560 for otea whoami, which gives a new session the name it worked under.
-  'board index': { text: 560, json: 53, mcp: 53 },
+  // Raised to 560 for otea whoami, which gives a new session the name it worked under. Raised to
+  // 630 with the guide's lines on answering in Otea and on staying in the wait (measured at 606).
+  'board index': { text: 630, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -77,8 +78,11 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // ends, as dead subagents' leases blocked the lead (measured at 454). Raised to 510 for every chat
   // request going on a board first, as an agent did eleven chat requests with no item, and for
   // waiting in a background shell, as the MCP wait tool held OpenCode's chat (measured at 494).
-  // Raised to 545 for otea whoami (rule 1), so one agent keeps one name across sessions.
-  instructions: { mcp: 545 },
+  // Raised to 545 for otea whoami (rule 1), so one agent keeps one name across sessions. Raised to
+  // 610 for telling the person to answer in Otea, not in the chat (P4-R2-2), and for staying in the
+  // wait: only it hears the desk, agents went back to it neither after a chat reply nor stopped it
+  // safely (P2S-6, P8-R2-13, P8-R2-11; measured at 587).
+  instructions: { mcp: 610 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

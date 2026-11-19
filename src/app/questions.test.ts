@@ -135,6 +135,8 @@ describe('an agent asks the person', () => {
     );
     expect(error.code).toBe('invalid_transition');
     expect(error.message).toContain('waits for their answer');
+    // P4-R2-2: an answer given in the chat is not one the agent records for them.
+    expect(error.message).toContain('they answer it in Otea, not in the chat');
     expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
     expect(itemNextText(ctx, getItem(ctx, item.id, now), 'kiln', now)).toContain(
       'Waiting for the person to answer your question: "¿Caparazón liso o con musgo?"',

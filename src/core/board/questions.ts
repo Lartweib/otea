@@ -81,7 +81,7 @@ const WAKE = 'otea wait --turn agent wakes you when they answer';
 
 // What otea ask says once the question is asked.
 export function askedText(id: string): string {
-  return `Asked the person on ${id}: the turn is theirs until they answer; the step, round and lease stay as they are. ${WAKE}; read it then: otea show ${id}`;
+  return `Asked the person on ${id}: the turn is theirs until they answer; the step, round and lease stay as they are. Tell them to answer it in Otea (on the item page or the phone): an answer in the chat does not reach the item. ${WAKE}; read it then: otea show ${id}`;
 }
 
 // What next and show say of an item whose question waits for the person.

@@ -171,7 +171,7 @@ describe('mcp server', () => {
       );
       expect(next.text).toContain('update it: the profile tool with as "claude", model <id>');
       expect(next.text.split('\n').at(-1)).toBe(
-        'When you finish and next has nothing: wait { turn: "agent", unclaimed: true }. To keep your chat free while you wait, run it in a background shell instead: $ otea wait --turn agent --unclaimed --as claude',
+        'When you finish and next has nothing, wait in a background shell, which keeps your chat free: $ otea wait --turn agent --unclaimed --as claude. Without a shell, wait { turn: "agent", unclaimed: true } holds your chat until it returns.',
       );
       expect(next).toMatchObject({ item: 'TASKS-1', collection: 'tasks' });
       expect(next.text).toContain('Your turn: do this step.');
