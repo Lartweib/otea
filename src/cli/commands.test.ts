@@ -3,10 +3,17 @@ import { mkdirSync, mkdtempSync, realpathSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  presetCollection,
+  seedOnce,
+  type TempRepo,
+  tempGitRepo,
+} from './testing.ts';
 
 describe('commands', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let repo: TempRepo;
   let otea: Cli;
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
@@ -259,10 +266,12 @@ describe('commands', () => {
     });
 
     describe('with items', () => {
-      beforeEach(async () => {
-        presetCollection(repo.dir, 'tasks');
-        presetCollection(repo.dir, 'bugs');
-        await otea(
+      // Seeded once and copied for each of its 25 tests: seeding through the CLI before every one
+      // of them cost a loaded Windows runner seconds a test.
+      const seeded = seedOnce(async (seed, dir) => {
+        presetCollection(dir, 'tasks');
+        presetCollection(dir, 'bugs');
+        await seed(
           'create',
           '--collection',
           'tasks',
@@ -271,7 +280,7 @@ describe('commands', () => {
           '--description',
           'For v1',
         );
-        await otea(
+        await seed(
           'create',
           '--collection',
           'bugs',
@@ -280,9 +289,15 @@ describe('commands', () => {
           '--description',
           'Steps',
         );
-        await otea('update', 'TASKS-1', '--field', 'priority=high');
-        await otea('update', 'BUGS-1', '--field', 'priority=high');
-        await otea('handoff', 'BUGS-1');
+        await seed('update', 'TASKS-1', '--field', 'priority=high');
+        await seed('update', 'BUGS-1', '--field', 'priority=high');
+        await seed('handoff', 'BUGS-1');
+      });
+
+      // The project the hooks above made gives way to a copy of the seeded one.
+      beforeEach(() => {
+        repo.remove();
+        ({ repo, otea } = seeded.fresh());
       });
 
       describe('list', () => {
