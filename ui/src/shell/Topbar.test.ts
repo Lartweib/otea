@@ -127,6 +127,19 @@ describe('the topbar', () => {
     expect(html).toMatch(/class="apill"[^>]*disabled=""/);
   });
 
+  // P1-R2-8: the header said «Sin conexión» for the first seconds of every page load.
+  it('never says Sin conexión while the page first connects', () => {
+    setLanguage('es');
+    const waiting = topbar({ connection: 'connecting', agents: undefined });
+    expect(waiting).not.toContain('Sin conexión');
+    expect(waiting).not.toContain('Sin agentes');
+    const known = topbar({ connection: 'connecting', agents: [agent('Scout', { profile: opus })] });
+    expect(known).not.toContain('Sin conexión');
+    expect(known).toContain('1 escuchando');
+    // A stream that cannot open says so, even before the agents are known.
+    expect(topbar({ connection: 'reconnecting', agents: undefined })).toContain('Sin conexión');
+  });
+
   it('has no agents pill on a server without presence', () => {
     expect(topbar({ agents: null })).not.toContain('apill');
   });

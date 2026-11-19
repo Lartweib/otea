@@ -499,6 +499,9 @@ function AgentsPill() {
   const [open, setOpen] = useState(false);
   const [btn, setBtn] = useState<HTMLButtonElement | null>(null);
   if (app.agents === null) return null;
+  // Until the server first answers, the pill says nothing rather than «Sin agentes» or «Sin
+  // conexión» (P1-R2-8); a stream that cannot open still says it is offline.
+  if (app.agents === undefined && app.connection !== 'reconnecting') return null;
   const agents = app.agents ?? [];
   // One source for the pill and its menu: the menu's rows.
   const rows = agentRows(agents, app.all, app.now, app.feed);
