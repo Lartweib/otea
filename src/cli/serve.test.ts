@@ -191,7 +191,7 @@ describe('serve', () => {
 
   it('is listed in the help', async () => {
     expect((await otea('help', 'all')).out).toContain(
-      'otea serve [--port <port>] [--no-open] [--lan]',
+      'otea serve [--port <port>] [--no-open] [--no-owner] [--lan]',
     );
   });
 });

@@ -2884,16 +2884,29 @@ function phoneText(phone: PhoneServed): string {
   ].join('\n');
 }
 
+// Why a server stops once the process that started it ended (P1-R3-5): it stopped saying nothing,
+// and a server started in the background seemed to die at random.
+function ownerGoneText(started: number): string {
+  return `serve stopped: the process that started it (${started}) ended, as when the terminal or the agent session that ran it closes. To keep it running on its own, start it with otea serve --no-owner, and stop it with Ctrl+C or by its process id.`;
+}
+
 const serve: Command = {
   name: 'serve',
-  summary: `Serve the live UI of every project on this computer on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C, and open this project's page signed in; when this computer's otea serve runs already, it opens this project there instead. It also opens to phones on the same network when that was left open (Settings > Phone, otea phone lan --open), and --lan opens it for this run only; a phone on Tailscale (otea phone tailscale) pairs without it`,
+  summary: `Serve the live UI of every project on this computer on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C, and open this project's page signed in; when this computer's otea serve runs already, it opens this project there instead. It also opens to phones on the same network when that was left open (Settings > Phone, otea phone lan --open), and --lan opens it for this run only; a phone on Tailscale (otea phone tailscale) pairs without it. It stops once the process that started it ends (a terminal closed, an agent's session over), saying so on stderr; --no-owner keeps it running on its own, as when started in the background`,
   args: [],
-  options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
+  options: { port: {}, 'no-open': { flag: true }, 'no-owner': { flag: true }, lan: { flag: true } },
   execute: async ({ cwd, option, flag, signal, openUrl, warn, tailscale, probe, home }) => {
     // A server whose starter is gone (an agent's session that ran it in the background ended)
-    // stops, as it would with the terminal that ran it.
-    const owner = watchOwner(signal);
-    const served = await serveUntil(owner.signal, cwd, {
+    // stops, as it would with the terminal that ran it, and says why; --no-owner keeps it.
+    const owner = flag('no-owner') ? undefined : watchOwner(signal);
+    owner?.signal.addEventListener(
+      'abort',
+      () => {
+        if (owner.orphaned()) warn(ownerGoneText(owner.started));
+      },
+      { once: true },
+    );
+    const served = await serveUntil(owner?.signal ?? signal, cwd, {
       port: portFrom(option('port')),
       lan: flag('lan'),
       tailscale,
@@ -2901,11 +2914,11 @@ const serve: Command = {
       warn,
       gitHook: withHome(OTEA, home),
     }).catch((error: unknown) => {
-      owner.stop();
+      owner?.stop();
       throw error;
     });
     // Pointing at the server that runs: nothing of this process stays running.
-    if (served.attached) owner.stop();
+    if (served.attached) owner?.stop();
     const { url, signInUrl, phone, attached } = served;
     // With --no-open the person signs a browser in by hand, from a terminal or from what an agent
     // that started the server relays. The link carries the server's key: it is never in --json.

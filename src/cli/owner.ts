@@ -155,7 +155,13 @@ export async function listProcesses(
 // How often a long-running command checks that the processes that started it still run.
 const OWNER_CHECK_MS = 5_000;
 
-export type OwnerWatch = { signal: AbortSignal; orphaned: () => boolean; stop: () => void };
+// `started`: the process that started this one, which the watch stops it with.
+export type OwnerWatch = {
+  signal: AbortSignal;
+  orphaned: () => boolean;
+  stop: () => void;
+  started: number;
+};
 
 // Aborts `signal` once the session that started this process is gone (ownerGone), on `parent` (the
 // command's interrupt): left running, a wait would keep its agent shown as listening until its
@@ -201,5 +207,5 @@ export function watchOwner(
   };
   // Once stopped for any reason it lists nothing more, so a listing never keeps the process alive.
   controller.signal.addEventListener('abort', stop, { once: true });
-  return { signal: controller.signal, orphaned: () => orphaned, stop };
+  return { signal: controller.signal, orphaned: () => orphaned, stop, started: start };
 }
