@@ -460,7 +460,7 @@ export const surfaces = {
   'perf.col.done': 'Ítems hechos',
   'perf.col.discards': 'Descartes',
   'perf.col.time': 'Hasta entregar',
-  'perf.tip.back': '{back} de {handoffs} entregas volvieron por otra ronda',
+  'perf.tip.back': '{back} de {handoffs} entregas fueron devueltas por otra ronda',
   'perf.tip.rounds': 'rondas que llevó, de media, cada paso terminado',
   'perf.tip.done': 'ítems en Hecho en los que entregó algún paso',
   'perf.tip.discards': 'ítems descartados después de su última entrega',

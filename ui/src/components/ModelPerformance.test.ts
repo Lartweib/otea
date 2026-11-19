@@ -52,7 +52,7 @@ describe('Rendimiento', () => {
   it('draws how many handoffs come back as a meter, with the count in its tip', () => {
     const html = render([row('sonnet', 'medium', 12, 3)]);
 
-    expect(html).toContain('data-tip="3 of 12 handoffs came back for another round"');
+    expect(html).toContain('data-tip="3 of 12 handoffs were sent back for another round"');
     expect(html).toContain('<i style="width:25%"></i>');
     expect(html).toContain('<span class="perf-fig">25%</span>');
   });

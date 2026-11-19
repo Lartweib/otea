@@ -128,9 +128,12 @@ function factsOf(trail: ItemTrail): Facts {
       const fromIndex = stepIndex(def, source.step);
       const toIndex = stepIndex(def, target.step);
       const back = source.phase !== 'doing' ? toIndex <= fromIndex : toIndex < fromIndex;
+      // A way back an agent takes itself while it does a later step (a conflict once main moved,
+      // P3C-R3-6) found no fault in the handoff: only a review's send-back, or the person's, counts.
+      const sent = source.phase !== 'doing' || move.actor.kind === 'human';
       const returned = back ? pending.get(target.step) : undefined;
       if (returned) {
-        returned.sentBack = true;
+        if (sent) returned.sentBack = true;
         pending.delete(target.step);
       }
     }
