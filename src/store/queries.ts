@@ -837,6 +837,29 @@ export function selectMcpLoads(db: DatabaseSync): McpLoad[] {
   return db.prepare(sql).all() as McpLoad[];
 }
 
+// Notes that the process `pid` still runs, `at`, and forgets the beats older than `stale`: a
+// process killed with its session never says it ended, and its row would stay forever.
+export function saveProcessBeat(db: DatabaseSync, pid: number, at: string, stale: string): void {
+  db.prepare('DELETE FROM process_beats WHERE at < ?').run(stale);
+  db.prepare(
+    `INSERT INTO process_beats (pid, at) VALUES (:pid, :at)
+      ON CONFLICT (pid) DO UPDATE SET at = excluded.at`,
+  ).run({ pid, at });
+}
+
+export function deleteProcessBeat(db: DatabaseSync, pid: number): void {
+  db.prepare('DELETE FROM process_beats WHERE pid = ?').run(pid);
+}
+
+// When each process last said it still runs, by its process id.
+export function selectProcessBeats(db: DatabaseSync): Map<number, string> {
+  const rows = db.prepare('SELECT pid, at FROM process_beats').all() as {
+    pid: number;
+    at: string;
+  }[];
+  return new Map(rows.map((row) => [row.pid, row.at]));
+}
+
 // Notes that an agent asked to work through Otea's MCP server (otea connect), now.
 export function markMcpAsked(db: DatabaseSync, agent: string, at: string): void {
   const sql = `INSERT INTO agents (name, last_seen, mcp_asked_at) VALUES (:agent, :at, :at)

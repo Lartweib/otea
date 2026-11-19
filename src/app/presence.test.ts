@@ -6,9 +6,11 @@ import type { Context } from './context.ts';
 import { createItem, listItems } from './items.ts';
 import { claimItem, releaseItem } from './leases.ts';
 import {
+  beatProcess,
   CLI_HARNESS,
   claimName,
   endListening,
+  endProcess,
   endWaiter,
   endWaiting,
   hearAgent,
@@ -42,6 +44,10 @@ const at = (time: string) => () => time;
 
 // Every process runs: the sessions these tests name (101, 202) stand for open MCP servers.
 const running = () => true;
+
+// A process id that runs (this test's own) under which no Otea process beats, as one the system
+// gave to an unrelated process once the Otea process that had it ended.
+const reused = process.pid;
 
 const CLAUDE_CODE = { name: 'claude-code', version: '2.1.0' };
 
@@ -308,6 +314,54 @@ describe('agent presence', () => {
 
         expect(mcp('espiga')).toBeNull();
       });
+
+      // P3C-R3-12: the load was noted with the MCP server's process id; once the session exited,
+      // Windows gave that id to an unrelated process, and the desk kept «MCP sin usar».
+      it('says MCP is missing once the server stopped beating, though its process id runs again', () => {
+        as('espiga', 'claude-code');
+        markMcpAsked(ctx.db, 'espiga', T0);
+        mcpLoaded(ctx.db, CLAUDE_CODE, at(T0), reused);
+
+        expect(listAgents(ctx.db, at(T1))[0]?.mcp).toBe('unused');
+        expect(listAgents(ctx.db, at(T5))[0]?.mcp).toBe('missing');
+        beatProcess(ctx.db, reused, at(T5));
+        expect(listAgents(ctx.db, at(T5_1S))[0]?.mcp).toBe('unused');
+      });
+
+      it('says MCP is missing at once when the server ended, though its process id runs again', () => {
+        as('espiga', 'claude-code');
+        markMcpAsked(ctx.db, 'espiga', T0);
+        mcpLoaded(ctx.db, CLAUDE_CODE, at(T0), reused);
+        endProcess(ctx.db, reused);
+
+        expect(listAgents(ctx.db, at(T0_20S))[0]?.mcp).toBe('missing');
+      });
+    });
+
+    // P3C-R3-12: the same process-id check backed listeners. This test's own process stands for
+    // the unrelated one the system gave the ended listener's id to: it runs, but beats for no one.
+    describe('a listener whose process id the system gave to another process', () => {
+      it('counts an agent whose server stopped beating as gone, though it holds a lease', () => {
+        hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: reused }, at(T0));
+        claimItem(ctx, { id: 'TASKS-1', actor: claude, ttlMs: 60 * 60_000 }, at(T0));
+
+        expect(listAgents(ctx.db, at(T1))[0]).toMatchObject({ live: true, listening: true });
+        expect(listAgents(ctx.db, at(T5))[0]).toMatchObject({
+          live: false,
+          holding: ['TASKS-1'],
+        });
+      });
+
+      it('counts an agent whose wait was killed as gone, though it holds a lease', () => {
+        claimItem(ctx, { id: 'TASKS-1', actor: claude, ttlMs: 60 * 60_000 }, at(T0));
+        waitBeat(ctx.db, { agent: 'claude', channel: 'cli', waiter: reused }, at(T0)).run();
+
+        expect(listAgents(ctx.db, at(T1))[0]).toMatchObject({ live: true, waiting: true });
+        expect(listAgents(ctx.db, at(T5))[0]).toMatchObject({
+          live: false,
+          holding: ['TASKS-1'],
+        });
+      });
     });
 
     it('hears an agent on every beat of its wait', () => {
@@ -513,6 +567,14 @@ describe('agent presence', () => {
       );
     });
 
+    // P3C-R3-12: the session that ended left its server's process id, now another process's.
+    it('takes the name once that session ended, though its process id runs again', () => {
+      hearAgent(ctx.db, { ...mcp, session: reused }, at(T0));
+      endProcess(ctx.db, reused);
+
+      expect(() => claimName(ctx.db, 'claude', 202, undefined, at(T0_20S))).not.toThrow();
+    });
+
     it('leaves a name a command-line wait listens under to the MCP session too', () => {
       hearAgent(ctx.db, { agent: 'claude', channel: 'cli', harness: CLI_HARNESS }, at(T0));
 
@@ -648,6 +710,16 @@ describe('agent presence', () => {
     it('counts a name handed out as taken for other sessions', () => {
       ask(T0);
       expect(ask(T0_20S).working).toContain('ana');
+    });
+
+    // P3C-R3-12: the MCP server the name was handed to ended, and its process id is another's now.
+    it('hands the name out again once the server it was handed to ended, though its id runs again', () => {
+      const asking = (session: number, time: string) =>
+        offerName(ctx.db, { folder: FOLDER, harness: 'claude-code', session }, at(time));
+      expect(asking(reused, T0).name).toBe('ana');
+      endProcess(ctx.db, reused);
+
+      expect(asking(202, T0_20S).name).toBe('ana');
     });
 
     // P4-R3-2: a session that took the name, worked and ended with /exit (its MCP server and its

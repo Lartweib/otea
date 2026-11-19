@@ -5,6 +5,7 @@ import { getDefaultEnvironment, StdioClientTransport } from '@modelcontextprotoc
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
+import { selectProcessBeats } from '../store/queries.ts';
 import {
   type Cli,
   cliAt,
@@ -159,6 +160,35 @@ describe('mcp', () => {
     } finally {
       await client.close();
     }
+  });
+
+  // P3C-R3-12: the load was noted with the server's process id alone; once the session exited,
+  // Windows gave that id to another process, and the desk kept «MCP sin usar».
+  it('says it runs from its start, with no tool called, and that it ended once the client closes', async () => {
+    const client = new Client({ name: 'claude-code', version: '2.1.0' });
+    const transport = new StdioClientTransport({
+      command: process.execPath,
+      args: ARGS,
+      cwd: repo.dir,
+      env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+      stderr: 'pipe',
+    });
+    await client.connect(transport);
+    const beats = () => {
+      const project = openProject(repo.dir);
+      try {
+        return selectProcessBeats(project.db);
+      } finally {
+        project.db.close();
+      }
+    };
+    const server = transport.pid;
+    await client.listTools();
+    expect(server !== null && beats().has(server)).toBe(true);
+
+    await client.close();
+    await until(() => server === null || !processAlive(server), 10_000);
+    expect(server !== null && beats().has(server)).toBe(false);
   });
 
   it('refuses a second open session the name another session works under', async () => {

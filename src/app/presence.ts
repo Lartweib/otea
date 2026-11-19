@@ -8,6 +8,7 @@ import {
   clearListening,
   clearWaiter,
   clearWaiting,
+  deleteProcessBeat,
   findAgent,
   findProfile,
   markListening,
@@ -17,6 +18,7 @@ import {
   profileView,
   saveMcpLoad,
   saveNameOffer,
+  saveProcessBeat,
   saveProfile,
   selectAgents,
   selectLeases,
@@ -25,6 +27,7 @@ import {
   selectListening,
   selectMcpLoads,
   selectNameOffers,
+  selectProcessBeats,
   selectProfileChanges,
   selectWaiting,
   takeLease,
@@ -160,10 +163,13 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
 }
 
 // Hears an agent that listens now: sees it, and notes it listening. Returns when, for endListening.
+// The listener it is heard through (its MCP server, its wait) is the process calling: it runs.
 export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): string {
   const at = now();
   seeAgent(db, sighting, () => at);
   markListening(db, sighting.agent, at, sighting.session, sighting.launcher, sighting.waiter);
+  for (const pid of [sighting.session, sighting.waiter])
+    if (pid !== undefined) beatProcess(db, pid, () => at);
   return at;
 }
 
@@ -180,7 +186,8 @@ export function endListening(
   clearListening(db, agent, heardAt, session);
 }
 
-// Whether a process still runs on this computer, where every MCP server of the project runs.
+// Whether a process still runs on this computer, where every MCP server of the project runs, as
+// the system tells it by its id alone.
 export function processAlive(pid: number): boolean {
   try {
     process.kill(pid, 0);
@@ -188,6 +195,38 @@ export function processAlive(pid: number): boolean {
   } catch (error) {
     return (error as NodeJS.ErrnoException).code === 'EPERM';
   }
+}
+
+// Long past any listening window: the rows of processes killed before they could say they ended.
+const BEATS_KEPT_MS = 24 * 60 * 60_000;
+
+// A process id alone is no proof an Otea process (an MCP server, a command-line wait) still runs:
+// once it ends, the system may give its id to another process, as Windows does within seconds, and
+// its session would stay open on the desk (P3C-R3-12). So each one says it still runs (beatProcess)
+// as it starts and on every LISTEN_BEAT_MS, and one that ends on its own says so (endProcess).
+export function beatProcess(db: DatabaseSync, pid: number, now: Clock = systemClock): void {
+  const at = now();
+  saveProcessBeat(db, pid, at, new Date(Date.parse(at) - BEATS_KEPT_MS).toISOString());
+}
+
+export function endProcess(db: DatabaseSync, pid: number): void {
+  deleteProcessBeat(db, pid);
+}
+
+// Which process ids name an Otea process that runs now: one the system says runs (`alive`) that
+// beat within LISTEN_WINDOW_MS. One killed with its session counts as running until then, even
+// once its id is another process's; one that ended on its own, no longer. Read once per look.
+export function runningProcesses(
+  db: DatabaseSync,
+  now: Clock = systemClock,
+  alive: (pid: number) => boolean = processAlive,
+): (pid: number) => boolean {
+  const at = Date.parse(now());
+  const beats = selectProcessBeats(db);
+  return (pid) => {
+    const beat = beats.get(pid);
+    return beat !== undefined && at - Date.parse(beat) <= LISTEN_WINDOW_MS && alive(pid);
+  };
 }
 
 // An MCP session (`session`, its server's process id) takes an agent name only while no other open
@@ -208,11 +247,14 @@ export function claimName(
   const heard = selectListener(db, agent);
   if (!heard?.session || heard.session === session || !heard.at) return;
   if (Date.parse(now()) - Date.parse(heard.at) >= LISTEN_WINDOW_MS) return;
-  if (!alive(heard.session)) return;
+  const running = runningProcesses(db, now, alive);
+  if (!running(heard.session)) return;
   if (fresh && harness !== undefined && heard.harness === harness) return;
-  // The name it is told is handed to it, so a third session refused the same name is told another.
+  // The name it is told is handed to it, so a third session refused the same name is told another:
+  // the refused session is the process calling, which runs.
   const at = now();
-  const offers = handedOut(db, session, at, alive);
+  beatProcess(db, session, () => at);
+  const offers = handedOut(db, session, at, running);
   const free = freeName(db, agent, offers);
   if (free !== null) saveNameOffer(db, { name: free, at, session });
   const take =
@@ -233,20 +275,21 @@ export const OFFER_WINDOW_MS = LIVE_WINDOW_MS;
 // command-line session has none Otea can tell apart, so every earlier one is another). A name
 // handed to a session that ended is free again (P4-R3-2): the MCP server it was handed to is gone,
 // or, handed on the command line, the name was heard since through listeners that all ended.
+// `running`: runningProcesses.
 function handedOut(
   db: DatabaseSync,
   session: number | undefined,
   at: string,
-  alive: (pid: number) => boolean = processAlive,
+  running: (pid: number) => boolean,
 ): Set<string> {
   const heard = selectListening(db);
   const listeners = selectListenerProcesses(db);
   const other = ({ session: to }: NameOffer) => to === null || to !== session;
   const lately = ({ at: when }: NameOffer) => Date.parse(at) - Date.parse(when) < OFFER_WINDOW_MS;
   const ended = ({ name, at: when, session: to }: NameOffer) => {
-    if (to !== null) return !alive(to);
+    if (to !== null) return !running(to);
     const last = heard.get(name);
-    return last !== undefined && last >= when && listenersEnded(listeners.get(name), alive);
+    return last !== undefined && last >= when && listenersEnded(listeners.get(name), running);
   };
   return new Set(
     selectNameOffers(db)
@@ -358,7 +401,9 @@ export function mcpLoaded(
 ): void {
   const key = harnessKey(harness.name);
   if (key === '') return;
-  saveMcpLoad(db, { harness: key, name: harness.name, at: now(), session: session ?? null });
+  const at = now();
+  saveMcpLoad(db, { harness: key, name: harness.name, at, session: session ?? null });
+  if (session !== undefined) beatProcess(db, session, () => at);
 }
 
 // A profile's harness is the MCP client's: when the client names another one, the profile follows.
@@ -371,15 +416,17 @@ function followClient(db: DatabaseSync, { agent, channel, harness }: Sighting, a
 }
 
 // The agents seen in the project, never the human: live ones first, then the most recently seen.
-// `alive` says whether a process of this computer still runs: an agent heard through a listener
-// (its MCP server, its wait) whose process is gone no longer listens, and if it did nothing since,
-// its session ended (killed, or the computer restarted): it is gone, though a lease of its runs on.
+// `processes` says whether a process id runs on this computer, and a listener (its MCP server, its
+// wait) runs while it also beats (runningProcesses): an agent heard through a listener that is gone
+// no longer listens, and if it did nothing since, its session ended (killed, or the computer
+// restarted): it is gone, though a lease of its runs on.
 export function listAgents(
   db: DatabaseSync,
   now: Clock = systemClock,
-  alive: (pid: number) => boolean = processAlive,
+  processes: (pid: number) => boolean = processAlive,
 ): AgentPresence[] {
   const at = now();
+  const alive = runningProcesses(db, () => at, processes);
   const holding = new Map<string, string[]>();
   for (const { id, lease } of selectLeases(db)) {
     const live = activeLease(lease, at);
@@ -540,9 +587,10 @@ export function nameFor(
     session,
   }: { folder: string; harness?: string | undefined; session?: number | undefined },
   now: Clock = systemClock,
-  alive: (pid: number) => boolean = processAlive,
+  processes: (pid: number) => boolean = processAlive,
 ): NameAdvice {
-  const agents = listAgents(db, now, alive);
+  const agents = listAgents(db, now, processes);
+  const alive = runningProcesses(db, now, processes);
   const handed = handedOut(db, session, now(), alive);
   const working = [
     ...new Set([...agents.filter(({ live }) => live).map(({ name }) => name), ...handed]),
@@ -599,7 +647,8 @@ export function nameFor(
 }
 
 // What otea whoami tells a session (nameFor), and the name it hands it noted as handed out, so a
-// session asking next is handed another one.
+// session asking next is handed another one. The MCP server asking (`session`) is the process
+// calling: it runs.
 export function offerName(
   db: DatabaseSync,
   asking: { folder: string; harness?: string | undefined; session?: number | undefined },
@@ -607,6 +656,7 @@ export function offerName(
   alive: (pid: number) => boolean = processAlive,
 ): NameAdvice {
   const at = now();
+  if (asking.session !== undefined) beatProcess(db, asking.session, () => at);
   const advice = nameFor(db, asking, () => at, alive);
   const name = advice.name ?? advice.suggested;
   if (name !== null) saveNameOffer(db, { name, at, session: asking.session ?? null });

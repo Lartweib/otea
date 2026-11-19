@@ -85,8 +85,10 @@ import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.t
 import { performanceOf } from '../app/performance.ts';
 import { lanOpen, type Probe, type TransportKind } from '../app/phone.ts';
 import {
+  beatProcess,
   claimName,
   endListening,
+  endProcess,
   endWaiter,
   endWaiting,
   type Harness,
@@ -1931,7 +1933,10 @@ const wait: Command = {
       beat.beat?.run();
       const waited = await watch(project.db, check, { ...options, ...beat }).finally(() => {
         owner.stop();
-        if (heard && input.channel === 'cli') endWaiter(project.db, me, process.pid);
+        if (heard && input.channel === 'cli') {
+          endWaiter(project.db, me, process.pid);
+          endProcess(project.db, process.pid);
+        }
       });
       if (owner.orphaned() && heardAt) endListening(project.db, me, heardAt);
       // It waits no more once it found something or was stopped; a timeout is called again at once.
@@ -2988,7 +2993,21 @@ const mcp: Command = {
         // No project to forget it in.
       }
     };
+    // The server says it runs as it starts and on every beat, whether or not an agent calls through
+    // it, so the desk and whoami never take a process that got its id after it ended for it
+    // (P3C-R3-12); closing, it says it ended.
+    const runs = (ended = false) => {
+      try {
+        withProject(cwd, (project) =>
+          ended ? endProcess(project.db, process.pid) : beatProcess(project.db, process.pid),
+        );
+      } catch {
+        // No project yet: nobody watches this server.
+      }
+    };
+    runs();
     const beat = setInterval(() => {
+      runs();
       const quiet = quietVoices(calls, own, Date.now()).filter((name) => voices.has(name));
       for (const name of quiet) voices.delete(name);
       endListeningAll(
@@ -3031,6 +3050,7 @@ const mcp: Command = {
       clearInterval(beat);
       // The client closed the session: its agents no longer listen through this server.
       endListeningAll(cwd, lastHeard);
+      runs(true);
     }
     return undefined;
   },
