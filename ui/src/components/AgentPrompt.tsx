@@ -66,6 +66,8 @@ export function PromptBlock({ prompt, primary = false }: { prompt: string; prima
   const [copied, copy] = useCopy(prompt);
   return (
     <div className="cprompt-wrap">
+      {/* The instruction is the agent's, in its terms: the person needn't follow them. */}
+      <p className="cprompt-for">{t('connect.forAgent')}</p>
       <blockquote className="cprompt">
         {prompt.split('\n').map((line) => (
           <p key={line}>{withCode(line)}</p>
