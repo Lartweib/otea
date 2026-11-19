@@ -509,6 +509,8 @@ export const surfaces = {
     'It could not be created: {message} Create it from New item and link it from there.',
   'topics.showClosed': 'Show closed ones',
   'topics.items.title': "In the items' threads",
+  'topics.search.everywhere': 'In every project',
+  'topics.search.noneAnywhere': 'No topic in any project mentions “{words}”.',
   'topics.search.label': 'Search the topics',
   'topics.search.placeholder': 'Search topics and item threads…',
   'topics.search.none': 'No topic mentions “{words}”.',

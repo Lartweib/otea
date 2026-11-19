@@ -6,6 +6,7 @@ import {
   convertDraft,
   convertFields,
   convertReady,
+  elsewhere,
   lastAnswer,
   pendingTopics,
   type Topic,
@@ -65,6 +66,20 @@ describe('topics on the page', () => {
     expect(lastAnswer(topic('TEM-1', 'open'))).toBeUndefined();
     expect(topicOfRoute('tem-2', [topic('TEM-2', 'open')])?.id).toBe('TEM-2');
     expect(topicOfRoute(undefined, [topic('TEM-2', 'open')])).toBeUndefined();
+  });
+
+  // P6-R2-4: a search over every project lists topics of others, which open on their own page.
+  it("opens only this project's topic from the route, and names the project of another's", () => {
+    const here = { id: 'geo-aaaaaa', name: 'geo-api' };
+    const there = { id: 'ventas-bbbbbb', name: 'ventas-etl' };
+    const theirs = { ...topic('TEM-1', 'answered'), project: there };
+    const ours = { ...topic('TEM-1', 'open'), project: here };
+
+    expect(topicOfRoute('TEM-1', [theirs, ours], here.id)).toBe(ours);
+    expect(topicOfRoute('TEM-1', [theirs], here.id)).toBeUndefined();
+    expect(elsewhere(theirs, here.id)).toEqual(there);
+    expect(elsewhere(ours, here.id)).toBeUndefined();
+    expect(elsewhere(topic('TEM-2', 'open'), here.id)).toBeUndefined();
   });
 });
 

@@ -62,8 +62,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // detach, taking back a file attached by mistake (measured at 4541). Raised for topic_list (with
   // its search) and topic_show, so an agent asked what was concluded before reads the topics kept
   // (measured at 4806). Raised for whoami, the name a new session worked under before. Raised for
-  // release's --later, setting aside an item the person wants for later (measured at 5012).
-  tools: { mcp: 5040 },
+  // release's --later, setting aside an item the person wants for later (measured at 5012). Raised
+  // for topic_list's all-projects and topic_show's project: what was concluded about one project is
+  // often asked in another (P6-R2-4; measured at 5078).
+  tools: { mcp: 5110 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to

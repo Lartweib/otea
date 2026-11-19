@@ -513,6 +513,8 @@ export const surfaces = {
     'No se pudo crear: {message} Créala desde Nuevo ítem y vincúlala desde ahí.',
   'topics.showClosed': 'Mostrar los cerrados',
   'topics.items.title': 'En los hilos de los ítems',
+  'topics.search.everywhere': 'En todos los proyectos',
+  'topics.search.noneAnywhere': 'Ningún tema de ningún proyecto menciona «{words}».',
   'topics.search.label': 'Buscar en los temas',
   'topics.search.placeholder': 'Buscar en temas e hilos de ítems…',
   'topics.search.none': 'Ningún tema menciona «{words}».',

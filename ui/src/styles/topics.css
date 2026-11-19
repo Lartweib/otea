@@ -74,6 +74,14 @@
 .tp-items {
   margin-top: 20px;
 }
+/* A search over every project: the project a topic or item found is of, when not this one. */
+.tp-proj {
+  font-weight: 500;
+  color: var(--ink-2);
+}
+.tp-everywhere {
+  margin: 0 0 8px;
+}
 .tp-row {
   display: grid;
   grid-template-columns: auto minmax(0, 1fr);

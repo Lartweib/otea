@@ -443,14 +443,17 @@ export async function forgetProjectPath(path: string): Promise<void> {
 // Side topics (topics.ts): the list and whether the project keeps them; one topic's note, close
 // and conversion into a task; an item's linked and suggested topics.
 // `search`: words a topic found mentions, any of them, the most first, closed ones too (the page's search box).
+// `everywhere`: in every project this computer serves, each topic and item with its project.
 export async function fetchTopics(
   signal: AbortSignal,
   all = false,
   search = '',
+  everywhere = false,
 ): Promise<TopicsView> {
   const query = new URLSearchParams();
   if (all) query.set('all', '1');
   if (search.trim() !== '') query.set('search', search.trim());
+  if (everywhere) query.set('projects', 'all');
   const qs = query.toString();
   return (await get(`/api/topics${qs === '' ? '' : `?${qs}`}`, signal)).json();
 }

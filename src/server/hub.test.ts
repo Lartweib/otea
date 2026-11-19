@@ -7,6 +7,7 @@ import { pairDevice } from '../app/devices.ts';
 import { createItem } from '../app/items.ts';
 import { localProjects, memoryMachine, rememberLocalProject } from '../app/machine.ts';
 import { initProject, type Project } from '../app/project.ts';
+import { addTopic } from '../app/topics.ts';
 import { tempGitRepo } from '../cli/testing.ts';
 import { machineProjects, openProjects } from './hub.ts';
 import { createServer, type OteaServer } from './server.ts';
@@ -78,6 +79,22 @@ describe('one server for every project', () => {
     expect(await titles('beta-bbbbbb')).toEqual(['Beta work']);
     const answer = await call('/p/beta-bbbbbb/api/project');
     expect(answer.headers.get('x-otea-project')).toBe('beta-bbbbbb');
+  });
+
+  // P6-R2-4: a question about one project is often asked, and kept, in another.
+  it('searches the topics of every project it serves, each with its project', async () => {
+    const kiln = { kind: 'agent', name: 'kiln' } as const;
+    addTopic(alpha, { question: '¿Cómo pagina beta sus respuestas?', actor: kiln });
+    addTopic(beta, { question: '¿Usamos PostGIS?', actor: kiln });
+    type Found = { topics: { id: string; project?: { id: string; name: string } }[] };
+    const read = async (query: string) =>
+      (await (await call(`/p/beta-bbbbbb/api/topics?${query}`)).json()) as Found;
+
+    expect((await read('search=pagina')).topics).toEqual([]);
+    const everywhere = await read('search=pagina&projects=all');
+    expect(everywhere.topics.map(({ id, project }) => `${project?.name} ${id}`)).toEqual([
+      'alpha TEM-1',
+    ]);
   });
 
   it('answers a project it does not serve with a clear 404', async () => {
