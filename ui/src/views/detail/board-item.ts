@@ -7,6 +7,7 @@ import {
   type Linked,
   leadOf,
   NOTE_REF,
+  type Position,
   positionOf,
   reopenedAt,
   roundsOf,
@@ -18,6 +19,7 @@ import { handoffNotes, historyOf, roundsOfStep } from '../../../../src/core/boar
 import {
   type BoardDefinition,
   DONE,
+  defaultWay,
   guardedBranch,
   isEvidence,
   LEVELS,
@@ -64,6 +66,32 @@ type ItemLike = {
 const historyFor = (def: BoardDefinition, events: readonly ItemEvent[], createdAt: string) =>
   historyOf(events, { initial: def.steps[0]?.id ?? '', createdAt });
 
+// The board as the item's route draws it: a step whose lead holds for the item sends it past the
+// steps between (Pendientes' «Tu parte» leads a to-do the person does straight to Hecho), so the
+// steps it will not take, and never took, are left out (p4 leftover). From where it stands, or for
+// a closed item from the first step; `entered`, the steps it was ever in.
+function leadRoute(
+  def: BoardDefinition,
+  position: Position,
+  fields: Readonly<Record<string, unknown>>,
+  entered: Readonly<Record<string, number>>,
+): BoardDefinition {
+  if (!def.steps.some((step) => step.lead)) return def;
+  const closed = isClosed(position);
+  const ahead = new Set<string>();
+  for (let at = closed ? def.steps[0]?.id : position.step; at && at !== DONE; ) {
+    const step = stepById(def, at);
+    if (!step || ahead.has(at)) break;
+    ahead.add(at);
+    at = leadOf(def, step, { fields }) ?? defaultWay(def, at);
+  }
+  const here = closed ? -1 : stepIndex(def, position.step);
+  const steps = def.steps.filter(
+    (step, i) => i <= here || ahead.has(step.id) || entered[step.id] !== undefined,
+  );
+  return steps.length === def.steps.length ? def : { ...def, steps };
+}
+
 // Null when the item's state is not one of the board's (a collection still on a preset, or a
 // dropped item, which the route has no stop for).
 export function boardItemOf(
@@ -79,7 +107,8 @@ export function boardItemOf(
   const agent = null;
   const round = isClosed(position) ? 0 : (rounds.rounds[position.step] ?? 1);
   const at = isClosed(position) ? DONE : { step: position.step, phase: position.phase };
-  const out: BoardItem = { agent, round, route: definitionRoute(def, at, rounds.dips, words) };
+  const drawn = leadRoute(def, position, item.fields ?? {}, rounds.rounds);
+  const out: BoardItem = { agent, round, route: definitionRoute(drawn, at, rounds.dips, words) };
   if (!isClosed(position) && position.phase === 'doing') {
     const index = reopenedAt(history.moves, position.step);
     const move = history.moves[index];
