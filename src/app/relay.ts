@@ -94,7 +94,7 @@ export function relayDecision(ctx: Context, input: RelayInput, now = systemClock
       quote,
       source: 'conversation',
     };
-    return landMove(db, workflow, item, move, data, { via });
+    return landMove(ctx, workflow, item, move, data, { via });
   });
 }
 

@@ -29,6 +29,7 @@ import {
   sentBackAt,
   stateOf,
   turnAt,
+  WAIT_PARTS,
   waysOf,
 } from '../core/board/engine.ts';
 import {
@@ -67,6 +68,7 @@ import {
   nextText,
   noWayText,
   parentRequiredText,
+  placeText,
   refusalText,
   type SentBack,
   sentBackText,
@@ -82,7 +84,7 @@ import { readDefinition } from '../core/board/schema.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
 import { activeLease, type Lease } from '../core/lease.ts';
-import { closesOf } from '../core/workflow.ts';
+import { closesOf, turnOf } from '../core/workflow.ts';
 import { findBoardOfCollection, findVersion, listBoards } from '../store/boards.ts';
 import { transaction } from '../store/database.ts';
 import {
@@ -116,6 +118,7 @@ import { type LandsFirst, landsFirst, landsFirstLine, landsFirstText } from './l
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { sessionEnded, sessionRuns } from './presence.ts';
 import { priorityOf } from './priority.ts';
+import { liftSetAside, SET_ASIDE_LIFTED, setAsideOf } from './set-aside.ts';
 import { approvedTipOf } from './tips.ts';
 
 // What agents meet on a published board: the facts the step engine reads of an item, `next` (the
@@ -673,21 +676,77 @@ export function leftFor(ctx: Context, id: string): string | undefined {
   return cause === 'reassign' && typeof next === 'string' ? next : undefined;
 }
 
-// The agent that last let go of the item (otea release), and why, while it has not moved nor been
-// claimed since; undefined otherwise.
+// The agent that last let go of the item (otea release), and why, while it has not moved, been
+// claimed nor had its set-aside lifted since; undefined otherwise.
 function agentRelease(ctx: Context, id: string): { agent: string; cause: unknown } | undefined {
   const last = selectEvents(ctx.db, id).findLast(({ type }) =>
-    ['claimed', 'released', 'transitioned'].includes(type),
+    ['claimed', 'released', 'transitioned', SET_ASIDE_LIFTED].includes(type),
   );
   if (last?.type !== 'released' || last.actor.kind !== 'agent') return undefined;
   return { agent: last.actor.name, cause: last.data.cause };
 }
 
-// The agent that set the item aside for later (otea release --later), while it has not moved nor
-// been claimed since; undefined otherwise.
+// The agent that set the item aside for later (otea release --later), while nothing lifted it
+// (app/set-aside.ts); undefined otherwise.
 export function setAsideBy(ctx: Context, id: string): string | undefined {
-  const released = agentRelease(ctx, id);
-  return released?.cause === 'later' ? released.agent : undefined;
+  return setAsideOf(selectEvents(ctx.db, id))?.by;
+}
+
+// Why the item cannot be set aside for later now: it is not agent work right now (P7-R3-1). It
+// waits for its parts or what blocks it, or for the person (their turn, or their answer to a
+// question): next offers it again on its own then, and a set-aside would only hide it once it is
+// back. Undefined when it is agent work.
+export function setAsideRefusal(ctx: Context, item: ItemRecord): OteaError | undefined {
+  const board = liveBoardOf(ctx, item.collection);
+  const turn = turnOf(workflowOf(ctx, item), item.state);
+  const position = positionOf(item.state);
+  const where = board ? placeText(board.def, position) : item.state;
+  const nothing = 'nothing to set aside.';
+  if (turn === 'none')
+    return new OteaError('item_closed', `${item.id} is closed (${where}): ${nothing}`);
+  if (turn !== 'agent')
+    return new OteaError(
+      'not_claimable',
+      `${item.id} is in ${where}, on the person’s turn: otea next offers it again once it is back on an agent’s; ${nothing}`,
+    );
+  if (!board || isClosed(position)) return undefined;
+  const on = itemOnBoard(ctx, item, board.def);
+  if (on.asking)
+    return new OteaError(
+      'not_claimable',
+      `${item.id} waits for the person’s answer to ${on.asking.by}’s question: otea next offers it again once they answer; ${nothing}`,
+    );
+  const step = stepById(board.def, position.step);
+  if (position.phase !== 'doing' || step === undefined) return undefined;
+  for (const wait of openWaits(step, on.facts)) {
+    const open = (wait.open ?? []).filter(({ unmerged }) => !unmerged).map(({ id }) => id);
+    if (open.length === 0) continue;
+    const what = wait.ref === WAIT_PARTS ? 'its parts' : 'what blocks it';
+    return new OteaError(
+      wait.ref === WAIT_PARTS ? 'children_open' : 'blockers_open',
+      `${item.id} waits for ${what} (${open.join(', ')}): otea next offers it again once they close; ${nothing}`,
+    );
+  }
+  return undefined;
+}
+
+// Once an item closes, what waited for it as a part or a blocker and stood aside for later is
+// agent work again: its set-aside lifts, saying so (P7-R3-1). It waited until now, so the agent
+// that set it aside was waiting for exactly this.
+export function liftWhenWaitsClose(ctx: Context, closed: string, actor: Actor, at: string): void {
+  for (const relation of selectRelationsOf(ctx.db, closed)) {
+    if (relation.from !== closed || (relation.kind !== 'parent' && relation.kind !== 'blocks'))
+      continue;
+    const waiting = findItem(ctx.db, relation.to);
+    if (!waiting || setAsideBy(ctx, waiting.id) === undefined) continue;
+    const board = liveBoardOf(ctx, waiting.collection);
+    const position = positionOf(waiting.state);
+    if (!board || isClosed(position) || position.phase !== 'doing') continue;
+    const kind = relation.kind === 'parent' ? 'parts' : 'blockers';
+    if (!stepById(board.def, position.step)?.waits.includes(kind)) continue;
+    if (waitsOpen(board.def, itemOnBoard(ctx, waiting, board.def))) continue;
+    liftSetAside(ctx.db, { id: waiting.id, actor, at, cause: kind }, { after: closed });
+  }
 }
 
 // What next and wait add when they offer an agent the item it just let go of: a plain release
@@ -1044,7 +1103,9 @@ function byOrder(a: number, b: number): number {
   return a === b ? 0 : a < b ? -1 : 1;
 }
 
-// With nothing to do: what the agent set aside for later, and how to take it up again.
+// With nothing to do: what the agent set aside for later, and how to take it up again. The first of
+// them in the person's order (on top, then the Matrix order) is named with its place, as the one
+// to take up first (P7-R3-1).
 function setAsideLines(ctx: Context, boards: readonly LiveBoard[], agent: string): string[] {
   const ids = boards.flatMap((board) =>
     selectItems(ctx.db, { collection: board.collection })
@@ -1052,6 +1113,27 @@ function setAsideLines(ctx: Context, boards: readonly LiveBoard[], agent: string
       .map(({ id }) => id),
   );
   if (ids.length === 0) return [];
+  const priority = priorityOf(ctx.db);
+  const placed = ids
+    .flatMap((id) => {
+      const { pin, rank } = priority.get(id) ?? {};
+      return pin === undefined && rank === undefined ? [] : [{ id, pin, rank }];
+    })
+    .sort(
+      (a, b) =>
+        byOrder(a.pin ?? Number.POSITIVE_INFINITY, b.pin ?? Number.POSITIVE_INFINITY) ||
+        byOrder(a.rank ?? Number.POSITIVE_INFINITY, b.rank ?? Number.POSITIVE_INFINITY),
+    );
+  const first = placed[0];
+  if (first) {
+    const said =
+      first.pin !== undefined
+        ? `The person put ${first.id} on top (number ${first.pin})`
+        : `${first.id} is number ${first.rank} in the order the person fixed on the Matrix`;
+    return [
+      `You set aside ${ids.join(', ')} for later. ${said}: otea claim ${first.id} takes it up again.`,
+    ];
+  }
   const one = ids.length === 1;
   return [
     `You set aside ${ids.join(', ')} for later: otea claim ${one ? ids[0] : '<id>'} takes ${one ? 'it' : 'one'} up again.`,
@@ -1413,7 +1495,7 @@ function land(
     channel: input.channel,
   };
   return landMove(
-    ctx.db,
+    ctx,
     workflowOf(ctx, item),
     item,
     { to: stateOf(to), actor: input.actor, at, lease, board: true },

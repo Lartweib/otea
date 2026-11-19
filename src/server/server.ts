@@ -44,7 +44,8 @@ import { estimatesOfItems, pinItems, priorityOf, setOrder } from '../app/priorit
 import { type Env, type Project, projectView } from '../app/project.ts';
 import { answerQuestion } from '../app/questions.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
-import { reassignItem, restartItem, undoRelease } from '../app/restart.ts';
+import { reassignItem, restartItem, resumeItem, undoRelease } from '../app/restart.ts';
+import { setAsideOf } from '../app/set-aside.ts';
 import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
 import {
   closeTopic,
@@ -67,7 +68,12 @@ import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
 import { OteaError } from '../core/errors.ts';
 import { MAX_EVIDENCE_MB } from '../core/evidence.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
-import { type EventFilter, itemOfClientKey, selectStateEntries } from '../store/queries.ts';
+import {
+  type EventFilter,
+  itemOfClientKey,
+  selectEvents,
+  selectStateEntries,
+} from '../store/queries.ts';
 import { boardsApi } from './boards.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
 import { branchDrift } from './drift.ts';
@@ -462,9 +468,12 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
             // A closed board item: who did it, and whether its branch was merged.
             const row = rowFactsOf(project, item, boards);
             const enteredAt = entered.get(item.id);
+            // Set aside for later by an agent (otea release --later): by whom, so the desk says so.
+            const setAside = setAsideOf(selectEvents(project.db, item.id));
             return {
               ...item,
               ...row,
+              ...(setAside === undefined ? {} : { setAside }),
               ...(enteredAt === undefined ? {} : { enteredAt }),
               ...(round === undefined ? {} : { round }),
               ...(notes === undefined ? {} : { notes }),
@@ -527,7 +536,7 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       )
       .get('/items/:id', (c) => {
         const id = c.req.param('id');
-        let item: ReturnType<typeof showItem>;
+        let item: ReturnType<typeof showItem> & { setAside?: { by: string; at: string } };
         try {
           item = showItem(project, id, HUMAN_IN_UI);
         } catch (error) {
@@ -537,6 +546,8 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
           if (missing && c.req.query('missing') === 'null') return c.json(null);
           throw error;
         }
+        const setAside = setAsideOf(item.events);
+        if (setAside) item = { ...item, setAside };
         if (!item.archived) return c.json(item);
         // An archived board's collection is in no list: the page reads the item's words from here.
         const collection = listCollectionViews(project, { archived: true }).find(
@@ -721,6 +732,13 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       .post('/items/:id/restart', (c) => {
         assertWritable(c, auth);
         const item = restartItem(project, { id: c.req.param('id'), ...HUMAN_IN_UI });
+        feed.notify();
+        return c.json(item);
+      })
+      // An item an agent set aside for later: the person takes it up again (Retomar, P7-R3-1).
+      .post('/items/:id/resume', (c) => {
+        assertWritable(c, auth);
+        const item = resumeItem(project, { id: c.req.param('id'), ...HUMAN_IN_UI });
         feed.notify();
         return c.json(item);
       })

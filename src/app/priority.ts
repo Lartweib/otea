@@ -14,6 +14,7 @@ import {
 } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { systemClock } from './items.ts';
+import { liftSetAside } from './set-aside.ts';
 
 // The person's priority on a board's items: what they put on top by hand (`pin`, in the order they
 // pinned it) and the order they fixed from the analysis matrix (`rank`). otea next takes what an
@@ -104,6 +105,9 @@ export function setOrder(
     for (const item of selectItems(ctx.db, { collection: input.collection }))
       upsert(ctx.db, item.id, 'rank', null, at);
     for (const [index, id] of ids.entries()) upsert(ctx.db, id, 'rank', index + 1, at);
+    // Each item the person picked for the order is one they want now: one set aside for later
+    // is taken up again (P7-R3-1).
+    for (const id of ids) liftSetAside(ctx.db, { id, actor: input.actor, at, cause: 'order' });
   });
 }
 
@@ -129,6 +133,8 @@ export function pinItems(
     let next = (top.top ?? 0) + 1;
     const current = priorityOf(ctx.db);
     for (const id of ids) {
+      // Put on top, an item set aside for later is taken up again (P7-R3-1).
+      liftSetAside(ctx.db, { id, actor: input.actor, at, cause: 'pin' });
       if (current.get(id)?.pin !== undefined) continue;
       upsert(ctx.db, id, 'pin', next, at);
       next += 1;

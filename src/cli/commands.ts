@@ -2555,7 +2555,7 @@ const release: Command = {
       const item = releaseItem(project, { id, actor, later });
       const released = itemResult(project, item);
       if (!later) return released;
-      const aside = `Set ${item.id} aside: otea next and otea wait --unclaimed leave it out for you until it moves or you claim it again (otea claim ${item.id}).`;
+      const aside = `Set ${item.id} aside: otea next and otea wait --unclaimed leave it out for you until it moves, you claim it again (otea claim ${item.id}), or the person takes it up again.`;
       return { ...released, text: `${released.text}\n${aside}` };
     });
   },

@@ -52,6 +52,7 @@ import {
   boardMoves,
   boardStart,
   boardState,
+  liftWhenWaitsClose,
   liveBoardOf,
 } from './next.ts';
 import {
@@ -395,15 +396,17 @@ export type MoveItemInput = {
 // carried. `trail` (who relayed it) is recorded on both. Off a board a lease lasts while the item
 // stays on the agent turn (todo, then in_progress). On a board (`board`) a lease is for one step's
 // doing or review: every move ends it, live or run out, so it never blocks the next step or reads
-// as someone working there. An agent that goes on to the next step itself claims it again.
+// as someone working there. An agent that goes on to the next step itself claims it again. A move
+// that closes the item lifts the set-aside of what waited for it (liftWhenWaitsClose, P7-R3-1).
 export function landMove(
-  db: DatabaseSync,
+  ctx: Context,
   workflow: Workflow,
   item: ItemRecord,
   move: { to: string; actor: Actor; at: string; lease: Lease | null; board: boolean },
   data: Record<string, unknown>,
   trail: Record<string, unknown> = {},
 ): Item {
+  const { db } = ctx;
   const { to, actor, at, board } = move;
   const lease = board ? item.lease : move.lease;
   updateItemState(db, item.id, to, at);
@@ -426,6 +429,7 @@ export function landMove(
     const released = { holder: lease.holder, cause: 'handoff', ...trail };
     appendEvent(db, { itemId: item.id, type: 'released', actor, at, data: released });
   }
+  if (turnOf(workflow, to) === 'none') liftWhenWaitsClose(ctx, item.id, actor, at);
   const moved = { ...item, state: to, updatedAt: at, lease: handoff ? null : item.lease };
   return present(moved, workflow, at);
 }
@@ -475,6 +479,6 @@ export function moveItem(ctx: Context, input: MoveItemInput, now = systemClock):
       recordChoice(db, live.def, item, { to, actor, channel, at }, input.choice);
     }
     const board = live !== undefined;
-    return landMove(db, workflow, item, { to, actor, at, lease, board }, data);
+    return landMove(ctx, workflow, item, { to, actor, at, lease, board }, data);
   });
 }

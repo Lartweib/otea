@@ -28,6 +28,7 @@ import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
 import { sessionEnded } from './presence.ts';
 import { RELAYED_HUMAN } from './relay.ts';
+import { liftSetAside } from './set-aside.ts';
 
 // An agent's question to the person (core/board/questions.ts): the agent asks while it does a step,
 // and the turn is the person's until they answer; the answer hands it back to the agent in the same
@@ -180,6 +181,9 @@ function recordAnswer(
       (each) => each.question === open.question,
     );
     if (!answered) throw new Error(`question ${open.question} on ${item.id} was not kept`);
+    // The person's answer takes up an item set aside for later (P7-R3-1).
+    const cause = 'answer' as const;
+    liftSetAside(ctx.db, { id: item.id, actor: input.actor, at: now(), cause }, extra);
     // The answer goes back to the agent that asked: its lease, run out while the person thought,
     // is taken again for it, unless another agent holds the item now, or its session ended: then
     // the item waits for whichever agent claims it (P3C-R3-11).
