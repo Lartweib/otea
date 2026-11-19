@@ -260,7 +260,8 @@ describe('the person answers', () => {
 
   // P3C-R3-11: kiln asked, set the item aside for later, and its session ended. scout noted the
   // person's chat answer, and Otea claimed the item for kiln again for 15 minutes: the desk said
-  // kiln was doing it, and scout's claim was refused until the person freed it (Liberar).
+  // kiln was doing it, and scout's claim was refused until the person freed it (Liberar). An item
+  // whose question waits for the person can no longer be set aside (P7-R3-1): kiln lets go of it.
   describe('once the session of the agent that asked ended', () => {
     // kiln waits in otea wait (this test's process stands for it), until its session ends.
     const waits = (ctx: Context) =>
@@ -272,7 +273,7 @@ describe('the person answers', () => {
       const item = working(ctx);
       waits(ctx);
       ask(ctx, item.id);
-      releaseItem(ctx, { id: item.id, actor: kiln, later: true }, now);
+      releaseItem(ctx, { id: item.id, actor: kiln }, now);
       ends(ctx);
 
       const noted = noteChatAnswer(
@@ -308,7 +309,7 @@ describe('the person answers', () => {
       const item = working(ctx);
       waits(ctx);
       ask(ctx, item.id);
-      releaseItem(ctx, { id: item.id, actor: kiln, later: true }, now);
+      releaseItem(ctx, { id: item.id, actor: kiln }, now);
 
       noteChatAnswer(ctx, { id: item.id, text: 'Con musgo', actor: scout, channel: 'cli' }, now);
 
