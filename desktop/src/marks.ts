@@ -84,7 +84,13 @@ function orbita(ring: Ring, ink: Ink, dot: Dot, id = 'cut', paintClass = ''): st
     const [x0, y0] = at(dot.angle - TRAIL);
     body += `<path class="trail" d="M${x0} ${y0} A${n(r)} ${n(r)} 0 0 1 ${x} ${y}" fill="none" stroke="${ink.you}" stroke-opacity="0.55" stroke-width="${n(ring.sw)}"/>`;
   }
-  const mask = `<mask id="${id}"><rect width="100%" height="100%" fill="#fff"/><circle cx="${x}" cy="${y}" r="${n(cut)}" fill="#000"/></mask>`;
+  // The mask's region in the drawing's own units, a pixel past the ring: by default it is the ring's
+  // box plus 10%, which leaves out the outer half of the stroke and cut the ring flat on all four
+  // sides (P5-R2-1).
+  const lo = n(ring.c - ring.outer - 1);
+  const span = n(2 * (ring.outer + 1));
+  const box = `x="${lo}" y="${lo}" width="${span}" height="${span}"`;
+  const mask = `<mask id="${id}" maskUnits="userSpaceOnUse" ${box}><rect ${box} fill="#fff"/><circle cx="${x}" cy="${y}" r="${n(cut)}" fill="#000"/></mask>`;
   const paint =
     dot.paint === 'you'
       ? `class="dot" fill="${ink.you}"`

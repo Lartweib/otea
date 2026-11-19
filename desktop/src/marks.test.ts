@@ -92,6 +92,24 @@ describe('one ring weight everywhere', () => {
     expect(weight(svg)).toBeGreaterThanOrEqual(0.33);
     expect(weight(svg)).toBeLessThanOrEqual(0.4);
   });
+
+  // A mask's region defaults to the masked group's box plus 10%, and a stroke is outside that box:
+  // the ring came out cut flat on all four sides (P5-R2-1). The region must hold the whole stroke.
+  it.each(drawings)('%s keeps the whole ring inside its mask', (_name, svg) => {
+    const ring =
+      /class="ring[^"]*"[^>]* cx="([\d.]+)" cy="([\d.]+)" r="([\d.]+)"[^>]*stroke-width="([\d.]+)"/.exec(
+        svg,
+      );
+    const mask = /<mask [^>]*>/.exec(svg)?.[0] ?? '';
+    const attr = (name: string) => Number(new RegExp(` ${name}="(-?[\\d.]+)"`).exec(mask)?.[1]);
+    expect(mask).toContain('maskUnits="userSpaceOnUse"');
+    const [cx, cy, r, sw] = [1, 2, 3, 4].map((i) => Number(ring?.[i]));
+    const reach = (r as number) + (sw as number) / 2;
+    expect(attr('x')).toBeLessThanOrEqual((cx as number) - reach);
+    expect(attr('y')).toBeLessThanOrEqual((cy as number) - reach);
+    expect(attr('x') + attr('width')).toBeGreaterThanOrEqual((cx as number) + reach);
+    expect(attr('y') + attr('height')).toBeGreaterThanOrEqual((cy as number) + reach);
+  });
 });
 
 describe('the favicons in ui/public', () => {

@@ -1,12 +1,12 @@
 {
-  "ui/public/otea-idle.svg": "79dfbcc208cb195789bb59b608da6203430d4e51609f87cada7eb16b0f94e625",
-  "ui/public/otea-yours.svg": "f6b4c35dee4ded15c6b16c0655d26327830007e26368a921636fca53e8a16dc9",
-  "ui/public/otea-working.svg": "06660d99827764eaf67da0e5862f49790245320f959c7bee97a0b55394ebf485",
-  "ui/public/otea-yours-working.svg": "06660d99827764eaf67da0e5862f49790245320f959c7bee97a0b55394ebf485",
-  "ui/public/icons/otea-192.png": "78a961c1587c7ac02df130a730c5804565b23b6aa076a2c213da71e8063f8458",
-  "ui/public/icons/otea-512.png": "208b6afc75f146b581286c1241895054710c632ccc0ad6fd9f845232d8c625b9",
-  "ui/public/icons/otea-maskable-512.png": "28225721f76fdb277b590a6d40be4d57fa182760b61e2e458158af3aa74a157a",
-  "ui/public/icons/apple-touch-icon.png": "dda3338b8c8bc4987514ddf087f650f3fba4b63eb81ca9cd27220bd7445dce98",
-  "desktop/build/icon.ico": "1c9ee5b68bfdbf2cf2d85412baaf80b3c38926ac6db75b76e61b6844a0bd4c3e",
-  "desktop/build/icon.png": "154376922859fefa37d591ab0cfa2a2e1591100aee63e7384ab0babe1a9aa28e"
+  "ui/public/otea-idle.svg": "9504defb91d20a58c016e493f63f3d993e1de80f12bf1e1426fd56729f7c8811",
+  "ui/public/otea-yours.svg": "c0f0b8eb170b643edd2ac6a912f2e11e6aa1365c87b0366c25f16eff4ce08252",
+  "ui/public/otea-working.svg": "d178b885c06582f0be5604787ae697a44ab553ed7e77f8608f519ace6959ef22",
+  "ui/public/otea-yours-working.svg": "d178b885c06582f0be5604787ae697a44ab553ed7e77f8608f519ace6959ef22",
+  "ui/public/icons/otea-192.png": "fa9a1faa01c4e0801003aac65a135dc20225fbb132e95424ec431a06fac728bb",
+  "ui/public/icons/otea-512.png": "4fd02981159c8643ec4e0bd75a8cf5899bd0626d2dec8cd6f7a7a37f4a9e44ed",
+  "ui/public/icons/otea-maskable-512.png": "f4f7f12dac46176a118430fccca4d1c2a5345a59cdc43caca6a8855eda74bf16",
+  "ui/public/icons/apple-touch-icon.png": "6ad66223a82b03b2ae4fff84d2abbfbea9a92e71e211f170e0bbd6433bdea822",
+  "desktop/build/icon.ico": "3ec23401062e2aeca0a908f17246572a65d9ca7267ae2aa5aeff454bfa546b80",
+  "desktop/build/icon.png": "983ff270b0a20bb1b3175d7853a3bcccda3d90bc9c4e670ecec7e2c1a001b93c"
 }
