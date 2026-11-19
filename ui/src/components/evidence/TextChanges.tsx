@@ -3,7 +3,7 @@ import { t } from '../../i18n/i18n.ts';
 import { renderMarkdown } from '../../markdown.ts';
 import { diffText, plainMarkdown, type TextDiffMode } from '../../text-diff.ts';
 import type { Evidence } from '../../types.ts';
-import { useDocImages } from './item-evidence.ts';
+import { noImageWords, useDocImages } from './item-evidence.ts';
 import { TextState, useEvidenceText } from './TextViews.tsx';
 
 // A Markdown paragraph drawn as the document draws it, never as raw markup (DR3-2).
@@ -13,7 +13,7 @@ function Md({ text, className }: { text: string; className?: string }) {
     <div
       className={className ? `md ${className}` : 'md'}
       // biome-ignore lint/security/noDangerouslySetInnerHtml: renderMarkdown escapes raw HTML and drops dangerous links
-      dangerouslySetInnerHTML={{ __html: renderMarkdown(text, images) }}
+      dangerouslySetInnerHTML={{ __html: renderMarkdown(text, images, noImageWords) }}
     />
   );
 }

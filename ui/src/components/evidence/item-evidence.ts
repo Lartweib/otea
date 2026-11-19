@@ -1,5 +1,6 @@
 import { createContext, useContext } from 'react';
 import { useFileUrl } from '../../evidence-files.ts';
+import { t } from '../../i18n/i18n.ts';
 import type { Evidence } from '../../types.ts';
 import type { ReaderNote } from './EvidenceViewer.tsx';
 
@@ -44,6 +45,10 @@ export function useDocImages(): (name: string) => string | undefined {
     return found ? fileUrl(found) : undefined;
   };
 }
+
+// What a document says in place of an image it names beside it that the item does not hold: an
+// empty 0×0 box said nothing (P5-R2-10).
+export const noImageWords = (path: string): string => t('evidence.md.noImage', { path });
 
 export function useEarlier(evidence: Evidence): Evidence | undefined {
   return earlierOf(useContext(ItemEvidence), evidence);

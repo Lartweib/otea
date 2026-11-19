@@ -8,7 +8,7 @@ import type { Evidence } from '../../types.ts';
 import { compareCells, parseDelimited } from './data-view.ts';
 import { FileMeta } from './FileMeta.tsx';
 import { fileViewOf } from './file-view.ts';
-import { useDocImages, useEarlier } from './item-evidence.ts';
+import { noImageWords, useDocImages, useEarlier } from './item-evidence.ts';
 import { PdfFileView } from './PdfView.tsx';
 import { mayBeReport, ReportOr } from './TestReportView.tsx';
 import { TextChanges } from './TextChanges.tsx';
@@ -212,7 +212,7 @@ export function MarkdownFileView({ evidence }: { evidence: Evidence }) {
         <div
           className="md ev-doc-body"
           // biome-ignore lint/security/noDangerouslySetInnerHtml: renderMarkdown escapes raw HTML and drops dangerous links
-          dangerouslySetInnerHTML={{ __html: renderMarkdown(state.text, images) }}
+          dangerouslySetInnerHTML={{ __html: renderMarkdown(state.text, images, noImageWords) }}
         />
       )}
     </div>

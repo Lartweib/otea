@@ -243,6 +243,8 @@ export const detail = {
   'evidence.howToCompare': 'How to compare',
   'evidence.slider': 'slider',
   'evidence.sideBySide': 'side by side',
+  'evidence.md.noImage':
+    '{path}: this image is not attached. Attach it under that name to see it here.',
   'evidence.divider': 'Divider between before and after',
   'evidence.dividerBlind': 'Divider between A and B',
   'evidence.split': '{before}% before, {after}% after',
