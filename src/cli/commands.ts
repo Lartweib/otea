@@ -2077,7 +2077,7 @@ const whoami: Command = {
             `Reuse your name: ${advice.name}${when}, the agent that worked here before ${throughText(advice)}, with no session working under it now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
             ...(advice.lately
               ? [
-                  `${advice.name} acted moments ago: if another terminal still works as ${advice.name}, pick a new name instead.`,
+                  `${advice.name} acted moments ago: keep the name unless you know another terminal of yours works as ${advice.name} now; then take a new name of your own. Decide it yourself: never ask the person which name to use.`,
                 ]
               : []),
             ...(others.length > 0

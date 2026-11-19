@@ -212,7 +212,7 @@ export function claimName(
   if (fresh && harness !== undefined && heard.harness === harness) return;
   // The name it is told is handed to it, so a third session refused the same name is told another.
   const at = now();
-  const offers = handedOut(db, session, at);
+  const offers = handedOut(db, session, at, alive);
   const free = freeName(db, agent, offers);
   if (free !== null) saveNameOffer(db, { name: free, at, session });
   const take =
@@ -230,15 +230,40 @@ export function claimName(
 export const OFFER_WINDOW_MS = LIVE_WINDOW_MS;
 
 // The names handed lately to a session other than `session` (an MCP server's process id; a
-// command-line session has none Otea can tell apart, so every earlier one is another).
-function handedOut(db: DatabaseSync, session: number | undefined, at: string): Set<string> {
+// command-line session has none Otea can tell apart, so every earlier one is another). A name
+// handed to a session that ended is free again (P4-R3-2): the MCP server it was handed to is gone,
+// or, handed on the command line, the name was heard since through listeners that all ended.
+function handedOut(
+  db: DatabaseSync,
+  session: number | undefined,
+  at: string,
+  alive: (pid: number) => boolean = processAlive,
+): Set<string> {
+  const heard = selectListening(db);
+  const listeners = selectListenerProcesses(db);
   const other = ({ session: to }: NameOffer) => to === null || to !== session;
   const lately = ({ at: when }: NameOffer) => Date.parse(at) - Date.parse(when) < OFFER_WINDOW_MS;
+  const ended = ({ name, at: when, session: to }: NameOffer) => {
+    if (to !== null) return !alive(to);
+    const last = heard.get(name);
+    return last !== undefined && last >= when && listenersEnded(listeners.get(name), alive);
+  };
   return new Set(
     selectNameOffers(db)
-      .filter((offer) => lately(offer) && other(offer))
+      .filter((offer) => lately(offer) && other(offer) && !ended(offer))
       .map(({ name }) => name),
   );
+}
+
+// Whether every process an agent was heard listening through (its MCP server, its wait) has ended;
+// never for one heard through none.
+function listenersEnded(
+  processes: { session: number | null; waiter: number | null } | undefined,
+  alive: (pid: number) => boolean,
+): boolean {
+  const { session = null, waiter = null } = processes ?? {};
+  if (session === null && waiter === null) return false;
+  return !(session !== null && alive(session)) && !(waiter !== null && alive(waiter));
 }
 
 // A name of the same stem as `base` that no agent ever used and no other session was handed:
@@ -361,11 +386,7 @@ export function listAgents(
     last !== undefined && Date.parse(at) - Date.parse(last) <= window;
   const within = (last: string | undefined) => since(last, LISTEN_WINDOW_MS);
   // Every listener process it was heard through has ended.
-  const silenced = (name: string) => {
-    const { session = null, waiter = null } = listeners.get(name) ?? {};
-    if (session === null && waiter === null) return false;
-    return !(session !== null && alive(session)) && !(waiter !== null && alive(waiter));
-  };
+  const silenced = (name: string) => listenersEnded(listeners.get(name), alive);
   const records = selectAgents(db);
   const declaredOf = new Map(records.map(({ name }) => [name, findProfile(db, name)]));
   // The harness an agent works through, as one key: its MCP client's, else the one it declared.
@@ -515,7 +536,7 @@ export function nameFor(
   alive: (pid: number) => boolean = processAlive,
 ): NameAdvice {
   const agents = listAgents(db, now, alive);
-  const handed = handedOut(db, session, now());
+  const handed = handedOut(db, session, now(), alive);
   const working = [
     ...new Set([...agents.filter(({ live }) => live).map(({ name }) => name), ...handed]),
   ];
@@ -541,8 +562,12 @@ export function nameFor(
     if (!heard?.session) return true;
     return heard.session !== session && alive(heard.session);
   };
+  // Its session ended: every process it was heard listening through is gone (P4-R3-2). Its
+  // lease is then the returning session's to carry on, and its last acts no other terminal's.
+  const listeners = selectListenerProcesses(db);
+  const ended = (agent: AgentPresence) => listenersEnded(listeners.get(agent.name), alive);
   const busy = (agent: AgentPresence) =>
-    listens(agent) || agent.holding.length > 0 || handed.has(agent.name);
+    listens(agent) || (agent.holding.length > 0 && !ended(agent)) || handed.has(agent.name);
   const earlier = agents
     .filter((agent) => agent.connectedAt !== null && agent.folder !== null)
     .filter((agent) => sameFolder(agent.folder ?? '', folder))
@@ -557,7 +582,7 @@ export function nameFor(
   const known = first ? (first.profile?.harness ?? first.harness) : null;
   return {
     name: first?.name ?? null,
-    lately: first?.live === true,
+    lately: first?.live === true && !ended(first),
     others: fits.slice(1).map(({ name }) => name),
     working: working.filter((name) => name !== first?.name),
     suggested: taken ? freeName(db, taken.name, handed) : null,

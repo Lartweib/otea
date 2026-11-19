@@ -121,7 +121,7 @@ describe('otea whoami', () => {
 
     expect(out).toMatch(/^Reuse your name: ana/);
     expect(out).toContain(
-      'ana acted moments ago: if another terminal still works as ana, pick a new name instead.',
+      'ana acted moments ago: keep the name unless you know another terminal of yours works as ana now; then take a new name of your own. Decide it yourself: never ask the person which name to use.',
     );
     offersLater();
     expect(await json(otea, 'whoami', '--harness', 'claude-code')).toMatchObject({
