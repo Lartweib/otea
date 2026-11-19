@@ -1505,6 +1505,38 @@
 .p-cmp.was .p-text {
   color: var(--ink-2);
 }
+/* Comparar: the two rounds' pictures side by side, the older on the left (P5-5). */
+.p-cmp-pics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-top: 10px;
+}
+.p-cmp-pics figure {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  min-width: 0;
+}
+.p-cmp-pics img,
+.p-cmp-pics .none {
+  width: 100%;
+  border: 1px solid var(--rule);
+  border-radius: 8px;
+  background: var(--well);
+}
+.p-cmp-pics .none {
+  display: grid;
+  place-items: center;
+  aspect-ratio: 1;
+  font: 400 12px var(--mono);
+  color: var(--ink-3);
+}
+.p-cmp-pics figcaption {
+  font: 400 11.5px / 1.35 var(--mono);
+  color: var(--ink-3);
+  overflow-wrap: anywhere;
+}
 /* Detalles and Lo pedido, folded under the delivery. */
 .p-fold-sec {
   margin-top: 16px;
