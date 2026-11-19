@@ -1,4 +1,5 @@
 import { useEffect, useSyncExternalStore } from 'react';
+import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { type BoardSummary, fetchBoards } from '../api.ts';
 
 // The project's boards (GET /api/boards), shared by Studio's home, the rail, a board's page and
@@ -75,6 +76,14 @@ export function onPublishedBoard(collection: string): boolean {
     state.status === 'ready' &&
     state.boards.some((b) => b.collection === collection && b.liveVersion !== null)
   );
+}
+
+// The definition of a collection's published board, as the store knows it now: the one the home
+// draws (its draft while one is open, which leads the same way unless the person changed it).
+export function publishedDefinition(collection: string): BoardDefinition | undefined {
+  if (state.status !== 'ready') return undefined;
+  return state.boards.find((b) => b.collection === collection && b.liveVersion !== null)
+    ?.definition;
 }
 
 // What the store holds now.

@@ -1,4 +1,6 @@
 import { describe, expect, it } from 'vitest';
+import { sequenceIds } from '../../../src/core/board/ids.ts';
+import { instantiate, requireTemplate } from '../../../src/core/board/templates.ts';
 import type { FeedEvent } from '../activity.ts';
 import type { Item } from '../types.ts';
 import { agent, ago, inMinutes, item, moved, NOW, officialType, you } from './fixtures.ts';
@@ -6,6 +8,7 @@ import {
   agentOf,
   askingAgent,
   boardCounts,
+  boardThen,
   handedNote,
   stuckCount,
   tocaCount,
@@ -141,5 +144,20 @@ describe('agentOf on a board', () => {
     const waiting = item({ id: 'A', turn: 'agent', state: 'sfill' });
     expect(agentOf(waiting, feed, () => true)).toBeNull();
     expect(agentOf(waiting, feed, () => false)).toBe('kiln');
+  });
+});
+
+// P4-R3-6: Te toca said «después lo toma un agente» under the person's own to-dos.
+describe('where a board item goes next', () => {
+  const def = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
+  const ref = (name: string) => Object.values(def.parts).find((p) => p.name === name)?.id ?? '';
+  const [own, doIt] = def.steps;
+  const at = (state: string, mine: string) =>
+    item({ id: 'PEN-1', state, fields: { [ref('Lo hago yo')]: mine } });
+
+  it('follows the step’s lead for the item: the person’s own to-do closes, another goes on', () => {
+    expect(boardThen(def, at(own?.id ?? '', 'yes'))).toBe('done');
+    expect(boardThen(def, at(own?.id ?? '', 'no'))).toBe(doIt?.id);
+    expect(boardThen(def, at(`${doIt?.id}__review`, 'no'))).toBeUndefined();
   });
 });

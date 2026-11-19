@@ -554,14 +554,14 @@ const TODOS: Template = {
   icon: 'checkbox',
   name: w('To-dos', 'Pendientes'),
   description: w(
-    'Anything you hand to an agent that is not code: writing, planning, organising, looking something up. It does it, you look at the result and approve it or send it back.',
-    'Lo que le encargas a un agente y no es código: escribir, planificar, organizar, averiguar algo. Lo hace, miras el resultado y lo apruebas o lo devuelves.',
+    'Work that is not code: what you hand to an agent (writing, planning, organising, looking something up) and what you do yourself. The agent does it, you look at the result and approve it or send it back; yours stays with you until you mark it done.',
+    'Lo que no es código: lo que le encargas a un agente (escribir, planificar, organizar, averiguar algo) y lo que haces tú. El agente lo hace, miras el resultado y lo apruebas o lo devuelves; lo tuyo queda contigo hasta que lo marcas hecho.',
   ),
   board: w('To-dos', 'Pendientes'),
   item: w('To-do', 'Pendiente'),
   about: w(
-    'Things the person hands to an agent that are not code. The agent does each one and shows the result in plain words, with what it made; the person approves it or sends it back with what to change.',
-    'Cosas que la persona le encarga a un agente y no son código. El agente hace cada una y muestra el resultado en palabras simples, con lo que hizo; la persona lo aprueba o lo devuelve con qué cambiar.',
+    'Work that is not code: what you hand to an agent and what you do yourself. The agent does its own and shows you the result; you approve it or send it back. Yours (I do it myself: yes) stays in Your part until you mark it done.',
+    'Lo que no es código: lo que le encargas a un agente y lo que haces tú. El agente hace lo suyo y te muestra el resultado; tú lo apruebas o lo devuelves. Lo tuyo (Lo hago yo: sí) queda en Tu parte hasta que lo marcas hecho.',
   ),
   idle: w(
     'Nothing here for you. Wait with otea wait --turn agent --unclaimed; do not invent work.',
@@ -656,7 +656,7 @@ const TODOS: Template = {
     // closes it from here (it leads to Hecho only); once it is no, they may pass it on to Hacerlo.
     {
       key: 'tself',
-      name: w('You do it', 'Lo haces tú'),
+      name: w('Your part', 'Tu parte'),
       doer: 'you',
       reviewer: 'none',
       hand: [['tresult', 'when', false, ['tmine', 'yes']]],
