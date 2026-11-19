@@ -549,12 +549,7 @@ function ComparePictures({ older, newer }: { older: PhoneRound; newer: PhoneRoun
     <section className="p-part" data-c>
       <Lab x={`${older.n} → ${newer.n}`}>{t('phone.r.pictures')}</Lab>
       {pairs.map((p) => (
-        <div
-          key={`${p.before?.id ?? '-'}:${p.after?.id ?? '-'}`}
-          className="p-cmp-pics"
-          role="group"
-          aria-label={t('phone.r.picturesAria', { a: older.n, b: newer.n })}
-        >
+        <div key={`${p.before?.id ?? '-'}:${p.after?.id ?? '-'}`} className="p-cmp-pics">
           {side(p.before, older.n)}
           {side(p.after, newer.n)}
         </div>

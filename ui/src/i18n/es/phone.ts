@@ -68,7 +68,6 @@ export const phone = {
   'phone.r.unopened': 'Sin abrir: {n} de {total} archivos',
   'phone.r.noEvidence': 'Sin archivos en esta ronda.',
   'phone.r.pictures': 'Imágenes',
-  'phone.r.picturesAria': 'Ronda {a} junto a la ronda {b}',
   'phone.r.noPicture': 'sin imagen',
   'phone.r.diffFiles': { one: '{count} archivo cambiado', other: '{count} archivos cambiados' },
   'phone.r.diffOpen': 'Ver los cambios de {file}',

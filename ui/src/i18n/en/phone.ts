@@ -66,7 +66,6 @@ export const phone = {
   'phone.r.unopened': 'Not opened: {n} of {total} files',
   'phone.r.noEvidence': 'No files in this round.',
   'phone.r.pictures': 'Pictures',
-  'phone.r.picturesAria': 'Round {a} beside round {b}',
   'phone.r.noPicture': 'no picture',
   'phone.r.diffFiles': { one: '{count} file changed', other: '{count} files changed' },
   'phone.r.diffOpen': 'See the changes in {file}',
