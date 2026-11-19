@@ -985,19 +985,24 @@ function listFilter({ option, options, flag, reader }: Input): ListItemsFilter {
 }
 
 // What the person put on top first, then the order they fixed on the Matrix, as otea next takes
-// them; the rest after, in creation order (the sort is stable).
-function byPersonOrder<T extends { id: string }>(
+// them; then the other open items, and the closed ones last (P1-R3-11), each in creation order
+// (the sort is stable).
+function byPersonOrder<T extends { id: string; turn: string }>(
   items: readonly T[],
   order: ReadonlyMap<string, { pin?: number; rank?: number }>,
 ): T[] {
   const key = (item: T) => {
     const placed = order.get(item.id);
-    return [placed?.pin ?? Number.POSITIVE_INFINITY, placed?.rank ?? Number.POSITIVE_INFINITY];
+    return [
+      Number(item.turn === 'none'),
+      placed?.pin ?? Number.POSITIVE_INFINITY,
+      placed?.rank ?? Number.POSITIVE_INFINITY,
+    ];
   };
   return [...items].sort((a, b) => {
-    const [pa = 0, ra = 0] = key(a);
-    const [pb = 0, rb = 0] = key(b);
-    return pa !== pb ? (pa < pb ? -1 : 1) : ra !== rb ? (ra < rb ? -1 : 1) : 0;
+    const [ka, kb] = [key(a), key(b)];
+    const at = ka.findIndex((value, index) => value !== kb[index]);
+    return at < 0 ? 0 : (ka[at] ?? 0) < (kb[at] ?? 0) ? -1 : 1;
   });
 }
 

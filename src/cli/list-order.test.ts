@@ -54,6 +54,32 @@ describe('list and the person order', () => {
     ]);
   });
 
+  // P1-R3-11: a closed item (PED-1, Done) came ahead of the open items with no order, by creation.
+  it('puts the open items with no order before the closed ones', async () => {
+    const project = openProject(repo.dir);
+    try {
+      createItem(project, {
+        collection: 'Tareas',
+        title: 'F',
+        fields: {},
+        actor: you,
+        channel: 'ui',
+      });
+      setOrder(project, { collection: 'Tareas', ids: ['TAR-4', 'TAR-2'], actor: you });
+    } finally {
+      project.db.close();
+    }
+
+    expect(await ids('--collection', 'Tareas', '--sort', 'order')).toEqual([
+      'TAR-5',
+      'TAR-3',
+      'TAR-4',
+      'TAR-2',
+      'TAR-6',
+      'TAR-1',
+    ]);
+  });
+
   it('numbers the order over open items, as the desk does', async () => {
     const text = (await otea('list', '--collection', 'Tareas', '--sort', 'order')).out;
     expect(text).toMatch(/TAR-5 .*on top 1/);
