@@ -1,5 +1,7 @@
 # Otea
 
+¿Hablas español? Lee el [inicio rápido en español](README.es.md).
+
 > From the Spanish verb *otear*: to scan from a high vantage point, to watch what is happening and what is coming.
 
 **Otea is the asynchronous handoff surface between you and your AI agents.**
