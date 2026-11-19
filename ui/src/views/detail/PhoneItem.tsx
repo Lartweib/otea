@@ -26,7 +26,7 @@ import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import { itemOpened } from '../../kit/pop/toast.tsx';
 import type { Look } from '../../lanes/looks.ts';
-import { anyoneWaits } from '../../listening.ts';
+import { anyoneWaits, handsToAgent } from '../../listening.ts';
 import { type DecisionOption, parseOptions } from '../../options.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { useKeyboardInset } from '../../phone/CaptureSheet.tsx';
@@ -1023,7 +1023,11 @@ export function PhoneItem(p: PhoneItemProps) {
               {says.verb} <b>→ {says.state}</b> · {says.tail}
             </p>
           ) : null}
-          {!refused && !anyoneWaits(app.agents) ? <Unheard className="hint unheard" /> : null}
+          {!refused &&
+          !anyoneWaits(app.agents) &&
+          handsToAgent([primary, sendback, ...moreMoves, ...(picking?.ways ?? [])]) ? (
+            <Unheard className="hint unheard" />
+          ) : null}
         </section>
       ) : null}
 
