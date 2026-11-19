@@ -1,9 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { assertIconName } from '../icons.ts';
 import { viewsOf } from './analysis.ts';
+import { backWaysOf, initialPosition, mayTake, waysOf } from './engine.ts';
 import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
-import { EVIDENCE_KINDS, EVIDENCE_SHOWS, partOf, usedRefs } from './model.ts';
+import { DONE, EVIDENCE_KINDS, EVIDENCE_SHOWS, partOf, usedRefs } from './model.ts';
 import { problemsOf } from './problems.ts';
 import {
   blankBoard,
@@ -105,10 +106,11 @@ describe('templates', () => {
     expect(roles('changes')).toEqual({ effort: 'Esfuerzo', impact: 'Impacto' });
     expect(roles('ideaboard')).toEqual({ effort: 'Esfuerzo', impact: 'Impacto' });
     expect(roles('implementation')).toEqual({ effort: 'Tamaño' });
+    expect(roles('todos')).toEqual({ effort: 'Esfuerzo', impact: 'Impacto' });
   });
 
-  it('opens the Matrix on Ideas and Cambios, an effort read as a size, never as «crítica»', () => {
-    for (const key of ['ideaboard', 'changes', 'bug-reports']) {
+  it('opens the Matrix on Ideas, Cambios and Pendientes, an effort read as a size, never as «crítica»', () => {
+    for (const key of ['ideaboard', 'changes', 'todos', 'bug-reports']) {
       const def = instantiate(requireTemplate(key), 'es', {}, sequenceIds());
       if (key !== 'bug-reports') expect(viewsOf(def)).toEqual(['matrix']);
       const effort = partOf(def, def.analysis?.effort ?? '');
@@ -268,6 +270,35 @@ describe('templates that fit the work', () => {
     expect(handOf('todos', 'Hacerlo')[0]).toEqual(['Lo que hice', 'always', false, undefined]);
   });
 
+  // P4-R2-12: the person's own chores (taking photos, a call) have a path that is theirs, and no
+  // agent is offered them.
+  it('keeps a to-do the person does themselves in a step of theirs, never an agent', () => {
+    const def = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
+    const step = (name: string) => def.steps.find((s) => s.name === name);
+    const mine = Object.values(def.parts).find(({ name }) => name === 'Lo hago yo');
+    const own = step('Lo haces tú');
+    const doIt = step('Hacerlo');
+    expect(mine?.kind).toBe('yesno');
+    expect(mine?.initial).toBe('no');
+    expect(def.form.map(({ ref }) => ref)).toContain(mine?.id);
+    expect([own?.doer, own?.reviewer]).toEqual(['you', 'none']);
+    expect(mayTake(def, own?.id ?? '')).toBe(false);
+    const facts = (fields: Record<string, unknown>) => ({ fields, evidence: [] });
+    // Asked of an agent, it starts at Hacerlo, as before; the person's own stays with them.
+    expect(initialPosition(def, facts({ [mine?.id ?? '']: 'no' })).position).toEqual({
+      step: doIt?.id,
+      phase: 'doing',
+    });
+    expect(initialPosition(def, facts({ [mine?.id ?? '']: 'yes' })).position).toEqual({
+      step: own?.id,
+      phase: 'doing',
+    });
+    // The person closes it from there (or passes it to an agent); an agent that finds the
+    // to-do is the person's takes it back there, with a reason, instead of asking.
+    expect(waysOf(def, own?.id ?? '')).toEqual([doIt?.id, DONE]);
+    expect(backWaysOf(def, doIt?.id ?? '')).toEqual([own?.id]);
+  });
+
   it('asks a command-line change of Cambios for its terminal output, never for screenshots', () => {
     const hand = handOf('changes', 'Hacerlo');
     expect(hand).toContainEqual(['Capturas', 'when', true, 'Clase de cambio=Interfaz visual']);
@@ -292,6 +323,11 @@ describe('templates that fit the work', () => {
     ]);
     const def = instantiate(requireTemplate('design'), 'es', {}, sequenceIds());
     expect(Object.values(def.parts).find(({ name }) => name === 'Imágenes')?.show).toBe('gallery');
+    // P5-R2-12: a standalone image is the common case; Rama and Cambios are asked only when the
+    // person says the piece is in the repository.
+    expect(Object.values(def.parts).find(({ name }) => name === 'En el repositorio')?.initial).toBe(
+      'no',
+    );
   });
 });
 

@@ -1,3 +1,5 @@
+import { initialPosition, isClosed } from '../../src/core/board/engine.ts';
+import type { BoardDefinition } from '../../src/core/board/model.ts';
 import { presetText, t } from './i18n/i18n.ts';
 import type { Lane } from './lanes/geometry.ts';
 import type { Look } from './lanes/looks.ts';
@@ -77,8 +79,14 @@ export type Landing = {
   missing: string[];
 };
 
-export function landingOf(type: TypeView, values: FormValues): Landing {
+// `def`: the live board the item goes on, when it is one. A first step nobody reviews that the item
+// already has everything for is skipped (core/board/engine.ts), so it lands at the next step.
+export function landingOf(type: TypeView, values: FormValues, def?: BoardDefinition): Landing {
   const start = startOf(type, values);
+  if (def) {
+    const at = initialPosition(def, { fields: payloadOf(values), evidence: [] });
+    if (at.skipped && !isClosed(at.position)) start.state = at.position.step;
+  }
   const state = type.states.find(({ name }) => name === start.state);
   const turn = state?.turn ?? 'agent';
   const missing = missingToCreate(type, values);

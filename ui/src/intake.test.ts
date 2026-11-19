@@ -1,10 +1,13 @@
 import { describe, expect, it } from 'vitest';
+import { sequenceIds } from '../../src/core/board/ids.ts';
+import { instantiate, requireTemplate } from '../../src/core/board/templates.ts';
 import {
   canSubmit,
   fieldHint,
   fieldLabel,
   initialValues,
   intakeParts,
+  landingOf,
   missingToCreate,
   payloadOf,
   startMessage,
@@ -136,5 +139,34 @@ describe('the new item form, as compact as the mock', () => {
     const names = (xs: { field: { name: string } }[]) => xs.map((x) => x.field.name);
     expect(names(shown)).toEqual(['title', 'description', 'severity', 'category', 'repo']);
     expect(names(more)).toEqual(['steps', 'area']);
+  });
+});
+
+// A board whose first step nobody reviews and an item already has everything for starts at the
+// next step: the form says where it really lands, as Pendientes' «Lo hago yo» decides (P4-R2-12).
+describe('where a new item lands on a board that skips its first step', () => {
+  const def = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
+  const ref = (name: string) => Object.values(def.parts).find((p) => p.name === name)?.id ?? '';
+  const step = (name: string) => def.steps.find((s) => s.name === name)?.id ?? '';
+  const todos: TypeView = {
+    ...reviews,
+    initial: step('Lo haces tú'),
+    states: [
+      { name: step('Lo haces tú'), turn: 'human' },
+      { name: step('Hacerlo'), turn: 'agent' },
+    ] as TypeView['states'],
+    fields: [title],
+  };
+
+  it('goes to an agent unless the person keeps it', () => {
+    const values = { title: 'Fotos', [ref('Qué hace falta')]: 'Fotos del local' };
+    expect(landingOf(todos, { ...values, [ref('Lo hago yo')]: 'no' }, def)).toMatchObject({
+      state: step('Hacerlo'),
+      turn: 'agent',
+    });
+    expect(landingOf(todos, { ...values, [ref('Lo hago yo')]: 'yes' }, def)).toMatchObject({
+      state: step('Lo haces tú'),
+      turn: 'human',
+    });
   });
 });

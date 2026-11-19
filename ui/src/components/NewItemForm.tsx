@@ -102,7 +102,7 @@ export function IntakeForm({
     [],
   );
   const start = type ? startOf(type, values) : undefined;
-  const landing = type ? landingOf(type, values) : undefined;
+
   const rolesOf = (name: string) => (type ? rolesFor(type, name) : []);
   // On a Studio board that is part of another ("Cada Cambio se divide en Tareas de repo"): the
   // parent is "Parte de", and a split that says always needs one before Crear.
@@ -117,6 +117,7 @@ export function IntakeForm({
     ? app.all.filter((x) => x.collection === parentBoard?.collection && !x.closes).slice(0, 12)
     : [];
   const live = useStudioBoard(collection.name)?.live;
+  const landing = type ? landingOf(type, values, live) : undefined;
   const ready =
     type !== undefined &&
     canSubmit(type, values) &&
@@ -355,7 +356,7 @@ export function IntakeForm({
           title={(values.title ?? '').trim()}
           state={step}
           landing={landing}
-          field={tagField ? values[tagField.name] : undefined}
+          field={tagField ? valueWord(type, tagField.name, values[tagField.name] ?? '') : undefined}
           level={level > 0 ? level : undefined}
         />
       ) : null}
