@@ -25,6 +25,14 @@ jobs:
         with:
           node-version: 24
           cache: npm
+      # On Windows, TEMP is on the OS disk (C:), where the small-file I/O of the tests' temp git
+      # repos made the tests take twice as long; the runner's own temp folder is on its local disk
+      # (D:).
+      - if: runner.os == 'Windows'
+        shell: pwsh
+        run: |
+          "TEMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
+          "TMP=$env:RUNNER_TEMP" >> $env:GITHUB_ENV
       - run: npm ci
       - run: npm run check
 
