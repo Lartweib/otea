@@ -1063,6 +1063,20 @@ export function baseRefusal(
   return `${action} refused: ${base} is the base branch ${names} ${verb}; it takes only the branch of ${items} ${when}, and this ${action} brings in none.`;
 }
 
+// What the person reads under a refused push into a protected base (P2S-R3-4): the hook shows the
+// refusal to whoever pushes, and a person pushing a commit of their own got only the agents' words,
+// with no way out. Said in the language of the first board that protects it; an agent is told the
+// bypass is never its own.
+const FOR_PERSON: Readonly<Record<Lang, string>> = {
+  en: "For the person: if the commit is yours, put it through the board (ask your agent for an item and approve it in Otea) or push it yourself this once with git push --no-verify, which skips Otea's check. An agent never uses --no-verify.",
+  es: 'Para la persona: si el commit es tuyo, pásalo por el tablero (pídele a tu agente un ítem y apruébalo en Otea) o súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.',
+};
+
+export function forPersonText(all: readonly BoardDefinition[]): string {
+  const [first] = all;
+  return FOR_PERSON[first?.title === TITLE_NAME.es ? 'es' : 'en'];
+}
+
 // The line after a handoff or an approval: where the item stands now.
 export function handedText(
   def: BoardDefinition,

@@ -92,4 +92,15 @@ describe('the Code on main board', () => {
     change('extra.py', 'never reviewed\n');
     expect((await pushMain()).code).toBe(19);
   });
+
+  // The person's own commit on a protected main got the agents' refusal, in English, with no way
+  // out (P2S-R3-4): the refusal also speaks to the person, in the board's language.
+  it('tells the person, in the board language, how to land a commit of their own', async () => {
+    change('TODO.md', '- regar\n');
+    const refused = await pushMain();
+    expect(refused.code).toBe(19);
+    expect(refused.out).toContain(
+      'Para la persona: si el commit es tuyo, pásalo por el tablero (pídele a tu agente un ítem y apruébalo en Otea) o súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.',
+    );
+  });
 });
