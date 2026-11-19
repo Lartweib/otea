@@ -479,7 +479,7 @@ export const surfaces = {
   'topics.off':
     'Los temas están apagados en este proyecto. Al activarlos, los agentes anotan las preguntas que les haces fuera del trabajo, con su respuesta.',
   'topics.turnOn': 'Activar los temas',
-  'topics.offDesk': 'Se activan en Configuración, en el ordenador.',
+  'topics.offDesk': 'Se activan en Configuración, en el equipo.',
   'topics.empty':
     'Nada en el aire. Cuando le preguntes algo a un agente fuera del trabajo, aparecerá aquí.',
   'topics.state.hanging': 'Quedó en el aire',

@@ -14,7 +14,7 @@ export const studioHome = {
   'bs.home.templatesFailed': 'No se pudieron leer las plantillas: {reason}',
   'bs.home.retry': 'Reintentar',
   'bs.home.readOnly':
-    'Aquí puedes mirar los tableros, no cambiarlos. Para editarlos, ejecuta {command} en el proyecto, en su ordenador: abre Otea con la sesión iniciada.',
+    'Aquí puedes mirar los tableros, no cambiarlos. Para editarlos, ejecuta {command} en el proyecto, en su equipo: abre Otea con la sesión iniciada.',
   'bs.home.eachItem': 'cada ítem: {item}',
   'bs.home.live': 'publicado · v{version}',
   'bs.home.changed': 'cambios sin publicar',

@@ -74,7 +74,7 @@ describe('NavBody (mobile mock 5)', () => {
       'Te toca',
       'tableros · solo lectura',
       'Preferencias',
-      'Studio y Configuración están en el ordenador.',
+      'Studio y Configuración están en el equipo.',
     ])
       expect(html).toContain(w);
     expect(html).not.toContain('Nuevo tablero');

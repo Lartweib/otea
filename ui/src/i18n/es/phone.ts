@@ -1,7 +1,7 @@
 import type { Catalog } from '../i18n.ts';
 
 // El área phone del catálogo en español: la barra de abajo, el panel, las páginas que quedan para
-// el ordenador y las hojas que suben desde abajo.
+// el equipo y las hojas que suben desde abajo.
 export const phone = {
   'phone.tabs': 'Navegación',
   'phone.nav': 'Panel',
@@ -9,7 +9,7 @@ export const phone = {
   'phone.new': 'Nuevo',
   'phone.boards': 'tableros · solo lectura',
   'phone.prefs': 'Preferencias',
-  'phone.desk': 'Studio y Configuración están en el ordenador.',
+  'phone.desk': 'Studio y Configuración están en el equipo.',
   'phone.newItem': 'Nuevo ítem',
   'phone.close': 'Cerrar',
   // Captura rápida (mock, pantalla 3)
@@ -33,20 +33,20 @@ export const phone = {
   'phone.capture.lands': 'llega a {board} › {step}',
   'phone.capture.save': 'Guardar',
   'phone.capture.saved': 'Guardado en {board} · {id}',
-  'phone.capture.needs': 'pide {fields} para crear · en el ordenador',
-  'phone.capture.partOf': 'siempre es parte de {board} · en el ordenador',
-  'phone.capture.none': 'Ningún tablero acepta solo un título. Créalo en el ordenador.',
+  'phone.capture.needs': 'pide {fields} para crear · en el equipo',
+  'phone.capture.partOf': 'siempre es parte de {board} · en el equipo',
+  'phone.capture.none': 'Ningún tablero acepta solo un título. Créalo en el equipo.',
   'phone.capture.noBoards':
-    'Este proyecto todavía no tiene tableros. Se crean en Studio, en el ordenador; después puedes anotar aquí.',
-  'phone.deskOnly.studio': 'Studio está en el ordenador.',
-  'phone.deskOnly.settings': 'Configuración está en el ordenador.',
-  'phone.deskOnly.modules': 'El catálogo de módulos está en el ordenador.',
-  'phone.deskOnly.performance': 'Rendimiento está en el ordenador.',
+    'Este proyecto todavía no tiene tableros. Se crean en Studio, en el equipo; después puedes anotar aquí.',
+  'phone.deskOnly.studio': 'Studio está en el equipo.',
+  'phone.deskOnly.settings': 'Configuración está en el equipo.',
+  'phone.deskOnly.modules': 'El catálogo de módulos está en el equipo.',
+  'phone.deskOnly.performance': 'Rendimiento está en el equipo.',
   'phone.deskOnly.text': 'En el teléfono revisas, apuntas y lees los tableros.',
   'phone.steps': 'Paso',
   'phone.allSteps': 'Todos',
   'phone.readOnly':
-    'En el teléfono los tableros se leen. Pasos, campos y vistas se editan en el ordenador.',
+    'En el teléfono los tableros se leen. Pasos, campos y vistas se editan en el equipo.',
   // Te toca en el teléfono (mock móvil 1)
   'phone.ev.images': { one: '{count} imagen', other: '{count} imágenes' },
   'phone.quiet': 'Sin {list}.',
