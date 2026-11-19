@@ -564,13 +564,15 @@ export const CHANGES: Template = {
       doer: 'any',
       reviewer: 'none',
       hand: [['commit', 'always']],
+      // A rebase that conflicts goes back to Hacerlo, to be reviewed again (P1-R2-3).
+      ways: ['doit'],
       take: w(
-        'The person approved it: rebase @{branch} on main and bring it in with a fast-forward push of main or, where main takes changes only through a PR, open one and merge it with gh pr merge. Add nothing the person did not approve.',
-        'La persona lo aprobó: rebasa @{branch} sobre main e intégrala con fast-forward y push de main o, si main solo acepta cambios por PR, abre uno y mergéalo con gh pr merge. No agregues nada que la persona no haya aprobado.',
+        'The person approved it: rebase @{branch} on main and bring it in with a fast-forward push of main or, where main takes changes only through a PR, open one and merge it with gh pr merge. Add nothing the person did not approve. If the rebase conflicts with main, do not resolve it here: take it back to @{doit} with otea handoff <id> --way "@{doit}" --reason "<what conflicts>", so the resolution is reviewed.',
+        'La persona lo aprobó: rebasa @{branch} sobre main e intégrala con fast-forward y push de main o, si main solo acepta cambios por PR, abre uno y mergéalo con gh pr merge. No agregues nada que la persona no haya aprobado. Si el rebase choca con main, no lo resuelvas aquí: regrésalo a @{doit} con otea handoff <id> --way "@{doit}" --reason "<qué choca>", para que se revise la resolución.',
       ),
       before: w(
-        'Write in @{commit} the short hash of the commit that landed on main, and delete the branch.',
-        'Escribe en @{commit} el hash corto del commit que quedó en main y borra la rama.',
+        'Write in @{commit} the short hash of the commit that landed on main. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone.',
+        'Escribe en @{commit} el hash corto del commit que quedó en main. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre.',
       ),
     },
   ],
@@ -675,8 +677,8 @@ export const MAINLINE: Template = {
         ...step,
         name: w('Push', 'Subir'),
         take: w(
-          'The person approved it: push main as it is (git push origin main). Add nothing the person did not approve; if main on the remote moved, rebase on it first.',
-          'La persona lo aprobó: sube main tal como está (git push origin main). No agregues nada que la persona no haya aprobado; si main se movió en el remoto, rebasa sobre él primero.',
+          'The person approved it: push main as it is (git push origin main). Add nothing the person did not approve; if main on the remote moved, rebase on it first. If that rebase conflicts, do not resolve it here: take it back to @{doit} with otea handoff <id> --way "@{doit}" --reason "<what conflicts>", so the resolution is reviewed.',
+          'La persona lo aprobó: sube main tal como está (git push origin main). No agregues nada que la persona no haya aprobado; si main se movió en el remoto, rebasa sobre él primero. Si ese rebase choca, no lo resuelvas aquí: regrésalo a @{doit} con otea handoff <id> --way "@{doit}" --reason "<qué choca>", para que se revise la resolución.',
         ),
         before: w(
           'Write in @{commit} the short hash of main once pushed.',
