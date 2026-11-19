@@ -102,6 +102,31 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
     );
   });
 
+  // P4-R2-2: the person answered in the chat, and otea reply could not put it on the question.
+  it('notes on the question an answer the person gave in the chat, on the CLI and over MCP', async () => {
+    await otea('ask', 'CRI-1', '¿Caparazón liso o con musgo?');
+    const noted = await otea('answer', 'CRI-1', 'Con musgo');
+    expect(noted.code).toBe(0);
+    expect(noted.out).toContain("Noted the person's answer on CRI-1, as given in the chat.");
+    expect((await otea('next')).out).toContain('The person answered: "Con musgo"');
+    expect((await otea('answer', 'CRI-1', 'Otra')).err).toContain('no question waits');
+
+    await otea('ask', 'CRI-1', '¿Verde o gris?');
+    const server = createMcpServer(COMMANDS, { cwd: repo.dir, agent: 'claude', warn: () => {} });
+    const client = new Client({ name: 'test', version: '0' });
+    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
+    await server.connect(serverSide);
+    await client.connect(clientSide);
+    const reply = (await client.callTool({
+      name: 'answer',
+      arguments: { id: 'CRI-1', answer: 'Gris' },
+    })) as { isError?: boolean; content: { text: string }[] };
+    expect(reply.isError).toBe(false);
+    const data = JSON.parse(reply.content[0]?.text ?? 'null');
+    expect(data.question.answer).toMatchObject({ text: 'Gris', via: 'claude' });
+    await client.close();
+  });
+
   it('refuses a question with no words', async () => {
     const { code, err } = await otea('ask', 'CRI-1', '  ');
     expect(code).toBe(2);

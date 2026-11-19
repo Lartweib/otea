@@ -3,6 +3,7 @@ import { isClosed, positionOf } from '../core/board/engine.ts';
 import { stepById } from '../core/board/model.ts';
 import {
   askedText,
+  chatAnswerText,
   type ItemQuestion,
   QUESTION_ANSWERED,
   QUESTION_ASKED,
@@ -25,6 +26,7 @@ import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
+import { RELAYED_HUMAN } from './relay.ts';
 
 // An agent's question to the person (core/board/questions.ts): the agent asks while it does a step,
 // and the turn is the person's until they answer; the answer hands it back to the agent in the same
@@ -117,18 +119,59 @@ export function answerQuestion(ctx: Context, input: AnswerInput, now = systemClo
     refuse('forbidden', id, 'not_person', `Not answered: the person answers questions on ${id}`);
   const text = input.text.trim();
   if (text === '') refuse('reason_required', id, 'empty', `Not answered on ${id}: say your answer`);
+  return recordAnswer(ctx, { ...input, text }, {}, now);
+}
+
+export type ChatAnswerResult = { question: ItemQuestion; text: string };
+
+// The answer the person gave in the chat instead of in Otea, put on the question by an agent (otea
+// answer, P4-R2-2): it is the person's, as a relayed decision is, marked as noted by that agent,
+// and hands the turn back as an answer given in Otea does.
+export function noteChatAnswer(
+  ctx: Context,
+  input: AnswerInput,
+  now = systemClock,
+): ChatAnswerResult {
+  const { id, actor } = input;
+  if (actor.kind !== 'agent')
+    refuse(
+      'forbidden',
+      id,
+      'not_agent',
+      `Not noted: the person answers on the item page; an agent notes an answer they gave in the chat`,
+    );
+  const text = input.text.trim();
+  if (text === '')
+    refuse('reason_required', id, 'empty', `Not noted on ${id}: give the person's words`);
+  const data = { via: actor.name, source: 'conversation' };
+  const question = recordAnswer(ctx, { ...input, text, actor: RELAYED_HUMAN }, data, now);
+  return { question, text: chatAnswerText(id) };
+}
+
+function recordAnswer(
+  ctx: Context,
+  input: AnswerInput,
+  extra: Record<string, string>,
+  now: () => string,
+): ItemQuestion {
+  const { id, text } = input;
   return transaction(ctx.db, () => {
     const item = requireWritableItem(ctx.db, id);
     const board = liveBoardOf(ctx, item.collection);
     const open = board ? itemOnBoard(ctx, item, board.def).asking : undefined;
     if (!open)
-      refuse('invalid_transition', item.id, 'none_open', `${item.id}: no question waits for you`);
+      refuse(
+        'invalid_transition',
+        item.id,
+        'none_open',
+        `${item.id}: no question waits for ${extra.via ? 'the person' : 'you'}`,
+      );
     appendEvent(ctx.db, {
       itemId: item.id,
       type: QUESTION_ANSWERED,
       actor: input.actor,
       at: now(),
-      data: { question: open.question, text, channel: input.channel },
+      data: { question: open.question, text, channel: input.channel, ...extra },
     });
     const answered = questionsOf(selectEvents(ctx.db, item.id)).find(
       (each) => each.question === open.question,
@@ -161,7 +204,8 @@ export function answerWaiting(ctx: Context, agent: string): AnswerWaiting | unde
     const on = itemOnBoard(ctx, item, board.def);
     const answered = on.roundQuestions.findLast((q) => q.by === agent && q.answer);
     const at = answered?.answer?.at;
-    if (!answered || at === undefined) continue;
+    // An answer it noted from the chat itself is one it knows.
+    if (!answered || at === undefined || answered.answer?.via === agent) continue;
     const acted = selectEvents(ctx.db, item.id).some(
       (event) => event.at > at && event.actor.kind === 'agent' && event.actor.name === agent,
     );

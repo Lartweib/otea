@@ -24,6 +24,8 @@ export const AGENT_COMMANDS = [
   'topic list',
   'topic show',
   'ask',
+  // The person's answer to a question, given in the chat (P4-R2-2).
+  'answer',
   'handoff',
   'drop',
   'approve',

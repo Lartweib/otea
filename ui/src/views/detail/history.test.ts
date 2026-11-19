@@ -18,6 +18,8 @@ const you = { kind: 'human', name: 'fede' } as const;
 const word = (s: string) => s;
 
 describe('an agent’s question and your answer in the history', () => {
+  afterEach(() => setLanguage('en'));
+
   it('says each, with its words, and moves nothing', () => {
     const kiln = { kind: 'agent', name: 'kiln' } as const;
     const lines = historyOf(
@@ -32,6 +34,23 @@ describe('an agent’s question and your answer in the history', () => {
     expect(lines.map((l) => [l.text, l.quote, l.who, l.dot])).toEqual([
       ['You answered', 'Con musgo', 'you', 'you'],
       ['Asked you', '¿Liso o con musgo?', 'kiln', 'agent'],
+    ]);
+  });
+
+  // P4-R2-2: an answer the person gave in the chat, which the agent noted on the question.
+  it('says an answer given in the chat was noted by the agent', () => {
+    setLanguage('es');
+    const human = { kind: 'human', name: 'human' } as const;
+    const [line] = historyOf(
+      [ev('question_answered', human, { question: 1, text: 'Con musgo', via: 'kiln' }, 2)],
+      bug,
+      word,
+      NOW,
+    );
+    expect([line?.text, line?.quote, line?.dot]).toEqual([
+      'Respondido en el chat, anotado por kiln',
+      'Con musgo',
+      'relay',
     ]);
   });
 });

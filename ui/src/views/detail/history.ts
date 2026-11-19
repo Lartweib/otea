@@ -123,8 +123,13 @@ export function historyOf(
     // An agent's question (otea ask) and your answer: neither moves the item.
     if (e.type === QUESTION_ASKED)
       return { ...base, text: t('sheet.h.askedYou'), quote: String(e.data.text ?? '') };
-    if (e.type === QUESTION_ANSWERED)
-      return { ...base, text: t('sheet.h.youAnswered'), quote: String(e.data.text ?? '') };
+    // One given in the chat says which agent noted it (otea answer, P4-R2-2).
+    if (e.type === QUESTION_ANSWERED) {
+      const text = relay
+        ? t('sheet.h.answeredInChat', { via: relay.via })
+        : t('sheet.h.youAnswered');
+      return { ...base, text, quote: String(e.data.text ?? '') };
+    }
     // The option you picked of a decision's, with your comment.
     if (e.type === OPTION_CHOSEN) {
       const option = `${String(e.data.option ?? '')} · ${String(e.data.name ?? '')}`;

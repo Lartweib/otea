@@ -178,8 +178,12 @@ export function bodySections(o: {
         <Note
           k="answer"
           mine
-          label={t('sheet.answered')}
-          aside={agoOf(item, facts.answered.at, now)}
+          label={t(facts.answered.via ? 'sheet.answeredInChat' : 'sheet.answered')}
+          aside={
+            facts.answered.via
+              ? `${agoOf(item, facts.answered.at, now)} · ${t('sheet.notedBy', { via: facts.answered.via })}`
+              : agoOf(item, facts.answered.at, now)
+          }
           text={facts.answered.reason}
         />
       ),

@@ -120,7 +120,13 @@ import {
   setProjectIcon,
 } from '../app/project.ts';
 import { type ProofSource, tickPoint } from '../app/proofs.ts';
-import { answerWaiting, askedByAgent, askQuestion, wakesWhileAsking } from '../app/questions.ts';
+import {
+  answerWaiting,
+  askedByAgent,
+  askQuestion,
+  noteChatAnswer,
+  wakesWhileAsking,
+} from '../app/questions.ts';
 import { readerFilter } from '../app/reader-filter.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
@@ -2375,6 +2381,23 @@ const ask: Command = {
   },
 };
 
+// The answer the person gave in the chat to the agent's question, put on the question as theirs.
+const answer: Command = {
+  name: 'answer',
+  summary:
+    "Note on your question (otea ask) the person's answer given in the chat, in their words: it counts as theirs",
+  args: ['id', 'answer'],
+  options: {},
+  execute: (input) => {
+    const [id = '', text = ''] = input.args;
+    const { actor, channel } = input;
+    return withAgent(input, (project) => {
+      const noted = noteChatAnswer(project, { id, text, actor, channel });
+      return { data: noted, text: noted.text };
+    });
+  },
+};
+
 const release: Command = {
   name: 'release',
   summary:
@@ -3445,6 +3468,7 @@ export const COMMANDS: readonly Command[] = [
   topicNote,
   topicClose,
   ask,
+  answer,
   handoffCommand,
   dropCommand,
   approveCommand,

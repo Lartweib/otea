@@ -8,7 +8,7 @@ import type { Context } from './context.ts';
 import { createItem, getItem, listItems, showItem } from './items.ts';
 import { claimItem } from './leases.ts';
 import { handoffItem, itemNextText, nextFor } from './next.ts';
-import { answerQuestion, answerWaiting, askQuestion } from './questions.ts';
+import { answerQuestion, answerWaiting, askQuestion, noteChatAnswer } from './questions.ts';
 import { restartItem } from './restart.ts';
 import { memoryContext } from './testing.ts';
 
@@ -135,8 +135,10 @@ describe('an agent asks the person', () => {
     );
     expect(error.code).toBe('invalid_transition');
     expect(error.message).toContain('waits for their answer');
-    // P4-R2-2: an answer given in the chat is not one the agent records for them.
-    expect(error.message).toContain('they answer it in Otea, not in the chat');
+    // P4-R2-2: an answer given in the chat goes on the question, in their words.
+    expect(error.message).toContain(
+      `if they answered in the chat, put their words on it: otea answer ${item.id} "<their words>"`,
+    );
     expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
     expect(itemNextText(ctx, getItem(ctx, item.id, now), 'kiln', now)).toContain(
       'Waiting for the person to answer your question: "¿Caparazón liso o con musgo?"',
@@ -224,6 +226,48 @@ describe('the person answers', () => {
     expect(answerWaiting(ctx, 'scout')).toBeUndefined();
     handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
     expect(answerWaiting(ctx, 'kiln')).toBeUndefined();
+  });
+
+  // P4-R2-2: the person answered in the chat; otea reply failed twice and the agent asked them to
+  // paste the answer into Otea.
+  it('in the chat, noted on the question by an agent as theirs', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    attach(ctx, item.id);
+    ask(ctx, item.id);
+    tick += 20 * 60;
+
+    const noted = noteChatAnswer(
+      ctx,
+      { id: item.id, text: 'Con musgo', actor: kiln, channel: 'cli' },
+      now,
+    );
+
+    expect(noted.question.answer).toMatchObject({ text: 'Con musgo', by: 'human', via: 'kiln' });
+    expect(noted.text).toContain(`Noted the person's answer on ${item.id}`);
+    const after = getItem(ctx, item.id, now);
+    expect([after.turn, after.asks, after.lease?.holder]).toEqual(['agent', undefined, 'kiln']);
+    const event = selectEvents(ctx.db, item.id).findLast(
+      ({ type }) => type === 'question_answered',
+    );
+    expect(event?.actor).toEqual({ kind: 'human', name: 'human' });
+    expect(event?.data).toMatchObject({ via: 'kiln', source: 'conversation', channel: 'cli' });
+    expect(itemNextText(ctx, after, 'kiln', now)).toContain('The person answered: "Con musgo"');
+    // The agent that noted it knows it already: its wait does not wake on it.
+    expect(answerWaiting(ctx, 'kiln')).toBeUndefined();
+  });
+
+  it('noted from the chat only by an agent, with the person’s words, while a question waits', () => {
+    const ctx = memoryContext();
+    const item = working(ctx);
+    const note =
+      (actor: typeof you | typeof kiln, text = 'Sí') =>
+      () =>
+        noteChatAnswer(ctx, { id: item.id, text, actor, channel: 'cli' }, now);
+    expect(refusal(note(kiln)).message).toContain('no question waits');
+    ask(ctx, item.id);
+    expect(refusal(note(you)).code).toBe('forbidden');
+    expect(refusal(note(kiln, ' ')).code).toBe('reason_required');
   });
 
   it('is the person’s alone, with words, and only while a question waits', () => {
