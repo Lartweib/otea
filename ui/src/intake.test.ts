@@ -150,9 +150,9 @@ describe('where a new item lands on a board that skips its first step', () => {
   const step = (name: string) => def.steps.find((s) => s.name === name)?.id ?? '';
   const todos: TypeView = {
     ...reviews,
-    initial: step('Lo haces tú'),
+    initial: step('Tu parte'),
     states: [
-      { name: step('Lo haces tú'), turn: 'human' },
+      { name: step('Tu parte'), turn: 'human' },
       { name: step('Hacerlo'), turn: 'agent' },
     ] as TypeView['states'],
     fields: [title],
@@ -165,7 +165,7 @@ describe('where a new item lands on a board that skips its first step', () => {
       turn: 'agent',
     });
     expect(landingOf(todos, { ...values, [ref('Lo hago yo')]: 'yes' }, def)).toMatchObject({
-      state: step('Lo haces tú'),
+      state: step('Tu parte'),
       turn: 'human',
     });
   });

@@ -1,4 +1,5 @@
-import { positionOf } from '../../../src/core/board/engine.ts';
+import { isClosed, positionOf, waysOf } from '../../../src/core/board/engine.ts';
+import type { BoardDefinition } from '../../../src/core/board/model.ts';
 import { legacyAsks } from '../../../src/core/board/questions.ts';
 import { activeLease } from '../active-lease.ts';
 import type { FeedEvent } from '../activity.ts';
@@ -33,7 +34,21 @@ export type TocaContext = {
   onBoard?: (item: Item) => boolean;
   // Another listed item by id: what blocks a row on the way, to say it waits for it while open.
   find?: (id: string) => Item | undefined;
+  // On a board, the state its step leads the item to by default (boardThen), when known.
+  leadsTo?: (item: Item) => string | undefined;
 };
+
+// Where a board item's step leads it by default, as the engine reads the item: the lead that
+// holds for it first (Pendientes' own to-dos lead to Hecho, P4-R3-6), else the next step. A state
+// name (done for Hecho); undefined off a step being done.
+export function boardThen(
+  def: BoardDefinition,
+  item: Pick<Item, 'state' | 'fields'>,
+): string | undefined {
+  const at = positionOf(item.state);
+  if (isClosed(at) || at.phase !== 'doing') return undefined;
+  return waysOf(def, at.step, { fields: item.fields })[0];
+}
 
 // Closed work stays in Cerrados for a week.
 export const CLOSED_FOR = 7 * 24 * 60 * 60_000;

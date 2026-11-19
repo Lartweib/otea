@@ -39,7 +39,7 @@ describe('a to-do the person does themselves', () => {
     const { ctx, ref, step, make } = todos();
     const photos = make('Sacar las fotos', { [ref('Lo hago yo')]: 'yes' });
     const letter = make('Escribir la carta');
-    expect(photos.state).toBe(step('Lo haces tú'));
+    expect(photos.state).toBe(step('Tu parte'));
     expect(photos.turn).toBe('human');
     expect(letter.state).toBe(step('Hacerlo'));
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(letter.id);
@@ -72,7 +72,7 @@ describe('a to-do the person does themselves', () => {
     updateItem(ctx, { id: photos.id, fields: did, actor: you }, now);
     const pass = () => moveItem(ctx, { id: photos.id, to: step('Hacerlo'), ...desk }, now);
     expect(pass).toThrow(expect.objectContaining({ code: 'invalid_transition' }));
-    expect(getItem(ctx, photos.id).state).toBe(step('Lo haces tú'));
+    expect(getItem(ctx, photos.id).state).toBe(step('Tu parte'));
     // Once it is no longer theirs, it may go to an agent again.
     updateItem(ctx, { id: photos.id, fields: { [ref('Lo hago yo')]: 'no' }, actor: you }, now);
     expect(offered()).toEqual([step('Hacerlo'), 'done']);
@@ -84,10 +84,10 @@ describe('a to-do the person does themselves', () => {
     expect(nextFor(ctx, 'kiln', { claim: true }, now).item).toBe(call.id);
     handoffItem(
       ctx,
-      { id: call.id, actor: kiln, channel: 'cli', way: 'Lo haces tú', reason: 'una llamada' },
+      { id: call.id, actor: kiln, channel: 'cli', way: 'Tu parte', reason: 'una llamada' },
       now,
     );
-    expect(getItem(ctx, call.id).state).toBe(step('Lo haces tú'));
+    expect(getItem(ctx, call.id).state).toBe(step('Tu parte'));
     expect(nextFor(ctx, 'kiln', {}, now).item).toBeNull();
   });
 });

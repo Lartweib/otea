@@ -305,13 +305,27 @@ describe('templates that fit the work', () => {
     expect(handOf('todos', 'Hacerlo')[0]).toEqual(['Lo que hice', 'always', false, undefined]);
   });
 
+  // P4-R3-6: the board said «Cosas que la persona le encarga a un agente» though it holds the
+  // person's own chores too, and Studio read «En Lo haces tú, lo haces tú».
+  it('says the person’s own to-dos are on the board too, in a step named apart from who does it', () => {
+    const es = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
+    const en = instantiate(requireTemplate('todos'), 'en', {}, sequenceIds());
+    expect(es.steps.map(({ name }) => name)).toEqual(['Tu parte', 'Hacerlo']);
+    expect(en.steps.map(({ name }) => name)).toEqual(['Your part', 'Do it']);
+    expect(es.about).toContain('lo que haces tú');
+    expect(es.about).not.toContain('Cosas que la persona le encarga a un agente');
+    expect(en.about).toContain('what you do yourself');
+    // Short enough for the board's page to show it under the name (StudioDek, 280 at most).
+    for (const def of [es, en]) expect(def.about.length).toBeLessThanOrEqual(280);
+  });
+
   // P4-R2-12: the person's own chores (taking photos, a call) have a path that is theirs, and no
   // agent is offered them.
   it('keeps a to-do the person does themselves in a step of theirs, never an agent', () => {
     const def = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
     const step = (name: string) => def.steps.find((s) => s.name === name);
     const mine = Object.values(def.parts).find(({ name }) => name === 'Lo hago yo');
-    const own = step('Lo haces tú');
+    const own = step('Tu parte');
     const doIt = step('Hacerlo');
     expect(mine?.kind).toBe('yesno');
     expect(mine?.initial).toBe('no');

@@ -184,6 +184,9 @@ describe('a row’s call to act', () => {
     expect(rowCall(own, 'propios', { ...ctx(handed), onBoard: () => true }).sub).toEqual({
       key: 'toca.sub.thenAgent',
     });
+    // P4-R3-6: the person's own to-do leads to Hecho, not to an agent: it closes after.
+    const closes = { ...ctx(), onBoard: () => true, leadsTo: () => 'fixed' };
+    expect(rowCall(own, 'propios', closes).sub).toEqual({ key: 'toca.sub.thenClose' });
     const working = item({
       id: 'W',
       turn: 'agent',

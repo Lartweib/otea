@@ -1,13 +1,14 @@
 import { activeLease } from '../../active-lease.ts';
 import type { FeedEvent } from '../../activity.ts';
 import { type App, typeOfItem } from '../../app/context.tsx';
-import { onPublishedBoard } from '../../board-studio/home/boards-store.ts';
+import { onPublishedBoard, publishedDefinition } from '../../board-studio/home/boards-store.ts';
 import { Prof } from '../../components/Prof.tsx';
 import { UnheardMark } from '../../components/Unheard.tsx';
 import { mainPath } from '../../derive/path.ts';
 import {
   agentOf,
   askingAgent,
+  boardThen,
   handedNote,
   TOCA_SECTIONS,
   type TocaContext,
@@ -152,7 +153,7 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
     case 'propios': {
       const type = ctx.types(item);
       const path = type ? mainPath(type) : [];
-      const next = path[path.indexOf(item.state) + 1];
+      const next = ctx.leadsTo?.(item) ?? path[path.indexOf(item.state) + 1];
       const turn = type?.states.find((s) => s.name === next)?.turn;
       if (turn === 'none') return { act: t('toca.act.propios'), sub: sub('toca.sub.thenClose') };
       // On a board the next step's agent is whichever takes it, not the last one that acted.
@@ -359,6 +360,10 @@ export function tocaBlocks(
     types: (it: Item) => typeOfItem(it, app.collectionOf),
     onBoard: (it: Item) => onPublishedBoard(it.collection),
     find: (id: string) => listed.get(id),
+    leadsTo: (it: Item) => {
+      const def = publishedDefinition(it.collection);
+      return def ? boardThen(def, it) : undefined;
+    },
   };
   const by = new Map<TocaSection, Item[]>();
   for (const it of app.all) {
