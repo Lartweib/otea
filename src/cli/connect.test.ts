@@ -169,6 +169,10 @@ describe('setup for agents', () => {
       expect(out).toContain('Claude Code: .mcp.json');
       expect(out).toContain('OpenCode: opencode.json');
       expect(out).toContain('environment');
+      // p3-company run 2: a restart to load MCP lost the interview the session held.
+      expect(out).toContain(
+        "If your harness must restart or reload to load the server, ask the person for it now, before you go on, and to reopen this same conversation with your harness's resume option, if it has one, so you keep what was said; Otea keeps every item and board draft either way.",
+      );
       expect(out.trimEnd().split('\n').at(-1)).toMatch(/^Run otea connect --check now/);
     });
 

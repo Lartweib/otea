@@ -2,6 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { join } from 'node:path';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { endProcess, waitBeat } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
@@ -200,6 +201,62 @@ describe('otea whoami', () => {
     expect(told.out).toContain('Reuse your name: pa');
     expect(told.out).not.toContain('through this harness');
     expect(told.out).toContain('its harness is not known');
+  });
+
+  // p3-company run 2: the person restarted the agent mid-setup so MCP would load; the new session
+  // lost the interview, and nothing pointed it to the board it had begun to draft.
+  it('points a new session to a board draft left open, kept as it was', async () => {
+    await workedHere('ana', 'claude-code');
+    const drafted = await cliAt(repo.dir, { OTEA_AGENT: 'ana' })(
+      'board',
+      'draft',
+      '--new',
+      'Cambios',
+      '--why',
+      'Los cambios de la API',
+    );
+    expect(drafted.code).toBe(0);
+    // Its session ended: the wait it listened through (this test's process) is gone.
+    const project = openProject(repo.dir);
+    try {
+      waitBeat(project.db, { agent: 'ana', channel: 'cli', waiter: process.pid }).run();
+      endProcess(project.db, process.pid);
+    } finally {
+      project.db.close();
+    }
+    later();
+
+    const { out } = await otea('whoami', '--harness', 'claude-code');
+
+    expect(out).toMatch(/^Reuse your name: ana /);
+    expect(out).toContain(
+      'A board draft is open on PED-1, "Cambios", held by ana: Otea kept it as it was. If you were drafting it, carry it on: otea show PED-1 --as ana says how to hand it in.',
+    );
+  });
+
+  it('names the agent that holds a board draft left open, under another name', async () => {
+    await workedHere('ana', 'claude-code');
+    await cliAt(repo.dir, { OTEA_AGENT: 'ana' })(
+      'board',
+      'draft',
+      '--new',
+      'Cambios',
+      '--why',
+      'x',
+    );
+
+    const { out } = await otea('whoami', '--harness', 'claude-code');
+
+    expect(out).toMatch(/^Take the name ana-2/);
+    expect(out).toContain('A board draft is open on PED-1, "Cambios", held by ana.');
+    expect(out).not.toContain('carry it on');
+  });
+
+  it('says nothing of board drafts when none is open', async () => {
+    await workedHere('ana', 'claude-code');
+    later();
+
+    expect((await otea('whoami', '--harness', 'claude-code')).out).not.toContain('board draft');
   });
 
   it('says who you are when you gave a name', async () => {
