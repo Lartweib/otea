@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { liveBoardOf } from '../app/next.ts';
+import { leaveNote } from '../app/notes.ts';
 import { openProject } from '../app/project.ts';
 import { stateOf } from '../core/board/engine.ts';
 import { updateItemState } from '../store/queries.ts';
@@ -70,6 +71,49 @@ describe('an item the agent let go of, offered again', () => {
     const refused = await otea('release', 'CAM-1', '--later');
     expect(refused.code).toBe(12);
     expect(refused.err).toContain('only kiln can renew or release it');
+  });
+
+  // P7-R3-1: what is not agent work right now comes back on its own; a set-aside only hid it.
+  it('refuses to set aside an item on the person’s turn (exit 4), saying how to let go of it', async () => {
+    const project = openProject(repo.dir);
+    try {
+      const doit = liveBoardOf(project, 'Cambios')?.def.steps.find(
+        ({ name }) => name === 'Hacerlo',
+      );
+      if (!doit) throw new Error('no Hacerlo');
+      const review = stateOf({ step: doit.id, phase: 'review' });
+      updateItemState(project.db, 'CAM-1', review, '2026-11-18T10:05:00Z');
+    } finally {
+      project.db.close();
+    }
+
+    const refused = await otea('release', 'CAM-1', '--later');
+
+    expect(refused.code).toBe(4);
+    expect(refused.err).toContain(
+      'CAM-1 is in the review of Hacerlo, on the person’s turn: otea next offers it again once it is back on an agent’s; nothing to set aside. To let go of it: otea release CAM-1',
+    );
+  });
+
+  // P7-R3-1: a phone note on an item the agent had set aside did not wake its wait.
+  it('wakes the waiting agent once the person leaves a note on an item it set aside', async () => {
+    expect((await otea('release', 'CAM-1', '--later')).code).toBe(0);
+    expect((await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '1s')).code).toBe(13);
+    const project = openProject(repo.dir);
+    try {
+      const note = { id: 'CAM-1', text: 'Ya toca', channel: 'ui' as const };
+      leaveNote(project, { ...note, actor: { kind: 'human', name: 'fede' } });
+    } finally {
+      project.db.close();
+    }
+
+    const woke = await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '1s');
+
+    expect(woke.code, woke.err).toBe(0);
+    expect(woke.out).toMatch(/^CAM-1 /);
+    expect((await otea('events', '--item', 'CAM-1')).out).toContain(
+      "set_aside_lifted  quill's set-aside (the person left note 1)",
+    );
   });
 
   it('says nothing of it on an item the agent never let go of', async () => {

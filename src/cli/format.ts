@@ -130,6 +130,18 @@ function releaseCause(data: Event['data']): string {
   return 'released';
 }
 
+// Why a set-aside lifted (app/set-aside.ts): what the item waited for closed, or the person acted.
+function liftCause(data: Event['data']): string {
+  const after = typeof data.after === 'string' ? ` with ${data.after}` : '';
+  if (data.cause === 'parts') return `its parts closed${after}`;
+  if (data.cause === 'blockers') return `what blocked it closed${after}`;
+  if (data.cause === 'note') return `the person left note ${String(data.note)}`;
+  if (data.cause === 'answer') return 'the person answered';
+  if (data.cause === 'order') return 'the person picked it in the order';
+  if (data.cause === 'pin') return 'the person put it on top';
+  return 'the person took it up again';
+}
+
 function describeAction({ type, data }: Event): string {
   if (type === 'created') return String(data.state);
   if (type === 'transitioned') {
@@ -143,6 +155,7 @@ function describeAction({ type, data }: Event): string {
     return `${String(data.holder)} until ${timeText(String(data.expiresAt))}${previous}`;
   }
   if (type === 'released') return `${String(data.holder)} (${releaseCause(data)})`;
+  if (type === 'set_aside_lifted') return `${String(data.by)}'s set-aside (${liftCause(data)})`;
   if (type === 'relation_added' || type === 'relation_removed') {
     return describeRelation(data as Relation);
   }

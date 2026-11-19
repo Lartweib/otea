@@ -9,10 +9,10 @@ import { appendEvent, clearLease, type ItemRecord, takeLease } from '../store/qu
 import type { Context } from './context.ts';
 import { type Item, present, requireWritableItem, systemClock, workflowOf } from './items.ts';
 import { takeItem } from './lease-take.ts';
-import { assertMayClaim, liveBoardOf } from './next.ts';
+import { assertMayClaim, liveBoardOf, setAsideRefusal } from './next.ts';
 
 // `later`: on a release, the agent sets the item aside for later (P3C-R2-4): next and wait leave it
-// out for that agent until it moves or the agent claims it again.
+// out for that agent until it moves, an agent claims it, or the set-aside lifts (app/set-aside.ts).
 export type LeaseInput = { id: string; actor: Actor; ttlMs?: number; later?: boolean };
 
 function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {
@@ -79,6 +79,14 @@ export function releaseItem(ctx: Context, input: LeaseInput, now = systemClock):
     // when the person wanted it later sets it aside without claiming it again (P3C-R3-2).
     const aside = input.later === true && current === null;
     if (!aside && current?.holder !== input.actor.name) throw notHolder(item, input.actor, at);
+    // What is not agent work right now comes back on its own: setting it aside would only hide it
+    // once it does (P7-R3-1).
+    const refused = input.later ? setAsideRefusal(ctx, item) : undefined;
+    if (refused && current) {
+      const plain = `${refused.message} To let go of it: otea release ${item.id}`;
+      throw new OteaError(refused.code, plain);
+    }
+    if (refused) throw refused;
     clearLease(db, item.id);
     const holder = current?.holder ?? input.actor.name;
     const data = { holder, cause: input.later ? 'later' : 'release' };

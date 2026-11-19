@@ -29,6 +29,7 @@ import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
 import { assertMayWriteItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf, type Worker, workerOf } from './next.ts';
+import { liftSetAside } from './set-aside.ts';
 
 // Notes from the person while an agent does a step (core/board/notes.ts): the person leaves one
 // (the page, the phone included) without moving the item; the agent answers it with otea reply,
@@ -217,6 +218,8 @@ export function leaveNote(ctx: Context, input: LeaveNoteInput, now = systemClock
         channel: input.channel,
       },
     });
+    // A note on an item an agent set aside is the person taking it up again (P7-R3-1).
+    liftSetAside(ctx.db, { id: item.id, actor: input.actor, at, cause: 'note' }, { note });
     const left = notesOf(selectEvents(ctx.db, item.id)).find((each) => each.note === note);
     if (!left) throw new Error(`note ${note} on ${item.id} was not kept`);
     return left;

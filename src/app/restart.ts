@@ -19,6 +19,7 @@ import {
   systemClock,
   workflowOf,
 } from './items.ts';
+import { liftSetAside } from './set-aside.ts';
 import { UNDO_WINDOW_MS } from './undo.ts';
 
 // A stuck item: its agent's lease ran out without a release (Atasco). The person, from the UI,
@@ -77,6 +78,24 @@ export function restartItem(ctx: Context, input: RestartInput, now: Clock = syst
 export function reassignItem(ctx: Context, input: ReassignInput, now: Clock = systemClock): Item {
   assertAgentName(input.agent);
   return releaseStuck(ctx, input, { cause: 'reassign', next: input.agent }, now);
+}
+
+// «Retomar» on an item an agent set aside for later (P7-R3-1): the person takes it up again, so
+// next and wait offer it to the agents once more. Refused on one nobody set aside.
+export function resumeItem(ctx: Context, input: RestartInput, now: Clock = systemClock): Item {
+  const { db } = ctx;
+  return transaction(db, () => {
+    const item = requireWritableItem(db, input.id);
+    const at = now();
+    const lift = { id: item.id, actor: input.actor, at, cause: 'resume' as const };
+    if (!liftSetAside(db, lift, { channel: input.channel }))
+      throw new OteaError(
+        'invalid_transition',
+        `${item.id} is not set aside: there is nothing to take up again`,
+        { kind: 'not_set_aside', item: item.id },
+      );
+    return present(item, workflowOf(ctx, item), at);
+  });
 }
 
 export function undoRelease(ctx: Context, input: RestartInput, now: Clock = systemClock): Item {

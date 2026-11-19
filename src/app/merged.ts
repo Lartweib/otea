@@ -132,7 +132,7 @@ export function reopenItem(
     const to = stateOf({ step, phase: 'doing' });
     const at = now();
     const moved = landMove(
-      ctx.db,
+      ctx,
       workflowOf(ctx, item),
       item,
       { to, actor: input.actor, at, lease: activeLease(item.lease, at), board: true },

@@ -64,6 +64,8 @@ export type RefusalDetails =
   | { kind: 'undo_release'; item: string; why: 'not_release' | 'not_yours' | 'too_old' | 'lost' }
   // Retomar or Reasignar on an item that is not stuck: still held, or never held.
   | { kind: 'not_stuck'; item: string; holder?: string }
+  // Retomar on an item no agent set aside for later (or one taken up again since).
+  | { kind: 'not_set_aside'; item: string }
   | { kind: 'agent_name'; name: string }
   // A preset workflow's move: no such move, not the performer's, or it needs a reason.
   // `from` and `to`: the states, by key.
