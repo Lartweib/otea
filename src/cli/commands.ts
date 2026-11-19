@@ -44,6 +44,7 @@ import {
   withRegistry,
 } from '../app/home.ts';
 import { hasOwnBoards, type InitBoard, initBoards, NO_BOARDS } from '../app/init-boards.ts';
+import { itemHitsText, searchItems } from '../app/item-search.ts';
 import {
   createItem,
   getItem,
@@ -3045,7 +3046,7 @@ const topicAnswer: Command = {
 const topicList: Command = {
   name: 'topic list',
   summary:
-    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too); --search finds the topics with any of the words, the most first, each with its answer',
+    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too); --search: topics with any of the words, best first, with answers; then items whose threads say them',
   args: [],
   options: { all: { flag: true }, search: { placeholder: 'words' } },
   execute: (input) =>
@@ -3055,7 +3056,12 @@ const topicList: Command = {
         all: input.flag('all'),
         ...(search === undefined ? {} : { search }),
       });
-      return { data: topics, text: topicsListText(topics, search) };
+      if (search === undefined || search.trim() === '')
+        return { data: topics, text: topicsListText(topics, search) };
+      // A search looks in the items' threads too, where a decision is often made (P3C-R2-8).
+      const items = searchItems(project, search);
+      const text = [topicsListText(topics, search), itemHitsText(items)].filter(Boolean);
+      return { data: { topics, items }, text: text.join('\n\n') };
     }),
 };
 

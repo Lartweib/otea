@@ -1,3 +1,4 @@
+import type { ItemHit } from '../../src/app/item-search.ts';
 import type { Topic, TopicState } from '../../src/app/topics.ts';
 import { canSubmit, type FormValues, initialValues } from './intake.ts';
 import type { FieldView, TypeView } from './types.ts';
@@ -6,9 +7,15 @@ import type { FieldView, TypeView } from './types.ts';
 // a short conversation. The page lists what waits on someone, what was left hanging first; Te toca
 // folds the answered ones, the person's turn, under its reviews.
 
+export type { ItemHit } from '../../src/app/item-search.ts';
 export type { Topic, TopicState, TopicTurn } from '../../src/app/topics.ts';
 
-export type TopicsView = { on: boolean; topics: Topic[] };
+// `items`: the items whose threads hold the words searched (none without a search).
+export type TopicsView = {
+  on: boolean;
+  topics: Topic[];
+  items?: ItemHit[];
+};
 
 export type ItemTopic = Topic & { pending: boolean };
 export type ItemTopics = { linked: ItemTopic[]; suggested: Topic[] };

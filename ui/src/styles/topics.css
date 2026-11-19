@@ -64,10 +64,15 @@
 .tp-group[data-state="hanging"] .tp-gh {
   color: var(--warn, var(--ink-2));
 }
-.tp-list ul {
+.tp-list ul,
+.tp-items ul {
   list-style: none;
   margin: 0;
   padding: 0;
+}
+/* The items a search found in their threads, after the topics. */
+.tp-items {
+  margin-top: 20px;
 }
 .tp-row {
   display: grid;

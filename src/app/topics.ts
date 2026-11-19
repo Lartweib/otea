@@ -1,5 +1,6 @@
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
+import { type Searched, searchWords, wordsHeld } from '../core/search-words.ts';
 import { transaction } from '../store/database.ts';
 import type { ItemRecord } from '../store/queries.ts';
 import type { Context } from './context.ts';
@@ -511,49 +512,11 @@ const ORDER: Readonly<Record<TopicState, number>> = {
   closed: 4,
 };
 
-// Text as a search compares it: lower case, without accents (migración finds migracion).
-const folded = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
-
-// Words a search skips, Spanish and English: too common to tell one topic from another.
-const COMMON_WORDS = new Set(
-  (
-    'a al como con de del el en es esa ese eso esta este esto la las lo los mas no o para pero ' +
-    'por que se si sin sobre su sus un una uno unos unas y ' +
-    'an and are as at be by for how in is it of on or that the this to what with'
-  ).split(' '),
-);
-
-// The words of a text as a search compares them: folded, split on anything not a letter or digit.
-const wordsOf = (text: string) =>
-  folded(text)
-    .split(/[^\p{L}\p{N}]+/u)
-    .filter((word) => word !== '');
-
-// A searched word and its singular, when it reads as a plural: envíos, envio; cases, case;
-// paginaciones, paginacion. Short words stay as they are (mes, gas).
-function formsOf(word: string): string[] {
-  const forms = [word];
-  if (word.length > 3 && word.endsWith('s')) forms.push(word.slice(0, -1));
-  if (word.length > 4 && word.endsWith('es')) forms.push(word.slice(0, -2));
-  return forms;
-}
-
-// The words searched, without the common ones, unless they are all common.
-function searchWords(search: string): string[][] {
-  const words = [...new Set(wordsOf(search))];
-  const telling = words.filter((word) => !COMMON_WORDS.has(word));
-  return (telling.length > 0 ? telling : words).map(formsOf);
-}
-
-// How many of the words searched a topic holds, anywhere in it: its id, title, the question, each
-// answer's summary and full text, and the person's notes. A word matches a whole word of the
-// topic, or the start of one when it has four letters or more (moto finds motos, pagin paginación).
-function score(topic: Topic, searched: readonly string[][]): number {
+// How many of the words searched (core/search-words.ts) a topic holds, anywhere in it: its id,
+// title, the question, each answer's summary and full text, and the person's notes.
+function score(topic: Topic, searched: Searched): number {
   const parts = topic.turns.flatMap((turn) => [turn.text, turn.full ?? '']);
-  const words = new Set(wordsOf([topic.id, topic.title, ...parts].join('\n')));
-  const holds = (form: string) =>
-    words.has(form) || (form.length >= 4 && [...words].some((word) => word.startsWith(form)));
-  return searched.filter((forms) => forms.some(holds)).length;
+  return wordsHeld([topic.id, topic.title, ...parts].join('\n'), searched);
 }
 
 const byState = (a: Topic, b: Topic) =>

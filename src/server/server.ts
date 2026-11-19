@@ -11,6 +11,7 @@ import { listCollectionViews, listShownCollectionViews } from '../app/collection
 import { deviceByToken, touchDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
 import { attachFiles, createItemWithEvidence } from '../app/intake.ts';
+import { searchItems } from '../app/item-search.ts';
 import {
   createItem,
   getItem,
@@ -573,15 +574,15 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       })
       // Side topics (app/topics.ts): the list, one topic, a note that keeps it going, closing it and
       // turning it into a task, from the phone too; turning them on or off is the desk's.
-      .get('/topics', (c) =>
-        c.json({
+      // A search looks in the items' threads too (app/item-search.ts).
+      .get('/topics', (c) => {
+        const search = c.req.query('search') ?? '';
+        return c.json({
           on: topicsOn(project),
-          topics: listTopics(project, {
-            all: c.req.query('all') === '1',
-            search: c.req.query('search') ?? '',
-          }),
-        }),
-      )
+          topics: listTopics(project, { all: c.req.query('all') === '1', search }),
+          items: searchItems(project, search),
+        });
+      })
       .post('/topics/switch', async (c) => {
         assertConfigurable(c, auth);
         const { on } = await topicBody(c, TopicsSwitchBody, '{"on": boolean}');
