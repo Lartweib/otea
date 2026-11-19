@@ -1,6 +1,17 @@
 import { type ReactNode, useState } from 'react';
-import { backWaysOf, waysOf } from '../../../../src/core/board/engine.ts';
-import { DONE, type Step, stepIndex } from '../../../../src/core/board/model.ts';
+import { backWaysOf, startsWith, waysOf } from '../../../../src/core/board/engine.ts';
+import {
+  type BoardDefinition,
+  DONE,
+  type FieldKind,
+  LEVELS,
+  type Lead,
+  type Part,
+  partOf,
+  type Step,
+  stepIndex,
+  WHEN_KINDS,
+} from '../../../../src/core/board/model.ts';
 import { useApp } from '../../app/context.tsx';
 import { t, tx } from '../../i18n/i18n.ts';
 import { MenuItem, MenuLabel } from '../../kit/pop/Menu.tsx';
@@ -19,6 +30,7 @@ import {
   replaceWay,
   setBack,
   setDoer,
+  setLead,
   setReviewer,
 } from './edits.ts';
 import { Glyph, kindGlyph } from './glyphs.tsx';
@@ -37,6 +49,7 @@ import {
   stepConseq,
   stepPlace,
   waysConseq,
+  whenValueName,
 } from './sentences.ts';
 import { whoTitle, whoWord } from './who.ts';
 
@@ -46,6 +59,122 @@ import { whoTitle, whoWord } from './who.ts';
 
 // Problems shown elsewhere on the card already (as the consequences of who).
 const SAID = new Set(['self_review', 'agent_offline']);
+
+// The values a part that a lead (or a «solo cuando») reads can hold, by id and name.
+function whenValues(def: BoardDefinition, part: Part): { id: string; name: string }[] {
+  if (part.kind === 'level')
+    return LEVELS.map((l) => ({ id: l, name: whenValueName(def, part.id, l) }));
+  if (part.kind === 'yesno')
+    return ['yes', 'no'].map((v) => ({ id: v, name: whenValueName(def, part.id, v) }));
+  return part.options.map((c) => ({ id: c.id, name: c.name }));
+}
+
+// «Si <campo> es <valor>, va a <paso>»: the step's lead (Step.lead), seen and changed here (p4
+// leftover), as Pendientes' «Tu parte» leads a to-do the person does straight to Hecho. The parts
+// it can read are those the step starts with or the item carries at any time, as «solo cuando».
+function LeadRow({ step }: { step: Step }) {
+  const { draft } = useEditor();
+  const def = draft.def;
+  const i = stepIndex(def, step.id);
+  const seen = new Set<string>();
+  const parts = [...startsWith(def, step.id).map((o) => o.ref), ...def.anytime]
+    .filter((ref) => !seen.has(ref) && seen.add(ref))
+    .map((ref) => partOf(def, ref))
+    .filter((p): p is Part => !!p && WHEN_KINDS.includes(p.kind as FieldKind));
+  const targets = [...def.steps.slice(i + 1).map((s) => s.id), DONE];
+  if (!parts.length) return null;
+  const set = (lead: Lead | undefined) => draft.mutate((d) => setLead(d, step.id, lead));
+  const lead = step.lead;
+  if (!lead) {
+    const [first] = parts;
+    return (
+      <div className="se-addrow">
+        <button
+          type="button"
+          className="se-addbtn"
+          onClick={() =>
+            first &&
+            set({
+              to: DONE,
+              when: { part: first.id, value: whenValues(def, first)[0]?.id ?? '' },
+            })
+          }
+        >
+          <Glyph name="plus" />
+          {t('bs.editor.lead.add')}
+        </button>
+      </div>
+    );
+  }
+  const on = partOf(def, lead.when.part);
+  const values = on ? whenValues(def, on) : [];
+  return (
+    <div className="se-lead" data-lead="">
+      <div className="se-hgrid se-hgrid3">
+        <label className="se-fld">
+          <span className="se-flab">{t('bs.editor.lead.if')}</span>
+          <select
+            className="se-tx"
+            value={on?.id ?? ''}
+            onChange={(e) => {
+              const pick = partOf(def, e.target.value);
+              if (pick)
+                set({
+                  ...lead,
+                  when: { part: pick.id, value: whenValues(def, pick)[0]?.id ?? '' },
+                });
+            }}
+          >
+            {on ? null : <option value="">{t('bs.editor.part.when_pick')}</option>}
+            {parts.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="se-fld">
+          <span className="se-flab">{t('bs.editor.lead.is')}</span>
+          <select
+            className="se-tx"
+            disabled={!on}
+            value={lead.when.value}
+            onChange={(e) => set({ ...lead, when: { ...lead.when, value: e.target.value } })}
+          >
+            {values.map((v) => (
+              <option key={v.id} value={v.id}>
+                {v.name}
+              </option>
+            ))}
+          </select>
+        </label>
+        <label className="se-fld">
+          <span className="se-flab">{t('bs.editor.lead.to')}</span>
+          <select
+            className="se-tx"
+            value={lead.to}
+            onChange={(e) => set({ ...lead, to: e.target.value })}
+          >
+            {targets.map((x) => (
+              <option key={x} value={x}>
+                {targetName(def, x)}
+              </option>
+            ))}
+          </select>
+        </label>
+      </div>
+      <button
+        type="button"
+        className="se-x"
+        aria-label={t('bs.editor.lead.remove')}
+        title={t('bs.editor.lead.remove')}
+        onClick={() => set(undefined)}
+      >
+        <Glyph name="x" />
+      </button>
+    </div>
+  );
+}
 
 export function Section({
   label,
@@ -348,6 +477,7 @@ export function StepCard({ step }: { step: Step }) {
             </button>
           </div>
         ) : null}
+        <LeadRow step={step} />
         <WayMenu
           def={def}
           step={step}

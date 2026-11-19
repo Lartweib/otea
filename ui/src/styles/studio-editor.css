@@ -750,6 +750,20 @@ input.se-stepname:focus {
   display: block;
   min-width: 0;
 }
+/* A step's lead by a field (Step.lead): «Si … es … va a …», and its ✕. */
+.se-lead {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: end;
+  gap: 8px;
+  margin-top: 10px;
+}
+.se-hgrid3 {
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+.se-lead .se-x {
+  margin-bottom: 7px;
+}
 .se-flab {
   display: block;
   margin-bottom: 6px;

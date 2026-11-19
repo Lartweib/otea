@@ -106,6 +106,12 @@ export const studioEditor = {
   'bs.editor.ways.remove': 'Remove this way',
   'bs.editor.ways.add': 'or somewhere else',
   'bs.editor.ways.menu': 'or to…',
+  // A step's lead by a field of the item (Step.lead): Pendientes leads «Tu parte» to Done.
+  'bs.editor.lead.add': 'or to another step by a field',
+  'bs.editor.lead.if': 'If',
+  'bs.editor.lead.is': 'is',
+  'bs.editor.lead.to': 'it goes to',
+  'bs.editor.lead.remove': 'Remove this lead',
   'bs.editor.ways.to_done': 'ends here',
   'bs.editor.ways.to_step': 'skips the steps in between',
   'bs.editor.ways.approve': 'When you approve it you choose: Approve {ways}.',
