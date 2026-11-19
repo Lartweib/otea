@@ -24,7 +24,7 @@ otea handoff CAM-2                         # refused (exit 8) while what Aclarar
 otea update CAM-2 --field "Cómo lo valido=The footer shows this year" --field "Clase de cambio=Error"   # fill what was missing
 otea handoff CAM-2                         # on to Hacerlo; then otea next again
 otea list --field "Clase de cambio=Error"  # items whose field holds that value, by name or id (repeat to AND them)
-otea list --sort order                     # on top first, then the order fixed on the Matrix, numbered over open items
+otea list --sort order                     # on top first, then the order fixed on the Matrix (numbered over open items), then the other open items, closed ones last
 otea wait --turn agent --unclaimed         # nothing to do: block until there is something, then otea next
 otea check --gate push --branch --repo     # may this branch be pushed? exit 0 yes, 19 no (fails open)
 unset OTEA_AGENT
