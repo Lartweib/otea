@@ -984,8 +984,9 @@ function Tools({
 // ---- the phone's step chips ----
 
 // A board on the phone filters by step (mobile mock 4): Todos, then each step with its count, one
-// pressed at a time, in a row that scrolls sideways under the finger.
-function StepChips({
+// pressed at a time, in a row that scrolls sideways under the finger. Matriz, a view rather than a
+// step, leads the row: last, it sat off a 390 px screen until you scrolled to it (P7-R2-11).
+export function StepChips({
   chips,
   on,
   onPick,
@@ -998,6 +999,11 @@ function StepChips({
 }) {
   return (
     <fieldset className="stepchips" aria-label={t('phone.steps')} data-enter="fade">
+      {matrix ? (
+        <button type="button" aria-pressed={matrix.on} onClick={matrix.pick}>
+          {t('matrix.chip')}
+        </button>
+      ) : null}
       {chips.map((c) => (
         <button
           key={c.key ?? ''}
@@ -1008,11 +1014,6 @@ function StepChips({
           {c.label} <b>{c.count}</b>
         </button>
       ))}
-      {matrix ? (
-        <button type="button" aria-pressed={matrix.on} onClick={matrix.pick}>
-          {t('matrix.chip')}
-        </button>
-      ) : null}
     </fieldset>
   );
 }
