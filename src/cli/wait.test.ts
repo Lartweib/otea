@@ -11,7 +11,7 @@ import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
 import { cambios, errores, step, tareasDeRepo } from '../core/board/testing.ts';
-import { updateItemState } from '../store/queries.ts';
+import { selectProcessBeats, updateItemState } from '../store/queries.ts';
 import { listProcesses, ownerChain, type ProcessRow } from './owner.ts';
 import {
   type Cli,
@@ -116,6 +116,9 @@ describe('wait', () => {
     try {
       const quill = listAgents(project.db).find(({ name }) => name === 'quill');
       expect(quill).toMatchObject({ listening: true, waiting: false });
+      // P3C-R3-12: it said it ended, so a process given its id later is never taken for it. (The
+      // command ran in this process.)
+      expect(selectProcessBeats(project.db).has(process.pid)).toBe(false);
     } finally {
       project.db.close();
     }

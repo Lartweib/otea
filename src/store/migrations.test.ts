@@ -48,16 +48,17 @@ describe('migrate', () => {
         'evidence_opened',
         'name_offers',
         'mcp_loads',
+        'process_beats',
       ]),
     );
-    expect(userVersion(db)).toBe(35);
+    expect(userVersion(db)).toBe(36);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(35);
+    expect(userVersion(db)).toBe(36);
   });
 
   describe('from version 1', () => {

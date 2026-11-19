@@ -438,6 +438,15 @@ export const MIGRATIONS = [
   `
   ALTER TABLE mcp_loads ADD COLUMN session INTEGER;
   `,
+  // When each Otea process of this computer that others watch (an MCP server, a command-line wait)
+  // last said it still runs, by its process id: an id alone is no proof, since the system gives an
+  // ended process's id to another one (P3C-R3-12). A process that ends on its own leaves no row.
+  `
+  CREATE TABLE process_beats (
+    pid INTEGER PRIMARY KEY,
+    at TEXT NOT NULL
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
