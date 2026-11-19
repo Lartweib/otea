@@ -621,6 +621,16 @@ export function leftFor(ctx: Context, id: string): string | undefined {
   return cause === 'reassign' && typeof next === 'string' ? next : undefined;
 }
 
+// The agent that set the item aside for later (otea release --later), while it has not moved nor
+// been claimed since; undefined otherwise.
+export function setAsideBy(ctx: Context, id: string): string | undefined {
+  const last = selectEvents(ctx.db, id).findLast(({ type }) =>
+    ['claimed', 'released', 'transitioned'].includes(type),
+  );
+  if (last?.type !== 'released' || last.actor.kind !== 'agent') return undefined;
+  return last.data.cause === 'later' ? last.actor.name : undefined;
+}
+
 // On a Pedido an agent drafts a board on, how to hand the draft in follows the instructions of the
 // step it stands on: the agent reads it where it reads any step's, apart from the person's words.
 function withHandIn(ctx: Context, item: ItemRecord, def: BoardDefinition): BoardDefinition {
@@ -772,6 +782,8 @@ function isTheirs(
   if (asker !== undefined && asker !== agent) return false;
   // Planned work waits for the plan that made it to be approved.
   if (plannedBy(ctx, item)) return false;
+  // What it set aside for later waits until it takes it up again.
+  if (setAsideBy(ctx, item.id) === agent) return false;
   // A step that waits for parts or blockers still being worked on is not the agent's work yet: its
   // handoff cannot pass, and offering it would loop the agent on it (P7-R2-2).
   if (waitsOpen(def, on)) return false;
@@ -920,6 +932,20 @@ function byOrder(a: number, b: number): number {
   return a === b ? 0 : a < b ? -1 : 1;
 }
 
+// With nothing to do: what the agent set aside for later, and how to take it up again.
+function setAsideLines(ctx: Context, boards: readonly LiveBoard[], agent: string): string[] {
+  const ids = boards.flatMap((board) =>
+    selectItems(ctx.db, { collection: board.collection })
+      .filter((item) => !isClosed(positionOf(item.state)) && setAsideBy(ctx, item.id) === agent)
+      .map(({ id }) => id),
+  );
+  if (ids.length === 0) return [];
+  const one = ids.length === 1;
+  return [
+    `You set aside ${ids.join(', ')} for later: otea claim ${one ? ids[0] : '<id>'} takes ${one ? 'it' : 'one'} up again.`,
+  ];
+}
+
 // With nothing to do while other agents hold the boards' work (P6-18): who holds what, and how two
 // agents share a board, so the idle one neither waits blind nor takes over what another holds.
 function heldElsewhere(
@@ -1031,7 +1057,11 @@ export function nextFor(
       return {
         item: null,
         collection: options.collection ?? null,
-        text: [idleText(idle), ...heldElsewhere(ctx, boards, agent, at)].join('\n\n'),
+        text: [
+          idleText(idle),
+          ...setAsideLines(ctx, boards, agent),
+          ...heldElsewhere(ctx, boards, agent, at),
+        ].join('\n\n'),
         idle: true,
       };
     }

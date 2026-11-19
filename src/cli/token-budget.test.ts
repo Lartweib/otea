@@ -60,8 +60,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // at 4275). Raised for reopen, the way back for a Done item whose PR conflicts (measured at 4393). Raised for
   // detach, taking back a file attached by mistake (measured at 4541). Raised for topic_list (with
   // its search) and topic_show, so an agent asked what was concluded before reads the topics kept
-  // (measured at 4806). Raised for whoami, the name a new session worked under before.
-  tools: { mcp: 4990 },
+  // (measured at 4806). Raised for whoami, the name a new session worked under before. Raised for
+  // release's --later, setting aside an item the person wants for later (measured at 5012).
+  tools: { mcp: 5040 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to
