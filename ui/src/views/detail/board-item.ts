@@ -552,26 +552,41 @@ export function sheetLook(look: Look, onBoard: boolean): Look {
 // `lands`: the step it lands on is the board's land step, where an agent merges the approved
 // branch and pushes it, into the base it names (none when the board protects no base).
 // `unmerged`: it closes as Done on a board with no land step, where nothing merges it on the way.
+// `unpushed`: the branch the review approves was handed off never pushed to the remote (P7-8).
 export function backOf(
   def: BoardDefinition,
   item: ItemLike,
   to: string,
-): { agent: string | null; round: number; lands?: string; unmerged?: true } {
+): { agent: string | null; round: number; lands?: string; unmerged?: true; unpushed?: string } {
   const target = positionOf(to);
   const branch = guardedBranch(def);
   const land = def.steps.find((s) => isLandStep(def, s.id));
+  const unpushed = unpushedOf(item);
+  const warn = unpushed === undefined ? {} : { unpushed };
   if (isClosed(target))
     return target.closed === DONE && branch && !land
-      ? { agent: null, round: 0, unmerged: true }
-      : { agent: null, round: 0 };
+      ? { agent: null, round: 0, unmerged: true, ...warn }
+      : { agent: null, round: 0, ...warn };
   const history = historyFor(def, item.events, item.createdAt);
   const rounds = roundsOf(def, history.initial, history.createdAt, history.moves);
   const turn = turnAt(def, { step: target.step, phase: 'doing' });
   const agent = null;
   const round = (rounds.rounds[target.step] ?? 0) + 1;
   return branch && land?.id === target.step
-    ? { agent, round, lands: branch.guard.base ?? '' }
-    : { agent, round };
+    ? { agent, round, lands: branch.guard.base ?? '', ...warn }
+    : { agent, round, ...warn };
+}
+
+// The branch the last handoff into a review recorded as never pushed, though the repo has a
+// remote: what the person approves is not on the remote.
+function unpushedOf(item: ItemLike): string | undefined {
+  const handed = item.events.findLast(({ type, data }) => {
+    if (type !== 'transitioned') return false;
+    const to = positionOf(String(data.to));
+    return !isClosed(to) && to.phase !== 'doing';
+  });
+  const tip = handed?.data.tip as { branch?: unknown; pushed?: unknown } | undefined;
+  return tip?.pushed === false && typeof tip.branch === 'string' ? tip.branch : undefined;
 }
 
 // The step the person does while it is being done (Propuesta, Triar): their own step, whoever
