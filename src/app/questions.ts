@@ -26,6 +26,7 @@ import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
+import { sessionEnded } from './presence.ts';
 import { RELAYED_HUMAN } from './relay.ts';
 
 // An agent's question to the person (core/board/questions.ts): the agent asks while it does a step,
@@ -119,7 +120,7 @@ export function answerQuestion(ctx: Context, input: AnswerInput, now = systemClo
     refuse('forbidden', id, 'not_person', `Not answered: the person answers questions on ${id}`);
   const text = input.text.trim();
   if (text === '') refuse('reason_required', id, 'empty', `Not answered on ${id}: say your answer`);
-  return recordAnswer(ctx, { ...input, text }, {}, now);
+  return recordAnswer(ctx, { ...input, text }, {}, now).question;
 }
 
 export type ChatAnswerResult = { question: ItemQuestion; text: string };
@@ -144,16 +145,18 @@ export function noteChatAnswer(
   if (text === '')
     refuse('reason_required', id, 'empty', `Not noted on ${id}: give the person's words`);
   const data = { via: actor.name, source: 'conversation' };
-  const question = recordAnswer(ctx, { ...input, text, actor: RELAYED_HUMAN }, data, now);
-  return { question, text: chatAnswerText(id) };
+  const { question, gone } = recordAnswer(ctx, { ...input, text, actor: RELAYED_HUMAN }, data, now);
+  const asker = question.by === actor.name ? undefined : { name: question.by, gone };
+  return { question, text: chatAnswerText(id, asker) };
 }
 
+// The question answered, and whether the session of the agent that asked it ended (`gone`).
 function recordAnswer(
   ctx: Context,
   input: AnswerInput,
   extra: Record<string, string>,
   now: () => string,
-): ItemQuestion {
+): { question: ItemQuestion; gone: boolean } {
   const { id, text } = input;
   return transaction(ctx.db, () => {
     const item = requireWritableItem(ctx.db, id);
@@ -178,11 +181,13 @@ function recordAnswer(
     );
     if (!answered) throw new Error(`question ${open.question} on ${item.id} was not kept`);
     // The answer goes back to the agent that asked: its lease, run out while the person thought,
-    // is taken again for it, unless another agent holds the item now.
+    // is taken again for it, unless another agent holds the item now, or its session ended: then
+    // the item waits for whichever agent claims it (P3C-R3-11).
     const at = now();
     const lease = activeLease(item.lease, at);
-    if (!lease) takeItem(ctx.db, item, { kind: 'agent', name: open.by }, at);
-    return answered;
+    const gone = sessionEnded(ctx.db, open.by, () => at);
+    if (!lease && !gone) takeItem(ctx.db, item, { kind: 'agent', name: open.by }, at);
+    return { question: answered, gone };
   });
 }
 

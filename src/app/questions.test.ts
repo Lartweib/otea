@@ -6,8 +6,9 @@ import { insertEvidence, selectEvents } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, listItems, showItem } from './items.ts';
-import { claimItem } from './leases.ts';
+import { claimItem, releaseItem } from './leases.ts';
 import { handoffItem, itemNextText, nextFor } from './next.ts';
+import { endProcess, waitBeat } from './presence.ts';
 import { answerQuestion, answerWaiting, askQuestion, noteChatAnswer } from './questions.ts';
 import { restartItem } from './restart.ts';
 import { memoryContext } from './testing.ts';
@@ -255,6 +256,64 @@ describe('the person answers', () => {
     expect(itemNextText(ctx, after, 'kiln', now)).toContain('The person answered: "Con musgo"');
     // The agent that noted it knows it already: its wait does not wake on it.
     expect(answerWaiting(ctx, 'kiln')).toBeUndefined();
+  });
+
+  // P3C-R3-11: kiln asked, set the item aside for later, and its session ended. scout noted the
+  // person's chat answer, and Otea claimed the item for kiln again for 15 minutes: the desk said
+  // kiln was doing it, and scout's claim was refused until the person freed it (Liberar).
+  describe('once the session of the agent that asked ended', () => {
+    // kiln waits in otea wait (this test's process stands for it), until its session ends.
+    const waits = (ctx: Context) =>
+      waitBeat(ctx.db, { agent: 'kiln', channel: 'cli', waiter: process.pid }, now).run();
+    const ends = (ctx: Context) => endProcess(ctx.db, process.pid);
+
+    it('noted from the chat by another agent, claims the item for nobody: that agent takes it', () => {
+      const ctx = memoryContext();
+      const item = working(ctx);
+      waits(ctx);
+      ask(ctx, item.id);
+      releaseItem(ctx, { id: item.id, actor: kiln, later: true }, now);
+      ends(ctx);
+
+      const noted = noteChatAnswer(
+        ctx,
+        { id: item.id, text: 'Con musgo', actor: scout, channel: 'cli' },
+        now,
+      );
+
+      expect(getItem(ctx, item.id, now).lease).toBeNull();
+      expect(noted.text).toContain(
+        `kiln, which asked, is gone (its session ended): claim it to carry on: otea claim ${item.id}`,
+      );
+      expect(nextFor(ctx, 'scout', {}, now).item).toBe(item.id);
+      expect(claimItem(ctx, { id: item.id, actor: scout }, now).lease?.holder).toBe('scout');
+    });
+
+    it('answered in Otea, leaves it to whichever agent claims it', () => {
+      const ctx = memoryContext();
+      const item = working(ctx);
+      waits(ctx);
+      ask(ctx, item.id);
+      tick += 20 * 60;
+      ends(ctx);
+
+      answerQuestion(ctx, { id: item.id, text: 'Con musgo', actor: you, channel: 'ui' }, now);
+
+      expect(getItem(ctx, item.id, now).lease).toBeNull();
+      expect(nextFor(ctx, 'scout', {}, now).item).toBe(item.id);
+    });
+
+    it('while its session runs, still gives it back to it', () => {
+      const ctx = memoryContext();
+      const item = working(ctx);
+      waits(ctx);
+      ask(ctx, item.id);
+      releaseItem(ctx, { id: item.id, actor: kiln, later: true }, now);
+
+      noteChatAnswer(ctx, { id: item.id, text: 'Con musgo', actor: scout, channel: 'cli' }, now);
+
+      expect(getItem(ctx, item.id, now).lease?.holder).toBe('kiln');
+    });
   });
 
   it('noted from the chat only by an agent, with the person’s words, while a question waits', () => {

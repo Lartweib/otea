@@ -113,6 +113,7 @@ import {
   workflowOf,
 } from './items.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
+import { sessionEnded } from './presence.ts';
 import { priorityOf } from './priority.ts';
 import { approvedTipOf } from './tips.ts';
 
@@ -816,8 +817,14 @@ function textFor(
 
 // The agent whose question the person answered in this round, while it has done nothing on the
 // item since: the item stays its own, though its lease ran out while the person thought, so the
-// answer reaches the agent that asked it, never another one.
-export function answeredFor(ctx: Context, item: ItemRecord, on: ItemOnBoard): string | undefined {
+// answer reaches the agent that asked it, never another one. Once its session ended, nobody would
+// read it there: the item is any agent's again (P3C-R3-11).
+export function answeredFor(
+  ctx: Context,
+  item: ItemRecord,
+  on: ItemOnBoard,
+  now: string = systemClock(),
+): string | undefined {
   const answered = on.roundQuestions.findLast((q) => q.answer);
   const at = answered?.answer?.at;
   if (!answered || at === undefined) return undefined;
@@ -828,7 +835,8 @@ export function answeredFor(ctx: Context, item: ItemRecord, on: ItemOnBoard): st
       ((event.actor.kind === 'agent' && event.actor.name === answered.by) ||
         (event.actor.kind === 'human' && event.type === 'released')),
   );
-  return done ? undefined : answered.by;
+  if (done || sessionEnded(ctx.db, answered.by, () => now)) return undefined;
+  return answered.by;
 }
 
 // Whether the item is the agent's to take now: a doing phase it may take, or a review any agent
@@ -849,7 +857,7 @@ function isTheirs(
   const on = itemOnBoard(ctx, item, def);
   if (on.asking) return false;
   // Their answer goes to the agent that asked it.
-  const asker = answeredFor(ctx, item, on);
+  const asker = answeredFor(ctx, item, on, at);
   if (asker !== undefined && asker !== agent) return false;
   // Planned work waits for the plan that made it to be approved.
   if (plannedBy(ctx, item)) return false;
@@ -1904,7 +1912,12 @@ function assertMayHandOff(ctx: Context, item: ItemRecord, agent: string, at: str
   }
 }
 
-export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): void {
+export function assertMayClaim(
+  ctx: Context,
+  item: ItemRecord,
+  agent: string,
+  at: string = systemClock(),
+): void {
   const board = liveBoardOf(ctx, item.collection);
   if (!board) return;
   const position = positionOf(item.state);
@@ -1935,7 +1948,7 @@ export function assertMayClaim(ctx: Context, item: ItemRecord, agent: string): v
       `${item.id} waits for the person to answer ${asking.by}'s question; claim only what is yours (otea next)`,
     );
   }
-  const asker = answeredFor(ctx, item, on);
+  const asker = answeredFor(ctx, item, on, at);
   if (asker !== undefined && asker !== agent) {
     throw new OteaError(
       'not_claimable',

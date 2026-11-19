@@ -10,10 +10,18 @@ import {
   leaseHeld,
 } from '../core/lease.ts';
 import { timeText } from '../core/time.ts';
-import { appendEvent, type ItemRecord, selectEvents, takeLease } from '../store/queries.ts';
+import {
+  appendEvent,
+  clearLease,
+  type ItemRecord,
+  selectEvents,
+  takeLease,
+} from '../store/queries.ts';
+import { sessionEnded } from './presence.ts';
 
 // Takes the lease on an item for the actor, inside the caller's transaction, once the caller has
-// checked the item is the actor's to claim: refused while another holds it; claiming it again
+// checked the item is the actor's to claim: refused while another holds it, unless that agent's
+// session ended (P3C-R3-11): its lease is taken over, with `cause: ended`. Claiming it again
 // extends it. A new holder writes a `claimed` event. Shared by otea claim and otea next --claim.
 export function takeItem(
   db: DatabaseSync,
@@ -22,13 +30,16 @@ export function takeItem(
   at: string,
   ttlMs = DEFAULT_LEASE_TTL_MS,
 ): Lease {
-  const current = activeLease(item.lease, at);
-  if (current && current.holder !== actor.name) throw leaseHeld(item.id, current);
+  const held = activeLease(item.lease, at);
+  const other = held && held.holder !== actor.name ? held : null;
+  const ended = other !== null && sessionEnded(db, other.holder, () => at);
+  if (other && !ended) throw leaseHeld(item.id, other);
+  if (ended) clearLease(db, item.id);
   const lease = { holder: actor.name, expiresAt: leaseExpiry(at, ttlMs) };
   if (!takeLease(db, item.id, lease, at)) throw new OteaError('lease_held', `${item.id} is held`);
-  if (!current) {
+  if (!held || ended) {
     const previous = item.lease && item.lease.holder !== actor.name ? item.lease.holder : null;
-    const data = previous ? { ...lease, previous } : lease;
+    const data = previous ? { ...lease, previous, ...(ended ? { cause: 'ended' } : {}) } : lease;
     appendEvent(db, { itemId: item.id, type: 'claimed', actor, at, data });
   }
   return lease;
