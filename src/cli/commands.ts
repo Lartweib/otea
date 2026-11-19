@@ -22,6 +22,7 @@ import {
   writeAgentsMd,
 } from '../app/agents.ts';
 import { addBoard, addBoardSet, type BoardRecord, syncBoardPresets } from '../app/boards.ts';
+import { branchNamedFirst } from '../app/branch-owner.ts';
 import { briefFor } from '../app/brief.ts';
 import {
   collectionIcon,
@@ -220,6 +221,7 @@ import {
 import { prState } from './gh.ts';
 import {
   branchesBrought,
+  checkedOutBranch,
   checkoutRoot,
   commitsOver,
   currentBranch,
@@ -1503,9 +1505,10 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
 // with a handoff into a review, it is what the person approves, and all the push gate lets land
 // once it is approved (P3C-R2-1). Before the branch freezes in review, an agent's handoff is
 // refused when the branch it names is not here at all (P1-R2-2), or when it holds commits the
-// remote branch of its name never got, on a step that pushes it (P3C-R2-2); one never pushed
-// though the repo has a remote is handed off with a warning, and the person sees it when they
-// approve (P7-8). The base itself, on a board that works straight on it, is never pushed before
+// remote branch of its name never got, on a step that pushes it (P3C-R2-2), or when it is not the
+// work handed off: another open item's branch, or not the one checked out (P1-R3-1,
+// refuseOthersBranch). One never pushed though the repo has a remote is handed off with a warning,
+// and the person sees it when they approve (P7-8). The base itself, on a board that works straight on it, is never pushed before
 // the approval; when it holds nothing the remote lacks, the item made no code change (a setting, a
 // question): it goes to review as such, said, and the push gate never waits on it (P2S-R3-3).
 function handedBranch(
@@ -1537,6 +1540,8 @@ function handedBranch(
       `${item.id} not handed off: ${guard.name} names ${branch}, a branch this checkout has neither here nor on the remote${where}. Set ${guard.name} to the branch that holds the work, otea update ${item.id} --field "${guard.name}=${on}", then hand it off again: ${frozen}.`,
     );
   }
+  if (checked && hands && !isLandStep(board.def, position.step))
+    refuseOthersBranch(project, cwd, move, item, guard.name, branch, guard.guard.base, frozen);
   // On the land step, once what the person approved is in the base as the remote has it (a forge
   // squash-merged the branch as it was pushed), commits here the remote never got (a rebase made
   // before the merge) need no push (P3C-R3-10).
@@ -1574,6 +1579,40 @@ function handedBranch(
     ...(warning ? { warning } : {}),
     ...(said ? { said } : {}),
   };
+}
+
+// A handoff into review hands the work on the branch Rama names, and its approval keeps that
+// branch's tip (P1-R3-1): an agent's handoff is refused when another open item named that branch
+// first, and, at the CLI, when the checkout it runs in is on another branch. Over MCP the server
+// runs in the checkout its session started in, which a subagent in a worktree of its own shares,
+// so the branch checked out there tells nothing; so does a detached HEAD (a rebase under way).
+function refuseOthersBranch(
+  project: Project,
+  cwd: string,
+  move: BoardMoveInput,
+  item: Item,
+  name: string,
+  branch: string,
+  base: string | undefined,
+  frozen: string,
+): void {
+  const first = branchNamedFirst(project, item, branch);
+  if (first)
+    throw new OteaError(
+      'missing_fields',
+      `${item.id} not handed off: ${name} names ${branch}, the branch ${first.id} (${first.title}, open) named first, so the review would read ${first.id}'s work and an approval would keep its tip. Each item works on its own branch: set ${name} to the branch that holds ${item.id}'s work, otea update ${item.id} --field "${name}=<branch>", then hand it off again: ${frozen}.`,
+    );
+  if (move.channel === 'mcp') return;
+  const on = checkedOutBranch(cwd);
+  if (on === undefined || on === branch) return;
+  const set =
+    on === base
+      ? ''
+      : `, or set ${name} to the branch that holds the work, otea update ${item.id} --field "${name}=${on}"`;
+  throw new OteaError(
+    'missing_fields',
+    `${item.id} not handed off: ${name} names ${branch}, but this checkout is on ${on}, so the review would read a branch other than the one you worked on. Hand off from the checkout of ${branch} (git switch ${branch})${set}, then hand it off again: ${frozen}.`,
+  );
 }
 
 // The base as the remote has it (origin/main), when what the person approved of the item's branch
