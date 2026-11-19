@@ -1179,7 +1179,17 @@ const boardAdd: Command = {
   },
 };
 
-function draftFile(cwd: string, file: string): string {
+// The board.json an agent hands in: the file it names, or, with --file -, what it pipes in, so it
+// needs no file outside the project (P1-R3-10). `piped`: stdin, read before the command opens the
+// project.
+function draftFile(cwd: string, file: string, piped?: string): string {
+  if (file === '-') {
+    if (piped?.trim()) return piped;
+    throw new OteaError(
+      'missing_fields',
+      'Nothing came on stdin: pipe the board JSON into otea board draft --file - (a here-document of your shell), or give --file a path',
+    );
+  }
   const path = resolve(cwd, file);
   try {
     return readFileSync(path, 'utf8');
@@ -1207,14 +1217,14 @@ function studioLink(project: Project, board: string): string {
 }
 
 // otea board draft --new: the agent the person asked for a board starts it; the person publishes.
-function proposeBoard(input: Input, name: string): Output {
+function proposeBoard(input: Input, name: string, piped?: string): Output {
   const why = input.option('why')?.trim() ?? '';
   const file = input.option('file');
   const template = input.option('template');
   return withAgent(input, (project) => {
     if (why === '')
       throw new OteaError('missing_fields', 'Say what the board is for: --why "<what it is for>"');
-    const text = file === undefined ? undefined : draftFile(input.cwd, file);
+    const text = file === undefined ? undefined : draftFile(input.cwd, file, piped);
     const { actor, channel } = input;
     const made = proposeAgentDraft(project, {
       name,
@@ -1242,13 +1252,13 @@ function proposeBoard(input: Input, name: string): Output {
 
 // otea board draft --change: the agent the person asked to change a published board opens the
 // change on a Pedido it holds; the live board works on, and the person publishes it in Studio.
-function proposeChange(input: Input, board: string): Output {
+function proposeChange(input: Input, board: string, piped?: string): Output {
   const why = input.option('why')?.trim() ?? '';
   const file = input.option('file');
   return withAgent(input, (project) => {
     if (why === '')
       throw new OteaError('missing_fields', 'Say what to change: --why "<what to change>"');
-    const text = file === undefined ? undefined : draftFile(input.cwd, file);
+    const text = file === undefined ? undefined : draftFile(input.cwd, file, piped);
     const { actor, channel } = input;
     const made = proposeBoardChange(project, {
       board,
@@ -1282,17 +1292,19 @@ const boardDraft: Command = {
     template: { placeholder: 'key' },
     change: { placeholder: 'board' },
   },
-  execute: (input) => {
+  execute: async (input) => {
     const [id] = input.args;
     const name = input.option('new');
     const change = input.option('change');
     if ([id, name, change].filter((given) => given !== undefined).length > 1)
       throw new UsageError('Give the Pedido, --new <name> or --change <board>, only one');
-    if (name !== undefined) return proposeBoard(input, name);
+    // --file - takes the board JSON from stdin (P1-R3-10).
+    const piped = input.option('file') === '-' ? await input.stdin() : undefined;
+    if (name !== undefined) return proposeBoard(input, name, piped);
     if (change !== undefined) {
       if (input.option('template') !== undefined)
         throw new UsageError('--template goes with --new <name>');
-      return proposeChange(input, change);
+      return proposeChange(input, change, piped);
     }
     if (id === undefined) throw new UsageError('Give the Pedido, or --new <name> for a new board');
     if (input.option('why') !== undefined)
@@ -1305,7 +1317,7 @@ const boardDraft: Command = {
         const definition = draftToStartFrom(project, id);
         return { data: definition, text: JSON.stringify(definition, null, 2) };
       }
-      const text = draftFile(input.cwd, file);
+      const text = draftFile(input.cwd, file, piped);
       const { actor, channel } = input;
       const submitted = submitAgentDraft(project, { id, text, actor, channel });
       return { data: submitted, text: handedInLines(id, submitted).join('\n') };

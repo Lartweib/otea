@@ -102,7 +102,7 @@ import {
 } from '../store/queries.ts';
 import { collectionNamed } from './collections.ts';
 import type { Context } from './context.ts';
-import { type DraftRequest, draftPath, draftRequestOf } from './draft-request.ts';
+import { type DraftRequest, draftRequestOf, handInCommand } from './draft-request.ts';
 import {
   getItem,
   type Item,
@@ -788,7 +788,7 @@ function textFor(
       ? undefined
       : {
           after: 'Done, once the person tries the board and publishes it in Studio',
-          command: `otea board draft ${item.id} --file ${draftPath(item.id)} --as ${me ?? item.lease?.holder ?? '<your name>'}`,
+          command: handInCommand(item.id, me ?? item.lease?.holder ?? '<your name>'),
         };
   return nextText(def, {
     id: item.id,

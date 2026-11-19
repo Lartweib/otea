@@ -1,5 +1,4 @@
 import { writeFileSync } from 'node:fs';
-import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -11,8 +10,9 @@ import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
 import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 
-// Where the agent is told to keep its board.json: the temp folder, out of the repo.
-const draftFile = (id: string) => `"${join(tmpdir(), `otea-${id}-board.json`)}"`;
+// P1-R3-10: the draft lived in the system's temp folder, outside the project, and each command on
+// it asked the person's leave in a harness (four prompts). It is handed in on stdin instead.
+const handIn = (id: string, agent: string) => `otea board draft ${id} --file - --as ${agent}`;
 
 // An agent the person asked for a board starts the same flow Studio's "Que lo esboce un agente"
 // does: otea board draft --new makes the waiting board and its Pedido, held by the agent; the
@@ -71,13 +71,20 @@ describe('otea board draft --new', () => {
     expect(out).toContain(item);
     expect(out).toContain('waits in Studio for the person to try and publish');
     expect(out).toContain(`/#/studio/board/${board?.id}`);
-    expect(out).toContain(`otea board draft ${item} --as claude > ${draftFile(item)}`);
+    expect(out).toContain(`with otea board draft ${item} --as claude,`);
+    expect(out).toContain(handIn(item, 'claude'));
+    expect(out).not.toContain(`otea-${item}-board.json`);
     // P3C-R3-14: the hint named no agent, so in a shell without OTEA_AGENT the command failed as
     // printed (unnamed_agent). Run as printed, it prints the draft.
-    const printed = /otea (board draft \S+ --as \S+) >/.exec(out)?.[1]?.split(' ') ?? [];
+    const printed = /otea (board draft \S+ --as \S+),/.exec(out)?.[1]?.split(' ') ?? [];
     const run = await cliAt(repo.dir)(...printed);
     expect(run.code).toBe(0);
     expect(JSON.parse(run.out).name).toBe('Criaturas');
+    // Handed in as printed, with the JSON on stdin: no file anywhere.
+    const piped = cliAt(repo.dir, {}, undefined, undefined, undefined, run.out);
+    const handed = await piped(...handIn(item, 'claude').split(' ').slice(1));
+    expect(handed.code, handed.err).toBe(0);
+    expect(handed.out).toContain(`Handed in the board draft on ${item}`);
   });
 
   it('answers the board and the Pedido with --json, and the draft to start from after', async () => {
@@ -375,7 +382,7 @@ describe('otea board draft --change', () => {
     const id = /\bPED-\d+\b/.exec(out)?.[0] ?? '';
     expect(id).not.toBe('');
     expect(out).toContain('The change to the board "Tareas" waits in Studio');
-    expect(out).toContain(`otea board draft ${id} --as claude > ${draftFile(id)}`);
+    expect(out).toContain(handIn(id, 'claude'));
     const start = JSON.parse((await otea('board', 'draft', id)).out);
     expect(start.name).toBe('Tareas');
   });
