@@ -4,7 +4,10 @@ import { type App, AppTestProvider } from '../../app/context.tsx';
 import { ago, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { CollectionView, ItemEvent, ItemView } from '../../types.ts';
+import { Acts } from './Acts.tsx';
+import type { Facts } from './facts.ts';
 import { ItemSheet, leaveSays } from './ItemSheet.tsx';
+import { type MoveChoice, planMoves } from './moves.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -179,14 +182,80 @@ describe('the item sheet', () => {
     expect(render(stuck({ cause: 'restart' }))).toContain('Espera a un agente.');
   });
 
-  it('says nobody is listening beside a send-back while no agent waits, and not while one does', () => {
-    const lone = { name: 'Mender', harness: null, holding: [], lastSeen: ago(1), live: true };
-    const silent = render(item, { ...app, agents: [{ ...lone, waiting: false }] } as App);
-    expect(silent).toContain('data-unheard');
-    expect(silent).toContain('<b>Nobody is listening.</b>');
-    expect(silent).toContain('<code>otea wait --turn agent --unclaimed</code>');
-    const heard = render(item, { ...app, agents: [{ ...lone, waiting: true }] } as App);
-    expect(heard).not.toContain('data-unheard');
+  // P7-R2-9: every review read «Nadie está escuchando» in red, even where Aprobar closes the item
+  // and only Devolver, not chosen, hands it to an agent; and while the agent plainly worked.
+  describe('beside a move that hands the item to an agent', () => {
+    const lone = { name: 'Mender', harness: null, holding: [], lastSeen: ago(10), live: true };
+    const onward: ItemView = {
+      ...item,
+      transitions: [
+        { to: 'fixed', by: 'human-ui', reasonRequired: false, turn: 'agent' },
+        ...item.transitions.slice(1),
+      ],
+    };
+    const withAgents = (agents: object[]) => ({ ...app, agents }) as App;
+
+    it('says nothing of listening where Aprobar closes the item and Devolver is not chosen', () => {
+      expect(render(item, withAgents([{ ...lone, waiting: false }]))).not.toContain('data-unheard');
+    });
+
+    it('says nobody is listening beside an Aprobar that hands it on while no agent waits or works', () => {
+      const silent = render(onward, withAgents([{ ...lone, waiting: false }]));
+      expect(silent).toContain('data-unheard');
+      expect(silent).toContain('<b>Nobody is listening.</b>');
+      expect(silent).toContain('<code>otea wait --turn agent --unclaimed</code>');
+      expect(render(onward, withAgents([{ ...lone, waiting: true }]))).not.toContain(
+        'data-unheard',
+      );
+    });
+
+    it('says calmly that the agent at work will see it when it waits again', () => {
+      setLanguage('es');
+      const busy = { ...lone, waiting: false, holding: ['ERR-300'] };
+      const html = render(onward, withAgents([busy]));
+      expect(html).toContain('data-unheard="calm"');
+      expect(html).toContain('Mender está trabajando; lo verá cuando vuelva a esperar.');
+      expect(html).not.toContain('Nadie está escuchando');
+      const two = [busy, { ...busy, name: 'kiln', lastSeen: ago(1), holding: [] }];
+      expect(render(onward, withAgents(two))).toContain(
+        '2 agentes están trabajando; lo verán cuando vuelvan a esperar.',
+      );
+    });
+
+    it('says it beside Devolver once its notes are open', () => {
+      const plan = planMoves(item.transitions, { own: false, word: (s) => s });
+      const back = plan.quiet.find((c) => c.kind === 'sendback') ?? null;
+      const facts: Facts = {
+        agent: 'Mender',
+        left: false,
+        handed: null,
+        round: 2,
+        question: false,
+        own: false,
+        mine: null,
+        answered: null,
+        visited: [],
+        sentBack: [],
+      };
+      const acts = (notesOpen: MoveChoice | null) =>
+        renderToStaticMarkup(
+          <AppTestProvider value={withAgents([{ ...lone, waiting: false }])}>
+            <Acts
+              item={item}
+              type={bug}
+              facts={facts}
+              look="yours"
+              plan={plan}
+              mode="moves"
+              word={(s) => s}
+              notesOpen={notesOpen}
+              onNotes={() => undefined}
+            />
+          </AppTestProvider>,
+        );
+      expect(acts(null)).not.toContain('data-unheard');
+      expect(acts(back)).toContain('<b>Nobody is listening.</b>');
+    });
   });
 
   // P8-R2-7: the header only said «Espera a un agente» while nobody would bring one.

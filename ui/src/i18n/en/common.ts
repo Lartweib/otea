@@ -71,6 +71,10 @@ export const common = {
   },
   'listen.notice':
     '{lead} No agent waits in otea wait: this stays here until one comes back. Ask your agent to keep listening with {command}.',
+  'listen.working': {
+    one: '{agent} is working; it will see it when it waits again.',
+    other: '{count} agents are working; they will see it when they wait again.',
+  },
   'severity.bars': 'Severity {level} of 4',
   'severity.named': 'Severity {value}, {level} of 4',
 

@@ -1693,6 +1693,21 @@
   font-weight: 500;
   color: var(--ink-2);
 }
+/* Devolver's sheet: nobody waits for what it hands to an agent, or one at work sees it later */
+.p-sb-unheard {
+  margin: 8px 0 0;
+  padding: 0 12px;
+  font: 400 12.5px / 1.45 var(--sans);
+  color: var(--ink-2);
+}
+.p-sb-unheard b {
+  font-weight: 600;
+  color: var(--warn);
+}
+.p-sb-unheard code {
+  font: 400 11.5px var(--mono);
+  overflow-wrap: anywhere;
+}
 .nsheet.p-sb .p-sb-area {
   display: block;
   width: 100%;
