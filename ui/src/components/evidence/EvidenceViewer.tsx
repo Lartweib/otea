@@ -244,6 +244,9 @@ export function EvidenceReader({
   const spotting =
     note !== undefined && shown !== undefined && !compared && pickableOn(shown) === 'spot';
   const press = useRef<{ x: number; y: number; el: HTMLElement; page?: number } | null>(null);
+  // The note's box: a point or a zone just drawn on the desk hands it the focus, so what you type
+  // next is the note (P5-R2-9). The phone's keyboard would cover the picture, so it waits for a tap.
+  const noteArea = useRef<HTMLTextAreaElement>(null);
   const [drag, setDrag] = useState<ReaderPick | null>(null);
   const [frame, setFrame] = useState<CSSProperties | null>(null);
   const imageOf = () => view.current?.querySelector<HTMLImageElement>('img.ev-img:not([hidden])');
@@ -394,6 +397,7 @@ export function EvidenceReader({
         </span>
       </div>
       <textarea
+        ref={noteArea}
         rows={2}
         value={text}
         placeholder={t('notes.pick.placeholder')}
@@ -576,11 +580,12 @@ export function EvidenceReader({
                 if (!from) return;
                 const at = { x: e.clientX, y: e.clientY };
                 const hit = spotOf(from.el.getBoundingClientRect(), from, at, !phone);
-                if (hit)
-                  setPick({
-                    id: shown.id,
-                    pick: { ...hit, ...(from.page === undefined ? {} : { page: from.page }) },
-                  });
+                if (!hit) return;
+                setPick({
+                  id: shown.id,
+                  pick: { ...hit, ...(from.page === undefined ? {} : { page: from.page }) },
+                });
+                if (!phone) noteArea.current?.focus({ preventScroll: true });
               }
             : undefined
         }

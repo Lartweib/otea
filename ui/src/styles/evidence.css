@@ -1597,6 +1597,15 @@
   padding-top: 10px;
   border-top: 1px solid var(--rule);
 }
+/* In the desk reader the list keeps one height from its first note on, and scrolls: the picture
+   above it shrank with each note listed (400 → 364 → 322 px) and the next click landed off the
+   spot (P5-R2-9). */
+.rd-main .ev-reader-left {
+  height: 112px;
+  align-content: start;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
 .ev-left-head {
   font: 600 12.5px var(--sans);
   color: var(--ink);
