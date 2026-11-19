@@ -58,7 +58,8 @@ describe("Otea's agent guide", () => {
       'after a chat reply, wait again',
       'Stop your wait by ending its shell or with --timeout, never by killing processes by name',
       // P3C-R3-2: «leave it for later» is release --later, and otea wait is the only way to wait.
-      'When the person says to leave an item for later: otea release <id> --later, then keep waiting.',
+      // P7-R3-6: it is the person's wish, so it holds for every agent.
+      'When the person says to leave an item for later: otea release <id> --later sets it aside for every agent; then keep waiting.',
       'Never write a polling loop of your own: otea wait is how you wait.',
     ]) {
       expect(AGENT_GUIDE).toContain(line);

@@ -12,7 +12,8 @@ import { takeItem } from './lease-take.ts';
 import { assertMayClaim, liveBoardOf, setAsideRefusal } from './next.ts';
 
 // `later`: on a release, the agent sets the item aside for later (P3C-R2-4): next and wait leave it
-// out for that agent until it moves, an agent claims it, or the set-aside lifts (app/set-aside.ts).
+// out for every agent, as the person's wish (P7-R3-6), until it moves, an agent claims it, or the
+// set-aside lifts (app/set-aside.ts).
 export type LeaseInput = { id: string; actor: Actor; ttlMs?: number; later?: boolean };
 
 function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {

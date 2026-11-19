@@ -2544,7 +2544,7 @@ const answer: Command = {
 const release: Command = {
   name: 'release',
   summary:
-    'Drop the lease you hold on an item; moving it off the agent turn releases it too. --later sets it aside for you (next and wait skip it), held or one you let go of, until it moves or you claim it again',
+    'Drop the lease you hold on an item; moving it off the agent turn releases it too. --later sets it aside for every agent (next and wait skip it), held or let go of, until it moves, is claimed or the person takes it up',
   args: ['id'],
   options: { later: { flag: true } },
   execute: (input) => {
@@ -2555,7 +2555,7 @@ const release: Command = {
       const item = releaseItem(project, { id, actor, later });
       const released = itemResult(project, item);
       if (!later) return released;
-      const aside = `Set ${item.id} aside: otea next and otea wait --unclaimed leave it out for you until it moves, you claim it again (otea claim ${item.id}), or the person takes it up again.`;
+      const aside = `Set ${item.id} aside for every agent: otea next and otea wait --unclaimed leave it out until it moves, an agent claims it (otea claim ${item.id}), or the person takes it up again.`;
       return { ...released, text: `${released.text}\n${aside}` };
     });
   },

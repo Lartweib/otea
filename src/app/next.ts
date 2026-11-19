@@ -953,8 +953,9 @@ function mayTakeNow(
   if (asker !== undefined && asker !== agent) return false;
   // Planned work waits for the plan that made it to be approved.
   if (plannedBy(ctx, item)) return false;
-  // What it set aside for later waits until it takes it up again.
-  if (setAsideBy(ctx, item.id) === agent) return false;
+  // What an agent set aside for later waits until it is taken up again: it is the person's wish,
+  // so it holds for every agent (P7-R3-6).
+  if (setAsideBy(ctx, item.id) !== undefined) return false;
   // A step that waits for parts or blockers still being worked on is not the agent's work yet: its
   // handoff cannot pass, and offering it would loop the agent on it (P7-R2-2).
   if (waitsOpen(def, on)) return false;
@@ -1103,16 +1104,28 @@ function byOrder(a: number, b: number): number {
   return a === b ? 0 : a < b ? -1 : 1;
 }
 
-// With nothing to do: what the agent set aside for later, and how to take it up again. The first of
-// them in the person's order (on top, then the Matrix order) is named with its place, as the one
-// to take up first (P7-R3-1).
+// With nothing to do: what was set aside for later, the agent's own first, then other agents' (a
+// set-aside holds for every agent, P7-R3-6), and how to take it up again. The first of them in the
+// person's order (on top, then the Matrix order) is named with its place, as the one to take up
+// first (P7-R3-1).
 function setAsideLines(ctx: Context, boards: readonly LiveBoard[], agent: string): string[] {
-  const ids = boards.flatMap((board) =>
-    selectItems(ctx.db, { collection: board.collection })
-      .filter((item) => !isClosed(positionOf(item.state)) && setAsideBy(ctx, item.id) === agent)
-      .map(({ id }) => id),
+  const aside = boards.flatMap((board) =>
+    selectItems(ctx.db, { collection: board.collection }).flatMap((item) => {
+      const by = isClosed(positionOf(item.state)) ? undefined : setAsideBy(ctx, item.id);
+      return by === undefined ? [] : [{ id: item.id, by }];
+    }),
   );
-  if (ids.length === 0) return [];
+  if (aside.length === 0) return [];
+  const setters = [...new Set(aside.map(({ by }) => by))].sort(
+    (a, b) => Number(b === agent) - Number(a === agent),
+  );
+  const who = setters
+    .map((by) => {
+      const theirs = aside.filter((each) => each.by === by).map(({ id }) => id);
+      return `${by === agent ? 'You' : by} set aside ${theirs.join(', ')} for later`;
+    })
+    .join('; ');
+  const ids = aside.map(({ id }) => id);
   const priority = priorityOf(ctx.db);
   const placed = ids
     .flatMap((id) => {
@@ -1130,14 +1143,10 @@ function setAsideLines(ctx: Context, boards: readonly LiveBoard[], agent: string
       first.pin !== undefined
         ? `The person put ${first.id} on top (number ${first.pin})`
         : `${first.id} is number ${first.rank} in the order the person fixed on the Matrix`;
-    return [
-      `You set aside ${ids.join(', ')} for later. ${said}: otea claim ${first.id} takes it up again.`,
-    ];
+    return [`${who}. ${said}: otea claim ${first.id} takes it up again.`];
   }
   const one = ids.length === 1;
-  return [
-    `You set aside ${ids.join(', ')} for later: otea claim ${one ? ids[0] : '<id>'} takes ${one ? 'it' : 'one'} up again.`,
-  ];
+  return [`${who}: otea claim ${one ? ids[0] : '<id>'} takes ${one ? 'it' : 'one'} up again.`];
 }
 
 // With nothing to do: the approved items the agent would land but for another landing first
