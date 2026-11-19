@@ -53,6 +53,22 @@ describe('a diff on the phone review (P7-8)', () => {
     });
   });
 
+  it('leaves out the signature of a git format-patch (P7-R3-7)', () => {
+    const patch = [
+      'From 1a2b3c4 Mon Sep 17 00:00:00 2001',
+      'Subject: [PATCH] a: new',
+      '',
+      '---',
+      DIFF.trimEnd(),
+      '-- ',
+      '2.51.0.windows.1',
+      '',
+      '',
+    ].join('\n');
+
+    expect(diffSummary(patch)).toEqual(diffSummary(DIFF));
+  });
+
   it('lists them under the diff, in Spanish too', () => {
     keepEvidenceText(`/api/evidence/${diff.id}/file`, DIFF);
     setLanguage('es');

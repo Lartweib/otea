@@ -222,6 +222,41 @@ describe('a diff', () => {
   });
 });
 
+describe('a diff made with git format-patch (P7-R3-7)', () => {
+  const diff = piece('diff', 'fix.patch', 'text/x-diff');
+  keepEvidenceText(
+    `/api/evidence/${diff.id}/file`,
+    [
+      'From 1a2b3c4 Mon Sep 17 00:00:00 2001',
+      'Subject: [PATCH] x: new',
+      '',
+      '---',
+      'diff --git a/x.ts b/x.ts',
+      '--- a/x.ts',
+      '+++ b/x.ts',
+      '@@ -1,2 +1,2 @@',
+      ' keep',
+      '-old',
+      '+new',
+      '-- ',
+      '2.51.0.windows.1',
+      '',
+      '',
+    ].join('\n'),
+  );
+
+  it('draws neither its signature nor the git version as lines, on the desk and the phone', () => {
+    for (const html of [
+      renderToStaticMarkup(<EvidenceViewer evidence={diff} />),
+      renderToStaticMarkup(<EvidenceViewer evidence={diff} phone />),
+    ]) {
+      expect(html).not.toContain('windows.1');
+      expect(html.match(/data-kind="(ctx|del|add)"/g)).toHaveLength(3);
+      expect(html).toContain('−1');
+    }
+  });
+});
+
 describe('a diff side by side', () => {
   const diff = piece('diff', 'lado.diff', 'text/x-diff');
   keepEvidenceText(

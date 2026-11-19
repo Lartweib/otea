@@ -150,7 +150,8 @@ export type DiffFile = {
   deletions: number;
 };
 
-const HUNK = /^@@ -(\d+)(?:,\d+)? \+(\d+)(?:,\d+)? @@/;
+// The start and the count of the old and the new lines; a count left out is 1.
+const HUNK = /^@@ -(\d+)(?:,(\d+))? \+(\d+)(?:,(\d+))? @@/;
 
 function pathOf(line: string): string | null {
   const raw = line.slice(4).split('\t')[0]?.trim() ?? '';
@@ -168,6 +169,8 @@ export function parseDiff(text: string): DiffFile[] {
   let hunk: DiffHunk | undefined;
   let oldLine = 0;
   let newLine = 0;
+  let oldLeft = 0;
+  let newLeft = 0;
   let oldPath: string | null = null;
   const start = () => {
     file = emptyFile();
@@ -178,6 +181,10 @@ export function parseDiff(text: string): DiffFile[] {
   const lines = text.split('\n');
   if (lines.at(-1) === '') lines.pop();
   for (const line of lines) {
+    // A hunk ends once it holds the lines its header counts; only a "\ No newline" note may follow.
+    // What comes after (the "-- " signature of git format-patch, the next patch's headers) is not
+    // the diff's.
+    if (hunk && oldLeft <= 0 && newLeft <= 0 && !line.startsWith('\\')) hunk = undefined;
     if (line.startsWith('diff --git ')) {
       start();
       continue;
@@ -188,7 +195,9 @@ export function parseDiff(text: string): DiffFile[] {
       hunk = { header: line, lines: [] };
       current.hunks.push(hunk);
       oldLine = Number(hunkStart[1]);
-      newLine = Number(hunkStart[2]);
+      oldLeft = Number(hunkStart[2] ?? 1);
+      newLine = Number(hunkStart[3]);
+      newLeft = Number(hunkStart[4] ?? 1);
       continue;
     }
     if (line.startsWith('--- ') && (!hunk || !file)) {
@@ -208,10 +217,12 @@ export function parseDiff(text: string): DiffFile[] {
     if (line.startsWith('+')) {
       hunk.lines.push({ kind: 'add', new: newLine, text: line.slice(1) });
       newLine += 1;
+      newLeft -= 1;
       file.additions += 1;
     } else if (line.startsWith('-')) {
       hunk.lines.push({ kind: 'del', old: oldLine, text: line.slice(1) });
       oldLine += 1;
+      oldLeft -= 1;
       file.deletions += 1;
     } else if (line.startsWith('\\')) {
       hunk.lines.push({ kind: 'note', text: line });
@@ -219,6 +230,8 @@ export function parseDiff(text: string): DiffFile[] {
       hunk.lines.push({ kind: 'ctx', old: oldLine, new: newLine, text: line.slice(1) });
       oldLine += 1;
       newLine += 1;
+      oldLeft -= 1;
+      newLeft -= 1;
     }
   }
   return files.filter((found) => found.hunks.length > 0 || found.path !== '');

@@ -203,6 +203,100 @@ describe('parseDiff', () => {
   it('finds no files in text that is not a diff', () => {
     expect(parseDiff('just some notes\n')).toEqual([]);
   });
+
+  // git format-patch ends a patch with a signature: "-- ", the git version and a blank line.
+  const patch = (subject: string, body: string[]) => [
+    'From 1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b Mon Sep 17 00:00:00 2001',
+    'From: Ada <ada@example.com>',
+    'Date: Mon, 16 Nov 2026 10:00:00 +0100',
+    `Subject: ${subject}`,
+    '',
+    '---',
+    ' 1 file changed, 1 insertion(+), 1 deletion(-)',
+    '',
+    ...body,
+    '-- ',
+    '2.51.0.windows.1',
+    '',
+  ];
+  const SAVE = [
+    'diff --git a/src/save.ts b/src/save.ts',
+    'index 1a2b3c4..5d6e7f8 100644',
+    '--- a/src/save.ts',
+    '+++ b/src/save.ts',
+    '@@ -1,3 +1,3 @@',
+    ' const slot = pick();',
+    '-write(slot);',
+    '+await write(slot);',
+    ' return slot;',
+  ];
+
+  it('stops a hunk at the signature git format-patch writes after it (P7-R3-7)', () => {
+    const [save, ...rest] = parseDiff(`${patch('[PATCH] save: await', SAVE).join('\n')}\n`);
+
+    expect(rest).toEqual([]);
+    expect(save).toMatchObject({ path: 'src/save.ts', additions: 1, deletions: 1 });
+    expect(save?.hunks[0]?.lines).toEqual([
+      { kind: 'ctx', old: 1, new: 1, text: 'const slot = pick();' },
+      { kind: 'del', old: 2, text: 'write(slot);' },
+      { kind: 'add', new: 2, text: 'await write(slot);' },
+      { kind: 'ctx', old: 3, new: 3, text: 'return slot;' },
+    ]);
+  });
+
+  it('stops at the signature when the header leaves out its counts', () => {
+    const [file] = parseDiff('@@ -3 +3 @@\n-a\n+b\n-- \n2.51.0.windows.1\n\n');
+
+    expect(file).toMatchObject({ additions: 1, deletions: 1 });
+    expect(file?.hunks[0]?.lines).toHaveLength(2);
+  });
+
+  it('reads a patch series: each patch its files, the next one headers left out', () => {
+    const README = [
+      'diff --git a/README.md b/README.md',
+      '--- a/README.md',
+      '+++ b/README.md',
+      '@@ -1 +1 @@',
+      '-# Save',
+      '+# Saving',
+    ];
+    const series = [
+      ...patch('[PATCH 1/2] save: await', SAVE),
+      ...patch('[PATCH 2/2] readme: rename', README),
+    ].join('\n');
+
+    const files = parseDiff(series);
+
+    expect(files.map(({ path, additions, deletions }) => [path, additions, deletions])).toEqual([
+      ['src/save.ts', 1, 1],
+      ['README.md', 1, 1],
+    ]);
+    expect(files.flatMap((f) => f.hunks.flatMap((h) => h.lines)).map((l) => l.kind)).toEqual([
+      'ctx',
+      'del',
+      'add',
+      'ctx',
+      'del',
+      'add',
+    ]);
+  });
+
+  it('still reads "-- " inside a hunk as a removed line "- "', () => {
+    const [file] = parseDiff('@@ -1,2 +1 @@\n keep\n-- \n-- \n2.51.0.windows.1\n');
+
+    expect(file).toMatchObject({ additions: 0, deletions: 1 });
+    expect(file?.hunks[0]?.lines.at(-1)).toEqual({ kind: 'del', old: 2, text: '- ' });
+  });
+
+  it('keeps a "no newline" note that follows the last line of a hunk', () => {
+    const [file] = parseDiff('@@ -1 +1 @@\n-a\n+b\n\\ No newline at end of file\n-- \n2.51.0\n');
+
+    expect(file?.hunks[0]?.lines.at(-1)).toEqual({
+      kind: 'note',
+      text: '\\ No newline at end of file',
+    });
+    expect(file).toMatchObject({ additions: 1, deletions: 1 });
+  });
 });
 
 describe('logView', () => {
