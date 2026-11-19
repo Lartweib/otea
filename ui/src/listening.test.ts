@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ago, item as fixture, inMinutes, NOW } from './derive/fixtures.ts';
-import { anyoneWaits, busyAgents, unheard } from './listening.ts';
+import { anyoneWaits, busyAgents, handsToAgent, unheard } from './listening.ts';
 import type { Agent } from './presence.ts';
 import type { Item } from './types.ts';
 
@@ -72,5 +72,17 @@ describe('busyAgents', () => {
     const asks = { question: 1, by: 'a', text: 'Which one?', at: ago(1) };
     const asking = [item({ id: 'TASK-2', lease, asks })];
     expect(busyAgents([agent('a', { holding: ['TASK-2'] })], asking, NOW)).toEqual([]);
+  });
+});
+
+// P4-R3-5: on the person's own chore, red «Nadie está escuchando… otea wait» showed though what
+// they do there closes the item or keeps it theirs: no agent needs to listen.
+describe('handsToAgent', () => {
+  const choice = (turn: string) => ({ move: { turn } });
+
+  it('says so only when one of the moves offered lands on an agent', () => {
+    expect(handsToAgent([choice('none'), choice('human')])).toBe(false);
+    expect(handsToAgent([null, choice('none'), choice('agent')])).toBe(true);
+    expect(handsToAgent([])).toBe(false);
   });
 });

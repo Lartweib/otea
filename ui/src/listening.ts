@@ -17,6 +17,15 @@ export function anyoneWaits(agents: readonly Agent[] | null | undefined): boolea
   return agents.some((a) => a.waiting !== false);
 }
 
+// Whether a move the person can make here lands the item on an agent: only then does it matter
+// that nobody listens. On a step of their own that closes the item or keeps it theirs, the desk
+// says nothing of listening (P4-R3-5).
+export function handsToAgent(
+  choices: readonly ({ move: { turn: string } } | null | undefined)[],
+): boolean {
+  return choices.some((choice) => choice?.move.turn === 'agent');
+}
+
 // The agents at work now (P7-R2-12): each holds an item it acted on lately, and not one that only
 // waits for your answer. While one is, an item nobody hears waits its turn in a queue: the desk
 // says so calmly, not as an alarm.

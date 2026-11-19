@@ -104,6 +104,14 @@ const render = (shown: ItemView = review, phone = true) =>
   );
 
 describe('reviewing an item on the phone', () => {
+  // P4-R3-5: «Nadie está escuchando» showed under the person's own chore, whose only move closes it.
+  it('says nobody is listening only when a move there lands on an agent', () => {
+    setLanguage('es');
+    expect(render()).toContain('data-unheard');
+    const closing = review.transitions.filter(({ turn }) => turn !== 'agent');
+    expect(render({ ...review, transitions: closing })).not.toContain('data-unheard');
+  });
+
   it('goes back to where it came from and says the item and its step on one line', () => {
     setLanguage('es');
     const html = render();

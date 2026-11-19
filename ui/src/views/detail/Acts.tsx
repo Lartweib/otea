@@ -6,7 +6,7 @@ import { agoText, whenText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { Button, Icon, MenuItem, MenuLabel, MenuNote, Pop, Swap } from '../../kit/index.ts';
 import type { Look } from '../../lanes/looks.ts';
-import { anyoneWaits, unheard } from '../../listening.ts';
+import { anyoneWaits, handsToAgent, unheard } from '../../listening.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { parseOptions } from '../../options.ts';
@@ -284,7 +284,7 @@ export function Acts({
 
   // Nobody waits in otea wait: what the person does here, handed to an agent, waits for one.
   const silent = !anyoneWaits(app.agents);
-  const handsToAgent = [plan.primary, ...plan.quiet].some((c) => c?.move.turn === 'agent');
+  const handsOn = handsToAgent([plan.primary, ...plan.quiet]);
 
   let body: ReactNode = null;
   if (mode === 'read') {
@@ -311,7 +311,7 @@ export function Acts({
             {refusedNow}
           </p>
         ) : null}
-        {silent && handsToAgent && !refusedNow ? <Unheard /> : null}
+        {silent && handsOn && !refusedNow ? <Unheard /> : null}
       </>
     );
   } else if (mode === 'pick' && pick) {
@@ -343,7 +343,7 @@ export function Acts({
             {refusedNow}
           </p>
         ) : null}
-        {silent && !refusedNow ? <Unheard /> : null}
+        {silent && handsToAgent([...pick.ways, ...plan.quiet]) && !refusedNow ? <Unheard /> : null}
       </PickForm>
     );
   } else if (mode === 'qa') {
