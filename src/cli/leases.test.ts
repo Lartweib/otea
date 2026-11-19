@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { endProcess, waitBeat } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
+import { findItem, takeLease } from '../store/queries.ts';
 import {
   type Cli,
   cliAt,
@@ -116,6 +117,31 @@ describe('leases', () => {
       expect(out).toContain(
         'Took TASKS-1 over from claude: its session ended (no MCP server or wait of it runs), so its lease was yours to take.',
       );
+    });
+
+    // P1-R3-6: a subagent's lease ran out mid-rebase; any otea call of the holder keeps it now.
+    it('keeps the lease of the agent at any call of its, once half of it is gone', async () => {
+      await otea('claim', 'TASKS-1', '--as', 'claude');
+      const soon = new Date(Date.now() + 2 * 60_000).toISOString();
+      const lease = () => {
+        const project = openProject(repo.dir);
+        try {
+          return findItem(project.db, 'TASKS-1')?.lease;
+        } finally {
+          project.db.close();
+        }
+      };
+      const project = openProject(repo.dir);
+      try {
+        takeLease(project.db, 'TASKS-1', { holder: 'claude', expiresAt: soon }, soon);
+      } finally {
+        project.db.close();
+      }
+
+      expect((await otea('show', 'TASKS-2', '--as', 'claude')).code).toBe(0);
+      const kept = Date.parse(lease()?.expiresAt ?? '') - Date.now();
+      expect(kept).toBeGreaterThan(14 * 60_000);
+      expect(lease()?.holder).toBe('claude');
     });
 
     it('fails with not_claimable (exit 4) when the turn is not the agent', async () => {

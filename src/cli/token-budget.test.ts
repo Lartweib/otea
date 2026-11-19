@@ -41,8 +41,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // project, as an agent read the person's harness settings to learn its effort (P3C-R3-8; measured
   // at 649). Raised to 700 with rule 12 saying to set an item aside with otea release --later when
   // the person wants it later, and never to poll in a loop of one's own, as an agent did both
-  // (P3C-R3-2; measured at 690).
-  'board index': { text: 700, json: 53, mcp: 53 },
+  // (P3C-R3-2; measured at 690). Raised to 730 with rule 3 saying that otea calls keep a claim and
+  // to send otea heartbeat on a long step with none, as a subagent's lease ran out mid-rebase and
+  // another agent took the item over (P1-R3-6; measured at 720).
+  'board index': { text: 730, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -108,8 +110,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // settings» sent an agent to the person's harness settings (P3C-R3-8; measured at 630). Raised
   // to 680 for rule 12: «leave it for later» is otea release --later, and otea wait is the way to
   // wait, as an agent released an item plainly, stopped waiting and later polled on its own
-  // (P3C-R3-2; measured at 671).
-  instructions: { mcp: 680 },
+  // (P3C-R3-2; measured at 671). Raised to 710 for rule 3: otea calls keep a claim, and a long step
+  // with none (a rebase, a test run) sends otea heartbeat, as a subagent's lease ran out mid-rebase
+  // and another agent took the item over while it still worked (P1-R3-6; measured at 702).
+  instructions: { mcp: 710 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

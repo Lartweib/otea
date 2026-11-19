@@ -17,7 +17,16 @@ import {
   selectEvents,
   takeLease,
 } from '../store/queries.ts';
-import { sessionEnded } from './presence.ts';
+import { sessionEnded, sessionRuns } from './presence.ts';
+
+// Why a claim of an item whose lease ran out is refused while its holder's session runs.
+function stillWorking(id: string, lease: Lease): OteaError {
+  const { holder } = lease;
+  return new OteaError(
+    'lease_held',
+    `${id} is still ${holder}'s: its lease ran out at ${timeText(lease.expiresAt)}, but its session runs (an MCP server or wait of it), so it may be at work on a long step with no otea call. Take other work: otea next. If ${holder} is stuck, the person frees the item on the desk (Liberar).`,
+  );
+}
 
 // Takes the lease on an item for the actor, inside the caller's transaction, once the caller has
 // checked the item is the actor's to claim: refused while another holds it, unless that agent's
@@ -34,6 +43,10 @@ export function takeItem(
   const other = held && held.holder !== actor.name ? held : null;
   const ended = other !== null && sessionEnded(db, other.holder, () => at);
   if (other && !ended) throw leaseHeld(item.id, other);
+  // A lease that ran out is no proof its holder stopped (P1-R3-6): while its session runs, the item
+  // stays its own.
+  const ranOut = !held && item.lease && item.lease.holder !== actor.name ? item.lease : null;
+  if (ranOut && sessionRuns(db, ranOut.holder, () => at)) throw stillWorking(item.id, ranOut);
   if (ended) clearLease(db, item.id);
   const lease = { holder: actor.name, expiresAt: leaseExpiry(at, ttlMs) };
   if (!takeLease(db, item.id, lease, at)) throw new OteaError('lease_held', `${item.id} is held`);
