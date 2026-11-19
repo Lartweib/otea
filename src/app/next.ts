@@ -699,10 +699,15 @@ export function laterLine(ctx: Context, id: string, agent: string): string | und
 
 // On a Pedido an agent drafts a board on, how to hand the draft in follows the instructions of the
 // step it stands on: the agent reads it where it reads any step's, apart from the person's words.
-function withHandIn(ctx: Context, item: ItemRecord, def: BoardDefinition): BoardDefinition {
+function withHandIn(
+  ctx: Context,
+  item: ItemRecord,
+  def: BoardDefinition,
+  me?: string,
+): BoardDefinition {
   const position = positionOf(item.state);
   if (isClosed(position)) return def;
-  const request = draftRequestOf(ctx, item.id);
+  const request = draftRequestOf(ctx, item.id, me);
   if (!request || request.published) return def;
   const steps = def.steps.map((step) => {
     if (step.id !== position.step) return step;
@@ -753,7 +758,7 @@ function textFor(
   at: string,
   me?: string,
 ): string {
-  const def = withHandIn(ctx, item, live);
+  const def = withHandIn(ctx, item, live, me);
   const on = itemOnBoard(ctx, item, def);
   const lease = activeLease(item.lease, at);
   const left = leftFor(ctx, item.id);
@@ -781,7 +786,7 @@ function textFor(
       ? undefined
       : {
           after: 'Done, once the person tries the board and publishes it in Studio',
-          command: `otea board draft ${item.id} --file ${draftPath(item.id)}`,
+          command: `otea board draft ${item.id} --file ${draftPath(item.id)} --as ${me ?? item.lease?.holder ?? '<your name>'}`,
         };
   return nextText(def, {
     id: item.id,
