@@ -333,8 +333,58 @@ export function deliveredFields(
     const part = def.parts[ref];
     const value = view.fields[ref]?.trim();
     if (!part || isEvidence(part) || !value) return [];
-    return [{ ref, name: part.name, value: word(ref, value) }];
+    // A long field is Markdown: a card reads its lines without the marks (P7-11).
+    const said =
+      part.kind === 'long'
+        ? plainLines(value, { signs: part.show === 'options' })
+        : word(ref, value);
+    return [{ ref, name: part.name, value: said }];
   });
+}
+
+// Markdown read as plain lines, for a card's few lines: no heading, emphasis, link or code marks,
+// a bullet as «·» (a «+» stays: it says a gain), a table's cells joined with «·» and its rule gone,
+// blank lines and fences dropped. An underscore inside a word is not emphasis, as in CommonMark.
+// `signs`: options (show: 'options'), whose «- » lines are costs: a «−», never a bullet.
+export function plainLines(markdown: string, { signs = false } = {}): string {
+  const marks = (s: string) =>
+    s
+      .replace(/(\*\*|\*|~~)(\S(?:.*?\S)?)\1/g, '$2')
+      .replace(/(?<![\p{L}\p{N}_])(__|_)(\S(?:.*?\S)?)\1(?![\p{L}\p{N}_])/gu, '$2');
+  const inline = (s: string) =>
+    s
+      .replace(/!?\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .split(/(`[^`]*`)/)
+      .map((part, at) => (at % 2 ? part.slice(1, -1) : marks(part)))
+      .join('')
+      .replace(/\s+/g, ' ')
+      .trim();
+  return markdown
+    .split(/\r?\n/)
+    .flatMap((raw) => {
+      const line = raw.trim();
+      if (line === '' || /^(```|~~~)/.test(line) || /^([-*_])(\s*\1){2,}$/.test(line)) return [];
+      if (line.startsWith('|')) {
+        if (/^\|[\s|:-]+\|?$/.test(line)) return [];
+        return [
+          line
+            .split('|')
+            .map((cell) => inline(cell))
+            .filter(Boolean)
+            .join(' · '),
+        ];
+      }
+      const said = inline(
+        line
+          .replace(/^#{1,6}\s+(.*?)\s*#*$/, '$1')
+          .replace(/^(>\s*)+/, '')
+          .replace(/^-\s+/, signs ? '− ' : '- ')
+          .replace(/^[-*]\s+(\[[ xX]\]\s+)?/, '· ')
+          .replace(/^\+\s+/, '+ '),
+      );
+      return said ? [said] : [];
+    })
+    .join('\n');
 }
 
 // What the board would refuse an approval for now, before it is tried: the waits of the step under
