@@ -230,6 +230,8 @@ export const detail = {
   'evidence.attach': 'Agents attach {accepts}.',
   'evidence.attachPair':
     'Agents attach {accepts}: one from before and one from after, compared side by side.',
+  'evidence.attachBlind':
+    'Agents attach {accepts}: two versions, A and B, to pick from without knowing which is which.',
   'evidence.required': 'required',
   'evidence.files': '{label}: files',
   'evidence.latest': 'latest',
@@ -242,6 +244,7 @@ export const detail = {
   'evidence.slider': 'slider',
   'evidence.sideBySide': 'side by side',
   'evidence.divider': 'Divider between before and after',
+  'evidence.dividerBlind': 'Divider between A and B',
   'evidence.split': '{before}% before, {after}% after',
   'evidence.galleryRole': 'gallery',
   'evidence.previous': 'Previous image',

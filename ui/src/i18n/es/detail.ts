@@ -229,6 +229,8 @@ export const detail = {
   'evidence.attach': 'Los agentes adjuntan {accepts}.',
   'evidence.attachPair':
     'Los agentes adjuntan {accepts}: uno de antes y otro de después, para compararlos lado a lado.',
+  'evidence.attachBlind':
+    'Los agentes adjuntan {accepts}: dos versiones, A y B, para elegir sin saber cuál es cuál.',
   'evidence.required': 'obligatorio',
   'evidence.files': '{label}: archivos',
   'evidence.latest': 'último',
@@ -241,6 +243,7 @@ export const detail = {
   'evidence.slider': 'deslizador',
   'evidence.sideBySide': 'lado a lado',
   'evidence.divider': 'Divisor entre antes y después',
+  'evidence.dividerBlind': 'Divisor entre A y B',
   'evidence.split': '{before} % antes, {after} % después',
   'evidence.galleryRole': 'galería',
   'evidence.previous': 'Imagen anterior',
