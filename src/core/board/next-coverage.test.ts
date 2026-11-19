@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { handoffCheck, type Linked, type Missing } from './engine.ts';
+import { sequenceIds } from './ids.ts';
 import type { BoardDefinition } from './model.ts';
 import {
   approvalRefusalText,
   createdText,
   droppedText,
   dropRefusalText,
+  forPersonText,
   gateText,
   NOT_TAKEN_BACK,
   nextText,
@@ -14,6 +16,7 @@ import {
   refusalText,
   takenBackText,
 } from './next.ts';
+import { instantiate, requireTemplate } from './templates.ts';
 import { cambios, errores, step, tareasDeRepo } from './testing.ts';
 
 const base = {
@@ -382,6 +385,19 @@ describe('refusals and answers', () => {
     );
     expect(gateText(def, 'RT-4', { closed: 'done' }, 'merge', 1)).toBe(
       'merge allowed: RT-4 is Done.',
+    );
+  });
+});
+
+// A refused push into a protected base also tells the person how to land their own commit
+// (P2S-R3-4), in the language of the board that protects it.
+describe('forPersonText', () => {
+  it('speaks the language of the first board that protects the base', () => {
+    const es = instantiate(requireTemplate('mainline'), 'es', {}, sequenceIds());
+    const en = instantiate(requireTemplate('mainline'), 'en', {}, sequenceIds());
+    expect(forPersonText([es, en])).toMatch(/^Para la persona: si el commit es tuyo/);
+    expect(forPersonText([en])).toBe(
+      "For the person: if the commit is yours, put it through the board (ask your agent for an item and approve it in Otea) or push it yourself this once with git push --no-verify, which skips Otea's check. An agent never uses --no-verify.",
     );
   });
 });

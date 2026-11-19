@@ -2983,11 +2983,12 @@ function gateFields(
   return fields;
 }
 
-function gateText({ gate, allowed, items, refusal }: GateCheck): string {
+function gateText({ gate, allowed, items, refusal, person }: GateCheck): string {
   // On a board, the step engine's words for each item, and why a push into a protected base
-  // branch that brings in none of its items is refused.
+  // branch that brings in none of its items is refused; last, how the person lands their own.
   const said = items.filter((item) => allowed || !item.allowed).flatMap(({ text }) => text ?? []);
   if (refusal !== undefined) said.push(refusal);
+  if (person !== undefined) said.push(person);
   if (said.length > 0) return said.join('\n');
   if (allowed) {
     const states = items.map(({ id, stateName }) => `${id} is ${stateName}`);

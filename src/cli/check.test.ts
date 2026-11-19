@@ -11,6 +11,11 @@ import { EXIT_CODES } from './exit-codes.ts';
 import { installGitHook } from './hooks.ts';
 import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 
+// Under a refused push into a protected base, how the person lands a commit of their own
+// (P2S-R3-4), in the language of the board, Spanish here.
+const FOR_PERSON =
+  'Para la persona: si el commit es tuyo, pásalo por el tablero (pídele a tu agente un ítem y apruébalo en Otea) o súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.';
+
 describe('check', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let otea: Cli;
@@ -362,7 +367,7 @@ describe('check', () => {
 
       expect(await push('--branch', '--repo')).toEqual({
         code: 19,
-        out: `push refused: ${task} is in Implementar, round 1; main takes its branch only once ${task} is Done.\n`,
+        out: `push refused: ${task} is in Implementar, round 1; main takes its branch only once ${task} is Done.\n${FOR_PERSON}\n`,
         err: '',
       });
       person(task, 'done');
@@ -400,7 +405,7 @@ describe('check', () => {
 
       expect(await push('--branch', '--repo')).toEqual({
         code: 19,
-        out: `push refused: chg-1/keys holds commits origin/chg-1/keys never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n`,
+        out: `push refused: chg-1/keys holds commits origin/chg-1/keys never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n${FOR_PERSON}\n`,
         err: '',
       });
     });
@@ -427,7 +432,7 @@ describe('check', () => {
       git('merge', '-q', '--ff-only', 'chg-1/keys');
       expect(await push('--branch', '--repo')).toEqual({
         code: 19,
-        out: `push refused: chg-1/keys holds commits origin/chg-1/keys never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n`,
+        out: `push refused: chg-1/keys holds commits origin/chg-1/keys never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n${FOR_PERSON}\n`,
         err: '',
       });
     });
@@ -443,7 +448,7 @@ describe('check', () => {
 
       expect(await push('--branch', '--repo')).toEqual({
         code: 19,
-        out: `push refused: chg-1/keys holds commits origin/main never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n`,
+        out: `push refused: chg-1/keys holds commits origin/main never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n${FOR_PERSON}\n`,
         err: '',
       });
     });
@@ -461,7 +466,7 @@ describe('check', () => {
 
       expect(await push('--branch', '--repo')).toEqual({
         code: 19,
-        out: `push refused: main would take 1 commit no reviewed branch holds (${extra}); it takes only the branches of the items it brings in, as they were pushed.\n`,
+        out: `push refused: main would take 1 commit no reviewed branch holds (${extra}); it takes only the branches of the items it brings in, as they were pushed.\n${FOR_PERSON}\n`,
         err: '',
       });
       git('reset', '-q', '--hard', reviewed);
@@ -549,8 +554,7 @@ describe('check', () => {
       git('checkout', '-q', 'main');
       commit('straight onto main');
       const head = git('rev-parse', 'HEAD');
-      const none =
-        'push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.\n';
+      const none = `push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.\n${FOR_PERSON}\n`;
 
       expect(await push('--branch', '--repo')).toEqual({ code: 19, out: none, err: '' });
       expect(await push('--branch', 'main', '--repo', '--commits', `${root}..${head}`)).toEqual({

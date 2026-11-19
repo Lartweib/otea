@@ -16,7 +16,13 @@ import {
   stepById,
   TITLE,
 } from '../core/board/model.ts';
-import { baseGateText, baseRefusal, gateText, placeText } from '../core/board/next.ts';
+import {
+  baseGateText,
+  baseRefusal,
+  forPersonText,
+  gateText,
+  placeText,
+} from '../core/board/next.ts';
 import { partByName, stateName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
 import { listCollections, selectEvents, selectItems } from '../store/queries.ts';
@@ -48,6 +54,8 @@ export type GateCheck = {
   items: GateVerdict[];
   note?: string;
   refusal?: string;
+  // Under a refused push into a protected base: how the person lands a commit of their own.
+  person?: string;
 };
 
 // The branches a push or merge into a base branch brings in: asked of git only when a board
@@ -391,52 +399,9 @@ export function checkGate(
       )
     : [];
   if (bases.length > 0) {
-    // Every board that protects the base is asked at once: the action must bring in an item of
-    // one of them, and every item it brings in, whatever its board, must allow it. A board that
-    // leaves the base alone still lands its own items into it: an item of it that the action
-    // brings in counts like theirs, by its own board's steps, so their protection never blocks the
-    // land step of another board (Errores pushing its approved fix to main).
-    const guarding = boards.filter(({ def }) => guardedBranch(def) !== undefined);
-    const checks = guarding.map((board) =>
-      baseCheck(ctx, board, gate as GateAction, fields, brings),
-    );
-    const items = checks.flatMap((check) => check.items);
-    if (items.length === 0) {
-      const defs = bases.map(({ def }) => def);
-      return {
-        gate,
-        allowed: false,
-        items,
-        refusal: baseRefusal(defs, gate as GateAction, fields.branch ?? ''),
-      };
-    }
-    const allowed = items.every((item) => item.allowed);
-    // Every item brought in may land, but the action must not bring in more than their branches:
-    // a commit made on the base, or on a branch no item has, rides along unreviewed.
-    const stray = allowed
-      ? (brought(brings).outside?.(checks.flatMap(({ held }) => held)) ?? [])
-      : [];
-    if (stray.length > 0) {
-      return {
-        gate,
-        allowed: false,
-        items,
-        refusal: strayRefusal(gate, fields.branch ?? '', stray),
-      };
-    }
-    // Every branch it brings in is one the person approved: what it writes must be exactly that,
-    // merged onto the base as the remote has it. Checked once a handoff recorded an approved tip.
-    const approved = checks.flatMap((check) => check.approved);
-    const lands = allowed && approved.length > 0 ? brought(brings).landsAs : undefined;
-    if (lands && !lands(checks.flatMap((check) => check.landing))) {
-      return {
-        gate,
-        allowed: false,
-        items,
-        refusal: unapprovedRefusal(gate, fields.branch ?? '', approved),
-      };
-    }
-    return { gate, allowed, items };
+    const check = baseVerdict(ctx, boards, bases, gate, fields, brings);
+    if (check.allowed || gate !== 'push') return check;
+    return { ...check, person: forPersonText(bases.map(({ def }) => def)) };
   }
   const fromBoards = GATED.includes(gate)
     ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields, brings))
@@ -531,4 +496,60 @@ export function repoOfItem(ctx: Context, item: Item, boards = liveBoards(ctx)): 
   if (!board) return item.fields.repo;
   const repo = guardedBranch(board.def)?.guard.repo;
   return repo === undefined ? undefined : item.fields[repo];
+}
+
+// A push or merge into a base branch boards protect (checkGate): every board that protects it is
+// asked at once.
+function baseVerdict(
+  ctx: Context,
+  boards: readonly LiveBoard[],
+  bases: readonly LiveBoard[],
+  gate: string,
+  fields: Record<string, string>,
+  brings: Brings,
+): GateCheck {
+  // Every board that protects the base is asked at once: the action must bring in an item of
+  // one of them, and every item it brings in, whatever its board, must allow it. A board that
+  // leaves the base alone still lands its own items into it: an item of it that the action
+  // brings in counts like theirs, by its own board's steps, so their protection never blocks the
+  // land step of another board (Errores pushing its approved fix to main).
+  const guarding = boards.filter(({ def }) => guardedBranch(def) !== undefined);
+  const checks = guarding.map((board) => baseCheck(ctx, board, gate as GateAction, fields, brings));
+  const items = checks.flatMap((check) => check.items);
+  if (items.length === 0) {
+    const defs = bases.map(({ def }) => def);
+    return {
+      gate,
+      allowed: false,
+      items,
+      refusal: baseRefusal(defs, gate as GateAction, fields.branch ?? ''),
+    };
+  }
+  const allowed = items.every((item) => item.allowed);
+  // Every item brought in may land, but the action must not bring in more than their branches:
+  // a commit made on the base, or on a branch no item has, rides along unreviewed.
+  const stray = allowed
+    ? (brought(brings).outside?.(checks.flatMap(({ held }) => held)) ?? [])
+    : [];
+  if (stray.length > 0) {
+    return {
+      gate,
+      allowed: false,
+      items,
+      refusal: strayRefusal(gate, fields.branch ?? '', stray),
+    };
+  }
+  // Every branch it brings in is one the person approved: what it writes must be exactly that,
+  // merged onto the base as the remote has it. Checked once a handoff recorded an approved tip.
+  const approved = checks.flatMap((check) => check.approved);
+  const lands = allowed && approved.length > 0 ? brought(brings).landsAs : undefined;
+  if (lands && !lands(checks.flatMap((check) => check.landing))) {
+    return {
+      gate,
+      allowed: false,
+      items,
+      refusal: unapprovedRefusal(gate, fields.branch ?? '', approved),
+    };
+  }
+  return { gate, allowed, items };
 }
