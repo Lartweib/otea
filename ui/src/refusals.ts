@@ -201,6 +201,8 @@ function said(details: RefusalDetails): string | undefined {
       return details.holder === undefined
         ? t('refusal.notStuckFree', { item: details.item })
         : t('refusal.notStuck', { item: details.item, holder: details.holder });
+    case 'not_set_aside':
+      return t('refusal.notSetAside', { item: details.item });
     case 'agent_name':
       return t('refusal.agentName', { name: details.name });
     case 'move': {

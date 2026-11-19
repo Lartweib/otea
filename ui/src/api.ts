@@ -198,6 +198,12 @@ export async function reassignItem(id: string, agent: string): Promise<void> {
   await post(`/api/items/${encodeURIComponent(id)}/reassign`, { agent });
 }
 
+// An item an agent set aside for later: the person takes it up again (Retomar), so next and wait
+// offer it to every agent once more, the one that set it aside too.
+export async function resumeItem(id: string): Promise<void> {
+  await post(`/api/items/${encodeURIComponent(id)}/resume`, {});
+}
+
 // The person's order of the work (app/priority.ts): «Fijar el orden» from a board's matrix (the
 // items in order; the board's earlier order goes), and «Poner arriba» / «Quitar de arriba».
 export async function setOrder(collection: string, ids: readonly string[]): Promise<void> {

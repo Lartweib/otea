@@ -16,10 +16,11 @@ import {
 } from '../../../../src/core/board/questions.ts';
 import { stateName } from '../../../../src/core/board/reading.ts';
 import { describeEvent, formatTime, momentParts, relayOf } from '../../format.ts';
-import { t } from '../../i18n/i18n.ts';
+import { type PlainKey, t } from '../../i18n/i18n.ts';
 import type { AgentProfile } from '../../presence.ts';
 import { fieldWord, keptStateWord, valueWord } from '../../preset-words.ts';
 import { profilePair } from '../../profile-words.ts';
+import { isSetAside, SET_ASIDE_LIFTED } from '../../set-aside.ts';
 import type { ItemEvent, TypeView } from '../../types.ts';
 
 // The item's history as the sheet's lane says it (SPEC §10.3, mock:638-649, 2736-2739): newest
@@ -38,6 +39,18 @@ export type HistoryLine = {
   who: string;
   // The profile the agent wrote it with; none on yours, nor on your decision an agent relayed.
   profile?: AgentProfile;
+};
+
+// Why a set-aside lifted (src/app/set-aside.ts LiftCause): what it waited for closed, or what the
+// person did.
+const LIFT_WHY: Record<string, PlainKey> = {
+  parts: 'sheet.h.unaside.parts',
+  blockers: 'sheet.h.unaside.blockers',
+  note: 'sheet.h.unaside.note',
+  answer: 'sheet.h.unaside.answer',
+  order: 'sheet.h.unaside.order',
+  pin: 'sheet.h.unaside.pin',
+  resume: 'sheet.h.unaside.resume',
 };
 
 const reasonOf = (e: ItemEvent) =>
@@ -260,10 +273,20 @@ export function historyOf(
       };
     }
     if (e.type === 'released') {
+      if (isSetAside(e)) return { ...base, text: t('sheet.h.setAside') };
       if (human && e.data.cause === 'restart') return { ...base, text: t('sheet.h.restarted') };
       if (human && e.data.cause === 'reassign')
         return { ...base, text: t('sheet.h.reassigned', { agent: String(e.data.next) }) };
       return { ...base, text: t('sheet.h.released') };
+    }
+    // Back for the agents after a set-aside, and why. What it waited for closing is nobody's act
+    // on this item: that line names nobody.
+    if (e.type === SET_ASIDE_LIFTED) {
+      const key = LIFT_WHY[String(e.data.cause)];
+      const text = key ? t('sheet.h.unaside', { why: t(key) }) : t('sheet.h.unasideBare');
+      if (e.data.cause !== 'parts' && e.data.cause !== 'blockers') return { ...base, text };
+      const { profile: _byNobody, ...line } = base;
+      return { ...line, dot: 'agent', who: '', text };
     }
     if (e.type === 'evidence_added') {
       const caption = typeof e.data.caption === 'string' ? { quote: e.data.caption } : {};

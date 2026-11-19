@@ -65,6 +65,7 @@ export const common = {
   'lease.heldUntil': 'en manos de {holder} hasta {time}',
   'lease.heldExpired': 'en manos de {holder}; su reserva venció ({time})',
   'listen.none': 'nadie está escuchando',
+  'listen.setAside': 'apartado por {agent}',
   'listen.lead': 'Nadie está escuchando.',
   'listen.busy': {
     one: 'en cola: {agent} está ocupado',
@@ -188,6 +189,7 @@ export const common = {
   'refusal.undo.leaseLost': 'su reserva ya no se puede devolver',
   'refusal.notStuck': '{item} no está atascado: {holder} lo tiene reservado.',
   'refusal.notStuckFree': '{item} no está atascado: no le venció ninguna reserva.',
+  'refusal.notSetAside': '{item} ya no está apartado.',
   'refusal.agentName':
     '«{name}» no sirve como nombre de agente: usa hasta 40 minúsculas, cifras y guiones sueltos, empezando por una letra (no «you» ni «human»).',
   'refusal.move.none': 'Ese movimiento no existe desde aquí.',

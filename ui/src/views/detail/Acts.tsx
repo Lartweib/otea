@@ -13,18 +13,19 @@ import { parseOptions } from '../../options.ts';
 import { keepInView } from '../../phone/keep-in-view.ts';
 import type { ItemView, TypeView } from '../../types.ts';
 import { closerOf, type Facts } from './facts.ts';
-import { stuckToastOf, toastOf } from './frame.ts';
+import { resumedToastOf, stuckToastOf, toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
 import { PickForm, type PickMade } from './PickForm.tsx';
 import type { Pick } from './pick.ts';
 
 // The moves and what stands in for them (SPEC §10.3, mock:2689-2702): the moves with the line that
-// says what the hovered one does; a question answered in place; the stuck item's commands; the
-// dashed block of a move waiting for children; the receipt of an agent's or a closed item's turn.
+// says what the hovered one does; a question answered in place; the stuck item's commands; Retomar
+// on an item an agent set aside; the dashed block of a move waiting for children; the receipt of an
+// agent's or a closed item's turn.
 // When the item changes, the old block and the new are both present while one leaves and the other
 // arrives, and the box's height glides (mock:3150-3162).
 
-export type ActsMode = 'moves' | 'pick' | 'qa' | 'stuck' | 'wait' | 'receipt' | 'read';
+export type ActsMode = 'moves' | 'pick' | 'qa' | 'stuck' | 'aside' | 'wait' | 'receipt' | 'read';
 
 export function actsModeOf(o: {
   look: Look;
@@ -33,8 +34,12 @@ export function actsModeOf(o: {
   plan: MovePlan;
   // An agent's question waits for your answer (otea ask): answered in place, with no move.
   asks?: boolean;
+  // An agent set it aside for later (P7-R3-1): Retomar takes it up again.
+  aside?: boolean;
 }): ActsMode {
   if (!o.canWrite) return 'read';
+  if (o.aside && (o.look === 'queued' || o.look === 'waiting' || o.look === 'stuck'))
+    return 'aside';
   if (o.look === 'yours') {
     if (o.asks) return 'qa';
     if (o.question && o.plan.quiet.some((c) => c.kind === 'sendback')) return 'qa';
@@ -282,6 +287,19 @@ export function Acts({
     </Button>
   ) : null;
 
+  // «Dejar una nota» while an agent does the step, or stands aside from it.
+  const leaveButton = note ? (
+    <Button
+      variant="quiet"
+      className={note.open ? 'on nt-leave' : 'nt-leave'}
+      aria-expanded={note.open}
+      onClick={(e) => note.onToggle(e.currentTarget)}
+    >
+      <Icon name="note" />
+      {t('notes.leave')}
+    </Button>
+  ) : null;
+
   // Nobody waits in otea wait: what the person does here, handed to an agent, waits for one.
   const silent = !anyoneWaits(app.agents);
   const handsOn = handsToAgent([plan.primary, ...plan.quiet]);
@@ -500,6 +518,37 @@ export function Acts({
         </Pop>
       </>
     );
+  } else if (mode === 'aside') {
+    // Set aside for later by an agent (P7-R3-1): Retomar has the agents see it again, that one too;
+    // a note to it takes it up as well. A refusal (taken up since) says so in the page's words.
+    const by = item.setAside?.by ?? agent ?? '—';
+    const resume = () =>
+      app.resume(item.id, resumedToastOf(item.title)).catch((e: unknown) =>
+        setRefused({
+          k: refusalKey,
+          text: e instanceof Error && e.message ? e.message : t('sheet.refused'),
+        }),
+      );
+    body = (
+      <>
+        <div className="actions">
+          <Button variant="primary" data-resume="" onClick={() => void resume()}>
+            {t('sheet.aside.resume')}
+          </Button>
+          {leaveButton}
+          {closeAs}
+        </div>
+        <div className="movesays">
+          {t('sheet.aside.resume')} ·{' '}
+          {t('sheet.aside.says', { state: word(item.state), agent: by })}
+        </div>
+        {refusedNow ? (
+          <p className="said warn" role="alert">
+            {refusedNow}
+          </p>
+        ) : null}
+      </>
+    );
   } else if (mode === 'wait') {
     const total = item.children?.total ?? 0;
     const open = item.children?.open ?? 0;
@@ -520,15 +569,7 @@ export function Acts({
     body = (
       <>
         <div className="actions">
-          <Button
-            variant="quiet"
-            className={note.open ? 'on nt-leave' : 'nt-leave'}
-            aria-expanded={note.open}
-            onClick={(e) => note.onToggle(e.currentTarget)}
-          >
-            <Icon name="note" />
-            {t('notes.leave')}
-          </Button>
+          {leaveButton}
           {/* An approved item an agent lands: the person may still send it back (P1-4). */}
           {plan.quiet.filter((c) => c.kind === 'sendback').map((c) => btn(c, 'quiet'))}
           {freeButton}

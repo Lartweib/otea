@@ -88,6 +88,24 @@ describe('feedLines', () => {
     ]);
   });
 
+  // P7-R3-1: an agent's set-aside read «soltó», and your Retomar «actualizaste».
+  it('says an agent set an item aside for later, and that you took it up again', () => {
+    const lines = feedLines(
+      [
+        ev('WORK-1', 'released', agent('claude-a'), 1, { holder: 'claude-a', cause: 'later' }),
+        ev('WORK-1', 'set_aside_lifted', you, 2, { by: 'claude-a', cause: 'resume' }),
+        // Lifted by a note, an answer or the order: the line of what you did says it.
+        ev('WORK-2', 'set_aside_lifted', you, 3, { by: 'claude-a', cause: 'note', note: 1 }),
+      ],
+      turnOf,
+    );
+
+    expect(lines.map(({ kind, lane, agent, phrase }) => [kind, lane, agent, phrase])).toEqual([
+      ['lease', 'you', null, { key: 'activity.resumed' }],
+      ['lease', 'agent', 'claude-a', { key: 'activity.setAside' }],
+    ]);
+  });
+
   it('keeps a relayed decision in your lane, named after the agent that relayed it', () => {
     const relayed = ev('WORK-1', 'transitioned', you, 1, { to: 'done', via: 'claude-b' });
 

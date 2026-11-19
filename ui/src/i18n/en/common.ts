@@ -62,6 +62,7 @@ export const common = {
   'lease.heldUntil': 'held by {holder} until {time}',
   'lease.heldExpired': 'held by {holder}, its lease expired at {time}',
   'listen.none': 'nobody is listening',
+  'listen.setAside': 'set aside by {agent}',
   'listen.lead': 'Nobody is listening.',
   'listen.busy': { one: 'queued: {agent} is busy', other: 'queued: {count} agents are busy' },
   'listen.busyLead': {
@@ -182,6 +183,7 @@ export const common = {
   'refusal.undo.leaseLost': 'its lease cannot be given back',
   'refusal.notStuck': '{item} is not stuck: {holder} holds it.',
   'refusal.notStuckFree': '{item} is not stuck: no lease of it ran out.',
+  'refusal.notSetAside': '{item} is no longer set aside.',
   'refusal.agentName':
     '“{name}” cannot name an agent: use up to 40 lowercase letters, digits and single dashes, starting with a letter (not “you” or “human”).',
   'refusal.move.none': 'There is no such move from here.',

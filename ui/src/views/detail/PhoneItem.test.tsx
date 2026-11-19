@@ -211,6 +211,26 @@ describe('reviewing an item on the phone', () => {
     expect(html).not.toContain('p-dock');
   });
 
+  // P7-R3-1: the phone too said it waited for an agent, while the only one had set it aside.
+  it('says which agent set it aside for later, and offers Retomar', () => {
+    setLanguage('es');
+    const html = render({
+      ...review,
+      state: 'fixing',
+      turn: 'agent',
+      lease: null,
+      setAside: { by: 'claude-haiku', at: ago(10) },
+      transitions: [
+        { to: 'wont_fix', by: 'human-ui', reasonRequired: true, turn: 'none', closes: 'discarded' },
+      ],
+    });
+    expect(html).toContain('<b>claude-haiku</b> lo dejó para más adelante.');
+    expect(html).not.toContain('Espera a un agente');
+    expect(html).not.toContain('data-unheard');
+    expect(html).toMatch(/<button[^>]*data-resume=""[^>]*>Retomar<\/button>/);
+    expect(html).not.toContain('cerrar como');
+  });
+
   it('folds what was asked under one line of its prose, never its raw Markdown (DR2-22)', () => {
     setLanguage('es');
     const html = render({

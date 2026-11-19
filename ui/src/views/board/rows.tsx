@@ -1,6 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react';
 import type { FeedEvent } from '../../activity.ts';
-import { UnheardMark } from '../../components/Unheard.tsx';
+import { SetAsideMark, UnheardMark } from '../../components/Unheard.tsx';
 import { agentOf, isStuck } from '../../derive/toca.ts';
 import { whenText } from '../../derive/when.ts';
 import type { GridColumn } from '../../grid.ts';
@@ -210,6 +210,7 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
                   <span>{signal}</span>
                 </span>
               ))}
+              {it.setAside ? <SetAsideMark by={it.setAside.by} /> : null}
               {unheard(it, ctx.agents, ctx.now) ? <UnheardMark busy={ctx.busy ?? []} /> : null}
             </div>
           </div>

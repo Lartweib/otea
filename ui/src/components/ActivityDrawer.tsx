@@ -102,6 +102,10 @@ function sentence(line: FeedLine, id: ReactNode, state: (s: string) => string): 
       return tx('activity.restartedYou', { id });
     case 'activity.reassigned':
       return tx('activity.reassignedYou', { id, agent: phrase.agent });
+    case 'activity.setAside':
+      return tx(phrase.key, { id });
+    case 'activity.resumed':
+      return tx('activity.resumedYou', { id });
     case 'activity.handed':
       return tx(phrase.key, { id, state: named(phrase, state) });
     case 'activity.sentBack':

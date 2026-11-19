@@ -54,13 +54,14 @@ export function unheardLead(busy: readonly string[]): string {
 }
 
 // Whether an item waits for an agent that nobody will bring: on the agent turn, no agent waiting,
-// and no agent at work on it (none holds it, or its holder has gone idle).
+// and no agent at work on it (none holds it, or its holder has gone idle). One an agent set aside
+// for later is not: the desk says who set it aside instead, with Retomar (P7-R3-1).
 export function unheard(
-  item: Pick<Item, 'turn' | 'lease'>,
+  item: Pick<Item, 'turn' | 'lease' | 'setAside'>,
   agents: readonly Agent[] | null | undefined,
   now: number,
 ): boolean {
-  if (item.turn !== 'agent' || anyoneWaits(agents)) return false;
+  if (item.turn !== 'agent' || item.setAside || anyoneWaits(agents)) return false;
   const lease = activeLease(item.lease, now);
   if (!lease) return true;
   const holder = agents?.find((a) => a.name === lease.holder);

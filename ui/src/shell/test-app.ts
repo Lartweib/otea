@@ -38,6 +38,7 @@ export function testApp(o: Partial<App> = {}): App {
     answer: async () => undefined,
     restart: async () => undefined,
     reassign: async () => undefined,
+    resume: async () => undefined,
     link: async () => undefined,
     unlink: async () => undefined,
     newItem: noop,
