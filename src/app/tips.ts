@@ -17,13 +17,23 @@ function isTip(value: unknown): value is Tip {
 // (P3C-R2-1). A later handoff that recorded none (made outside the repo) leaves nothing to hold the
 // branch to, never an older round's tip; a tip of another branch holds nothing either.
 export function approvedTipOf(ctx: Context, id: string, branch: string): Tip | undefined {
-  const handed = selectEvents(ctx.db, id)
+  const tip = lastHandoff(ctx, id)?.data.tip;
+  return isTip(tip) && tip.branch === branch ? tip : undefined;
+}
+
+// The item's last move into a review: its last handoff.
+function lastHandoff(ctx: Context, id: string) {
+  return selectEvents(ctx.db, id)
     .filter(({ type }) => type === 'transitioned')
     .filter(({ data }) => {
       const to = positionOf(String(data.to));
       return !isClosed(to) && to.phase !== 'doing';
     })
     .at(-1);
-  const tip = handed?.data.tip;
-  return isTip(tip) && tip.branch === branch ? tip : undefined;
+}
+
+// Whether the item was ever handed off into a review: from then on its branch on the remote holds
+// what a review read.
+export function handedOff(ctx: Context, id: string): boolean {
+  return lastHandoff(ctx, id) !== undefined;
 }

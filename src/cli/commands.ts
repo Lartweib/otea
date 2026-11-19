@@ -231,6 +231,7 @@ import {
   mergeTake,
   pushState,
   remoteOf,
+  rewritesRemote,
   tipOf,
 } from './gitrepo.ts';
 import {
@@ -3286,6 +3287,10 @@ const check: Command = {
             ? branchesBrought(cwd, branch(), remoteOf(cwd, branch()))
             : branchesBrought(cwd, sent.to, sent.from)),
           takes,
+          // A push the hook names rewrites the remote branch unless it adds to it (P1-R3-3).
+          ...(sent === undefined
+            ? {}
+            : { rewrites: () => rewritesRemote(cwd, sent.from, sent.to) }),
         });
         return checkGate(project, gate, gateFields(input, cwd, project, branch), brings);
       });

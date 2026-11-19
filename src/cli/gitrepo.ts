@@ -80,6 +80,17 @@ function commitOf(cwd: string, ref: string): string | undefined {
   }
 }
 
+// Whether a push from `from` (what the remote has of the branch) to `to` rewrites it rather than
+// adding to it: `from` is not in the history of `to` (a force push after a rebase or an amend), or
+// this clone never had it. A branch the push creates or deletes rewrites nothing.
+export function rewritesRemote(cwd: string, from: string, to: string): boolean {
+  if (/^0+$/.test(from) || /^0+$/.test(to)) return false;
+  const tip = commitOf(cwd, to);
+  if (!tip) return false;
+  const remote = commitOf(cwd, from);
+  return remote === undefined || !isAncestor(cwd, remote, tip);
+}
+
 // Whether the repo at cwd has the commit a ref names (false outside a repo).
 export function hasCommit(cwd: string, ref: string): boolean {
   return commitOf(cwd, ref) !== undefined;

@@ -24,6 +24,7 @@ import {
   forPersonText,
   gateText,
   placeText,
+  rewriteForPersonText,
 } from '../core/board/next.ts';
 import { partByName, stateName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
@@ -33,7 +34,7 @@ import type { Context } from './context.ts';
 import { type Item, listItems, workflowOf } from './items.ts';
 import { mergedOf } from './merged.ts';
 import { itemOnBoard, type LiveBoard, liveBoards } from './next.ts';
-import { approvedTipOf, type Tip } from './tips.ts';
+import { approvedTipOf, handedOff, type Tip } from './tips.ts';
 
 export type { Tip };
 
@@ -81,6 +82,9 @@ export type Brought = {
   // merges the branch as the remote has it, which a clone without Otea's hook can push to after
   // the approval. `base` is the branch it merges into.
   takes?: (tip: Tip, base?: string) => MergeTake;
+  // Whether a push of a branch rewrites what the remote has of it instead of adding to it (a force
+  // push): asked only of a push the pre-push hook names (--commits).
+  rewrites?: () => boolean;
 };
 
 // How the branch a merge takes stands with the tip the person approved: `held` when it lands as
@@ -186,7 +190,7 @@ function boardVerdicts(
   gate: GateAction,
   fields: Readonly<Record<string, string>>,
   brings: Brings,
-): { verdict: GateVerdict; open: boolean; dropped?: boolean }[] {
+): { verdict: GateVerdict; open: boolean; dropped?: boolean; rewrite?: BoardDefinition }[] {
   const keys = boardKeys(board.def, fields);
   if (!keys) return [];
   const guard = guardedBranch(board.def);
@@ -213,8 +217,18 @@ function boardVerdicts(
           : gate === 'push'
             ? landingPushRefusal(ctx, board.def, item, position, guard, brings)
             : mergeRefusal(ctx, board.def, item, position, guard, brings, merged);
-      if (unreviewed) Object.assign(verdict, { allowed: false, text: unreviewed });
-      return { verdict, open: !isClosed(position), dropped: isDropped(position) };
+      const rewritten =
+        verdict.allowed && !unreviewed && guard && gate === 'push'
+          ? rewriteRefusal(ctx, board.def, item, position, guard, brings)
+          : undefined;
+      const refused = unreviewed ?? rewritten;
+      if (refused) Object.assign(verdict, { allowed: false, text: refused });
+      return {
+        verdict,
+        open: !isClosed(position),
+        dropped: isDropped(position),
+        ...(rewritten ? { rewrite: board.def } : {}),
+      };
     });
 }
 
@@ -240,6 +254,32 @@ function landingPushRefusal(
     ? `, as they are or rebased onto ${base} with the same result`
     : ' as they are';
   return `push refused: ${item.id} is being landed in ${placeText(def, position)}: the person approved ${branch} at ${short(tip.commit)}, and this push writes changes nobody reviewed. Push only the approved commits${rebased}; for anything else, ${reviewAgainText(def, item.id, position)}.`;
+}
+
+// A push that rewrites an item's branch on the remote (a force push) once the item was handed off
+// (P1-R3-3): the remote branch holds what the review read, and another agent may have added to it
+// meanwhile; a rewrite would drop both. Before the first handoff a rewrite is the agent's own
+// business, and while the item is landed the push is held to what was approved instead
+// (landingPushRefusal), where a rebase with the same result passes. Undefined when the push may go.
+function rewriteRefusal(
+  ctx: Context,
+  def: BoardDefinition,
+  item: { id: string; fields: Record<string, unknown> },
+  position: Position,
+  guard: NonNullable<ReturnType<typeof guardedBranch>>,
+  brings: Brings,
+): string | undefined {
+  if (gateAt(def, position, 'merge').why === 'landing') return undefined;
+  const branch = item.fields[guard.id];
+  if (typeof branch !== 'string' || branch === guard.guard.base) return undefined;
+  if (!handedOff(ctx, item.id) || brought(brings).rewrites?.() !== true) return undefined;
+  const tip = approvedTipOf(ctx, item.id, branch);
+  const at = tip ? ` at ${short(tip.commit)}` : '';
+  const base = guard.guard.base;
+  const merge = base
+    ? `to bring in ${base}, merge it (git merge origin/${base})`
+    : 'to bring in the base, merge it';
+  return `push refused: ${item.id} was handed off for review${at}, and this push rewrites ${branch} on the remote instead of adding to it: what the review read, and any commit another agent added, would be gone from it. Add commits on top; ${merge} rather than rebase.`;
 }
 
 // A merge of an item's own branch once the person approved it, while it is landed (or, on a board
@@ -479,15 +519,24 @@ export function checkGate(
     ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields, brings))
     : [];
   const fromPresets = presetVerdicts(ctx, gate, fields, onBoards);
-  const gated = [...fromBoards, ...fromPresets];
+  const gated: {
+    verdict: GateVerdict;
+    open: boolean;
+    dropped?: boolean;
+    rewrite?: BoardDefinition;
+  }[] = [...fromBoards, ...fromPresets];
   const open = gated.filter((entry) => entry.open);
   // Of the closed ones, a dropped duplicate left on the branch never blocks the item that was done
   // there; dropped ones alone still answer (and allow nothing).
   const kept = gated.filter((entry) => !entry.dropped);
   const closed = kept.length > 0 ? kept : gated;
-  const items = (open.length > 0 ? open : closed).map(({ verdict }) => verdict);
+  const answered = open.length > 0 ? open : closed;
+  const items = answered.map(({ verdict }) => verdict);
   const check: GateCheck = { gate, allowed: items.every(({ allowed }) => allowed), items };
   if (items.length === 0) check.note = `no item with a ${gate} gate matches`;
+  // A person who means to rewrite the branch pushes it themselves, past the hook (P1-R3-3).
+  const rewritten = answered.find(({ rewrite }) => rewrite !== undefined)?.rewrite;
+  if (rewritten) check.person = rewriteForPersonText(rewritten);
   return check;
 }
 
