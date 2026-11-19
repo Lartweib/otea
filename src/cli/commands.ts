@@ -92,6 +92,7 @@ import {
   LISTEN_BEAT_MS,
   listAgents,
   nameFor,
+  offerName,
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
@@ -1958,15 +1959,17 @@ const whoami: Command = {
     return withProject(cwd, (project) => {
       // Over MCP this server asks: a name it hears is this session's own.
       const session = input.channel === 'mcp' ? process.pid : undefined;
-      const advice = nameFor(project.db, { folder: cwd, harness, session });
-      const others = advice.others.length > 0 ? advice.others : [];
       if (input.agent !== undefined) {
         assertAgentName(input.agent);
+        const advice = nameFor(project.db, { folder: cwd, harness, session });
         return {
           data: { ...advice, name: input.agent, given: true },
           text: `You are ${input.agent}: put it on every command (--as ${input.agent}; MCP tools: as).`,
         };
       }
+      // The name it is told is handed to this session: one asking at the same time gets another.
+      const advice = offerName(project.db, { folder: cwd, harness, session });
+      const others = advice.others.length > 0 ? advice.others : [];
       if (advice.name !== null) {
         const known = findAgent(project.db, advice.name);
         const when = known ? ` (last seen ${timeText(known.lastSeen)})` : '';
@@ -1983,6 +1986,13 @@ const whoami: Command = {
               ? [`Others that worked here and are not connected now: ${others.join(', ')}.`]
               : []),
           ].join('\n'),
+        };
+      }
+      if (advice.suggested !== null) {
+        const name = advice.suggested;
+        return {
+          data: { ...advice, reuse: false },
+          text: `Take the name ${name}: your earlier name here is taken by a session working now, and ${name} is handed to this session only. Put it on every command: --as ${name} (MCP tools: as).`,
         };
       }
       const taken =
