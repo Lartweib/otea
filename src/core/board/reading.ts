@@ -134,7 +134,9 @@ export function readFieldInput(
     }
     const part =
       partByName(def, key) ?? (fold(key) === DESCRIPTION ? descriptionOf(def) : undefined);
-    if (!part || isEvidence(part)) {
+    // A part the agent attaches as a file is no field to fill (P3C-R3-5): said so, with the command.
+    if (part && isEvidence(part)) throw attachedPart(part);
+    if (!part) {
       throw new OteaError(
         'invalid_fields',
         `${def.name} has no field "${key}"; its fields are ${fieldNames(def).join(', ')}`,
@@ -144,6 +146,16 @@ export function readFieldInput(
     out[part.id] = valueFor(part, value);
   }
   return out;
+}
+
+// A part the agent attaches as a file named as a field: how to attach it instead. `id` and `file`
+// fill the command where the caller knows them.
+export function attachedPart(part: Part, id = '<id>', file = '<file>'): OteaError {
+  const named = (text: string) => (/^[\w.<>/-]+$/.test(text) ? text : `"${text}"`);
+  return new OteaError(
+    'invalid_fields',
+    `${part.name} is a part you attach as a file, not a field: otea attach ${id} ${named(file)} --module ${named(part.name)}`,
+  );
 }
 
 // The evidence part a reader names (`--module Bocetos`), as the module id it was compiled to.

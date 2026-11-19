@@ -164,9 +164,9 @@ import { watch } from '../app/watch.ts';
 import { agentGuideFor, TOPICS_REMINDER, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
 import { isClosed, positionOf } from '../core/board/engine.ts';
-import { guardedBranch, stepById } from '../core/board/model.ts';
+import { guardedBranch, isEvidence, stepById } from '../core/board/model.ts';
 import { DROPPED_NAME } from '../core/board/next.ts';
-import { fieldsByName, stateName } from '../core/board/reading.ts';
+import { attachedPart, fieldsByName, partByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
 import { isSetKey, LANGS, LISTED_KEYS, TEMPLATE_SETS, TEMPLATES } from '../core/board/templates.ts';
 import { parseDiagram } from '../core/diagram.ts';
@@ -2464,9 +2464,33 @@ const update: Command = {
     }
     const { actor } = input;
     const changes = { id, fields, actor, ...(title === undefined ? {} : { title }) };
-    return withAgent(input, (project) => itemResult(project, updateItem(project, changes)));
+    return withAgent(input, (project) => {
+      refuseAttachedParts(project, id, Object.keys(fields), input);
+      return itemResult(project, updateItem(project, changes));
+    });
   },
 };
+
+// A part the agent attaches as a file, named as a field to fill (P3C-R3-5): refused with the exact
+// otea attach command, the file the agent gave with --field-file in it.
+function refuseAttachedParts(
+  project: Project,
+  id: string,
+  keys: readonly string[],
+  input: Input,
+): void {
+  const board = liveBoardOf(project, getItem(project, id).collection);
+  if (!board) return;
+  const files = new Map(
+    input.options('field-file').map((pair) => fieldPair(pair, '', 'field-file', '<file>')),
+  );
+  for (const key of keys) {
+    const part = partByName(board.def, key);
+    if (!part || !isEvidence(part)) continue;
+    const file = files.get(key);
+    throw attachedPart(part, id, file === undefined || file === '-' ? undefined : file);
+  }
+}
 
 // A diagram Otea cannot draw (outside its Mermaid flowchart subset, core/diagram.ts) is kept, and
 // the person sees its source: the agent is told, with the subset, so it can attach one that draws.
