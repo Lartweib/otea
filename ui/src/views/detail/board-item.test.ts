@@ -1138,4 +1138,25 @@ describe('branchSaid', () => {
       'agents leave it alone while you review it; if anyone else pushes, it shows here',
     );
   });
+
+  // P1-R3-9: an item merged by hand still read «un agente la integra en main ahora»; the PC tells
+  // the page when git shows its branch in the base already, as the CLI says "merged outside Otea".
+  it('says a branch merged outside Otea is in the base already, and what is left', () => {
+    const landing = {
+      tone: 'ok',
+      key: 'landing',
+      value: 'feat/x',
+      step: 'Integrar',
+      base: 'main',
+    } as const;
+    const outside = { branch: 'feat/x', base: 'main', land: 'Integrar' };
+    setLanguage('es');
+    expect(branchSaid(landing, outside)).toBe(
+      'ya está en main, fusionada fuera de Otea: un agente cierra el paso Integrar',
+    );
+    setLanguage('en');
+    expect(branchSaid(landing, outside)).toBe(
+      'in main already, merged outside Otea: an agent closes the Integrar step',
+    );
+  });
 });

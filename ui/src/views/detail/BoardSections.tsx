@@ -34,6 +34,7 @@ import {
   type WaitRow,
 } from './board-item.ts';
 import { type Drift, driftText } from './drift.ts';
+import type { MergedOutside } from './merged-outside.ts';
 
 // The item page of a Studio board (the mock's itemHtml, 75-cover.js): what its step waits for in
 // the checklist's words (F12), the protected branch after the buttons (F10), the notes of every
@@ -261,15 +262,18 @@ export function WaitChecklist({
 
 // "Rama feat/x en api · se puede subir / congelada mientras la revisas / se puede fusionar".
 // Under it, what a clone without Otea's hook pushed to the branch since the handoff (P3C-R3-1).
+// In its land step, when the PC saw it merged outside Otea, it says so instead (P1-R3-9).
 export function BranchLine({
   strip,
   drift = null,
+  outside = null,
 }: {
   strip: BranchStrip | null;
   drift?: Drift | null;
+  outside?: MergedOutside | null;
 }) {
   if (!strip) return null;
-  const said = branchSaid(strip);
+  const said = branchSaid(strip, outside);
   const line = (
     <div className={`bstrip ${strip.tone}`} data-c title={t('bi.branch.label')}>
       <Icon name="branch" />

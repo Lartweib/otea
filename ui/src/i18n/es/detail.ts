@@ -690,6 +690,8 @@ export const detail = {
   'bi.branch.landed': 'fusionada en {step}',
   'bi.branch.landing': 'un agente la integra en {base} ahora, como dice el paso {step}',
   'bi.branch.landingOwn': 'un agente sube {base} al remoto ahora',
+  'bi.branch.mergedOutside':
+    'ya está en {base}, fusionada fuera de Otea: un agente cierra el paso {step}',
   'bi.branch.landedOwn': 'subida en {step}',
   'bi.branch.closed': 'ya no se sube',
   'bi.branch.noPush': 'sin subidas en {step}',
