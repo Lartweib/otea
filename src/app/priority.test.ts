@@ -6,7 +6,7 @@ import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
 import { createItem, updateItem } from './items.ts';
 import { claimItem } from './leases.ts';
-import { nextFor } from './next.ts';
+import { dropItem, nextFor } from './next.ts';
 import { estimatesOf, estimatesOfItems, pinItems, priorityOf, setOrder } from './priority.ts';
 import { memoryContext } from './testing.ts';
 
@@ -80,6 +80,24 @@ describe('the person orders the work', () => {
     expect(priorityOf(ctx.db).get(a!.id)?.pin).toBe(2);
     pinItems(ctx, { ids: [b!.id], pinned: false, actor: you }, now);
     expect(priorityOf(ctx.db).get(b!.id)?.pin).toBeUndefined();
+  });
+
+  // P1-R2-6, P7-R2-10: the desk counts «Tu orden» over open items; list and next must say the
+  // same numbers, so a closed item keeps no place on top nor in the fixed order.
+  it('numbers the order over open items only, leaving out what was closed', () => {
+    const ctx = memoryContext();
+    board(ctx);
+    const [a, b, c, d] = ['A', 'B', 'C', 'D'].map((title) => creature(ctx, title));
+    pinItems(ctx, { ids: [a!.id, b!.id], pinned: true, actor: you }, now);
+    setOrder(ctx, { collection: 'Criaturas', ids: [c!.id, d!.id], actor: you }, now);
+    for (const id of [a!.id, c!.id])
+      dropItem(ctx, { id, actor: you, channel: 'ui', reason: 'no' }, now);
+    pinItems(ctx, { ids: [d!.id], pinned: true, actor: you }, now);
+    const order = priorityOf(ctx.db);
+    expect(order.has(a!.id)).toBe(false);
+    expect(order.has(c!.id)).toBe(false);
+    expect(order.get(b!.id)).toEqual({ pin: 1 });
+    expect(order.get(d!.id)).toEqual({ pin: 2, rank: 1 });
   });
 
   it('refuses an agent ordering the work, and an item of another board', () => {

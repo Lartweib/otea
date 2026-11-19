@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { type Analysis, isScaleRole, ROLES, type Role } from '../core/board/analysis.ts';
+import { isClosed, positionOf } from '../core/board/engine.ts';
 import type { BoardDefinition } from '../core/board/model.ts';
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
@@ -21,18 +22,41 @@ import { systemClock } from './items.ts';
 
 export type Priority = { pin?: number; rank?: number };
 
-type PriorityRow = { item_id: string; pin: number | null; rank: number | null };
+type PriorityRow = {
+  item_id: string;
+  collection: string;
+  state: string;
+  pin: number | null;
+  rank: number | null;
+};
 
+// Numbered over open items only, as the Matrix's «Tu orden» counts them: a closed item keeps no
+// place, and the ones after it move up (pins across the project, a fixed order per board). The
+// stored values stay, so the order between open items never changes.
 export function priorityOf(db: DatabaseSync): Map<string, Priority> {
-  const rows = db
-    .prepare('SELECT item_id, pin, rank FROM item_priority')
-    .all() as unknown as PriorityRow[];
-  return new Map(
-    rows.map(({ item_id, pin, rank }) => [
-      item_id,
-      { ...(pin === null ? {} : { pin }), ...(rank === null ? {} : { rank }) },
-    ]),
+  const rows = (
+    db
+      .prepare(
+        `SELECT p.item_id, i.collection, i.state, p.pin, p.rank
+         FROM item_priority p JOIN items i ON i.id = p.item_id`,
+      )
+      .all() as unknown as PriorityRow[]
+  ).filter(({ state }) => !isClosed(positionOf(state)));
+  const out = new Map<string, Priority>(rows.map(({ item_id }) => [item_id, {}]));
+  const pins = rows.flatMap(({ item_id, pin }) => (pin === null ? [] : [{ item_id, pin }]));
+  for (const [index, { item_id }] of pins.sort((a, b) => a.pin - b.pin).entries())
+    out.set(item_id, { ...out.get(item_id), pin: index + 1 });
+  const ranks = rows.flatMap(({ item_id, collection, rank }) =>
+    rank === null ? [] : [{ item_id, collection, rank }],
   );
+  ranks.sort((a, b) => a.collection.localeCompare(b.collection) || a.rank - b.rank);
+  const placed = new Map<string, number>();
+  for (const { item_id, collection } of ranks) {
+    const rank = (placed.get(collection) ?? 0) + 1;
+    placed.set(collection, rank);
+    out.set(item_id, { ...out.get(item_id), rank });
+  }
+  return out;
 }
 
 // Only the person orders the work: an agent asking is refused.

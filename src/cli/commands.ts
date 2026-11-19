@@ -920,10 +920,27 @@ function listFilter({ option, options, flag, reader }: Input): ListItemsFilter {
   return filter;
 }
 
+// What the person put on top first, then the order they fixed on the Matrix, as otea next takes
+// them; the rest after, in creation order (the sort is stable).
+function byPersonOrder<T extends { id: string }>(
+  items: readonly T[],
+  order: ReadonlyMap<string, { pin?: number; rank?: number }>,
+): T[] {
+  const key = (item: T) => {
+    const placed = order.get(item.id);
+    return [placed?.pin ?? Number.POSITIVE_INFINITY, placed?.rank ?? Number.POSITIVE_INFINITY];
+  };
+  return [...items].sort((a, b) => {
+    const [pa = 0, ra = 0] = key(a);
+    const [pb = 0, rb = 0] = key(b);
+    return pa !== pb ? (pa < pb ? -1 : 1) : ra !== rb ? (ra < rb ? -1 : 1) : 0;
+  });
+}
+
 const list: Command = {
   name: 'list',
   summary:
-    'List items in creation order, with the order the person set beside those it places (on top 1, order 2: what they put on top and fixed on the Matrix, as otea next takes them), optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item, --field key=value (repeatable) keeps items whose field holds exactly that value; --state and --field take the board names (any case) or ids',
+    'List items in creation order, with the order the person set beside those it places (on top 1, order 2: what they put on top and fixed on the Matrix, as otea next takes them), optionally filtered; --unclaimed hides items others hold, --parent keeps the children of an item, --field key=value (repeatable) keeps items whose field holds exactly that value; --state and --field take the board names (any case) or ids; --sort order puts what the person ordered first',
   args: [],
   options: {
     collection: {},
@@ -933,13 +950,17 @@ const list: Command = {
     parent: { placeholder: 'id' },
     field: { multiple: true, placeholder: 'key=value' },
     unclaimed: { flag: true },
+    sort: { choices: ['created', 'order'] },
   },
   execute: (input) => {
     return withReader(input, (project) => {
       // A step and fields named as the board names them, or by id: each item on its own board.
       const filter = listFilter(input);
       const { state: _state, fields: _fields, ...stored } = filter;
-      const items = listItems(project, stored).filter(readerFilter(project, filter));
+      // The person's order beside each item it places, as otea next takes them.
+      const order = priorityOf(project.db);
+      const listed = listItems(project, stored).filter(readerFilter(project, filter));
+      const items = input.option('sort') === 'order' ? byPersonOrder(listed, order) : listed;
       // Done with its branch not merged yet reads as the desk says it, never as merged (P6-R2-11).
       const boards = liveBoards(project);
       const shown = items.map((item) => {
@@ -949,8 +970,6 @@ const list: Command = {
           : named;
       });
       const boardOf = boardsOf(project);
-      // The person's order beside each item it places, as otea next takes them.
-      const order = priorityOf(project.db);
       return {
         data: items.map((item) => {
           const placed = order.get(item.id);
