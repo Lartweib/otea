@@ -59,6 +59,8 @@ export type Item = {
   // A closed board item (app/next.ts rowFactsOf): the agent that did its work, never the one that
   // only landed it, and whether its protected branch waits to be merged or was merged.
   doer?: string;
+  // The profile the doer handed its work off under (P3C-R2-5).
+  doerProfile?: AgentProfile;
   merge?: 'waiting' | 'merged';
 };
 

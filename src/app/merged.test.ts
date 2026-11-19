@@ -12,6 +12,7 @@ import {
   nextFor,
   rowFactsOf,
 } from './next.ts';
+import { declareProfile } from './profile.ts';
 import { linkItems } from './relations.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
@@ -158,6 +159,67 @@ describe('marking a Done item merged', () => {
     const text = itemNextText(ctx, requireItem(ctx.db, id), 'quill', now);
     expect(text).toContain('Its branch feat/x was merged in Integrar.');
     expect(text).not.toContain('may be merged now');
+  });
+
+  // P3C-R2-5: «lo hizo» showed the profile the agent had last, not the one it delivered under.
+  it('names the profile the doer handed the work off under, not the one it has since', () => {
+    const ctx = memoryContext();
+    const def = tareasDeRepo();
+    def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    publishAs(ctx, def, 'brt', now);
+    publishAs(ctx, cambios(), 'bcam', now);
+    const parent = createItem(
+      ctx,
+      { collection: 'Cambios', title: 'Nube', fields: { fwhat: 'x' }, actor: you },
+      now,
+    );
+    const { id } = createItem(
+      ctx,
+      {
+        collection: 'Tareas de repo',
+        title: 'API',
+        fields: { frepo: 'api', fbranch: 'feat/x' },
+        parent: parent.id,
+        actor: you,
+      },
+      now,
+    );
+    updateItemState(ctx.db, id, 'simpl', now());
+    insertEvidence(ctx.db, {
+      itemId: id,
+      role: 'after',
+      module: 'ecode',
+      kind: 'diff',
+      filename: 'a.diff',
+      contentType: 'text/x-diff',
+      size: 1,
+      sha256: 'a'.repeat(64),
+      caption: null,
+      createdAt: now(),
+      actor: quill,
+      channel: 'cli',
+    });
+    const as = (model: string) =>
+      declareProfile(
+        ctx.db,
+        { agent: 'quill', channel: 'cli', given: 'claude-code', model, effort: 'high' },
+        now,
+      );
+    as('claude-haiku-4-5');
+    handoffItem(ctx, { id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id, actor: you, channel: 'ui' }, now);
+    as('claude-sonnet-4-5');
+    handoffItem(ctx, { id, actor: quill, channel: 'cli' }, now);
+
+    expect(rowFactsOf(ctx, requireItem(ctx.db, id))).toEqual({
+      doer: 'quill',
+      doerProfile: {
+        harness: 'claude-code',
+        model: 'claude-haiku-4-5',
+        effort: 'high',
+        family: 'haiku',
+      },
+    });
   });
 
   it('tells the lander it merges in the land step, with no review to freeze the branch', () => {

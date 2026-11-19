@@ -121,6 +121,13 @@ describe('actedWith', () => {
     expect(actedWith('claude-d', [by('claude-d', opus), by('codex-b')], now)).toEqual(opus);
   });
 
+  // P3C-R2-5: a closed item's «lo hizo» showed the profile of its later events (a merge under
+  // another model), not the one the work was handed off under.
+  it('reads first the profile the doer handed the work off under, when the server gives it', () => {
+    const now = [agent('claude-d', { profile: sonnet })];
+    expect(actedWith('claude-d', [by('claude-d', sonnet)], now, opus)).toEqual(opus);
+  });
+
   it('falls back on what it declares now, and leaves out a decision it relayed', () => {
     const now = [agent('claude-d', { profile: sonnet })];
     expect(actedWith('claude-d', [by('claude-d', opus, 'you')], now)).toEqual(sonnet);

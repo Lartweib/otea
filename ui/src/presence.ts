@@ -44,13 +44,16 @@ export function parseProfile(raw: unknown): AgentProfile | null {
 
 const textOr = (value: unknown): string | null => (typeof value === 'string' ? value : null);
 
-// The profile an agent acted with: the one its last own event among these kept (each event keeps
-// the profile of that moment), else the one it declares now; null when neither says.
+// The profile an agent acted with: the one it handed the work off under when the server says
+// (`delivered`, a closed item's doer, P3C-R2-5), else the one its last own event among these kept
+// (each event keeps the profile of that moment), else the one it declares now; null when none says.
 export function actedWith(
   agent: string,
   events: readonly Pick<ItemEvent, 'actor' | 'data' | 'profile'>[],
   agents?: readonly Agent[] | null,
+  delivered?: AgentProfile | null,
 ): AgentProfile | null {
+  if (delivered) return delivered;
   const own = events.findLast(
     (e) =>
       e.actor.kind === 'agent' &&

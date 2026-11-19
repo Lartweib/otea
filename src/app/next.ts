@@ -91,6 +91,7 @@ import {
   findAgent,
   findItem,
   type ItemRecord,
+  type ProfileView,
   saveOffer,
   selectEvents,
   selectEvidence,
@@ -481,7 +482,8 @@ function tickedOf(value: unknown): string[] {
   }
 }
 
-export type ClosedBy = { doer?: string; reviewer?: Actor };
+// `doerProfile`: the profile the doer handed the work off under (P3C-R2-5), not the one it has now.
+export type ClosedBy = { doer?: string; doerProfile?: ProfileView; reviewer?: Actor };
 
 // Who did a closed item's work and who approved it: the last agent that handed the item off out of
 // a step's doing, and the last one that moved it out of a review (or, for a step nobody reviews
@@ -493,8 +495,11 @@ function closedByOf(def: BoardDefinition, events: readonly EventRecord[]): Close
     const from = positionOf(String(event.data.from));
     if (isClosed(from)) continue;
     const landing = isLandStep(def, from.step);
-    if (from.phase === 'doing' && event.actor.kind === 'agent' && !landing)
+    if (from.phase === 'doing' && event.actor.kind === 'agent' && !landing) {
       out.doer = event.actor.name;
+      if (event.profile) out.doerProfile = event.profile;
+      else delete out.doerProfile;
+    }
     if (from.phase === 'review') out.reviewer = event.actor;
   }
   const last = events.findLast(({ type }) => type === 'transitioned');
@@ -581,7 +586,11 @@ export function boardRoundOf(
 
 // What a list row says of a closed board item: the agent that did its work (never the one that only
 // landed it), and, on a board whose protected branch is merged after Done, whether it was merged.
-export type RowFacts = { doer?: string; merge?: 'waiting' | 'merged' };
+export type RowFacts = {
+  doer?: string;
+  doerProfile?: ProfileView;
+  merge?: 'waiting' | 'merged';
+};
 
 export function rowFactsOf(
   ctx: Context,
@@ -591,8 +600,8 @@ export function rowFactsOf(
   const board = boards.find(({ collection }) => collection === item.collection);
   if (!board || !isClosed(positionOf(item.state))) return {};
   const events = selectEvents(ctx.db, item.id);
-  const { doer } = closedByOf(board.def, events);
-  const out: RowFacts = doer ? { doer } : {};
+  const { doer, doerProfile } = closedByOf(board.def, events);
+  const out: RowFacts = doer ? { doer, ...(doerProfile ? { doerProfile } : {}) } : {};
   if (waitsToMerge(ctx, board, item)) out.merge = 'waiting';
   else if (mergedFrom(events)) out.merge = 'merged';
   return out;
