@@ -4,7 +4,7 @@ import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { creatures } from '../../../../src/core/board/testing.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Item } from '../../types.ts';
-import { PhoneMatrix, pickedInTapOrder } from './Matrix.tsx';
+import { MatrixView, PhoneMatrix, pickedInTapOrder } from './Matrix.tsx';
 
 afterEach(() => setLanguage('en'));
 
@@ -96,5 +96,32 @@ describe('the Matrix on the phone', () => {
     expect(render()).toContain(
       '<span><em class="pmx-quad">Largas y delicadas · </em>Esfuerzo: L · Riesgo: Crítica</span>',
     );
+  });
+});
+
+// P4-R3-4: every to-do sat in «Sin estimar», each tagged «estimado» because an agent had given
+// it one of the two values: nothing there is estimated yet.
+describe('Sin estimar', () => {
+  const unsized = { ...item('A', { frisk: 'high' }), estimates: { frisk: 'kiln' } };
+  const props = { ticked: [], onTick: () => undefined, onOpen: () => undefined };
+
+  it('tags none of its items as estimated, on the desk and on the phone', () => {
+    setLanguage('es');
+    const desk = renderToStaticMarkup(
+      <MatrixView collection="Criaturas" def={weighed()} items={[unsized]} {...props} />,
+    );
+    expect(desk).toContain('Sin estimar');
+    expect(desk).not.toContain('mx-guess');
+    const phone = renderToStaticMarkup(
+      <PhoneMatrix
+        def={weighed()}
+        items={[unsized]}
+        {...props}
+        onPin={() => undefined}
+        onOrder={() => undefined}
+      />,
+    );
+    expect(phone).toContain('Sin estimar');
+    expect(phone).not.toContain('mx-guess');
   });
 });

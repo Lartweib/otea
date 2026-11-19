@@ -548,8 +548,13 @@ describe('boardText', () => {
       [
         '',
         'The Matrix',
-        '  The person weighs this board’s items on the Matrix, Esfuerzo × Impacto, and fixes the order you take them in: otea next offers them in that order. Estimate Esfuerzo and Impacto on every item you take (otea update <id> --field "Esfuerzo=…"); the person corrects you.',
+        '  The person weighs this board’s items on the Matrix, Esfuerzo × Impacto, and fixes the order you take them in: otea next offers them in that order. Estimate Esfuerzo and Impacto on every item you create (otea create … --field "Esfuerzo=…"), the person’s own included, and on every item you take that lacks them (otea update <id> --field "Esfuerzo=…"); the person corrects you.',
       ].join('\n'),
+    );
+    // P4-R3-4: the person's own to-dos were never estimated, since no agent takes them; the
+    // example of how to add one gives the Matrix's fields too.
+    expect(boardText(board)).toContain(
+      '  otea create --collection Criaturas --title "<title>" --field "Descripción=…" --field "Bioma=…" --field "Esfuerzo=…" --field "Impacto=…" (Bioma may wait)',
     );
   });
 });

@@ -1198,13 +1198,24 @@ function fieldValueLines(def: BoardDefinition): string[] {
 }
 
 // How to add an item: the fields of the board's own form, by name, so an agent never tries an
-// option the board does not take (--description on a board with no description field).
+// option the board does not take (--description on a board with no description field). On a board
+// with the Matrix, its fields the form leaves out come after: an agent estimates them as it
+// creates the item (P4-R3-4).
 function createLines(def: BoardDefinition): string[] {
   const fields = def.form.flatMap(({ ref, required }) => {
     const part = def.parts[ref];
     return part ? [{ name: part.name, required }] : [];
   });
-  const given = fields.map(({ name }) => ` --field "${name}=…"`).join('');
+  const formed = new Set(def.form.map(({ ref }) => ref));
+  const scales = viewsOf(def).includes('matrix')
+    ? mappedScales(def).flatMap((role) => {
+        const part = rolePart(def, role);
+        return part && !formed.has(part.id) ? [part.name] : [];
+      })
+    : [];
+  const given = [...fields.map(({ name }) => name), ...scales]
+    .map((name) => ` --field "${name}=…"`)
+    .join('');
   const later = fields.filter(({ required }) => !required).map(({ name }) => name);
   const wait = later.length > 0 ? ` (${and(later)} may wait)` : '';
   const quoted = /\s/.test(def.name) ? `"${def.name}"` : def.name;
@@ -1220,7 +1231,7 @@ function matrixLines(def: BoardDefinition): string[] {
     .filter((name): name is string => name !== undefined);
   const [first = ''] = names;
   return [
-    `  The person weighs this board’s items on the Matrix, ${names.join(' × ')}, and fixes the order you take them in: otea next offers them in that order. Estimate ${and(names, 'and')} on every item you take (otea update <id> --field "${first}=…"); the person corrects you.`,
+    `  The person weighs this board’s items on the Matrix, ${names.join(' × ')}, and fixes the order you take them in: otea next offers them in that order. Estimate ${and(names, 'and')} on every item you create (otea create … --field "${first}=…"), the person’s own included, and on every item you take that lacks them (otea update <id> --field "${first}=…"); the person corrects you.`,
   ];
 }
 
