@@ -1311,7 +1311,7 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
   }
 }
 
-// The protected branch as git has it here when a step that pushes it is handed off: kept with a
+// The protected branch as git has it here when a step that pushes or hands it is handed off: kept with a
 // handoff into a review, it is what the person approves, and all the push gate lets land once it
 // is approved (P3C-R2-1). Nothing when the checkout does not have the branch.
 function handedTip(
@@ -1324,7 +1324,10 @@ function handedTip(
   const position = positionOf(item.state);
   const guard = board && guardedBranch(board.def);
   if (!guard || isClosed(position) || position.phase !== 'doing') return {};
-  if (!guard.guard.push.includes(position.step)) return {};
+  // A step that pushes the branch, or that hands it in (on main, the work is committed, not pushed,
+  // before the approval).
+  const hands = stepById(board.def, position.step)?.hand.some(({ ref }) => ref === guard.id);
+  if (!guard.guard.push.includes(position.step) && !hands) return {};
   const branch = item.fields[guard.id];
   if (typeof branch !== 'string' || branch.trim() === '') return {};
   const tip = tipOf(cwd, branch.trim(), branch.trim() === guard.guard.base);

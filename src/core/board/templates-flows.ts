@@ -612,6 +612,85 @@ export const CHANGES: Template = {
   },
 };
 
+// Changes for a person who works straight on main with no branches and wants nothing to reach the
+// remote before they see it (P2S-R2-1): an agent commits on main without pushing, and pushes main
+// only in the step after the person's approval. Each item's branch is main itself and only that
+// step pushes it, so the gate refuses a push of main while any of the board's items is not
+// approved yet.
+export const MAINLINE: Template = {
+  ...CHANGES,
+  key: 'mainline',
+  icon: 'git-branch',
+  name: w('Code on main', 'Código en main'),
+  description: w(
+    'For code you keep on main with no branches: an agent clarifies each change, commits it on main without pushing, and pushes main only once you approve it.',
+    'Para código que llevas en main, sin ramas: un agente aclara cada cambio, lo commitea en main sin subirlo y sube main solo cuando lo apruebas.',
+  ),
+  board: w('Code', 'Código'),
+  about: w(
+    "Changes the person asks an agent for in a project they keep on main, with no branches. Nothing reaches the remote before the person's review: the agent commits on main without pushing, and pushes main only once the person approves.",
+    'Cambios que la persona le pide a un agente en un proyecto que lleva en main, sin ramas. Nada llega al remoto antes de la revisión de la persona: el agente commitea en main sin subirlo, y sube main solo cuando la persona lo aprueba.',
+  ),
+  parts: CHANGES.parts.map((part) => {
+    if (part.key === 'branch')
+      return {
+        ...part,
+        hint: w(
+          'main: the work is done straight on it',
+          'main: el trabajo se hace directo en ella',
+        ),
+        guard: { push: ['land'], base: 'main' },
+      };
+    if (part.key === 'diff')
+      return {
+        ...part,
+        hint: w(
+          'git diff origin/main...main, whole: the commits not pushed yet',
+          'git diff origin/main...main, completo: los commits aún sin subir',
+        ),
+      };
+    if (part.key === 'commit')
+      return {
+        ...part,
+        name: w('Commit pushed', 'Commit subido'),
+        hint: w('the short hash of main once pushed', 'el hash corto de main una vez subido'),
+      };
+    return part;
+  }),
+  steps: CHANGES.steps.map((step) => {
+    if (step.key === 'doit')
+      return {
+        ...step,
+        take: w(
+          'Work straight on main, with no branch, and write main in @{branch}. Meet each point of @{check}; if something is ambiguous, ask with otea ask before going on. If it is a bug, write a failing test first. Commit on main but never push: Otea refuses a push of main until the person approves.',
+          'Trabaja directo en main, sin rama, y escribe main en @{branch}. Cumple cada punto de @{check}; si algo es ambiguo, pregunta con otea ask antes de seguir. Si es un error, escribe primero una prueba que falle. Commitea en main pero nunca hagas push: Otea rechaza el push de main hasta que la persona lo apruebe.',
+        ),
+        before: w(
+          'Attach the @{diff} of the commits not pushed yet. For a visual interface change, @{shots} before and after; for a command-line one, the @{term} instead (never screenshots of a terminal). For a bug, @{tests} with the new test passing. In the note, say what you changed, how you tested it and what was left out.',
+          'Adjunta @{diff} de los commits aún sin subir. Si es de interfaz visual, @{shots} antes y después; si es de línea de comandos, la @{term} en su lugar (nunca capturas de una terminal). Si es un error, @{tests} con la prueba nueva pasando. En la nota, di qué cambiaste, cómo lo probaste y qué quedó afuera.',
+        ),
+      };
+    if (step.key === 'land')
+      return {
+        ...step,
+        name: w('Push', 'Subir'),
+        take: w(
+          'The person approved it: push main as it is (git push origin main). Add nothing the person did not approve; if main on the remote moved, rebase on it first.',
+          'La persona lo aprobó: sube main tal como está (git push origin main). No agregues nada que la persona no haya aprobado; si main se movió en el remoto, rebasa sobre él primero.',
+        ),
+        before: w(
+          'Write in @{commit} the short hash of main once pushed.',
+          'Escribe en @{commit} el hash corto de main una vez subido.',
+        ),
+      };
+    return step;
+  }),
+  samples: {
+    en: ['A more visible button', 'The reminder fires twice', 'Explain how to run the bot'],
+    es: ['Botón más visible', 'El recordatorio sale dos veces', 'Explicar cómo correr el bot'],
+  },
+};
+
 // Work across repositories, as a team runs it from GitHub: a Job born from an issue is analysed and
 // planned, then divides into one Delivery per repository, which agents do and review in parallel and
 // the person lets merge in order.

@@ -115,7 +115,7 @@ describe('an agent drafting a board', () => {
     );
     // A board for someone who works on main keeps no branch guard by mistake (P2S-1).
     expect(take).toContain(
-      'Branches follow how the person works: when they work straight on main with no branches, take the guard off the branch part (or the part itself), unless they want each push of main to wait for their approval; then keep it with main as its base and as the branch of each item, pushed only in the step after their approval.',
+      'Branches follow how the person works. For code, ask the person whether anything may reach the remote before they see it. When they work straight on main and want nothing pushed before they see it ("do not push anything I have not seen"), start from the mainline template (Code on main): each item\'s branch is main and only the step after their approval pushes it, so the gate refuses a push of main until they approve; never draft code on todos, which has no gate. When they work straight on main and pushes need not wait, take the guard off the branch part (or the part itself).',
     );
     // A Pedido made in Studio closes on publish, as one made with draft --new does.
     expect(take).toContain(

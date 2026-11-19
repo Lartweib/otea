@@ -1,7 +1,7 @@
 import { DONE, MOTIVE, STEP } from './model.ts';
 import { EFFORT_SIZES, EMPTY, w } from './template-words.ts';
 import type { Template } from './templates.ts';
-import { CHANGES } from './templates-flows.ts';
+import { CHANGES, MAINLINE } from './templates-flows.ts';
 
 // The starter catalogue: generic boards named by what they manage, each a base a person adapts to
 // their own fields and steps: bugs, changes, research, decisions, content, visual design and
@@ -1175,6 +1175,7 @@ export const CATALOGUE_TEMPLATES: readonly Template[] = [
   TODOS,
   BUG_REPORTS,
   CHANGES,
+  MAINLINE,
   RESEARCH,
   DECISIONS,
   CONTENT,
