@@ -20,6 +20,7 @@ import { studioHash } from '../../selection.ts';
 import type { Item, ItemView, RelatedItem } from '../../types.ts';
 import {
   type BranchStrip,
+  branchSaid,
   type DraftRequest,
   fillControl,
   type HandRow,
@@ -268,22 +269,14 @@ export function BranchLine({
   drift?: Drift | null;
 }) {
   if (!strip) return null;
-  // A branch that is the base itself is pushed, never merged (P2S-R3-2).
-  const said =
-    strip.key === 'landing'
-      ? t(strip.own ? 'bi.branch.landingOwn' : 'bi.branch.landing', { base: strip.base ?? '' })
-      : strip.key === 'landed' && strip.own
-        ? t('bi.branch.landedOwn', { step: strip.step ?? '' })
-        : strip.key === 'noPush' || strip.key === 'landed'
-          ? t(`bi.branch.${strip.key}`, { step: strip.step ?? '' })
-          : t(`bi.branch.${strip.key}` as 'bi.branch.push');
+  const said = branchSaid(strip);
   const line = (
     <div className={`bstrip ${strip.tone}`} data-c title={t('bi.branch.label')}>
       <Icon name="branch" />
       <span className="mono">{strip.value}</span>
       {strip.repo ? <span className="pvtag">{t('bi.branch.in', { repo: strip.repo })}</span> : null}
       <span className="sep">·</span>
-      <span>{said}</span>
+      <span className="bsaid">{said}</span>
     </div>
   );
   if (!drift) return line;

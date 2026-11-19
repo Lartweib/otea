@@ -131,6 +131,11 @@ button.lk2:hover {
 .bstrip .sep {
   color: var(--ink-3);
 }
+/* a long word for the branch wraps beside it, never under a dangling branch name */
+.bstrip .bsaid {
+  flex: 1 1 18ch;
+  min-width: 0;
+}
 .bstrip.frozen {
   background: var(--you-wash);
   color: var(--you-ink);

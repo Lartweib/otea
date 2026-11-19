@@ -13,6 +13,7 @@ import {
   approvalRefusal,
   backOf,
   boardItemOf,
+  branchSaid,
   branchStrip,
   deliverLabel,
   fillControl,
@@ -676,6 +677,7 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
     const review = item('simpl__review', [created('simpl')]);
     expect(backOf(def, { ...review, fields: { [branch.id]: 'feat/x' } }, 'sland')).toMatchObject({
       lands: 'main',
+      landStep: 'Integrar',
     });
     expect(backOf(def, { ...review, fields: { [branch.id]: '' } }, 'sland').lands).toBeUndefined();
     // Its branch the base itself (a main-only board): pushed, never merged (P2S-R3-2).
@@ -1075,5 +1077,33 @@ describe('railStep: the step whose rounds the compare rail shows', () => {
     expect(selectOnFold('sfix', 'sfix', false)).toBeUndefined();
     // Folding a step the rail does not show leaves the rail where it is.
     expect(selectOnFold('sfix', 'sfill', false)).toBe('sfix');
+  });
+});
+
+// P3C-R3-4: the branch line follows the board's land step, which may merge through the forge, and
+// in review it says only what holds: agents leave the branch alone, and a push by anyone else shows
+// on the page (the drift warning, P3C-R3-1).
+describe('branchSaid', () => {
+  it('names the land step rather than how it merges, and is honest about review', () => {
+    setLanguage('es');
+    const landing = {
+      tone: 'ok',
+      key: 'landing',
+      value: 'feat/x',
+      step: 'Integrar',
+      base: 'main',
+    } as const;
+    expect(branchSaid(landing)).toBe(
+      'un agente la integra en main ahora, como dice el paso Integrar',
+    );
+    const frozen = { tone: 'frozen', key: 'frozen', value: 'feat/x', step: 'Hacerlo' } as const;
+    expect(branchSaid(frozen)).toBe(
+      'los agentes no la tocan mientras la revisas; si alguien más sube, lo verás aquí',
+    );
+    setLanguage('en');
+    expect(branchSaid(landing)).toBe('an agent lands it in main now, as the Integrar step says');
+    expect(branchSaid(frozen)).toBe(
+      'agents leave it alone while you review it; if anyone else pushes, it shows here',
+    );
   });
 });

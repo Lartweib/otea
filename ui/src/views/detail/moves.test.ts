@@ -131,15 +131,16 @@ describe('what the hovered move does (the movesays line)', () => {
 describe('what an approve leads to, said before it acts', () => {
   const land: Move = { to: 'sland', by: 'human', reasonRequired: false, turn: 'agent' };
 
-  it('says an approve into the land step merges into the base and pushes it (P5-15)', () => {
+  // It follows the board's land step, which may merge through the forge (P3C-R3-4).
+  it('says an approve into the land step lands it in the base as that step says (P5-15)', () => {
     const p = planMoves([land], { own: false, word });
-    const lands = () => ({ agent: null, round: 1, lands: 'main' });
+    const lands = () => ({ agent: null, round: 1, lands: 'main', landStep: 'Integrar' });
     expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
-      'an agent then merges it into main and pushes main to the remote',
+      'an agent then lands it in main, as the Integrar step says',
     );
-    const any = () => ({ agent: null, round: 1, lands: '' });
+    const any = () => ({ agent: null, round: 1, lands: '', landStep: 'Integrar' });
     expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: any }).tail).toBe(
-      'an agent then merges it and pushes it to the remote',
+      'an agent then lands it, as the Integrar step says',
     );
   });
 
@@ -153,9 +154,15 @@ describe('what an approve leads to, said before it acts', () => {
 
   it('warns before an approve of a branch handed off never pushed (P7-8)', () => {
     const p = planMoves([land], { own: false, word });
-    const lands = () => ({ agent: null, round: 1, lands: 'main', unpushed: 'tar-1' });
+    const lands = () => ({
+      agent: null,
+      round: 1,
+      lands: 'main',
+      landStep: 'Integrar',
+      unpushed: 'tar-1',
+    });
     expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
-      'an agent then merges it into main and pushes main to the remote; note: tar-1 was never pushed to the remote',
+      'an agent then lands it in main, as the Integrar step says; note: tar-1 was never pushed to the remote',
     );
   });
 

@@ -374,7 +374,7 @@ export const studioEditor = {
   'bs.editor.guard.push_note': 'Puedes marcar más de uno. Durante la revisión nunca se sube.',
   'bs.editor.guard.repo_menu': 'El repositorio lo dice…',
   'bs.editor.guard.frozen':
-    'Mientras lo revisas queda congelada: nadie puede subir cambios, así apruebas exactamente lo que lees.',
+    'Mientras lo revisas, los agentes no la tocan; si alguien más sube, el ítem te lo avisa. Aprobar aprueba exactamente lo que se entregó.',
   'bs.editor.guard.hooks':
     'Esto solo se cumple en los repositorios donde Otea vigila las subidas (Ajustes › Repositorios).',
   'bs.editor.guard.no_push': '«{part}» está protegida pero no se puede subir en ningún paso.',
