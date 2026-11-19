@@ -6,6 +6,7 @@ import { activeLease, DEFAULT_LEASE_TTL_MS, leaseExpiry } from '../core/lease.ts
 import { pathKey } from '../core/path-key.ts';
 import {
   clearListening,
+  clearWaiter,
   clearWaiting,
   findAgent,
   findProfile,
@@ -19,6 +20,7 @@ import {
   selectAgents,
   selectLeases,
   selectListener,
+  selectListenerProcesses,
   selectListening,
   selectNameOffers,
   selectProfileChanges,
@@ -47,6 +49,8 @@ export type Sighting = {
   launcher?: number;
   // The folder it works from: the command's working directory, or the one its MCP server runs in.
   folder?: string | undefined;
+  // The command-line wait it is heard through (its process id), while that wait runs.
+  waiter?: number;
 };
 
 // Seen again after this long away, an agent connects anew (its connectedAt starts over).
@@ -59,6 +63,10 @@ export const LIVE_WINDOW_MS = 5 * 60_000;
 // listening: having run a command lately is no listening.
 export const LISTEN_BEAT_MS = 60_000;
 export const LISTEN_WINDOW_MS = 150_000;
+
+// A call counts for this long: an agent seen acting, between its commands, counts as connected,
+// and an ended subagent drops out soon after its last call (P1-11).
+export const ACTIVE_WINDOW_MS = 90_000;
 
 // Seen again within this, an agent's last-seen time is left as it is: an agent reading item after
 // item writes once, not on every call (each write wakes the live UI).
@@ -148,7 +156,7 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
 export function hearAgent(db: DatabaseSync, sighting: Sighting, now: Clock = systemClock): string {
   const at = now();
   seeAgent(db, sighting, () => at);
-  markListening(db, sighting.agent, at, sighting.session, sighting.launcher);
+  markListening(db, sighting.agent, at, sighting.session, sighting.launcher, sighting.waiter);
   return at;
 }
 
@@ -288,6 +296,25 @@ export function endWaiting(db: DatabaseSync, agent: string, heardAt: string): vo
   clearWaiting(db, agent, heardAt);
 }
 
+// A wait that ends by itself, however it ends: its process is no longer one to watch, so its
+// agent is not counted as gone when it exits. Only a wait killed with its session stays noted.
+export function endWaiter(db: DatabaseSync, agent: string, waiter: number): void {
+  clearWaiter(db, agent, waiter);
+}
+
+// The agents an MCP server should stop hearing on its beats (`calls`: when each last called through
+// it, in ms): a subagent that has not called within the listening window has ended, though the
+// session's own agent (`own`), idle in its chat with the server open, still listens.
+export function quietVoices(
+  calls: ReadonlyMap<string, number>,
+  own: string | undefined,
+  now: number,
+): string[] {
+  return [...calls]
+    .filter(([name, at]) => name !== own && now - at > LISTEN_WINDOW_MS)
+    .map(([name]) => name);
+}
+
 // A profile's harness is the MCP client's: when the client names another one, the profile follows.
 function followClient(db: DatabaseSync, { agent, channel, harness }: Sighting, at: string): void {
   if (channel !== 'mcp' || !harness) return;
@@ -298,7 +325,14 @@ function followClient(db: DatabaseSync, { agent, channel, harness }: Sighting, a
 }
 
 // The agents seen in the project, never the human: live ones first, then the most recently seen.
-export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPresence[] {
+// `alive` says whether a process of this computer still runs: an agent heard through a listener
+// (its MCP server, its wait) whose process is gone no longer listens, and if it did nothing since,
+// its session ended (killed, or the computer restarted): it is gone, though a lease of its runs on.
+export function listAgents(
+  db: DatabaseSync,
+  now: Clock = systemClock,
+  alive: (pid: number) => boolean = processAlive,
+): AgentPresence[] {
   const at = now();
   const holding = new Map<string, string[]>();
   for (const { id, lease } of selectLeases(db)) {
@@ -307,15 +341,27 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
   }
   const heard = selectListening(db);
   const waits = selectWaiting(db);
-  const within = (last: string | undefined) =>
-    last !== undefined && Date.parse(at) - Date.parse(last) <= LISTEN_WINDOW_MS;
+  const listeners = selectListenerProcesses(db);
+  const since = (last: string | undefined, window: number) =>
+    last !== undefined && Date.parse(at) - Date.parse(last) <= window;
+  const within = (last: string | undefined) => since(last, LISTEN_WINDOW_MS);
+  // Every listener process it was heard through has ended.
+  const silenced = (name: string) => {
+    const { session = null, waiter = null } = listeners.get(name) ?? {};
+    if (session === null && waiter === null) return false;
+    return !(session !== null && alive(session)) && !(waiter !== null && alive(waiter));
+  };
   const agents = selectAgents(db).map(
     ({ name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, mcpAskedAt, folder }) => {
       const held = holding.get(name) ?? [];
-      const listening = within(heard.get(name));
+      const heardAt = heard.get(name);
+      const gone = heardAt !== undefined && silenced(name);
+      const listening = within(heardAt) && !gone;
+      // Its session ended: it was last heard through a listener now gone, and did nothing since.
+      const ended = gone && Date.parse(lastSeen) <= Date.parse(heardAt);
       // It acted lately (a command-line agent between its commands); a profile given for it by
       // the person, with no sighting of its own, is no act.
-      const active = connectedAt !== null && within(lastSeen);
+      const active = connectedAt !== null && since(lastSeen, ACTIVE_WINDOW_MS);
       const declared = findProfile(db, name);
       return {
         name,
@@ -324,9 +370,9 @@ export function listAgents(db: DatabaseSync, now: Clock = systemClock): AgentPre
         connectedAt,
         holding: held,
         lastSeen,
-        live: listening || held.length > 0 || active,
+        live: !ended && (listening || held.length > 0 || active),
         listening,
-        waiting: within(waits.get(name)),
+        waiting: within(waits.get(name)) && !gone,
         profile: declared ? profileView(declared.profile) : null,
         profileConfirmed: declared?.confirmed ?? false,
         profileChangedAt: profileChangedAt(db, name),
@@ -418,7 +464,7 @@ export function nameFor(
   now: Clock = systemClock,
   alive: (pid: number) => boolean = processAlive,
 ): NameAdvice {
-  const agents = listAgents(db, now);
+  const agents = listAgents(db, now, alive);
   const handed = handedOut(db, session, now());
   const working = [
     ...new Set([...agents.filter(({ live }) => live).map(({ name }) => name), ...handed]),

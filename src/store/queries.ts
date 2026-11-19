@@ -678,20 +678,37 @@ export function forgetAgent(db: DatabaseSync, name: string): void {
 
 // Notes that an agent listens now: its MCP server is open, or its otea wait blocks.
 // `session`: the MCP server heard, kept until another server is; a command-line wait gives none.
+// `waiter`: the process of the command-line wait heard, kept until the wait ends (endWaiter).
 export function markListening(
   db: DatabaseSync,
   agent: string,
   at: string,
   session?: number,
   harness?: number,
+  waiter?: number,
 ): void {
-  const sql = `INSERT INTO agents (name, last_seen, listening_at, listening_session, listening_harness)
-    VALUES (:agent, :at, :at, :session, :harness)
+  const sql = `INSERT INTO agents (name, last_seen, listening_at, listening_session, listening_harness,
+      listening_waiter)
+    VALUES (:agent, :at, :at, :session, :harness, :waiter)
     ON CONFLICT (name) DO UPDATE SET listening_at = excluded.listening_at,
       listening_harness = CASE WHEN excluded.listening_session IS NULL THEN listening_harness
         ELSE excluded.listening_harness END,
-      listening_session = coalesce(excluded.listening_session, listening_session)`;
-  db.prepare(sql).run({ agent, at, session: session ?? null, harness: harness ?? null });
+      listening_session = coalesce(excluded.listening_session, listening_session),
+      listening_waiter = coalesce(excluded.listening_waiter, listening_waiter)`;
+  db.prepare(sql).run({
+    agent,
+    at,
+    session: session ?? null,
+    harness: harness ?? null,
+    waiter: waiter ?? null,
+  });
+}
+
+// A wait that ends by itself leaves no process to watch: only a killed one stays noted.
+export function clearWaiter(db: DatabaseSync, agent: string, waiter: number): void {
+  db.prepare(
+    'UPDATE agents SET listening_waiter = NULL WHERE name = ? AND listening_waiter = ?',
+  ).run(agent, waiter);
 }
 
 // Notes the agent no longer listening, if it was last heard listening `at` (and not since), or
@@ -757,6 +774,21 @@ export function selectListening(db: DatabaseSync): Map<string, string> {
     .prepare('SELECT name, listening_at FROM agents WHERE listening_at IS NOT NULL')
     .all() as { name: string; listening_at: string }[];
   return new Map(rows.map((row) => [row.name, row.listening_at]));
+}
+
+// The processes each agent was last heard listening through: its MCP server, its running wait.
+export function selectListenerProcesses(
+  db: DatabaseSync,
+): Map<string, { session: number | null; waiter: number | null }> {
+  const rows = db
+    .prepare(
+      `SELECT name, listening_session, listening_waiter FROM agents
+        WHERE listening_session IS NOT NULL OR listening_waiter IS NOT NULL`,
+    )
+    .all() as { name: string; listening_session: number | null; listening_waiter: number | null }[];
+  return new Map(
+    rows.map((row) => [row.name, { session: row.listening_session, waiter: row.listening_waiter }]),
+  );
 }
 
 export function selectAgents(db: DatabaseSync): AgentRecord[] {

@@ -86,6 +86,7 @@ import { lanOpen, type Probe, type TransportKind } from '../app/phone.ts';
 import {
   claimName,
   endListening,
+  endWaiter,
   endWaiting,
   type Harness,
   hearAgent,
@@ -94,6 +95,7 @@ import {
   type NameAdvice,
   nameFor,
   offerName,
+  quietVoices,
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
@@ -1832,9 +1834,17 @@ const wait: Command = {
       // profile stays confirmed.
       // When it was last heard: a wait whose session ended stops its agent listening at once.
       let heardAt: string | undefined;
+      // On the command line its own process is watched: killed with its session, it leaves its
+      // agent counted as gone at once, not a listening window later (P2S-R2-7, P8-R2-7).
+      const waiter = input.channel === 'cli' ? { waiter: process.pid } : {};
       const heard =
         input.actor.kind === 'agent'
-          ? waitBeat(project.db, { agent: me, channel: input.channel, harness: input.harness })
+          ? waitBeat(project.db, {
+              agent: me,
+              channel: input.channel,
+              harness: input.harness,
+              ...waiter,
+            })
           : undefined;
       const beat = heard
         ? {
@@ -1848,7 +1858,10 @@ const wait: Command = {
         : {};
       // It listens from the start, not from its first beat.
       beat.beat?.run();
-      const waited = await watch(project.db, check, { ...options, ...beat }).finally(owner.stop);
+      const waited = await watch(project.db, check, { ...options, ...beat }).finally(() => {
+        owner.stop();
+        if (heard && input.channel === 'cli') endWaiter(project.db, me, process.pid);
+      });
       if (owner.orphaned() && heardAt) endListening(project.db, me, heardAt);
       // It waits no more once it found something or was stopped; a timeout is called again at once.
       const timedOut = !('found' in waited) && waited.stopped === 'timeout';
@@ -2804,12 +2817,24 @@ const mcp: Command = {
     // The names this server heard that were unknown before it did: one whose first call fails is
     // forgotten again, so a failed call leaves no agent «sin perfil» on the desk (P2S-R2-3).
     const newcomers = new Set<string>();
+    // When each agent last called through this server: a subagent that stopped calling has ended,
+    // and the beat stops hearing it (P1-11); the session's own agent is the one it was started as,
+    // else the first that called.
+    const calls = new Map<string, number>();
+    let own = agent;
     const heard = (name: string) => {
       const fresh = !used.has(name);
       used.add(name);
       claimedBy(cwd, name, fresh);
       if (!knownAgent(cwd, name)) newcomers.add(name);
       heardBy(cwd, name, client, warn, false, fresh, note(name));
+      voices.add(name);
+      calls.set(name, Date.now());
+      own ??= name;
+    };
+    const still = (name: string) => {
+      claimedBy(cwd, name, false);
+      calls.set(name, Date.now());
       voices.add(name);
     };
     const failed = (name: string) => {
@@ -2823,6 +2848,14 @@ const mcp: Command = {
       }
     };
     const beat = setInterval(() => {
+      const quiet = quietVoices(calls, own, Date.now()).filter((name) => voices.has(name));
+      for (const name of quiet) voices.delete(name);
+      endListeningAll(
+        cwd,
+        new Map(
+          quiet.flatMap((name) => (lastHeard.has(name) ? [[name, lastHeard.get(name) ?? '']] : [])),
+        ),
+      );
       for (const name of voices)
         if (!heardBy(cwd, name, client, warn, false, false, note(name))) voices.delete(name);
     }, LISTEN_BEAT_MS);
@@ -2848,7 +2881,7 @@ const mcp: Command = {
           warn,
           greeted,
           heard,
-          still: (name) => claimedBy(cwd, name, false),
+          still,
           failed,
         }),
         signal,

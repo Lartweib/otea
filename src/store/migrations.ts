@@ -418,6 +418,11 @@ export const MIGRATIONS = [
     session INTEGER
   );
   `,
+  // The process of the command-line wait an agent was last heard through, while it runs: a wait
+  // killed with its session (no cleanup ran) leaves it, and its agent counts as gone at once.
+  `
+  ALTER TABLE agents ADD COLUMN listening_waiter INTEGER;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

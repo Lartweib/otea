@@ -49,14 +49,14 @@ describe('migrate', () => {
         'name_offers',
       ]),
     );
-    expect(userVersion(db)).toBe(32);
+    expect(userVersion(db)).toBe(33);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(32);
+    expect(userVersion(db)).toBe(33);
   });
 
   describe('from version 1', () => {

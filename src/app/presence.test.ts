@@ -9,6 +9,7 @@ import {
   CLI_HARNESS,
   claimName,
   endListening,
+  endWaiter,
   endWaiting,
   hearAgent,
   listAgents,
@@ -16,6 +17,7 @@ import {
   offerName,
   ownerGone,
   presenceSignature,
+  quietVoices,
   seeAgent,
   waitBeat,
 } from './presence.ts';
@@ -30,11 +32,15 @@ const T0_20S = '2026-01-01T00:00:20.000Z';
 const T1 = '2026-01-01T00:01:00.000Z';
 const T5 = '2026-01-01T00:05:00.000Z';
 const T5_1S = '2026-01-01T00:05:01.000Z';
+const T1_31S = '2026-01-01T00:01:31.000Z';
 const T2 = '2026-01-01T00:02:00.000Z';
 const T2_31S = '2026-01-01T00:02:31.000Z';
 const T30 = '2026-01-01T00:30:00.000Z';
 
 const at = (time: string) => () => time;
+
+// Every process runs: the sessions these tests name (101, 202) stand for open MCP servers.
+const running = () => true;
 
 const CLAUDE_CODE = { name: 'claude-code', version: '2.1.0' };
 
@@ -135,18 +141,69 @@ describe('agent presence', () => {
       seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0));
 
       expect(listAgents(ctx.db, at(T0))[0]).toMatchObject({ live: true, listening: false });
-      expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ live: false, listening: false });
+      // P1-11: ended subagents stayed connected for minutes; a call counts for 90 seconds.
+      expect(listAgents(ctx.db, at(T1_31S))[0]).toMatchObject({ live: false, listening: false });
+    });
+
+    // P2S-R2-7, P8-R2-7, P3C-R2-11: after its session was killed (or the computer restarted), an
+    // agent stayed «escuchando» for minutes, and «trabajando» until its lease ran out.
+    describe('a listener whose process is gone', () => {
+      const alive = (pids: number[]) => (pid: number) => pids.includes(pid);
+
+      it('stops counting a wait killed with its session at once', () => {
+        waitBeat(ctx.db, { agent: 'claude', channel: 'cli', waiter: 500 }, at(T0)).run();
+
+        expect(listAgents(ctx.db, at(T0_20S), alive([500]))[0]).toMatchObject({
+          live: true,
+          listening: true,
+          waiting: true,
+        });
+        expect(listAgents(ctx.db, at(T0_20S), alive([]))[0]).toMatchObject({
+          live: false,
+          listening: false,
+          waiting: false,
+        });
+      });
+
+      it('counts an agent whose session ended as gone, though it still holds a lease', () => {
+        hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
+        claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T0));
+
+        expect(listAgents(ctx.db, at(T1), alive([101]))[0]).toMatchObject({ live: true });
+        expect(listAgents(ctx.db, at(T1), alive([]))[0]).toMatchObject({
+          live: false,
+          listening: false,
+          holding: ['TASKS-1'],
+        });
+      });
+
+      it('keeps an agent that acted after its listener ended', () => {
+        hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
+        seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T1));
+
+        expect(listAgents(ctx.db, at(T1), alive([]))[0]).toMatchObject({
+          live: true,
+          listening: false,
+        });
+      });
+
+      it('leaves nothing to watch once a wait ends on its own', () => {
+        waitBeat(ctx.db, { agent: 'claude', channel: 'cli', waiter: 500 }, at(T0)).run();
+        endWaiter(ctx.db, 'claude', 500);
+
+        expect(listAgents(ctx.db, at(T0_20S), alive([]))[0]).toMatchObject({ live: true });
+      });
     });
 
     it('stops counting an agent listening once its listener ends, unless another heard it since', () => {
       const heard = hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
       endListening(ctx.db, 'claude', heard);
-      expect(listAgents(ctx.db, at(T0_20S))[0]).toMatchObject({ listening: false });
+      expect(listAgents(ctx.db, at(T0_20S), running)[0]).toMatchObject({ listening: false });
 
       const first = hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
       hearAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T0_20S));
       endListening(ctx.db, 'claude', first);
-      expect(listAgents(ctx.db, at(T0_20S))[0]).toMatchObject({ listening: true });
+      expect(listAgents(ctx.db, at(T0_20S), running)[0]).toMatchObject({ listening: true });
     });
 
     it('counts an agent live while it listens: an open MCP server or a wait hears it', () => {
@@ -199,14 +256,20 @@ describe('agent presence', () => {
 
     it('counts only a wait as waiting: an open MCP server listens, its idle agent hears nothing', () => {
       hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T5));
-      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ listening: true, waiting: false });
+      expect(listAgents(ctx.db, at(T5_1S), running)[0]).toMatchObject({
+        listening: true,
+        waiting: false,
+      });
 
       const beat = waitBeat(ctx.db, { agent: 'claude', channel: 'mcp' }, at(T5));
       const heard = beat.run();
-      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ waiting: true });
+      expect(listAgents(ctx.db, at(T5_1S), running)[0]).toMatchObject({ waiting: true });
 
       endWaiting(ctx.db, 'claude', heard);
-      expect(listAgents(ctx.db, at(T5_1S))[0]).toMatchObject({ listening: true, waiting: false });
+      expect(listAgents(ctx.db, at(T5_1S), running)[0]).toMatchObject({
+        listening: true,
+        waiting: false,
+      });
     });
 
     it('keeps the leases of a waiting agent alive on every beat: it waits on, it did not go quiet', () => {
@@ -388,6 +451,24 @@ describe('agent presence', () => {
     });
   });
 
+  // P1-11: an MCP server heard every agent that ever called through it on each beat, so its
+  // ended subagents stayed «conectado · ahora mismo» while the session was open.
+  describe('quietVoices', () => {
+    const calls = new Map([
+      ['lead', 0],
+      ['lead-scout', 100_000],
+      ['lead-fixer', 10_000],
+    ]);
+
+    it('names the subagents that have not called within the listening window', () => {
+      expect(quietVoices(calls, 'lead', 170_000)).toEqual(['lead-fixer']);
+    });
+
+    it('never names the agent the session is', () => {
+      expect(quietVoices(calls, 'lead', 1_000_000)).toEqual(['lead-scout', 'lead-fixer']);
+    });
+  });
+
   describe('ownerGone', () => {
     const alive = (pids: number[]) => (pid: number) => pids.includes(pid);
 
@@ -438,6 +519,20 @@ describe('agent presence', () => {
       expect(
         nameFor(ctx.db, { folder: FOLDER, harness: 'opencode' }, at(T0), () => true).name,
       ).toBeNull();
+    });
+
+    // P8-R2-5, P4-R2-3: a restart within minutes was told the name was taken, or that it acted
+    // moments ago, and took a new one.
+    it('gives back the name of a session whose wait was killed, saying nothing of moments ago', () => {
+      waitBeat(ctx.db, { agent: 'oc', channel: 'cli', waiter: 500, folder: FOLDER }, at(T0)).run();
+
+      const advice = nameFor(
+        ctx.db,
+        { folder: FOLDER, harness: 'opencode' },
+        at(T0_20S),
+        () => false,
+      );
+      expect(advice).toMatchObject({ name: 'oc', lately: false });
     });
 
     it('gives it to the server it was heard through, and when that server is gone', () => {
