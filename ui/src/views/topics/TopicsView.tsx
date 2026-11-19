@@ -8,6 +8,7 @@ import {
   switchTopics,
 } from '../../api.ts';
 import { useApp } from '../../app/context.tsx';
+import { currentProjectId, projectPage } from '../../base.ts';
 import { FieldControl } from '../../components/FieldControl.tsx';
 import { NoteText } from '../../components/NoteText.tsx';
 import { useRemote } from '../../hooks.ts';
@@ -22,8 +23,11 @@ import {
   convertDraft,
   convertFields,
   convertReady,
-  type ItemHit,
+  elsewhere,
+  type FoundItem,
+  type FoundTopic,
   lastAnswer,
+  type ProjectRef,
   type Topic,
   type TopicTurn,
   topicGroups,
@@ -45,13 +49,23 @@ function turnLabel(topic: Topic): string {
   return t(`topics.state.${topic.state}`);
 }
 
-function Row({ topic, open }: { topic: Topic; open: boolean }) {
+// A topic or item of another project (a search over every project) opens on that project's page,
+// and says which project it is.
+const keyOf = (found: { id: string; project?: ProjectRef }) =>
+  `${found.project?.id ?? ''}:${found.id}`;
+
+function ProjectMark({ project }: { project: ProjectRef | undefined }) {
+  return project ? <span className="tp-proj">{project.name}</span> : null;
+}
+
+function Row({ topic, open }: { topic: FoundTopic; open: boolean }) {
   const answer = lastAnswer(topic);
+  const other = elsewhere(topic, currentProjectId());
   return (
     <li>
       <a
         className="tp-row"
-        href={topicsHash(topic.id)}
+        href={other ? projectPage(other.id, topicsHash(topic.id)) : topicsHash(topic.id)}
         aria-current={open ? 'true' : undefined}
         data-state={topic.state}
       >
@@ -59,6 +73,12 @@ function Row({ topic, open }: { topic: Topic; open: boolean }) {
         <span className="tp-title">{topic.title}</span>
         {answer ? <span className="tp-sum">{answer.text}</span> : null}
         <span className="tp-turn" data-turn={topic.turn}>
+          {other ? (
+            <>
+              <ProjectMark project={other} />
+              {' · '}
+            </>
+          ) : null}
           {turnLabel(topic)}
         </span>
       </a>
@@ -70,15 +90,19 @@ function List({
   topics,
   open,
   search,
+  wide,
 }: {
-  topics: readonly Topic[];
-  open: string | undefined;
+  topics: readonly FoundTopic[];
+  open: FoundTopic | undefined;
   search: string;
+  wide: boolean;
 }) {
   if (topics.length === 0)
     return (
       <p className="pane-message">
-        {search === '' ? t('topics.empty') : t('topics.search.none', { words: search })}
+        {search === ''
+          ? t('topics.empty')
+          : t(wide ? 'topics.search.noneAnywhere' : 'topics.search.none', { words: search })}
       </p>
     );
   return (
@@ -90,7 +114,7 @@ function List({
           </h2>
           <ul>
             {group.topics.map((topic) => (
-              <Row key={topic.id} topic={topic} open={topic.id === open} />
+              <Row key={keyOf(topic)} topic={topic} open={topic === open} />
             ))}
           </ul>
         </section>
@@ -101,7 +125,7 @@ function List({
 
 // A search looks in the items' threads too: a decision is often made there, not in a topic. Each
 // item found shows what it said that holds the words, and opens the item.
-function ItemHits({ items }: { items: readonly ItemHit[] }) {
+function ItemHits({ items }: { items: readonly FoundItem[] }) {
   if (items.length === 0) return null;
   return (
     <section className="tp-group tp-items" aria-label={t('topics.items.title')}>
@@ -109,15 +133,26 @@ function ItemHits({ items }: { items: readonly ItemHit[] }) {
         {t('topics.items.title')} <span className="n">{items.length}</span>
       </h2>
       <ul>
-        {items.map((item) => (
-          <li key={item.id}>
-            <a className="tp-row" href={hashFor(item.id)}>
-              <span className="tp-id">{item.id}</span>
-              <span className="tp-title">{item.title}</span>
-              {item.said === item.title ? null : <span className="tp-sum">{item.said}</span>}
-            </a>
-          </li>
-        ))}
+        {items.map((item) => {
+          const other = elsewhere(item, currentProjectId());
+          return (
+            <li key={keyOf(item)}>
+              <a
+                className="tp-row"
+                href={other ? projectPage(other.id, hashFor(item.id)) : hashFor(item.id)}
+              >
+                <span className="tp-id">{item.id}</span>
+                <span className="tp-title">{item.title}</span>
+                {item.said === item.title ? null : <span className="tp-sum">{item.said}</span>}
+                {other ? (
+                  <span className="tp-turn">
+                    <ProjectMark project={other} />
+                  </span>
+                ) : null}
+              </a>
+            </li>
+          );
+        })}
       </ul>
     </section>
   );
@@ -424,16 +459,19 @@ export function TopicsView({ topic: openId }: { topic: string | undefined }) {
   // A search looks in every topic, closed ones too: what was concluded before.
   const [typed, setTyped] = useState('');
   const search = useSettled(typed);
+  // What was concluded about this project is often asked, and kept, in another (P6-R2-4).
+  const [everywhere, setEverywhere] = useState(false);
+  const wide = everywhere && search !== '';
   const load = useCallback(
-    (signal: AbortSignal) => fetchTopics(signal, all, search),
-    [all, search],
+    (signal: AbortSignal) => fetchTopics(signal, all, search, wide),
+    [all, search, wide],
   );
   const remote = useRemote(load, app.version + bump, app.connection);
   const name = app.project?.name ?? '';
   const changed = () => setBump((n) => n + 1);
   const turnOn = () => switchTopics(true).then(changed, () => undefined);
   const view = remote.status === 'ready' ? remote.value : undefined;
-  const open = view ? topicOfRoute(openId, view.topics) : undefined;
+  const open = view ? topicOfRoute(openId, view.topics, currentProjectId()) : undefined;
   return (
     <div className="page tp-page" data-open={open ? '' : undefined}>
       <header className="head" data-enter="head">
@@ -463,7 +501,17 @@ export function TopicsView({ topic: openId }: { topic: string | undefined }) {
           <div className="tp-split">
             <div className="tp-side">
               <SearchBox value={typed} onChange={setTyped} />
-              <List topics={view?.topics ?? []} open={open?.id} search={search} />
+              {search === '' ? null : (
+                <label className="tp-all tp-everywhere">
+                  <input
+                    type="checkbox"
+                    checked={everywhere}
+                    onChange={(e) => setEverywhere(e.target.checked)}
+                  />{' '}
+                  {t('topics.search.everywhere')}
+                </label>
+              )}
+              <List topics={view?.topics ?? []} open={open} search={search} wide={wide} />
               {search === '' ? null : <ItemHits items={view?.items ?? []} />}
               {search === '' ? (
                 <label className="tp-all">

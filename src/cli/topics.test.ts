@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { cliAt, seedOnce, startCli, until } from './testing.ts';
+import { cliAt, seedOnce, startCli, tempGitRepo, until } from './testing.ts';
 
 // otea topic: side topics the person asked an agent about, kept as short conversations. The agent
 // records the question and its answer (a summary and the full text); the person keeps one going,
@@ -249,6 +249,48 @@ describe('otea topic', () => {
     expect(listed.map(({ id }) => id)).toEqual(['TEM-1']);
   });
 
+  // P6-R2-4: asked in ventas-etl about geo-api, then looked for from geo-api: «no hay nada».
+  it('reads the topics of every project with --all-projects, and shows one with --project', async () => {
+    const geo = tempGitRepo();
+    const ventas = tempGitRepo();
+    try {
+      const inGeo = cliAt(geo.dir, { OTEA_AGENT: 'claude' });
+      const inVentas = cliAt(ventas.dir, { OTEA_AGENT: 'claude' });
+      await inGeo('init');
+      await inVentas('init');
+      await cliAt(ventas.dir)('topic', 'on');
+      await inVentas('topic', 'add', '¿Cómo pagina geo-api sus respuestas?');
+      await inVentas('topic', 'answer', 'TEM-1', '--summary', 'Con cursor, desde la v2.');
+      const { name } = JSON.parse((await inVentas('projects', 'current', '--json')).out) as {
+        name: string;
+      };
+
+      const here = await inGeo('topic', 'list', '--search', 'geo-api');
+      expect(here.out.trim()).toBe('No topic mentions "geo-api".');
+      const everywhere = await inGeo('topic', 'list', '--search', 'geo-api', '--all-projects');
+      expect(everywhere.code).toBe(0);
+      expect(everywhere.out).toContain(
+        `${name}  TEM-1  answered  ¿Cómo pagina geo-api sus respuestas?\n    Con cursor, desde la v2.`,
+      );
+      const data = JSON.parse((await inGeo('topic', 'list', '--all-projects', '--json')).out) as {
+        id: string;
+        project: { name: string };
+      }[];
+      expect(data).toEqual([
+        expect.objectContaining({ id: 'TEM-1', project: expect.objectContaining({ name }) }),
+      ]);
+
+      const shown = await inGeo('topic', 'show', 'TEM-1', '--project', name);
+      expect(shown.code).toBe(0);
+      expect(shown.out).toContain('Con cursor, desde la v2.');
+      const missing = await inGeo('topic', 'show', 'TEM-1', '--project', 'nope');
+      expect(missing.code).not.toBe(0);
+    } finally {
+      geo.remove();
+      ventas.remove();
+    }
+  });
+
   it('explains its commands with otea topic --help', async () => {
     const { repo } = fresh();
     const help = await cliAt(repo.dir)('topic', '--help');
@@ -275,6 +317,8 @@ describe('otea topic', () => {
       'Not a topic: a request to do work, small talk or a check-in ("are you there?"), or a question about something said before',
     );
     expect(guide).toContain('A follow-up to a topic goes on it: otea topic add --to <id>');
+    // P6-R2-4: what was concluded about one project is often asked in another.
+    expect(guide).toContain('if nothing turns up, search every project with --all-projects');
   });
 
   it('reminds an agent that otea wait wakes to record side questions while topics are on', async () => {

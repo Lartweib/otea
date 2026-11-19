@@ -144,6 +144,7 @@ import {
   topicText,
   topicWaiting,
 } from '../app/topics.ts';
+import { topicsEverywhere, topicsEverywhereText } from '../app/topics-everywhere.ts';
 import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { agentGuideFor, TOPICS_REMINDER, TOPICS_RULE } from '../core/agent-guide.ts';
@@ -166,7 +167,7 @@ import { describeRelation, RELATION_KINDS } from '../core/relations.ts';
 import { timeText } from '../core/time.ts';
 import { TURNS, type Turn } from '../core/workflow.ts';
 import { DEFAULT_PORT } from '../server/hosts.ts';
-import { machineProjects } from '../server/hub.ts';
+import { machineProjects, type ServedProject } from '../server/hub.ts';
 import { formatCode } from '../server/lan.ts';
 import { ensureVapidKeys } from '../server/push.ts';
 import { ensureUiToken, readUiToken } from '../server/token.ts';
@@ -3043,21 +3044,66 @@ const topicAnswer: Command = {
   },
 };
 
+// Every project on this computer, open while `use` reads them: the registered ones and the local
+// ones a server served (server/hub.ts).
+function withEveryProject<T>(use: (served: readonly ServedProject[]) => T): T {
+  const machine = openMachine();
+  const source = machineProjects(process.env, machine);
+  try {
+    return use(source.list());
+  } finally {
+    source.close();
+    machine.close();
+  }
+}
+
+// A project of this computer by id, or by name when no other project has it.
+function servedProject(served: readonly ServedProject[], ref: string): Project {
+  const byId = served.find((each) => each.id === ref);
+  const named = served.filter((each) => each.name === ref);
+  if (!byId && named.length > 1) {
+    const ids = named.map(({ id }) => id).join(', ');
+    throw new OteaError('invalid_name', `Several projects are named "${ref}" (${ids}); use its id`);
+  }
+  const found = byId ?? named[0];
+  if (!found)
+    throw new OteaError(
+      'not_found',
+      `No project "${ref}" on this computer; run otea projects list`,
+    );
+  if (!found.project)
+    throw new OteaError('not_found', found.unavailable ?? `${found.name} is not available`);
+  return found.project;
+}
+
 const topicList: Command = {
   name: 'topic list',
   summary:
-    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too); --search: topics with any of the words, best first, with answers; then items whose threads say them',
+    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too); --search: topics with any of the words, best first, with answers; then items whose threads say them; --all-projects: in every project',
   args: [],
-  options: { all: { flag: true }, search: { placeholder: 'words' } },
+  options: {
+    all: { flag: true },
+    search: { placeholder: 'words' },
+    'all-projects': { flag: true },
+  },
   execute: (input) =>
     withReader(input, (project) => {
       const search = input.option('search');
-      const topics = listTopics(project, {
-        all: input.flag('all'),
-        ...(search === undefined ? {} : { search }),
-      });
-      if (search === undefined || search.trim() === '')
-        return { data: topics, text: topicsListText(topics, search) };
+      const filter = { all: input.flag('all'), ...(search === undefined ? {} : { search }) };
+      const searching = search !== undefined && search.trim() !== '';
+      // What was concluded is often in another project: a question about geo-api asked in
+      // ventas-etl (P6-R2-4).
+      if (input.flag('all-projects')) {
+        const found = withEveryProject((served) =>
+          topicsEverywhere(served, project.identity.id, filter),
+        );
+        return {
+          data: searching ? found : found.topics,
+          text: topicsEverywhereText(found, search),
+        };
+      }
+      const topics = listTopics(project, filter);
+      if (!searching) return { data: topics, text: topicsListText(topics, search) };
       // A search looks in the items' threads too, where a decision is often made (P3C-R2-8).
       const items = searchItems(project, search);
       const text = [topicsListText(topics, search), itemHitsText(items)].filter(Boolean);
@@ -3067,13 +3113,18 @@ const topicList: Command = {
 
 const topicShow: Command = {
   name: 'topic show',
-  summary: 'Show a side topic: its question, answers and notes, with each full answer',
+  summary:
+    'Show a side topic: its question, answers and notes, with each full answer (--project, of another project)',
   args: ['id'],
-  options: {},
+  options: { project: { placeholder: 'id or name' } },
   execute: (input) => {
     const [id = ''] = input.args;
+    const other = input.option('project');
     return withReader(input, (project) => {
-      const topic = requireTopic(project, id);
+      const topic =
+        other === undefined
+          ? requireTopic(project, id)
+          : withEveryProject((served) => requireTopic(servedProject(served, other), id));
       return { data: topic, text: topicText(topic) };
     });
   },

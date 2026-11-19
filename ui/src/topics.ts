@@ -10,12 +10,25 @@ import type { FieldView, TypeView } from './types.ts';
 export type { ItemHit } from '../../src/app/item-search.ts';
 export type { Topic, TopicState, TopicTurn } from '../../src/app/topics.ts';
 
+// A search over every project gives each topic and item its project (src/app/topics-everywhere.ts).
+export type ProjectRef = { id: string; name: string };
+export type FoundTopic = Topic & { project?: ProjectRef };
+export type FoundItem = ItemHit & { project?: ProjectRef };
+
 // `items`: the items whose threads hold the words searched (none without a search).
 export type TopicsView = {
   on: boolean;
-  topics: Topic[];
-  items?: ItemHit[];
+  topics: FoundTopic[];
+  items?: FoundItem[];
 };
+
+// The project a topic or item found belongs to, when it is not the page's own: it opens there.
+export function elsewhere(
+  found: { id: string; project?: ProjectRef },
+  current: string | undefined,
+): ProjectRef | undefined {
+  return found.project && found.project.id !== current ? found.project : undefined;
+}
 
 export type ItemTopic = Topic & { pending: boolean };
 export type ItemTopics = { linked: ItemTopic[]; suggested: Topic[] };
@@ -47,13 +60,17 @@ export function lastAnswer(topic: Pick<Topic, 'turns'>) {
   return topic.turns.findLast((turn) => turn.kind === 'answer');
 }
 
-// The topic open on the topics page, from the hash: `#/topics/TEM-3`.
-export function topicOfRoute(
+// The topic open on the topics page, from the hash: `#/topics/TEM-3`. Never another project's,
+// which opens on that project's page.
+export function topicOfRoute<T extends FoundTopic>(
   topic: string | undefined,
-  topics: readonly Topic[],
-): Topic | undefined {
+  topics: readonly T[],
+  current?: string,
+): T | undefined {
   if (!topic) return undefined;
-  return topics.find(({ id }) => id.toLowerCase() === topic.toLowerCase());
+  return topics.find(
+    (each) => each.id.toLowerCase() === topic.toLowerCase() && !elsewhere(each, current),
+  );
 }
 
 // Convertir en tarea: the form asks for the title and each field creating an item of the type needs

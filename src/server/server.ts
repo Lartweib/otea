@@ -58,6 +58,7 @@ import {
   topicsOfItem,
   topicsOn,
 } from '../app/topics.ts';
+import { topicsEverywhere } from '../app/topics-everywhere.ts';
 import { undoMove } from '../app/undo.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS } from '../core/agent-prompts.ts';
 import { PERIOD_HINT, parsePeriod } from '../core/board/performance.ts';
@@ -574,12 +575,19 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       })
       // Side topics (app/topics.ts): the list, one topic, a note that keeps it going, closing it and
       // turning it into a task, from the phone too; turning them on or off is the desk's.
-      // A search looks in the items' threads too (app/item-search.ts).
+      // A search looks in the items' threads too (app/item-search.ts), and with projects=all in
+      // every project this server serves, each topic and item with its project (P6-R2-4).
       .get('/topics', (c) => {
         const search = c.req.query('search') ?? '';
+        const filter = { all: c.req.query('all') === '1', search };
+        if (c.req.query('projects') === 'all')
+          return c.json({
+            on: topicsOn(project),
+            ...topicsEverywhere(doors.source.list(), project.identity.id, filter),
+          });
         return c.json({
           on: topicsOn(project),
-          topics: listTopics(project, { all: c.req.query('all') === '1', search }),
+          topics: listTopics(project, filter),
           items: searchItems(project, search),
         });
       })
