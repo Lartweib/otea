@@ -740,7 +740,7 @@ const connect: Command = {
             agent: name,
             model,
             effort,
-            given: option('harness') ?? 'cli',
+            given: option('harness'),
           });
         } else if (!findProfile(project.db, name)) {
           throw new UsageError(

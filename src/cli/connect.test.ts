@@ -249,6 +249,26 @@ describe('setup for agents', () => {
       });
     });
 
+    // P8-R2-3: connect after profile --harness opencode reset the harness to cli and left the
+    // profile unconfirmed, so next refused with profile_required.
+    it('keeps the harness the agent declared, and its profile confirmed when unchanged', async () => {
+      const agent = cliAt(repo.dir, { OTEA_AGENT: 'pc' });
+      await agent('profile', ...PROFILE, '--harness', 'opencode');
+
+      const { code, out } = await agent('connect', ...PROFILE);
+
+      expect(code).toBe(0);
+      const profile = JSON.parse((await agent('profile', '--json')).out);
+      expect(profile).toMatchObject({
+        profile: { model: 'claude-opus-5-5', effort: 'high', harness: 'opencode' },
+        confirmed: true,
+      });
+      expect(out).not.toContain('not confirmed');
+      const next = await agent('next');
+      expect(next.err).not.toContain('profile_required');
+      expect(next.err).not.toContain('not confirmed in this session');
+    });
+
     it('requires the profile of an agent named that never declared one', async () => {
       const { code, err } = await otea('connect', '--as', 'claude-b');
 
