@@ -2,14 +2,23 @@ import {
   type GateAction,
   gateAt,
   isClosed,
+  landStepOf,
   type Position,
   positionOf,
+  reopenStep,
+  waysOf,
 } from '../core/board/engine.ts';
-import { type BoardDefinition, DROPPED, guardedBranch, TITLE } from '../core/board/model.ts';
-import { baseGateText, baseRefusal, gateText } from '../core/board/next.ts';
+import {
+  type BoardDefinition,
+  DROPPED,
+  guardedBranch,
+  stepById,
+  TITLE,
+} from '../core/board/model.ts';
+import { baseGateText, baseRefusal, gateText, placeText } from '../core/board/next.ts';
 import { partByName, stateName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
-import { listCollections, selectItems } from '../store/queries.ts';
+import { listCollections, selectEvents, selectItems } from '../store/queries.ts';
 import { presetOf } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, listItems, workflowOf } from './items.ts';
@@ -49,13 +58,69 @@ export type Brought = {
   branches: readonly string[];
   unpushed?: readonly { branch: string; remote: string }[];
   outside?: (held: readonly string[]) => readonly string[];
+  // Whether the commit the action writes holds exactly what was approved of the branches it lands
+  // (each at its approved tip, or as it stands when none was recorded), merged onto the base the
+  // remote has: `onto` names that base for a push of the item's own branch, else it is what the
+  // remote has of the branch pushed. A rebase with the same result passes; a conflict never does.
+  landsAs?: (landing: readonly Landing[], onto?: string) => boolean;
 };
+
+// The commit and tree of a branch an agent handed off for review (recorded with its handoff): what
+// the person approved, which is all the branch may bring in once it is approved.
+export type Tip = { branch: string; commit: string; tree: string };
+export type Landing = { branch: string; tip?: Tip };
 export type Brings = () => readonly string[] | Brought;
 
 function brought(brings: Brings): Brought {
   const asked = brings();
   return Array.isArray(asked) ? { branches: asked } : (asked as Brought);
 }
+
+// Git is asked once per check, however many boards read what the action brings in.
+function once(brings: Brings): Brings {
+  let asked: ReturnType<Brings> | undefined;
+  return () => {
+    asked ??= brings();
+    return asked;
+  };
+}
+
+function isTip(value: unknown): value is Tip {
+  if (value === null || typeof value !== 'object') return false;
+  const { branch, commit, tree } = value as Record<string, unknown>;
+  return typeof branch === 'string' && typeof commit === 'string' && typeof tree === 'string';
+}
+
+// What the person approved of an item's branch: the tip its last handoff into a review recorded
+// (P3C-R2-1). A later handoff that recorded none (made outside the repo) leaves nothing to hold the
+// branch to, never an older round's tip; a tip of another branch holds nothing either.
+export function approvedTipOf(ctx: Context, id: string, branch: string): Tip | undefined {
+  const handed = selectEvents(ctx.db, id)
+    .filter(({ type }) => type === 'transitioned')
+    .filter(({ data }) => {
+      const to = positionOf(String(data.to));
+      return !isClosed(to) && to.phase !== 'doing';
+    })
+    .at(-1);
+  const tip = handed?.data.tip;
+  return isTip(tip) && tip.branch === branch ? tip : undefined;
+}
+
+// How an approved item gets its changes reviewed again: sent back from its land step to the step
+// whose approval led there, or, once Done, reopened. The person does both; the agent asks.
+function reviewAgainText(def: BoardDefinition, id: string, position: Position): string {
+  if (isClosed(position)) {
+    const step = stepById(def, reopenStep(def) ?? '')?.name;
+    return `ask the person (otea ask ${id}) to reopen ${id}${step ? ` to ${step}` : ''} so the change is reviewed again`;
+  }
+  const land = landStepOf(def);
+  const from = def.steps.find(
+    (step) => land !== undefined && step.id !== land.id && waysOf(def, step.id).includes(land.id),
+  );
+  return `ask the person (otea ask ${id}) to send ${id} back${from ? ` to ${from.name}` : ''} so the change is reviewed again`;
+}
+
+const short = (commit: string) => commit.slice(0, 7);
 
 const GATED: readonly string[] = ['push', 'merge'];
 
@@ -107,10 +172,12 @@ function boardVerdicts(
   board: LiveBoard,
   gate: GateAction,
   fields: Readonly<Record<string, string>>,
+  brings: Brings,
 ): { verdict: GateVerdict; open: boolean; dropped?: boolean }[] {
   const keys = boardKeys(board.def, fields);
   if (!keys) return [];
-  const repo = guardedBranch(board.def)?.guard.repo;
+  const guard = guardedBranch(board.def);
+  const repo = guard?.guard.repo;
   return selectItems(ctx.db, { collection: board.collection })
     .filter((item) => holds(item, keys, repo))
     .map((item) => {
@@ -133,8 +200,37 @@ function boardVerdicts(
           mergedOf(ctx, item.id) !== undefined,
         ),
       };
+      const unreviewed =
+        gate === 'push' && verdict.allowed && guard
+          ? landingPushRefusal(ctx, board.def, item, position, guard, brings)
+          : undefined;
+      if (unreviewed) Object.assign(verdict, { allowed: false, text: unreviewed });
       return { verdict, open: !isClosed(position), dropped: isDropped(position) };
     });
+}
+
+// A push of an item's own branch while it is landed, after the person approved it: only what was
+// approved, as it is or rebased onto the base with the same result (P3C-R2-1). Undefined when the
+// push may go: the item is not being landed, its handoff recorded no tip, or the push holds it.
+function landingPushRefusal(
+  ctx: Context,
+  def: BoardDefinition,
+  item: { id: string; fields: Record<string, unknown> },
+  position: Position,
+  guard: NonNullable<ReturnType<typeof guardedBranch>>,
+  brings: Brings,
+): string | undefined {
+  if (gateAt(def, position, 'merge').why !== 'landing') return undefined;
+  const branch = item.fields[guard.id];
+  if (typeof branch !== 'string') return undefined;
+  const tip = approvedTipOf(ctx, item.id, branch);
+  const lands = tip && brought(brings).landsAs;
+  if (!tip || !lands || lands([{ branch, tip }], guard.guard.base)) return undefined;
+  const base = guard.guard.base;
+  const rebased = base
+    ? `, as they are or rebased onto ${base} with the same result`
+    : ' as they are';
+  return `push refused: ${item.id} is being landed in ${placeText(def, position)}: the person approved ${branch} at ${short(tip.commit)}, and this push writes changes nobody reviewed. Push only the approved commits${rebased}; for anything else, ${reviewAgainText(def, item.id, position)}.`;
 }
 
 function isDropped(position: Position): boolean {
@@ -149,7 +245,7 @@ function baseCheck(
   gate: GateAction,
   fields: Readonly<Record<string, string>>,
   brings: Brings,
-): GateCheck & { held: string[] } {
+): GateCheck & { held: string[]; landing: Landing[]; approved: Approved[] } {
   const branch = guardedBranch(board.def);
   const base = fields.branch ?? '';
   const { branches, unpushed = [] } = brought(brings);
@@ -219,12 +315,42 @@ function baseCheck(
     };
   });
   const all = [...items, ...own];
+  // What each item brought in lands: its branch at the tip the person approved, when its handoff
+  // recorded one; on its own branch, the base itself.
+  const landing: Landing[] = [];
+  const approved: Approved[] = [];
+  for (const item of [...matched, ...onBase]) {
+    const name = branch ? (item.fields[branch.id] as string) : '';
+    const tip = approvedTipOf(ctx, item.id, name);
+    landing.push(tip ? { branch: name, tip } : { branch: name });
+    if (tip)
+      approved.push({
+        id: item.id,
+        tip,
+        again: reviewAgainText(board.def, item.id, positionOf(item.state)),
+      });
+  }
   return {
     gate,
     allowed: all.length > 0 && all.every(({ allowed }) => allowed),
     items: all,
     held: own.length > 0 ? [...held, base] : held,
+    landing,
+    approved,
   };
+}
+
+type Approved = { id: string; tip: Tip; again: string };
+
+// Why a push or merge into a base branch is refused when what it writes is not what the person
+// approved of the items it brings in (P3C-R2-1): commits added after the approval, a rebase with
+// another result, or a merge whose conflicts the review never saw.
+function unapprovedRefusal(gate: string, base: string, approved: readonly Approved[]): string {
+  const which = approved
+    .map(({ id, tip }) => `${id} (${short(tip.commit)} on ${tip.branch})`)
+    .join(', ');
+  const again = approved.map(({ again }) => again).join('; ');
+  return `${gate} refused: ${base} would not hold exactly what the person approved of ${which}: it brings in changes nobody reviewed, or a merge whose conflicts the review never saw. Bring in the approved commits as they are, or rebased onto ${base} with the same result; for anything else, ${again}.`;
 }
 
 // Why a push or merge into a base branch is refused when it brings in commits no branch of the
@@ -245,8 +371,9 @@ export function checkGate(
   ctx: Context,
   gate: string,
   fields: Record<string, string>,
-  brings: Brings = () => [],
+  asked: Brings = () => [],
 ): GateCheck {
+  const brings = once(asked);
   const boards = liveBoards(ctx);
   const onBoards = new Set(boards.map(({ collection }) => collection));
   assertKnownGate(ctx, gate, onBoards);
@@ -291,10 +418,22 @@ export function checkGate(
         refusal: strayRefusal(gate, fields.branch ?? '', stray),
       };
     }
+    // Every branch it brings in is one the person approved: what it writes must be exactly that,
+    // merged onto the base as the remote has it. Checked once a handoff recorded an approved tip.
+    const approved = checks.flatMap((check) => check.approved);
+    const lands = allowed && approved.length > 0 ? brought(brings).landsAs : undefined;
+    if (lands && !lands(checks.flatMap((check) => check.landing))) {
+      return {
+        gate,
+        allowed: false,
+        items,
+        refusal: unapprovedRefusal(gate, fields.branch ?? '', approved),
+      };
+    }
     return { gate, allowed, items };
   }
   const fromBoards = GATED.includes(gate)
-    ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields))
+    ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields, brings))
     : [];
   const fromPresets = presetVerdicts(ctx, gate, fields, onBoards);
   const gated = [...fromBoards, ...fromPresets];

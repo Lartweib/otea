@@ -1053,6 +1053,9 @@ export type BoardMoveInput = {
   reason?: string;
   // The note of the handoff ("Nota de la entrega"), kept with the round.
   note?: string;
+  // On a handoff, the commit and tree of the protected branch as git has it where the agent hands
+  // it off: kept with a handoff into a review, it is what the person approves (app/gates.ts).
+  tip?: { branch: string; commit: string; tree: string };
 };
 
 export type BoardMoveResult = { item: Item; text: string };
@@ -1209,9 +1212,11 @@ function land(
   at: string,
 ): Item {
   const lease = activeLease(item.lease, at);
+  const reviewed = !isClosed(to) && to.phase !== 'doing';
   const data = {
     ...(input.reason ? { reason: input.reason } : {}),
     ...(input.note?.trim() ? { note: input.note } : {}),
+    ...(input.tip && reviewed ? { tip: input.tip } : {}),
     channel: input.channel,
   };
   return landMove(
