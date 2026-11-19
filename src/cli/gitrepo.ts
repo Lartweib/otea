@@ -304,6 +304,21 @@ function treeOf(cwd: string, commit: string): string | undefined {
   }
 }
 
+// Whether all that `commit` changes is in `base` already: merging it in leaves the base's tree as
+// it is, as once a forge squash-merged or rebased it there (P3C-R3-10). False when this checkout
+// lacks either commit, or the merge conflicts.
+export function landedIn(cwd: string, commit: string, base: string): boolean {
+  const tip = commitOf(cwd, commit);
+  const onto = commitOf(cwd, base);
+  if (!tip || !onto) return false;
+  try {
+    const tree = git(cwd, 'merge-tree', '--write-tree', onto, tip).split(/\r?\n/)[0];
+    return tree !== undefined && tree === treeOf(cwd, onto);
+  } catch {
+    return false;
+  }
+}
+
 // What an agent hands a branch off at: its commit and tree, for the gate to hold the landing to
 // what the person approved. The remote's branch when it has one (the review reads what was
 // pushed), else the local one; `local` first for a branch never pushed before its approval (the

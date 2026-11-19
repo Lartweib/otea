@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { liveBoardOf } from '../app/next.ts';
+import { approveItem, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { stateOf } from '../core/board/engine.ts';
 import { selectEvents, updateItemState } from '../store/queries.ts';
@@ -117,5 +117,56 @@ describe('a handoff of a branch', () => {
     const handed = await handoff();
     expect(handed.code).toBe(0);
     expect(handed.out).not.toContain('never pushed');
+  });
+
+  // P3C-R3-10: on Integrar, the agent rebased the approved branch here, then the forge
+  // squash-merged the branch as pushed on the server. The handoff was refused («holds commits
+  // origin/… never got. Push it first»), and the agent force-pushed a merged branch to pass it.
+  describe('on the land step, once the forge merged the branch', () => {
+    const land = () => otea('handoff', 'CAM-1');
+    beforeEach(async () => {
+      git('update-ref', `refs/remotes/origin/${BRANCH}`, BRANCH);
+      expect((await handoff()).code).toBe(0);
+      const project = openProject(repo.dir);
+      try {
+        approveItem(project, {
+          id: 'CAM-1',
+          actor: { kind: 'human', name: 'fede' },
+          channel: 'ui',
+        });
+      } finally {
+        project.db.close();
+      }
+      expect((await otea('claim', 'CAM-1')).code).toBe(0);
+      expect((await otea('update', 'CAM-1', '--field', 'Commit en main=abc1234')).code).toBe(0);
+      // main moved on meanwhile, and the agent rebased the branch on it here, never pushing that.
+      git('checkout', '-q', 'main');
+      change('m.txt', 'main moved\n');
+      git('update-ref', 'refs/remotes/origin/main', 'main');
+      git('checkout', '-q', BRANCH);
+      git('-c', 'core.editor=true', 'rebase', '-q', 'main');
+    });
+
+    it('hands it off once what the person approved is in the base, saying why the check passed', async () => {
+      // The forge squash-merged the branch as it was pushed, on the server.
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--squash', `origin/${BRANCH}`);
+      git('commit', '-q', '-m', 'Regar (#12)');
+      git('update-ref', 'refs/remotes/origin/main', 'main');
+      git('checkout', '-q', BRANCH);
+
+      const handed = await land();
+      expect(handed.err).toBe('');
+      expect(handed.code).toBe(0);
+      expect(handed.out).toContain(
+        `${BRANCH} holds commits origin/${BRANCH} never got, but what the person approved is in origin/main already, so they need no push: never push a merged branch to pass a check.`,
+      );
+    });
+
+    it('still refuses it while what the person approved is not in the base', async () => {
+      const refused = await land();
+      expect(refused.code).toBe(8);
+      expect(refused.err).toContain(`${BRANCH} holds commits origin/${BRANCH} never got`);
+    });
   });
 });
