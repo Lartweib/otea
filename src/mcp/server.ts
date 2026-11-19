@@ -77,7 +77,8 @@ function optionSchema(spec: OptionSpec): ZodType {
   const numbered = NUMBERED.has(spec.placeholder ?? '');
   const text = numbered ? z.union([z.string(), z.number()]) : z.string();
   const value = spec.choices ? z.enum(spec.choices as [string, ...string[]]) : text;
-  const described = spec.placeholder ? value.describe(spec.placeholder) : value;
+  const said = spec.about ?? spec.placeholder;
+  const described = said ? value.describe(said) : value;
   if (spec.multiple) return z.array(described).optional();
   return spec.required ? described : described.optional();
 }

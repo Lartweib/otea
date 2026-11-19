@@ -124,7 +124,11 @@ describe('notes from the person, on the CLI and over MCP', () => {
     expect((await otea('reply', 'CRI-1', 'hola')).code).toBe(2);
     expect((await otea('reply', 'CRI-1', '--note', 'uno', 'hola')).code).toBe(2);
     const missing = await otea('reply', 'CRI-1', '--note', '3', 'hola');
-    expect(missing).toMatchObject({ code: 3, err: 'otea: CRI-1 has no note 3\n' });
+    // What a note is, and that a send-back reason is not one (P2S-R3-5).
+    expect(missing).toMatchObject({
+      code: 3,
+      err: "otea: CRI-1 has no note 3: the person's notes are numbered (next and show print them), and a send-back reason is not one: address it, then say what you did in the note of your next handoff\n",
+    });
   });
 
   it('wakes a wait with the note', async () => {

@@ -82,6 +82,18 @@ describe('the Code on main board', () => {
 
   afterEach(() => repo.remove());
 
+  // Told by an agent to run otea approve, the person got «Name yourself first…» (P2S-R3-7).
+  it('tells the person running approve that approving is theirs, in the desk', async () => {
+    const person = cliAt(repo.dir);
+    const tried = await person('approve', id);
+    expect(tried.code).not.toBe(0);
+    expect(tried.err).toContain(
+      `Approving ${id} is the person's, in the desk: open ${id} there (otea serve gives its address) and approve it or send it back. An agent never approves a step the person reviews.`,
+    );
+    const back = await person('send-back', id, '--reason', 'no');
+    expect(back.err).toContain(`Sending ${id} back is the person's, in the desk`);
+  });
+
   it('refuses a push of main until the person approves, then lets only the approved main go', async () => {
     const claimed = await otea('claim', id);
     expect(claimed.code, claimed.err).toBe(0);
