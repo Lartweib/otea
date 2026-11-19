@@ -204,6 +204,33 @@ describe('otea topic', () => {
     expect(none.out.trim()).toBe('No topic mentions "kubernetes".');
   });
 
+  // P3C-R2-8: a decision kept in an item was invisible to a topic search.
+  it('searches the items too, and names them after the topics', async () => {
+    const { repo, otea } = fresh();
+    const person = cliAt(repo.dir);
+    await person('topic', 'on');
+    await otea('topic', 'add', '¿Cómo paginar la API?');
+    await otea(
+      'create',
+      '--collection',
+      'Cambios',
+      '--title',
+      'Listado de pedidos',
+      '--field',
+      'Qué quiero=Paginar con cursor, no con offset',
+    );
+
+    const found = await person('topic', 'list', '--search', 'cursor paginar');
+    expect(found.out).toContain('TEM-1');
+    expect(found.out).toContain(
+      "In the items' threads (otea show <id>):\nCAM-1  Listado de pedidos\n    Paginar con cursor, no con offset",
+    );
+    const data = JSON.parse((await person('topic', 'list', '--search', 'cursor', '--json')).out);
+    expect(data).toMatchObject({ topics: [], items: [{ id: 'CAM-1' }] });
+    const listed = JSON.parse((await person('topic', 'list', '--json')).out);
+    expect(listed).toEqual([expect.objectContaining({ id: 'TEM-1' })]);
+  });
+
   // P4-R2-5: a follow-up became a topic of its own; it goes on the topic it follows.
   it('adds a follow-up to the topic it follows with --to', async () => {
     const { repo, otea } = fresh();

@@ -60,7 +60,7 @@ describe('topics over the API', () => {
   });
 
   it('says topics are off, and turns them on from the desk only', async () => {
-    expect(await (await call('/topics')).json()).toEqual({ on: false, topics: [] });
+    expect(await (await call('/topics')).json()).toEqual({ on: false, topics: [], items: [] });
 
     const fromPhone = await call('/topics/switch', { method: 'POST', body: { on: true } }, 'phone');
     expect(fromPhone.status).toBe(403);
@@ -98,6 +98,29 @@ describe('topics over the API', () => {
       topics: { id: string }[];
     };
     expect(found.topics.map(({ id }) => id)).toEqual(['TEM-1']);
+  });
+
+  // P3C-R2-8: the page's search looks in the items too, where a decision is often made.
+  it('searches the items too, and gives none without a search', async () => {
+    setTopicsOn(project, true);
+    createItem(project, {
+      collection: 'Criaturas',
+      title: 'Tortuga',
+      fields: { fdesc: 'Lenta, pero llega' },
+      actor: kiln,
+      channel: 'cli',
+    });
+
+    const found = (await (await call('/topics?search=lenta')).json()) as {
+      topics: unknown[];
+      items: { id: string; said: string }[];
+    };
+    expect(found.topics).toEqual([]);
+    expect(found.items).toEqual([
+      expect.objectContaining({ id: 'CRI-1', said: 'Lenta, pero llega' }),
+    ]);
+    const listed = (await (await call('/topics')).json()) as { items?: unknown[] };
+    expect(listed.items).toEqual([]);
   });
 
   it('closes a topic and turns another into a task linked both ways', async () => {

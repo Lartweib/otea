@@ -508,8 +508,9 @@ export const surfaces = {
   'topics.convert.failed':
     'It could not be created: {message} Create it from New item and link it from there.',
   'topics.showClosed': 'Show closed ones',
+  'topics.items.title': "In the items' threads",
   'topics.search.label': 'Search the topics',
-  'topics.search.placeholder': 'Search questions and answers…',
+  'topics.search.placeholder': 'Search topics and item threads…',
   'topics.search.none': 'No topic mentions “{words}”.',
   'projects.topic.act': 'Read',
   'projects.topic.sub': 'answered by {agent}',

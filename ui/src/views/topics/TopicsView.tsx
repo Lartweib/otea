@@ -22,6 +22,7 @@ import {
   convertDraft,
   convertFields,
   convertReady,
+  type ItemHit,
   lastAnswer,
   type Topic,
   type TopicTurn,
@@ -95,6 +96,30 @@ function List({
         </section>
       ))}
     </nav>
+  );
+}
+
+// A search looks in the items' threads too: a decision is often made there, not in a topic. Each
+// item found shows what it said that holds the words, and opens the item.
+function ItemHits({ items }: { items: readonly ItemHit[] }) {
+  if (items.length === 0) return null;
+  return (
+    <section className="tp-group tp-items" aria-label={t('topics.items.title')}>
+      <h2 className="tp-gh">
+        {t('topics.items.title')} <span className="n">{items.length}</span>
+      </h2>
+      <ul>
+        {items.map((item) => (
+          <li key={item.id}>
+            <a className="tp-row" href={hashFor(item.id)}>
+              <span className="tp-id">{item.id}</span>
+              <span className="tp-title">{item.title}</span>
+              {item.said === item.title ? null : <span className="tp-sum">{item.said}</span>}
+            </a>
+          </li>
+        ))}
+      </ul>
+    </section>
   );
 }
 
@@ -439,6 +464,7 @@ export function TopicsView({ topic: openId }: { topic: string | undefined }) {
             <div className="tp-side">
               <SearchBox value={typed} onChange={setTyped} />
               <List topics={view?.topics ?? []} open={open?.id} search={search} />
+              {search === '' ? null : <ItemHits items={view?.items ?? []} />}
               {search === '' ? (
                 <label className="tp-all">
                   <input type="checkbox" checked={all} onChange={(e) => setAll(e.target.checked)} />{' '}

@@ -132,7 +132,7 @@ describe('mcp server', () => {
 
       const found = await data('topic_list', { search: 'commonjs' });
       expect(found).toEqual(await json('topic', 'list', '--search', 'commonjs'));
-      expect(found.map(({ id }: { id: string }) => id)).toEqual(['TEM-1']);
+      expect(found.topics.map(({ id }: { id: string }) => id)).toEqual(['TEM-1']);
       const shown = await data('topic_show', { id: 'TEM-1' });
       expect(shown).toEqual(await json('topic', 'show', 'TEM-1'));
       expect(shown.turns[1]).toMatchObject({ text: 'ESM.', full: 'Hoy conviene ESM.' });
