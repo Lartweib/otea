@@ -353,6 +353,7 @@ function seen(project: Project, input: Input, actor: Actor = input.actor): void 
     harness,
     folder: input.cwd,
     ...(newSession ? { newSession } : {}),
+    call: true,
   });
   // Any call of it keeps what it holds (P1-R3-6).
   renewLeases(project.db, actor.name);

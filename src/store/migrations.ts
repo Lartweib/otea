@@ -447,6 +447,12 @@ export const MIGRATIONS = [
     at TEXT NOT NULL
   );
   `,
+  // When each agent last ran a command, apart from the beats of its listeners (a wait it left
+  // running beats on): a subagent that released what it held and ran nothing since has finished
+  // (P1-R3-8).
+  `
+  ALTER TABLE agents ADD COLUMN acted_at TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

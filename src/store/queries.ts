@@ -640,6 +640,8 @@ export type AgentRecord = {
   mcpAskedAt?: string | null;
   // The folder it was last seen working from.
   folder?: string | null;
+  // When it last ran a command, its listeners' beats aside (null before it ran one).
+  actedAt?: string | null;
 };
 
 type AgentRow = {
@@ -651,6 +653,7 @@ type AgentRow = {
   mcp_at: string | null;
   mcp_asked_at: string | null;
   folder: string | null;
+  acted_at: string | null;
 };
 
 function toAgent(row: AgentRow): AgentRecord {
@@ -663,6 +666,7 @@ function toAgent(row: AgentRow): AgentRecord {
     mcpAt: row.mcp_at,
     mcpAskedAt: row.mcp_asked_at,
     folder: row.folder,
+    actedAt: row.acted_at,
   };
 }
 
@@ -801,13 +805,15 @@ export function upsertAgent(
   db: DatabaseSync,
   agent: Omit<AgentRecord, 'connectedAt' | 'mcpAskedAt'> & { connectedAt?: string | null },
 ): void {
-  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen, connected_at, mcp_at, folder)
-    VALUES (:name, :harness, :harnessVersion, :lastSeen, :connectedAt, :mcpAt, :folder)
+  const sql = `INSERT INTO agents (name, harness, harness_version, last_seen, connected_at, mcp_at, folder,
+      acted_at)
+    VALUES (:name, :harness, :harnessVersion, :lastSeen, :connectedAt, :mcpAt, :folder, :actedAt)
     ON CONFLICT (name) DO UPDATE SET harness = excluded.harness,
       harness_version = excluded.harness_version, last_seen = excluded.last_seen,
       connected_at = COALESCE(excluded.connected_at, agents.connected_at),
       mcp_at = COALESCE(excluded.mcp_at, agents.mcp_at),
-      folder = COALESCE(excluded.folder, agents.folder)`;
+      folder = COALESCE(excluded.folder, agents.folder),
+      acted_at = COALESCE(excluded.acted_at, agents.acted_at)`;
   const { name, harness, harnessVersion, lastSeen } = agent;
   db.prepare(sql).run({
     name,
@@ -817,7 +823,19 @@ export function upsertAgent(
     connectedAt: agent.connectedAt ?? null,
     mcpAt: agent.mcpAt ?? null,
     folder: agent.folder ?? null,
+    actedAt: agent.actedAt ?? null,
   });
+}
+
+// When each agent last let go of an item itself (otea release), by its name.
+export function selectLastReleases(db: DatabaseSync): Map<string, string> {
+  const rows = db
+    .prepare(
+      `SELECT actor_name AS name, max(at) AS at FROM events
+        WHERE type = 'released' AND actor_kind = 'agent' GROUP BY actor_name`,
+    )
+    .all() as { name: string; at: string }[];
+  return new Map(rows.map(({ name, at }) => [name, at]));
 }
 
 // A harness that loaded Otea's MCP server: its key (one spelling for every way it is written), the

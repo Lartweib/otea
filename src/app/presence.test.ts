@@ -74,6 +74,8 @@ describe('agent presence', () => {
         mcpAt: T0,
         mcpAskedAt: null,
         folder: null,
+        // A sighting that is no command it ran is no act (P1-R3-8).
+        actedAt: null,
       });
     });
 
