@@ -87,6 +87,7 @@ export function moveSaysOf(
           round: number;
           lands?: string;
           unmerged?: true;
+          unpushed?: string;
         })
       | undefined;
   },
@@ -123,6 +124,9 @@ export function moveSaysOf(
       tail = lands.lands ? t('sheet.says.lands', { base: lands.lands }) : t('sheet.says.landsAny');
     else tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
   } else tail = t('sheet.says.yours');
+  // What the person approves was never pushed (P7-8): said before they approve it.
+  const unpushed = kind === 'approve' ? o.back?.(move.to).unpushed : undefined;
+  if (unpushed) tail = `${tail}; ${t('sheet.says.unpushed', { branch: unpushed })}`;
   if (choice.blocked) tail = choice.blocked;
   return { verb, state, tail };
 }

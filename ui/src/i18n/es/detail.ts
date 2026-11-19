@@ -437,6 +437,7 @@ export const detail = {
   'sheet.says.yours': 'sigue siendo tuyo',
   'sheet.says.lands': 'luego un agente la fusiona en {base} y sube {base} al remoto',
   'sheet.says.landsAny': 'luego un agente la fusiona y la sube al remoto',
+  'sheet.says.unpushed': 'ojo: {branch} nunca se subió al remoto',
   'sheet.says.closesUnmerged':
     'queda Hecho, pero aún no se fusionó nada: un agente fusiona su rama y lo registra',
   'sheet.says.resume': 'vuelve a la cola de {state}, para cualquier agente',

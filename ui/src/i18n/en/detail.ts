@@ -428,6 +428,7 @@ export const detail = {
   'sheet.says.yours': 'it stays yours',
   'sheet.says.lands': 'an agent then merges it into {base} and pushes {base} to the remote',
   'sheet.says.landsAny': 'an agent then merges it and pushes it to the remote',
+  'sheet.says.unpushed': 'note: {branch} was never pushed to the remote',
   'sheet.says.closesUnmerged':
     'it is Done, but nothing is merged yet: an agent merges its branch and records it',
   'sheet.says.resume': 'back in the queue of {state}, for any agent',

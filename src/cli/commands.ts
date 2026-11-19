@@ -200,6 +200,7 @@ import {
   commitsOver,
   currentBranch,
   inMainCheckout,
+  pushState,
   remoteOf,
   tipOf,
 } from './gitrepo.ts';
@@ -1311,14 +1312,19 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
   }
 }
 
-// The protected branch as git has it here when a step that pushes or hands it is handed off: kept with a
-// handoff into a review, it is what the person approves, and all the push gate lets land once it
-// is approved (P3C-R2-1). Nothing when the checkout does not have the branch.
-function handedTip(
+// The protected branch as git has it here when a step that pushes or hands it is handed off: kept
+// with a handoff into a review, it is what the person approves, and all the push gate lets land
+// once it is approved (P3C-R2-1). Before the branch freezes in review, an agent's handoff is
+// refused when the branch it names is not here at all (P1-R2-2), or when it holds commits the
+// remote branch of its name never got, on a step that pushes it (P3C-R2-2); one never pushed
+// though the repo has a remote is handed off with a warning, and the person sees it when they
+// approve (P7-8). The base itself, on a board that works straight on it, is never pushed before
+// the approval.
+function handedBranch(
   project: Project,
   cwd: string,
   move: BoardMoveInput,
-): Pick<BoardMoveInput, 'tip'> {
+): { tip?: NonNullable<BoardMoveInput['tip']>; warning?: string } {
   const item = getItem(project, move.id);
   const board = liveBoardOf(project, item.collection);
   const position = positionOf(item.state);
@@ -1326,12 +1332,38 @@ function handedTip(
   if (!guard || isClosed(position) || position.phase !== 'doing') return {};
   // A step that pushes the branch, or that hands it in (on main, the work is committed, not pushed,
   // before the approval).
+  const pushes = guard.guard.push.includes(position.step);
   const hands = stepById(board.def, position.step)?.hand.some(({ ref }) => ref === guard.id);
-  if (!guard.guard.push.includes(position.step) && !hands) return {};
-  const branch = item.fields[guard.id];
-  if (typeof branch !== 'string' || branch.trim() === '') return {};
-  const tip = tipOf(cwd, branch.trim(), branch.trim() === guard.guard.base);
-  return tip ? { tip } : {};
+  if (!pushes && !hands) return {};
+  const branch = String(item.fields[guard.id] ?? '').trim();
+  if (branch === '') return {};
+  const base = branch === guard.guard.base;
+  const checked = move.actor.kind === 'agent' && move.way === undefined && !base;
+  const state = checked ? pushState(cwd, branch) : undefined;
+  const frozen = `once handed off, ${guard.name} is frozen while it is reviewed`;
+  if (state?.kind === 'missing') {
+    const on = state.on && state.on !== guard.guard.base ? state.on : '<branch>';
+    const where = state.on ? ` (you are on ${state.on})` : '';
+    throw new OteaError(
+      'missing_fields',
+      `${item.id} not handed off: ${guard.name} names ${branch}, a branch this checkout has neither here nor on the remote${where}. Set ${guard.name} to the branch that holds the work, otea update ${item.id} --field "${guard.name}=${on}", then hand it off again: ${frozen}.`,
+    );
+  }
+  if (state?.kind === 'ahead' && pushes) {
+    throw new OteaError(
+      'missing_fields',
+      `${item.id} not handed off: ${branch} holds commits ${state.remote} never got. Push it first (git push ${state.push} ${branch}), then hand it off again: ${frozen}, so the review would never see them.`,
+    );
+  }
+  const tip = tipOf(cwd, branch, base);
+  const unpushed = state?.kind === 'unpushed' && pushes;
+  const warning = unpushed
+    ? `Note: ${branch} was never pushed to ${state.push}. If the person reviews it on the forge (a pull request), they cannot see it there: ${frozen}.`
+    : undefined;
+  return {
+    ...(tip ? { tip: unpushed ? { ...tip, pushed: false as const } : tip } : {}),
+    ...(warning ? { warning } : {}),
+  };
 }
 
 const handoffCommand: Command = {
@@ -1341,9 +1373,12 @@ const handoffCommand: Command = {
   args: ['id'],
   options: { way: { placeholder: 'step' }, reason: {}, note: {} },
   execute: (input) => {
+    let warning: string | undefined;
     const moved = boardMove(input, (project, move) => {
       refuseEmptyBranch(project, input.cwd, move);
-      return handoffItem(project, { ...move, ...handedTip(project, input.cwd, move) });
+      const handed = handedBranch(project, input.cwd, move);
+      warning = handed.warning;
+      return handoffItem(project, { ...move, ...(handed.tip ? { tip: handed.tip } : {}) });
     });
     // An agent goes on to the next item: the reply says so, so it does not stop after one.
     const next =
@@ -1351,9 +1386,8 @@ const handoffCommand: Command = {
         ? 'Next: call next, and keep going until the person stops you.'
         : 'Next: otea next';
     return {
-      data: { ...(moved.data as object), next },
-      text: `${moved.text}
-${next}`,
+      data: { ...(moved.data as object), next, ...(warning ? { warning } : {}) },
+      text: [moved.text, ...(warning ? [warning] : []), next].join('\n'),
     };
   },
 };

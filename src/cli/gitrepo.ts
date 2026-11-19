@@ -226,17 +226,62 @@ function commitsOutside(
 // origin/main, yet what the review saw is what was pushed to origin/feat/x (P1-R2-1). Undefined
 // when the remote has neither.
 function remoteName(cwd: string, branch: string): string | undefined {
-  const remotes = [configured(cwd, `branch.${branch}.remote`), 'origin'].filter(
-    (remote): remote is string => remote !== undefined && remote !== '.',
-  );
-  for (const remote of new Set(remotes)) {
-    if (commitOf(cwd, `refs/remotes/${remote}/${branch}`)) return `${remote}/${branch}`;
-  }
+  const same = sameNameRemote(cwd, branch);
+  if (same) return same;
   try {
     return git(cwd, 'rev-parse', '--abbrev-ref', `${branch}@{upstream}`) || undefined;
   } catch {
     return undefined;
   }
+}
+
+// The remote the branch is pushed to: the one its upstream names, else origin.
+function pushRemote(cwd: string, branch: string): string {
+  const named = configured(cwd, `branch.${branch}.remote`);
+  return named === undefined || named === '.' ? 'origin' : named;
+}
+
+// The remote-tracking branch of the same name, on the remote its upstream names or else on origin.
+function sameNameRemote(cwd: string, branch: string): string | undefined {
+  for (const remote of new Set([pushRemote(cwd, branch), 'origin'])) {
+    if (commitOf(cwd, `refs/remotes/${remote}/${branch}`)) return `${remote}/${branch}`;
+  }
+  return undefined;
+}
+
+// How a branch stands with its remote in the repo at cwd, for a handoff to check before the branch
+// freezes in review: `ahead` when the remote branch of its name lacks commits of the local one,
+// `unpushed` when the remote has no branch of its name though the repo has a remote, `missing`
+// when the checkout has the branch neither here nor on the remote (`on` names the branch checked
+// out). Undefined outside a repo.
+export type PushState =
+  | { kind: 'pushed' | 'local' }
+  | { kind: 'ahead'; remote: string; push: string }
+  | { kind: 'unpushed'; push: string }
+  | { kind: 'missing'; on?: string };
+
+export function pushState(cwd: string, branch: string): PushState | undefined {
+  try {
+    git(cwd, 'rev-parse', '--git-dir');
+  } catch {
+    return undefined;
+  }
+  const here = commitOf(cwd, `refs/heads/${branch}`);
+  const remote = sameNameRemote(cwd, branch);
+  const push = pushRemote(cwd, branch);
+  if (!here) {
+    if (remote) return { kind: 'pushed' };
+    let on: string | undefined;
+    try {
+      on = git(cwd, 'symbolic-ref', '--short', 'HEAD') || undefined;
+    } catch {}
+    return on === undefined ? { kind: 'missing' } : { kind: 'missing', on };
+  }
+  if (remote) {
+    return isAncestor(cwd, here, remote) ? { kind: 'pushed' } : { kind: 'ahead', remote, push };
+  }
+  const remotes = git(cwd, 'remote').split(/\r?\n/).filter(Boolean);
+  return remotes.length === 0 ? { kind: 'local' } : { kind: 'unpushed', push };
 }
 
 // A git config value, or undefined when it is not set.

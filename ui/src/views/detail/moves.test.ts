@@ -150,6 +150,14 @@ describe('what an approve leads to, said before it acts', () => {
       'it is Done, but nothing is merged yet: an agent merges its branch and records it',
     );
   });
+
+  it('warns before an approve of a branch handed off never pushed (P7-8)', () => {
+    const p = planMoves([land], { own: false, word });
+    const lands = () => ({ agent: null, round: 1, lands: 'main', unpushed: 'tar-1' });
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
+      'an agent then merges it into main and pushes main to the remote; note: tar-1 was never pushed to the remote',
+    );
+  });
 });
 
 describe('moveSaysOf on a board', () => {

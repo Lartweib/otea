@@ -661,6 +661,21 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
     expect(backOf(errores(), twice, 'striage')).toEqual({ agent: null, round: 3 });
     expect(backOf(errores(), twice, 'sfix')).toEqual({ agent: null, round: 3 });
   });
+
+  it('names the branch the last handoff into review left never pushed (P7-8)', () => {
+    const handed = moved('sfix', 'sfix__review', agent('mender'), '2026-01-02T00:00:00Z');
+    const tip = { branch: 'fix/1', commit: 'a', tree: 'b', pushed: false };
+    const unpushed = item('sfix__review', [
+      created('sfix'),
+      { ...handed, data: { ...handed.data, tip } },
+    ]);
+    expect(backOf(errores(), unpushed, 'sland')).toMatchObject({ unpushed: 'fix/1' });
+    const pushed = item('sfix__review', [
+      created('sfix'),
+      { ...handed, data: { ...handed.data, tip: { ...tip, pushed: undefined } } },
+    ]);
+    expect(backOf(errores(), pushed, 'sland').unpushed).toBeUndefined();
+  });
 });
 
 describe('the person’s own step', () => {
