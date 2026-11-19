@@ -2,7 +2,7 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { type Cli, cliAt, presetCollection, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, seedOnce, type TempRepo } from './testing.ts';
 
 // A board stores its steps, fields and choices under hidden ids (todo, priority, high); a program
 // reading Otea's output gets their names beside them, so it never has to translate one itself.
@@ -17,14 +17,17 @@ describe('names in output', () => {
       .filter(Boolean)
       .map((line) => JSON.parse(line));
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    presetCollection(repo.dir, 'tasks');
-    await otea('create', '--collection', 'tasks', '--title', 'Write docs', '--description', 'D');
-    await otea('update', 'TASKS-1', '--field', 'priority=high');
-    await otea('handoff', 'TASKS-1');
+  // Seeded once and copied for each test: seeding through the CLI before every one of them took a
+  // loaded Windows runner past the hook's 30s.
+  const seeded = seedOnce(async (seed, dir) => {
+    presetCollection(dir, 'tasks');
+    await seed('create', '--collection', 'tasks', '--title', 'Write docs', '--description', 'D');
+    await seed('update', 'TASKS-1', '--field', 'priority=high');
+    await seed('handoff', 'TASKS-1');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());

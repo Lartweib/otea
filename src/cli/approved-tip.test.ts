@@ -1,87 +1,112 @@
 import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { approveItem, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { stateOf } from '../core/board/engine.ts';
 import { updateItemState } from '../store/queries.ts';
-import { type Cli, cliAt, declareProfiles, tempGitRepo } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  declareProfiles,
+  SEED_TIMEOUT_MS,
+  type SeededRepo,
+  seededLocalRepo,
+  type TempRepo,
+} from './testing.ts';
 
 // Once the person approves an item, Integrar lands only what they approved (P3C-R2-1): the handoff
 // records the branch's tip, and the push gate refuses a new commit on the branch and a main whose
 // content differs, while a rebase onto main with the same result still lands.
 describe('the approved tip', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let seeded: SeededRepo;
+  let repo: TempRepo;
   let otea: Cli;
-  const git = (...args: string[]) =>
-    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
-      cwd: repo.dir,
-      stdio: 'pipe',
-      encoding: 'utf8',
-    }).trim();
-  const change = (file: string, text: string, message: string) => {
-    writeFileSync(join(repo.dir, file), text);
-    git('add', file);
-    git('commit', '-q', '-m', message);
+  const gitAt =
+    (dir: string) =>
+    (...args: string[]) =>
+      execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
+        cwd: dir,
+        stdio: 'pipe',
+        encoding: 'utf8',
+      }).trim();
+  const changeAt = (dir: string) => (file: string, text: string, message: string) => {
+    writeFileSync(join(dir, file), text);
+    gitAt(dir)('add', file);
+    gitAt(dir)('commit', '-q', '-m', message);
   };
+  const git = (...args: string[]) => gitAt(repo.dir)(...args);
+  const change = (file: string, text: string, message: string) =>
+    changeAt(repo.dir)(file, text, message);
   const push = (...argv: string[]) => otea('check', '--gate', 'push', ...argv);
   const BRANCH = 'cambio/1-regar';
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'quill' });
-    const person = cliAt(repo.dir);
-    await person('init', '--template', 'none');
-    await person('board', 'add', 'Cambios', '--template', 'changes');
-    declareProfiles(repo.dir, 'quill');
-    await otea(
-      'create',
-      '--collection',
-      'Cambios',
-      '--title',
-      'Regar',
-      '--field',
-      'Qué quiero=x',
-      '--field',
-      `Rama=${BRANCH}`,
-    );
-    change('a.txt', 'root\n', 'root');
-    git('branch', '-M', 'main');
-    git('update-ref', 'refs/remotes/origin/main', 'main');
-    git('checkout', '-q', '-b', BRANCH);
-    change('b.txt', 'regar\n', 'regar');
-    git('update-ref', `refs/remotes/origin/${BRANCH}`, BRANCH);
-    // The agent does Hacerlo and hands it off; the person approves it into Integrar.
-    const project = openProject(repo.dir);
-    try {
-      const board = liveBoardOf(project, 'Cambios');
-      const doit = board?.def.steps.find(({ name }) => name === 'Hacerlo');
-      if (!doit) throw new Error('no Hacerlo');
-      updateItemState(
-        project.db,
-        'CAM-1',
-        stateOf({ step: doit.id, phase: 'doing' }),
-        '2026-11-18T10:00:00Z',
+  // The agent did Hacerlo and handed it off; the person approved it into Integrar. Seeded once,
+  // each test gets its own copy: seeding it before every test cost a loaded Windows runner ~10s.
+  beforeAll(async () => {
+    seeded = await seededLocalRepo(async (dir) => {
+      const otea = cliAt(dir, { OTEA_AGENT: 'quill' });
+      const person = cliAt(dir);
+      const git = gitAt(dir);
+      const change = changeAt(dir);
+      await person('init', '--local', '--template', 'none');
+      await person('board', 'add', 'Cambios', '--template', 'changes');
+      declareProfiles(dir, 'quill');
+      await otea(
+        'create',
+        '--collection',
+        'Cambios',
+        '--title',
+        'Regar',
+        '--field',
+        'Qué quiero=x',
+        '--field',
+        `Rama=${BRANCH}`,
       );
-    } finally {
-      project.db.close();
-    }
-    writeFileSync(join(repo.dir, 'regar.diff'), 'diff --git a/b.txt b/b.txt\n+regar\n');
-    expect((await otea('claim', 'CAM-1')).code).toBe(0);
-    expect((await otea('attach', 'CAM-1', 'regar.diff')).code).toBe(0);
-    const handed = await otea('handoff', 'CAM-1', '--note', 'regar');
-    expect(handed.code, handed.err).toBe(0);
-    const approving = openProject(repo.dir);
-    try {
-      approveItem(approving, {
-        id: 'CAM-1',
-        actor: { kind: 'human', name: 'ana' },
-        channel: 'ui',
-      });
-    } finally {
-      approving.db.close();
-    }
+      change('a.txt', 'root\n', 'root');
+      git('branch', '-M', 'main');
+      git('update-ref', 'refs/remotes/origin/main', 'main');
+      git('checkout', '-q', '-b', BRANCH);
+      change('b.txt', 'regar\n', 'regar');
+      git('update-ref', `refs/remotes/origin/${BRANCH}`, BRANCH);
+      const project = openProject(dir);
+      try {
+        const board = liveBoardOf(project, 'Cambios');
+        const doit = board?.def.steps.find(({ name }) => name === 'Hacerlo');
+        if (!doit) throw new Error('no Hacerlo');
+        updateItemState(
+          project.db,
+          'CAM-1',
+          stateOf({ step: doit.id, phase: 'doing' }),
+          '2026-11-18T10:00:00Z',
+        );
+      } finally {
+        project.db.close();
+      }
+      writeFileSync(join(dir, 'regar.diff'), 'diff --git a/b.txt b/b.txt\n+regar\n');
+      expect((await otea('claim', 'CAM-1')).code).toBe(0);
+      expect((await otea('attach', 'CAM-1', 'regar.diff')).code).toBe(0);
+      const handed = await otea('handoff', 'CAM-1', '--note', 'regar');
+      expect(handed.code, handed.err).toBe(0);
+      const approving = openProject(dir);
+      try {
+        approveItem(approving, {
+          id: 'CAM-1',
+          actor: { kind: 'human', name: 'ana' },
+          channel: 'ui',
+        });
+      } finally {
+        approving.db.close();
+      }
+    });
+  }, SEED_TIMEOUT_MS);
+
+  afterAll(() => seeded.remove());
+
+  beforeEach(() => {
+    repo = seeded.fresh();
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'quill' });
   });
 
   afterEach(() => repo.remove());

@@ -129,6 +129,11 @@ function tempRepoAt(dir: string): TempRepo {
   };
 }
 
+// The one hook that seeds a suite runs, once per file, the git spawns and CLI commands a hook before
+// each test used to; a Windows runner that stalls for half a minute (other suites run 9 times
+// slower then) has taken it past the 30s every other hook gets. It alone gets more.
+export const SEED_TIMEOUT_MS = 90_000;
+
 // A repo with a local project (`init --local`, so all its data sits in the folder) seeded once by
 // `seed`; `fresh` hands each test its own copy. Seeding through the CLI costs seconds on a loaded
 // Windows runner, so a suite whose every test starts from the same items seeds them once.
@@ -161,7 +166,7 @@ export function seedOnce(seed: (otea: Cli, dir: string) => Promise<void>): {
       await otea('init', '--local');
       await seed(otea, dir);
     });
-  });
+  }, SEED_TIMEOUT_MS);
   afterAll(() => seeded?.remove());
   return {
     fresh: () => {
@@ -179,11 +184,6 @@ export function seedOnce(seed: (otea: Cli, dir: string) => Promise<void>): {
 // them (`aside`) for another clone. Suites whose every test starts from the same pushed branch seed
 // it once: seeding it before each test took a loaded Windows runner past the hook's 30s.
 export type CheckoutWithOrigin = { repo: TempRepo; origin: string; aside: string };
-
-// The one hook that seeds runs, once per file, the ~40 git spawns and CLI commands a hook before
-// each test used to; a Windows runner that stalls for half a minute (other suites run 9 times
-// slower then) has taken it past the 30s every other hook gets. It alone gets more.
-export const SEED_TIMEOUT_MS = 90_000;
 
 export function seedOnceWithOrigin(seed: (dir: string, origin: string) => Promise<void>): {
   fresh: () => CheckoutWithOrigin;

@@ -1,12 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   type Cli,
-  cliAt,
   presetCollection,
+  seedOnce,
   spawnCli,
   startCli,
   type TempRepo,
-  tempGitRepo,
   until,
 } from './testing.ts';
 
@@ -21,15 +20,18 @@ describe('events', () => {
   const ndjson = async (...argv: string[]) =>
     lines((await otea('events', ...argv, '--json')).out).map((line) => JSON.parse(line));
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    presetCollection(repo.dir, 'tasks');
-    presetCollection(repo.dir, 'bugs');
-    await otea('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
-    await otea('create', '--collection', 'bugs', '--title', 'Crash', '--description', 'D');
-    await otea('move', 'TASKS-1', 'todo__review');
+  // Seeded once and copied for each test: seeding through the CLI before every one of them took a
+  // loaded Windows runner past the hook's 30s.
+  const seeded = seedOnce(async (seed, dir) => {
+    presetCollection(dir, 'tasks');
+    presetCollection(dir, 'bugs');
+    await seed('create', '--collection', 'tasks', '--title', 'First', '--description', 'D');
+    await seed('create', '--collection', 'bugs', '--title', 'Crash', '--description', 'D');
+    await seed('move', 'TASKS-1', 'todo__review');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());

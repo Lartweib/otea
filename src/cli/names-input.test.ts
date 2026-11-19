@@ -3,7 +3,7 @@ import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { getBoardRecord, listBoardSummaries, publishBoard, saveDraft } from '../app/boards.ts';
 import { openProject } from '../app/project.ts';
-import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, seedOnce, type TempRepo } from './testing.ts';
 
 // A board keeps its steps and fields under hidden ids (s361vb0d, fjn944wp). A reader names them,
 // and is answered by name: in list filters, in refusals, and in the history of a step since deleted.
@@ -16,12 +16,11 @@ describe('names in, names out', () => {
     JSON.parse((await otea(...argv, '--json')).err).error;
   const ids = (out: string) => out.split('\n').filter(Boolean);
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    await cliAt(repo.dir)('board', 'add', 'Bugs', '--template', 'bugs');
-    await otea(
+  // Seeded once and copied for each test: seeding through the CLI before every one of them took a
+  // loaded Windows runner past the hook's 30s.
+  const seeded = seedOnce(async (seed, dir) => {
+    await cliAt(dir)('board', 'add', 'Bugs', '--template', 'bugs');
+    await seed(
       'create',
       '--collection',
       'Bugs',
@@ -32,7 +31,11 @@ describe('names in, names out', () => {
       '--field',
       'Gravedad=Alta',
     );
-    await otea('create', '--collection', 'Bugs', '--title', 'Lag', '--field', 'Qué pasa=va lento');
+    await seed('create', '--collection', 'Bugs', '--title', 'Lag', '--field', 'Qué pasa=va lento');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());

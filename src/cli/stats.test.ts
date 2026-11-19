@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { createItem } from '../app/items.ts';
 import { approveItem, handoffItem, sendBackItem } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
@@ -6,20 +6,43 @@ import { publishAs } from '../app/testing.ts';
 import { creatures } from '../core/board/testing.ts';
 import { saveProfile } from '../store/queries.ts';
 import { statsText } from './stats.ts';
-import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  SEED_TIMEOUT_MS,
+  type SeededRepo,
+  seededLocalRepo,
+  type TempRepo,
+} from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
 
 // otea stats: how each model performs, as a text table or --json.
 describe('otea stats', () => {
+  let seeded: SeededRepo;
   let repo: TempRepo;
   let otea: Cli;
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
+  // Seeded once and copied for each test.
+  beforeAll(async () => {
+    seeded = await seededLocalRepo(async (dir) => {
+      await cliAt(dir, {})('init', '--local', '--template', 'none');
+      handOffWithProfiles(dir);
+    });
+  }, SEED_TIMEOUT_MS);
+
+  afterAll(() => seeded.remove());
+
+  beforeEach(() => {
+    repo = seeded.fresh();
     otea = cliAt(repo.dir, {});
-    await otea('init', '--local', '--template', 'none');
-    const project = openProject(repo.dir);
+  });
+
+  afterEach(() => repo.remove());
+
+  // Two agents with their profiles hand off a Rana: quill twice, sent back once, kiln once.
+  function handOffWithProfiles(dir: string) {
+    const project = openProject(dir);
     try {
       const def = creatures();
       for (const step of def.steps) step.hand = [];
@@ -59,9 +82,7 @@ describe('otea stats', () => {
     } finally {
       project.db.close();
     }
-  });
-
-  afterEach(() => repo.remove());
+  }
 
   it('prints one row per model family and effort, with the exact models under it', async () => {
     const { code, out } = await otea('stats');
