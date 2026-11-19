@@ -112,6 +112,7 @@ import {
   systemClock,
   workflowOf,
 } from './items.ts';
+import { type LandsFirst, landsFirst, landsFirstLine, landsFirstText } from './land-order.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { sessionEnded } from './presence.ts';
 import { priorityOf } from './priority.ts';
@@ -844,10 +845,34 @@ export function answeredFor(
   return answered.by;
 }
 
-// Whether the item is the agent's to take now: a doing phase it may take, or a review any agent
-// does that it did not do itself; never one another agent holds, nor one the person left for
-// another agent.
+// Whether the item is the agent's to take now (mayTakeNow), and, on a land step, its turn to land
+// in its base (app/land-order.ts, P1-R3-2).
 function isTheirs(
+  ctx: Context,
+  def: BoardDefinition,
+  item: ItemRecord,
+  agent: string,
+  at: string,
+): boolean {
+  return mayTakeNow(ctx, def, item, agent, at) && landTurnFor(ctx, item, agent, at) === undefined;
+}
+
+// What lands in the item's base before it, for the agent; undefined when its turn is now.
+function landTurnFor(
+  ctx: Context,
+  item: ItemRecord,
+  agent: string,
+  at: string,
+): LandsFirst | undefined {
+  return landsFirst(ctx, item, agent, at, (board, other) =>
+    mayTakeNow(ctx, board.def, other, agent, at),
+  );
+}
+
+// Whether the item is the agent's to take now, whatever else lands first: a doing phase it may
+// take, or a review any agent does that it did not do itself; never one another agent holds, nor
+// one the person left for another agent.
+function mayTakeNow(
   ctx: Context,
   def: BoardDefinition,
   item: ItemRecord,
@@ -1030,6 +1055,23 @@ function setAsideLines(ctx: Context, boards: readonly LiveBoard[], agent: string
   ];
 }
 
+// With nothing to do: the approved items the agent would land but for another landing first
+// (P1-R3-2), so it knows what it waits for.
+function landingLines(
+  ctx: Context,
+  boards: readonly LiveBoard[],
+  agent: string,
+  at: string,
+): string[] {
+  return boards.flatMap((board) =>
+    selectItems(ctx.db, { collection: board.collection }).flatMap((item) => {
+      if (!mayTakeNow(ctx, board.def, item, agent, at)) return [];
+      const first = landTurnFor(ctx, item, agent, at);
+      return first ? [landsFirstLine(item.id, first)] : [];
+    }),
+  );
+}
+
 // With nothing to do while other agents hold the boards' work (P6-18): who holds what, and how two
 // agents share a board, so the idle one neither waits blind nor takes over what another holds.
 function heldElsewhere(
@@ -1144,6 +1186,7 @@ export function nextFor(
         text: [
           idleText(idle),
           ...setAsideLines(ctx, boards, agent),
+          ...landingLines(ctx, boards, agent, at),
           ...heldElsewhere(ctx, boards, agent, at),
         ].join('\n\n'),
         idle: true,
@@ -1961,11 +2004,14 @@ export function assertMayClaim(
     );
   }
   if (position.phase === 'doing') {
-    if (mayTake(board.def, step.id)) return;
-    throw new OteaError(
-      'not_claimable',
-      `${item.id} is at ${step.name}, which the person does; claim only what is yours (otea next)`,
-    );
+    if (!mayTake(board.def, step.id))
+      throw new OteaError(
+        'not_claimable',
+        `${item.id} is at ${step.name}, which the person does; claim only what is yours (otea next)`,
+      );
+    const first = landTurnFor(ctx, item, agent, at);
+    if (first) throw new OteaError('not_claimable', landsFirstText(item.id, first));
+    return;
   }
   const did = roundWorkersOf(ctx, item, board.def);
   if (mayReview(board.def, position, { kind: 'agent', name: agent }, did)) return;

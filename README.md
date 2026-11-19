@@ -391,6 +391,11 @@ The Matrix is a board view that weighs open items by two of their fields. **Idea
   - `otea next` offers them in that order and says why ("It is number 1 in the order the person fixed on the Matrix").
   - `otea list` shows `on top 1` and `order 2` beside them, and its `--json` gives each such item's `priority`.
   - A step you do or review yourself still waits for you in Te toca: the order only changes what agents take first.
+- **Approved items land in that order, one at a time.** On a land step (Integrar, or whatever a board calls the step where an agent merges what you approved), one agent lands at a time in each base branch (per repo), and the next to land is the approved item highest in your order: on top first, then your order, then the one approved first.
+  - `otea next` offers only that item, and says what an item waits for while another lands.
+  - `otea claim` refuses the others, saying which item lands first and why, for example `CAM-6 lands in main first (order 1), then CAM-5`.
+  - An item whose question waits for you never holds up the ones after it.
+  - You still decide: reorder the Matrix or put an item on top to change what lands next, move an item by hand, or leave one for an agent with Reasignar, which then lands it when it takes it.
 
 ### Templates that make several boards
 
