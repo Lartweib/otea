@@ -558,11 +558,19 @@ export function sheetLook(look: Look, onBoard: boolean): Look {
 // branch and pushes it, into the base it names (none when the board protects no base).
 // `unmerged`: it closes as Done on a board with no land step, where nothing merges it on the way.
 // `unpushed`: the branch the review approves was handed off never pushed to the remote (P7-8).
+// `unchanged`: it was handed off with no commit, no code change, so nothing is pushed (P2S-R3-3).
 export function backOf(
   def: BoardDefinition,
   item: ItemLike,
   to: string,
-): { agent: string | null; round: number; lands?: string; unmerged?: true; unpushed?: string } {
+): {
+  agent: string | null;
+  round: number;
+  lands?: string;
+  unmerged?: true;
+  unpushed?: string;
+  unchanged?: true;
+} {
   const target = positionOf(to);
   // Only an item that names its branch has one to merge (P5-R2-5, P4-R2-4): one that left it empty
   // is told nothing of merging or pushing.
@@ -571,7 +579,10 @@ export function backOf(
   const branch = named ? guarded : undefined;
   const land = def.steps.find((s) => isLandStep(def, s.id));
   const unpushed = unpushedOf(item);
-  const warn = unpushed === undefined ? {} : { unpushed };
+  const warn = {
+    ...(unpushed === undefined ? {} : { unpushed }),
+    ...(handedTip(item)?.unchanged === true ? { unchanged: true as const } : {}),
+  };
   if (isClosed(target))
     return target.closed === DONE && branch && !land
       ? { agent: null, round: 0, unmerged: true, ...warn }
@@ -586,15 +597,22 @@ export function backOf(
     : { agent, round, ...warn };
 }
 
-// The branch the last handoff into a review recorded as never pushed, though the repo has a
-// remote: what the person approves is not on the remote.
-function unpushedOf(item: ItemLike): string | undefined {
+// The tip the last handoff into a review recorded of the protected branch.
+function handedTip(
+  item: ItemLike,
+): { branch?: unknown; pushed?: unknown; unchanged?: unknown } | undefined {
   const handed = item.events.findLast(({ type, data }) => {
     if (type !== 'transitioned') return false;
     const to = positionOf(String(data.to));
     return !isClosed(to) && to.phase !== 'doing';
   });
-  const tip = handed?.data.tip as { branch?: unknown; pushed?: unknown } | undefined;
+  return handed?.data.tip as { branch?: unknown; pushed?: unknown } | undefined;
+}
+
+// The branch the last handoff into a review recorded as never pushed, though the repo has a
+// remote: what the person approves is not on the remote.
+function unpushedOf(item: ItemLike): string | undefined {
+  const tip = handedTip(item);
   return tip?.pushed === false && typeof tip.branch === 'string' ? tip.branch : undefined;
 }
 

@@ -1113,7 +1113,8 @@ export type BoardMoveInput = {
   // On a handoff, the commit and tree of the protected branch as git has it where the agent hands
   // it off: kept with a handoff into a review, it is what the person approves (app/gates.ts).
   // `pushed: false`: never pushed though the repo has a remote, for the approval to warn (P7-8).
-  tip?: { branch: string; commit: string; tree: string; pushed?: false };
+  // `unchanged`: the base itself, holding nothing the remote lacks: no code change (P2S-R3-3).
+  tip?: { branch: string; commit: string; tree: string; pushed?: false; unchanged?: true };
 };
 
 export type BoardMoveResult = { item: Item; text: string };

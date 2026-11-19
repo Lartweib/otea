@@ -88,6 +88,7 @@ export function moveSaysOf(
           lands?: string;
           unmerged?: true;
           unpushed?: string;
+          unchanged?: true;
         })
       | undefined;
   },
@@ -119,8 +120,11 @@ export function moveSaysOf(
     // On a board, the agent of the step it lands on (none named when any agent may take it).
     const lands = o.back?.(move.to);
     const who = lands ? lands.agent : o.agent;
-    // Before it acts: the land step pushes and merges (P5-15).
-    if (lands?.lands !== undefined)
+    // Before it acts: the land step pushes and merges (P5-15), unless the item brought no code
+    // change, which leaves it nothing to push (P2S-R3-3).
+    if (lands?.lands !== undefined && kind === 'approve' && lands.unchanged)
+      tail = t('sheet.says.unchanged');
+    else if (lands?.lands !== undefined)
       tail = lands.lands ? t('sheet.says.lands', { base: lands.lands }) : t('sheet.says.landsAny');
     else tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
   } else tail = t('sheet.says.yours');

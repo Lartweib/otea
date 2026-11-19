@@ -695,6 +695,21 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
     ]);
     expect(backOf(errores(), pushed, 'sland').unpushed).toBeUndefined();
   });
+
+  it('says the last handoff into review brought no code change (P2S-R3-3)', () => {
+    const handed = moved('sfix', 'sfix__review', agent('mender'), '2026-01-02T00:00:00Z');
+    const tip = { branch: 'main', commit: 'a', tree: 'b', unchanged: true };
+    const none = item('sfix__review', [
+      created('sfix'),
+      { ...handed, data: { ...handed.data, tip } },
+    ]);
+    expect(backOf(errores(), none, 'sland')).toMatchObject({ unchanged: true });
+    const some = item('sfix__review', [
+      created('sfix'),
+      { ...handed, data: { ...handed.data, tip: { ...tip, unchanged: undefined } } },
+    ]);
+    expect(backOf(errores(), some, 'sland').unchanged).toBeUndefined();
+  });
 });
 
 describe('the person’s own step', () => {
