@@ -356,9 +356,11 @@ describe('wait', () => {
     expect(next.out).toContain(
       'You set aside TASKS-1 for later: otea claim TASKS-1 takes it up again.',
     );
-    // Another agent may take it.
-    expect((await otea('wait', '--turn', 'agent', '--unclaimed', '--as', 'gemini')).out).toMatch(
-      /^TASKS-1 /,
+    // It is the person's wish, so another agent leaves it too (P7-R3-6), and is told who set it aside.
+    const other = ['wait', '--turn', 'agent', '--unclaimed', '--as', 'gemini', '--timeout', '1s'];
+    expect((await otea(...other)).code).toBe(13);
+    expect((await otea('next', '--as', 'gemini')).out).toContain(
+      'claude set aside TASKS-1 for later: otea claim TASKS-1 takes it up again.',
     );
 
     await otea('claim', 'TASKS-1');

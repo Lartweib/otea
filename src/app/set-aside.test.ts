@@ -308,6 +308,36 @@ describe('a set-aside lifting when the person acts on the item', () => {
   });
 });
 
+// P7-R3-6: the person said «déjala para más adelante», yet another agent's next and wait offered it.
+describe('a set-aside, as the person’s wish', () => {
+  it('holds for every agent, and next names who set it aside', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const along = animating(ctx);
+    setAside(ctx, along.id);
+
+    expect(offerableTo(ctx, 'scout', now)(along)).toBe(false);
+    const answer = nextFor(ctx, 'scout', {}, now);
+    expect(answer).toMatchObject({ item: null, idle: true });
+    expect(answer.text).toContain(
+      `kiln set aside ${along.id} for later: otea claim ${along.id} takes it up again.`,
+    );
+  });
+
+  it('names the agent’s own set-asides first, then the others', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const theirs = animating(ctx, 'Suya');
+    const mine = animating(ctx, 'Mía');
+    setAside(ctx, theirs.id);
+    setAside(ctx, mine.id, quill);
+
+    expect(nextFor(ctx, 'quill', {}, now).text).toContain(
+      `You set aside ${mine.id} for later; kiln set aside ${theirs.id} for later: otea claim <id> takes one up again.`,
+    );
+  });
+});
+
 describe('next with nothing to do', () => {
   it('names a set-aside item that stands in the person’s order, with the claim that takes it up', () => {
     const ctx = memoryContext();

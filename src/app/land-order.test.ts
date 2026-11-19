@@ -108,8 +108,9 @@ describe('landing in the order the person set', () => {
     expect(claimItem(ctx, { id: second, actor: agent('quill') }, now).lease?.holder).toBe('quill');
   });
 
-  // What an agent cannot take never holds up its next landing; another agent may still take it.
-  it('lets the agent that set one aside land the next, and another take the one set aside', () => {
+  // What an agent cannot take never holds up its next landing. One set aside for later is the
+  // person's wish, so no other agent takes it either (P7-R3-6).
+  it('lets an agent land the next past one set aside, which no other agent takes', () => {
     const { ctx, def, approved } = landing();
     const first = approved('first');
     const second = approved('second');
@@ -118,7 +119,7 @@ describe('landing in the order the person set', () => {
     releaseItem(ctx, { id: first, actor: agent('claude-b'), later: true }, now);
 
     expect(nextFor(ctx, 'claude-b', {}, now).item).toBe(second);
-    expect(nextFor(ctx, 'quill', {}, now).item).toBe(first);
+    expect(nextFor(ctx, 'quill', {}, now).item).not.toBe(first);
   });
 
   it('keeps each base apart: a landing in main never holds one in another base', () => {
