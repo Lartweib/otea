@@ -16,6 +16,9 @@ export type ReaderPick = {
   page?: number;
   // The quote is a phrase of a document, not a line (P5-6); never sent.
   phrase?: true;
+  // The phrase is a whole paragraph, clicked rather than selected: said so, never «la frase»
+  // (P5-R2-8); never sent.
+  whole?: true;
   x?: number;
   y?: number;
   w?: number;
@@ -89,7 +92,7 @@ export function pickWords(pick: ReaderPick | null): string {
     return pick.w !== undefined ? t('notes.pick.zone') : t('notes.pick.point');
   if (pick.phrase && pick.quote !== undefined) {
     const q = pick.quote.length > 48 ? `${pick.quote.slice(0, 47).trimEnd()}…` : pick.quote;
-    return t('notes.pick.phrase', { quote: q });
+    return t(pick.whole ? 'notes.pick.paragraph' : 'notes.pick.phrase', { quote: q });
   }
   if (pick.node !== undefined) return t('notes.pick.node', { node: pick.node });
   if (pick.line !== undefined) return t('notes.pick.line', { n: pick.line });
@@ -100,7 +103,7 @@ export function pickAnchor(
   evidence: number,
   pick: ReaderPick | null,
 ): { evidence: number } & ReaderPick {
-  const { phrase: _phrase, ...sent } = pick ?? {};
+  const { phrase: _phrase, whole: _whole, ...sent } = pick ?? {};
   return { evidence, ...sent };
 }
 
@@ -125,7 +128,7 @@ export function pickAt(target: EventTarget | null): { el: HTMLElement; pick: Rea
   const block = target.closest<HTMLElement>(DOC_BLOCK);
   if (block) {
     const quote = phraseOf(block.textContent ?? '');
-    return quote ? { el: block, pick: { quote, phrase: true } } : null;
+    return quote ? { el: block, pick: { quote, phrase: true, whole: true } } : null;
   }
   return null;
 }

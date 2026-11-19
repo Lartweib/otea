@@ -305,6 +305,7 @@ export const detail = {
   'notes.pick.pageZone': 'una zona de la página {n}',
   'notes.pick.pagePoint': 'un punto de la página {n}',
   'notes.pick.phrase': 'la frase «{quote}»',
+  'notes.pick.paragraph': 'el párrafo «{quote}»',
   'notes.pick.hintPage':
     'Haz clic en una página para marcar un punto, o arrastra sobre ella para marcar una zona.',
   'notes.pick.hintPageTouch': 'Toca una página para marcar un punto.',

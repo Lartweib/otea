@@ -61,6 +61,14 @@ describe('pickWords and pickAnchor', () => {
     expect(pickWords({ quote: 'x'.repeat(80), phrase: true })).toBe(
       `the phrase “${'x'.repeat(47)}…”`,
     );
+    // A paragraph clicked whole is a paragraph, not «la frase» (P5-R2-8).
+    expect(pickWords({ quote: 'Never stretch the logo.', phrase: true, whole: true })).toBe(
+      'the paragraph “Never stretch the logo.”',
+    );
+    expect(pickAnchor(4, { quote: 'x', phrase: true, whole: true })).toEqual({
+      evidence: 4,
+      quote: 'x',
+    });
     expect(pickWords({ page: 2, x: 1, y: 2, w: 3, h: 4 })).toBe('a zone of page 2');
     expect(pickWords({ page: 1, x: 1, y: 2 })).toBe('a point of page 1');
     setLanguage('es');
