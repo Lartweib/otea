@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
+import { sequenceIds } from '../../../../src/core/board/ids.ts';
 import type { Part } from '../../../../src/core/board/model.ts';
+import { instantiate, requireTemplate } from '../../../../src/core/board/templates.ts';
 import {
   cambios,
   creatures,
@@ -514,6 +516,36 @@ describe('roundNotes: each round of the step with its notes', () => {
       undo,
     ];
     expect(roundNotes(errores(), 'sfix', events).map(({ round }) => round)).toEqual([1]);
+  });
+});
+
+// p4 leftover: the route strip of the person's own to-do drew Pendientes' whole line, «Tu parte →
+// Hacerlo → Hecho», though «Tu parte» leads it straight to Hecho while «Lo hago yo» is sí.
+describe('boardItemOf: the route a step that leads elsewhere sends the item', () => {
+  const def = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
+  const own = def.steps[0]?.id ?? '';
+  const mine = Object.values(def.parts).find(({ name }) => name === 'Lo hago yo')?.id ?? '';
+  const todo = (state: string, yes: boolean) => ({
+    ...item(state, [created(own)]),
+    fields: { [mine]: yes ? 'yes' : 'no' },
+  });
+
+  it('draws the way the lead takes it, leaving out the steps it skips', () => {
+    const on = boardItemOf(def, todo(own, true), words);
+    expect(on?.route.words).toEqual(['Tu parte', 'Hecho']);
+    expect(on?.route.ci).toBe(0);
+  });
+
+  it('draws the whole line while the lead does not hold', () => {
+    expect(boardItemOf(def, todo(own, false), words)?.route.words).toContain('Hacerlo');
+  });
+
+  it('draws the way it took once it is done', () => {
+    const done = {
+      ...todo('done', true),
+      events: [created(own), moved(own, 'done', you, '2026-01-02T00:00:00Z')],
+    };
+    expect(boardItemOf(def, done, words)?.route.words).toEqual(['Tu parte', 'Hecho']);
   });
 });
 
