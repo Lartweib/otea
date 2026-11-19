@@ -1,5 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
+import type { Landing, Tip } from '../app/gates.ts';
 import { excludeFromGit } from '../app/project.ts';
 
 function git(cwd: string, ...args: string[]): string {
@@ -9,6 +10,15 @@ function git(cwd: string, ...args: string[]): string {
     stdio: ['ignore', 'pipe', 'ignore'],
   }).trim();
 }
+
+// A commit object git writes only to chain merges in memory of the repo (never a ref): it needs an
+// identity, which a fresh clone or a CI runner may not have.
+const SCRATCH_IDENTITY = {
+  GIT_AUTHOR_NAME: 'otea',
+  GIT_AUTHOR_EMAIL: 'otea@localhost',
+  GIT_COMMITTER_NAME: 'otea',
+  GIT_COMMITTER_EMAIL: 'otea@localhost',
+};
 
 // The branch checked out in the repo at cwd, even before its first commit; throws outside a repo
 // or on a detached HEAD.
@@ -72,6 +82,7 @@ export type Brought = {
   branches: string[];
   unpushed: { branch: string; remote: string }[];
   outside?: (held: readonly string[]) => string[];
+  landsAs?: (landing: readonly Landing[], onto?: string) => boolean;
 };
 
 export function branchesBrought(cwd: string, to: string, from?: string): Brought {
@@ -103,7 +114,80 @@ export function branchesBrought(cwd: string, to: string, from?: string): Brought
   // With nothing on the remote to start from, the whole history would count as brought in: only a
   // push onto a branch the remote has is asked which commits ride along.
   if (base) brought.outside = (held) => commitsOutside(cwd, tip, base, held, refs, remotes);
+  brought.landsAs = (landing, onto) => {
+    const start =
+      onto === undefined ? base : (commitOf(cwd, remoteOf(cwd, onto)) ?? commitOf(cwd, onto));
+    return landsAs(cwd, tip, start, landing);
+  };
   return brought;
+}
+
+// Whether `tip` holds exactly what was approved of the branches it lands, merged onto `start` (the
+// base as the remote has it): each branch at the commit the person approved (`tip`), or, when none
+// was recorded, as it stands here. The approved commit itself always passes; so does any other
+// commit with the same tree as that merge (a rebase, or a merge commit with nothing of its own). A
+// merge with conflicts is never what was approved: its resolution was never reviewed.
+function landsAs(
+  cwd: string,
+  tip: string,
+  start: string | undefined,
+  landing: readonly Landing[],
+): boolean {
+  const [only] = landing;
+  if (landing.length === 1 && only?.tip?.commit === tip) return true;
+  const commits: string[] = [];
+  for (const { branch, tip: approved } of landing) {
+    const commit = approved
+      ? commitOf(cwd, approved.commit)
+      : (commitOf(cwd, `refs/heads/${branch}`) ?? commitOf(cwd, remoteOf(cwd, branch)));
+    // An approved commit this checkout never got can only be matched by its tree.
+    if (!commit)
+      return landing.length === 1 && approved !== undefined && treeOf(cwd, tip) === approved.tree;
+    commits.push(commit);
+  }
+  let at = start;
+  let tree = start === undefined ? undefined : treeOf(cwd, start);
+  for (const commit of commits) {
+    if (at === undefined) {
+      at = commit;
+      tree = treeOf(cwd, commit);
+      continue;
+    }
+    try {
+      tree = git(cwd, 'merge-tree', '--write-tree', at, commit).split(/\r?\n/)[0];
+    } catch {
+      return false;
+    }
+    if (commit === commits.at(-1)) break;
+    at = execFileSync('git', ['commit-tree', String(tree), '-p', at, '-p', commit, '-m', 'otea'], {
+      cwd,
+      encoding: 'utf8',
+      stdio: ['ignore', 'pipe', 'ignore'],
+      env: { ...process.env, ...SCRATCH_IDENTITY },
+    }).trim();
+  }
+  return tree !== undefined && tree === treeOf(cwd, tip);
+}
+
+function treeOf(cwd: string, commit: string): string | undefined {
+  try {
+    return git(cwd, 'rev-parse', '--verify', '--quiet', `${commit}^{tree}`) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// What an agent hands a branch off at: its commit and tree, for the gate to hold the landing to
+// what the person approved. The remote's branch when it has one (the review reads what was
+// pushed), else the local one; `local` first for a branch never pushed before its approval (the
+// base itself, on a board that works straight on it). Undefined when this checkout has neither.
+export function tipOf(cwd: string, branch: string, local = false): Tip | undefined {
+  const here = commitOf(cwd, `refs/heads/${branch}`);
+  const remote = remoteName(cwd, branch);
+  const there = remote === undefined ? undefined : commitOf(cwd, remote);
+  const commit = local ? (here ?? there) : (there ?? here);
+  const tree = commit === undefined ? undefined : treeOf(cwd, commit);
+  return commit === undefined || tree === undefined ? undefined : { branch, commit, tree };
 }
 
 // The commits in `tip` and not in `base` that none of the `held` branches holds, by short id, merge

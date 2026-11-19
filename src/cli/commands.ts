@@ -145,7 +145,7 @@ import { watch } from '../app/watch.ts';
 import { agentGuideFor, TOPICS_REMINDER, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
 import { isClosed, positionOf } from '../core/board/engine.ts';
-import { stepById } from '../core/board/model.ts';
+import { guardedBranch, stepById } from '../core/board/model.ts';
 import { DROPPED_NAME } from '../core/board/next.ts';
 import { fieldsByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
@@ -200,6 +200,7 @@ import {
   currentBranch,
   inMainCheckout,
   remoteOf,
+  tipOf,
 } from './gitrepo.ts';
 import {
   gitHookOf,
@@ -1309,6 +1310,26 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
   }
 }
 
+// The protected branch as git has it here when a step that pushes it is handed off: kept with a
+// handoff into a review, it is what the person approves, and all the push gate lets land once it
+// is approved (P3C-R2-1). Nothing when the checkout does not have the branch.
+function handedTip(
+  project: Project,
+  cwd: string,
+  move: BoardMoveInput,
+): Pick<BoardMoveInput, 'tip'> {
+  const item = getItem(project, move.id);
+  const board = liveBoardOf(project, item.collection);
+  const position = positionOf(item.state);
+  const guard = board && guardedBranch(board.def);
+  if (!guard || isClosed(position) || position.phase !== 'doing') return {};
+  if (!guard.guard.push.includes(position.step)) return {};
+  const branch = item.fields[guard.id];
+  if (typeof branch !== 'string' || branch.trim() === '') return {};
+  const tip = tipOf(cwd, branch.trim(), branch.trim() === guard.guard.base);
+  return tip ? { tip } : {};
+}
+
 const handoffCommand: Command = {
   name: 'handoff',
   summary:
@@ -1318,7 +1339,7 @@ const handoffCommand: Command = {
   execute: (input) => {
     const moved = boardMove(input, (project, move) => {
       refuseEmptyBranch(project, input.cwd, move);
-      return handoffItem(project, move);
+      return handoffItem(project, { ...move, ...handedTip(project, input.cwd, move) });
     });
     // An agent goes on to the next item: the reply says so, so it does not stop after one.
     const next =
