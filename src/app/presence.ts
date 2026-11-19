@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { AgentChannel } from '../core/authority.ts';
 import { OteaError } from '../core/errors.ts';
+import { isAgentName } from '../core/item.ts';
 import { activeLease, DEFAULT_LEASE_TTL_MS, leaseExpiry } from '../core/lease.ts';
 import { pathKey } from '../core/path-key.ts';
 import {
@@ -10,13 +11,16 @@ import {
   findProfile,
   markListening,
   markWaiting,
+  type NameOffer,
   type ProfileView,
   profileView,
+  saveNameOffer,
   saveProfile,
   selectAgents,
   selectLeases,
   selectListener,
   selectListening,
+  selectNameOffers,
   selectProfileChanges,
   selectWaiting,
   takeLease,
@@ -191,10 +195,47 @@ export function claimName(
   if (Date.parse(now()) - Date.parse(heard.at) >= LISTEN_WINDOW_MS) return;
   if (!alive(heard.session)) return;
   if (fresh && harness !== undefined && heard.harness === harness) return;
+  // The name it is told is handed to it, so a third session refused the same name is told another.
+  const at = now();
+  const offers = handedOut(db, session, at);
+  const free = freeName(db, agent, offers);
+  if (free !== null) saveNameOffer(db, { name: free, at, session });
+  const take =
+    free === null
+      ? 'passing as another name of your own on every call'
+      : `passing as "${free}" on every call (no other agent or session has that name)`;
   throw new OteaError(
     'name_in_use',
-    `Another session works as ${agent} right now: give this one its own name, passing as "${agent}-2" (or another name) on every call`,
+    `Another session works as ${agent} right now: give this one its own name, ${take}, and declare its profile under it`,
   );
+}
+
+// A name handed out (otea whoami, a refused session) stays that session's for this long: another
+// session asking meanwhile is handed another one, so two sessions started together never share one.
+export const OFFER_WINDOW_MS = LIVE_WINDOW_MS;
+
+// The names handed lately to a session other than `session` (an MCP server's process id; a
+// command-line session has none Otea can tell apart, so every earlier one is another).
+function handedOut(db: DatabaseSync, session: number | undefined, at: string): Set<string> {
+  const other = ({ session: to }: NameOffer) => to === null || to !== session;
+  const lately = ({ at: when }: NameOffer) => Date.parse(at) - Date.parse(when) < OFFER_WINDOW_MS;
+  return new Set(
+    selectNameOffers(db)
+      .filter((offer) => lately(offer) && other(offer))
+      .map(({ name }) => name),
+  );
+}
+
+// A name of the same stem as `base` that no agent ever used and no other session was handed:
+// claude, claude-2 and claude-3 taken give claude-4. Null when none fits an agent name.
+function freeName(db: DatabaseSync, base: string, handed: ReadonlySet<string>): string | null {
+  const stem = base.replace(/-\d+$/, '');
+  for (let n = 2; n < 100; n += 1) {
+    const name = `${stem}-${n}`;
+    if (!isAgentName(name)) return null;
+    if (!handed.has(name) && !findAgent(db, name)) return name;
+  }
+  return null;
 }
 
 // Whether the process that started a wait is gone (`start`, the parent it had then; `current`, the
@@ -338,12 +379,15 @@ export function profileChangedAt(db: DatabaseSync, agent: string): string | null
 // one closed; never a name a session listens or works under, so a second terminal never takes
 // another's. `name`: the one to reuse, the most recently seen; `lately`: it acted moments ago (a
 // command-line agent between its commands may still be at work), which the session is told;
-// `others`, the rest that fit; `working`, the names connected now.
+// `others`, the rest that fit; `working`, the names connected now or handed to another session
+// lately; `suggested`, when no name fits but this one's earlier name is taken, a free one of its
+// stem to take instead.
 export type NameAdvice = {
   name: string | null;
   lately: boolean;
   others: string[];
   working: string[];
+  suggested: string | null;
 };
 
 const harnessKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
@@ -366,7 +410,10 @@ export function nameFor(
   alive: (pid: number) => boolean = processAlive,
 ): NameAdvice {
   const agents = listAgents(db, now);
-  const working = agents.filter(({ live }) => live).map(({ name }) => name);
+  const handed = handedOut(db, session, now());
+  const working = [
+    ...new Set([...agents.filter(({ live }) => live).map(({ name }) => name), ...handed]),
+  ];
   const wanted = harness && harness.toLowerCase() !== 'cli' ? harnessKey(harness) : undefined;
   // The harnesses it is known by: its MCP client's, and the one its profile declares.
   const harnesses = (agent: AgentPresence) =>
@@ -383,20 +430,39 @@ export function nameFor(
     if (!heard?.session) return true;
     return heard.session !== session && alive(heard.session);
   };
-  const busy = (agent: AgentPresence) => listens(agent) || agent.holding.length > 0;
-  const fits = agents
-    .filter((agent) => !busy(agent) && agent.connectedAt !== null && agent.folder !== null)
+  const busy = (agent: AgentPresence) =>
+    listens(agent) || agent.holding.length > 0 || handed.has(agent.name);
+  const earlier = agents
+    .filter((agent) => agent.connectedAt !== null && agent.folder !== null)
     .filter((agent) => sameFolder(agent.folder ?? '', folder))
     .filter((agent) => {
       const known = harnesses(agent);
       return wanted === undefined || known.length === 0 || known.includes(wanted);
     })
     .sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen));
+  const fits = earlier.filter((agent) => !busy(agent));
   const [first] = fits;
+  const taken = first === undefined ? earlier[0] : undefined;
   return {
     name: first?.name ?? null,
     lately: first?.live === true,
     others: fits.slice(1).map(({ name }) => name),
     working: working.filter((name) => name !== first?.name),
+    suggested: taken ? freeName(db, taken.name, handed) : null,
   };
+}
+
+// What otea whoami tells a session (nameFor), and the name it hands it noted as handed out, so a
+// session asking next is handed another one.
+export function offerName(
+  db: DatabaseSync,
+  asking: { folder: string; harness?: string | undefined; session?: number | undefined },
+  now: Clock = systemClock,
+  alive: (pid: number) => boolean = processAlive,
+): NameAdvice {
+  const at = now();
+  const advice = nameFor(db, asking, () => at, alive);
+  const name = advice.name ?? advice.suggested;
+  if (name !== null) saveNameOffer(db, { name, at, session: asking.session ?? null });
+  return advice;
 }

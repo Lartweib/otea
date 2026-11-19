@@ -8,8 +8,12 @@ export type Actor = { kind: 'human' | 'agent'; name: string };
 const AGENT_NAME = /^[a-z](?:[a-z0-9]|-(?=[a-z0-9])){0,23}$/;
 const RESERVED_AGENT_NAMES = ['you', 'human', 'agent'];
 
+export function isAgentName(name: string): boolean {
+  return AGENT_NAME.test(name) && !RESERVED_AGENT_NAMES.includes(name);
+}
+
 export function assertAgentName(name: string): void {
-  if (AGENT_NAME.test(name) && !RESERVED_AGENT_NAMES.includes(name)) return;
+  if (isAgentName(name)) return;
   throw new OteaError(
     'invalid_agent_name',
     `"${name}" cannot name an agent: use at most 24 lowercase letters, digits and single dashes, starting with a letter (not "you", "human" or "agent"), such as claude-b`,

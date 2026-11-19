@@ -43,6 +43,18 @@ describe('otea whoami', () => {
     }
   };
 
+  // Moves the names whoami handed out ten minutes back: the sessions it handed them to are long
+  // under way, so the next ask stands for a later session.
+  const offersLater = () => {
+    const project = openProject(repo.dir);
+    try {
+      const past = new Date(Date.now() - 10 * 60_000).toISOString();
+      project.db.prepare('UPDATE name_offers SET offered_at = ?').run(past);
+    } finally {
+      project.db.close();
+    }
+  };
+
   beforeEach(async () => {
     repo = tempGitRepo();
     otea = cliAt(repo.dir);
@@ -61,6 +73,7 @@ describe('otea whoami', () => {
     expect(code).toBe(0);
     expect(out).toMatch(/^Reuse your name: ana \(last seen /);
     expect(out).toContain('--as ana');
+    offersLater();
     expect(await json(otea, 'whoami', '--harness', 'claude-code')).toMatchObject({
       name: 'ana',
       reuse: true,
@@ -75,13 +88,29 @@ describe('otea whoami', () => {
 
     const { out } = await otea('whoami', '--harness', 'claude-code');
 
-    expect(out).toContain('pick a new short name of your own');
-    expect(out).toContain('not one of the agents connected now (ana)');
+    expect(out).toBe(
+      'Take the name ana-2: your earlier name here is taken by a session working now, and ana-2 is handed to this session only. Put it on every command: --as ana-2 (MCP tools: as).\n',
+    );
     expect(await json(otea, 'whoami', '--harness', 'claude-code')).toMatchObject({
       name: null,
       reuse: false,
-      working: ['ana'],
+      suggested: 'ana-3',
+      working: ['ana', 'ana-2'],
     });
+  });
+
+  // P6-R2-1: two sessions started together both ran whoami before either acted, both were told
+  // to reuse one name, and both worked under it, sharing its leases.
+  it('hands two sessions that ask at once distinct names', async () => {
+    await workedHere('ana', 'claude-code');
+    later();
+
+    const first = await json(otea, 'whoami', '--harness', 'claude-code');
+    const second = await json(otea, 'whoami', '--harness', 'claude-code');
+
+    expect(first).toMatchObject({ name: 'ana', reuse: true });
+    expect(second).toMatchObject({ name: null, reuse: false, suggested: 'ana-2' });
+    expect(second.working).toContain('ana');
   });
 
   // A session that closed a moment ago comes back under its name, told another may still be at it.
@@ -94,6 +123,7 @@ describe('otea whoami', () => {
     expect(out).toContain(
       'ana acted moments ago: if another terminal still works as ana, pick a new name instead.',
     );
+    offersLater();
     expect(await json(otea, 'whoami', '--harness', 'claude-code')).toMatchObject({
       name: 'ana',
       lately: true,

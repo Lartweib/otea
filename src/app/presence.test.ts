@@ -13,6 +13,7 @@ import {
   hearAgent,
   listAgents,
   nameFor,
+  offerName,
   ownerGone,
   presenceSignature,
   seeAgent,
@@ -331,9 +332,26 @@ describe('agent presence', () => {
       hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
 
       expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1))).toThrow(
-        'Another session works as claude right now: give this one its own name, passing as "claude-2" (or another name) on every call',
+        'Another session works as claude right now: give this one its own name, passing as "claude-2" on every call (no other agent or session has that name), and declare its profile under it',
       );
       expect(() => claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1))).not.toThrow();
+    });
+
+    // P6-R2-1, P8-R2-4: two sessions refused one name must not both move to the same "-2".
+    it('names a free name: never a known agent, nor one just handed to another session', () => {
+      hearAgent(ctx.db, { ...mcp, session: 101 }, at(T0));
+      seeAgent(ctx.db, { agent: 'claude-2', channel: 'cli', harness: CLI_HARNESS }, at(T0));
+
+      expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202, 303]), at(T1))).toThrow(
+        'passing as "claude-3"',
+      );
+      expect(() => claimName(ctx.db, 'claude', 303, alive([101, 202, 303]), at(T1))).toThrow(
+        'passing as "claude-4"',
+      );
+      // The same session refused again is told the same name.
+      expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202, 303]), at(T1))).toThrow(
+        'passing as "claude-3"',
+      );
     });
 
     it('takes the name once that session closed or went quiet', () => {
@@ -428,6 +446,44 @@ describe('agent presence', () => {
         nameFor(ctx.db, { folder: FOLDER, harness: 'opencode', session }, at(T0), () => alive).name;
       expect(ask(101, true)).toBe('bigp');
       expect(ask(202, false)).toBe('bigp');
+    });
+  });
+
+  // P6-R2-1: two sessions started together both asked otea whoami, both were told the one name,
+  // and both worked under it. whoami hands a name to one session at a time.
+  describe('offerName', () => {
+    const FOLDER = 'D:/work/shorty';
+    beforeEach(() => {
+      seeAgent(
+        ctx.db,
+        { agent: 'ana', channel: 'cli', harness: CLI_HARNESS, folder: FOLDER },
+        at('2025-12-31T23:00:00.000Z'),
+      );
+    });
+    const ask = (time: string, session?: number) =>
+      offerName(ctx.db, { folder: FOLDER, harness: 'claude-code', session }, at(time), () => true);
+
+    it('hands sessions asking at once distinct names', () => {
+      expect(ask(T0)).toMatchObject({ name: 'ana', suggested: null });
+      expect(ask(T0_20S)).toMatchObject({ name: null, suggested: 'ana-2' });
+      expect(ask(T1)).toMatchObject({ name: null, suggested: 'ana-3' });
+    });
+
+    it('tells an MCP session that asks again the name it was handed', () => {
+      expect(ask(T0, 101).name).toBe('ana');
+      expect(ask(T0_20S, 101).name).toBe('ana');
+      expect(ask(T1, 202)).toMatchObject({ name: null, suggested: 'ana-2' });
+      expect(ask(T2, 202)).toMatchObject({ name: null, suggested: 'ana-2' });
+    });
+
+    it('hands the name out again once no session took it for a while', () => {
+      expect(ask(T0).name).toBe('ana');
+      expect(ask(T5_1S).name).toBe('ana');
+    });
+
+    it('counts a name handed out as taken for other sessions', () => {
+      ask(T0);
+      expect(ask(T0_20S).working).toContain('ana');
     });
   });
 });

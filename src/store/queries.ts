@@ -845,6 +845,20 @@ export function selectProfileChanges(db: DatabaseSync, agent: string): ProfileCh
   }));
 }
 
+// A name otea whoami handed out, when, and to which MCP server (null: a command-line session).
+export type NameOffer = { name: string; at: string; session: number | null };
+
+export function selectNameOffers(db: DatabaseSync): NameOffer[] {
+  const sql = 'SELECT name, offered_at AS at, session FROM name_offers';
+  return db.prepare(sql).all() as NameOffer[];
+}
+
+export function saveNameOffer(db: DatabaseSync, offer: NameOffer): void {
+  const sql = `INSERT INTO name_offers (name, offered_at, session) VALUES (:name, :at, :session)
+    ON CONFLICT (name) DO UPDATE SET offered_at = excluded.offered_at, session = excluded.session`;
+  db.prepare(sql).run(offer);
+}
+
 // What `otea next` last offered an agent: the item, the state it was in, and when.
 export type Offer = { agent: string; item: string; state: string; at: string };
 

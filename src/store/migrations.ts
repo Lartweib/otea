@@ -408,6 +408,16 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN folder TEXT;
   `,
+  // The names otea whoami (and a refused MCP session) handed out lately, and to which MCP server if
+  // one asked: a name handed to one session is not handed to another one asking at the same time,
+  // so two sessions started together never work under one name.
+  `
+  CREATE TABLE name_offers (
+    name TEXT PRIMARY KEY,
+    offered_at TEXT NOT NULL,
+    session INTEGER
+  );
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {
