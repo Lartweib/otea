@@ -298,6 +298,19 @@ function handedOut(
   );
 }
 
+// Whether the agent's session ended: every process it was heard listening through (its MCP server,
+// its wait) has ended, the test whoami hands its name back on (P4-R3-2). Never for an agent heard
+// through none, such as one at the command line between its commands. An answer is not claimed
+// for it, and another agent's claim takes over its lease (P3C-R3-11).
+export function sessionEnded(
+  db: DatabaseSync,
+  agent: string,
+  now: Clock = systemClock,
+  alive: (pid: number) => boolean = processAlive,
+): boolean {
+  return listenersEnded(selectListenerProcesses(db).get(agent), runningProcesses(db, now, alive));
+}
+
 // Whether every process an agent was heard listening through (its MCP server, its wait) has ended;
 // never for one heard through none.
 function listenersEnded(
@@ -372,7 +385,8 @@ export function endWaiting(db: DatabaseSync, agent: string, heardAt: string): vo
 }
 
 // A wait that ends by itself, however it ends: its process is no longer one to watch, so its
-// agent is not counted as gone when it exits. Only a wait killed with its session stays noted.
+// agent is not counted as gone when it exits. Only a wait whose session ended stays noted: one
+// killed with it, or one that saw its session gone and stopped.
 export function endWaiter(db: DatabaseSync, agent: string, waiter: number): void {
   clearWaiter(db, agent, waiter);
 }

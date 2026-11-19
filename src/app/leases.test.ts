@@ -4,6 +4,7 @@ import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, listItems, moveItem, showItem, updateItem } from './items.ts';
 import { claimItem, heartbeatItem, releaseItem } from './leases.ts';
+import { endProcess, waitBeat } from './presence.ts';
 import { memoryContext } from './testing.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
@@ -81,6 +82,46 @@ describe('leases', () => {
 
       expect(item.lease).toEqual({ holder: 'codex', expiresAt: T20 });
       expect(lastEvent()?.data).toEqual({ holder: 'codex', expiresAt: T20, previous: 'claude' });
+    });
+
+    // P3C-R3-11: the item was held for an agent whose session had ended, and another agent's claim
+    // was refused until the person freed it (Liberar). claude waits in otea wait (this test's
+    // process stands for it) while it holds the item; then its session ends, and the wait with it.
+    describe('held by an agent whose session ended', () => {
+      const waits = () =>
+        waitBeat(ctx.db, { agent: 'claude', channel: 'cli', waiter: process.pid }, at(T0)).run();
+
+      it('takes the lease over, saying from whom, and records why', () => {
+        waits();
+        claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T0));
+        endProcess(ctx.db, process.pid);
+
+        const item = claimItem(ctx, { id: 'TASKS-1', actor: codex }, at(T5));
+
+        expect(item.lease).toEqual({ holder: 'codex', expiresAt: T20 });
+        expect(item.tookOver).toBe('claude');
+        expect(lastEvent()?.data).toEqual({
+          holder: 'codex',
+          expiresAt: T20,
+          previous: 'claude',
+          cause: 'ended',
+        });
+      });
+
+      it('still refuses it while that session runs', () => {
+        waits();
+        claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T0));
+
+        const claim = () => claimItem(ctx, { id: 'TASKS-1', actor: codex }, at(T0));
+        expect(claim).toThrow(expect.objectContaining({ code: 'lease_held' }));
+      });
+
+      it('still refuses the lease of an agent heard through no listener', () => {
+        claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T0));
+
+        const claim = () => claimItem(ctx, { id: 'TASKS-1', actor: codex }, at(T5));
+        expect(claim).toThrow(expect.objectContaining({ code: 'lease_held' }));
+      });
     });
 
     it('refuses an item whose turn is not the agent with not_claimable', () => {

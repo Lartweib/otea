@@ -1,4 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { endProcess, waitBeat } from '../app/presence.ts';
+import { openProject } from '../app/project.ts';
 import {
   type Cli,
   cliAt,
@@ -92,6 +94,27 @@ describe('leases', () => {
         new RegExp(
           `^TASKS-1 is held by claude until ${UTC}; if claude has ended, ask the person to free it in Otea \\(Liberar\\)$`,
         ),
+      );
+    });
+
+    // P3C-R3-11: claude's session ended with its lease on: another agent was refused until the
+    // person freed the item. claude waited in otea wait (this test's process, gone since).
+    it('takes over the item of an agent whose session ended, saying so', async () => {
+      await otea('claim', 'TASKS-1', '--as', 'claude');
+      const project = openProject(repo.dir);
+      try {
+        waitBeat(project.db, { agent: 'claude', channel: 'cli', waiter: process.pid }).run();
+        endProcess(project.db, process.pid);
+      } finally {
+        project.db.close();
+      }
+
+      const { code, out } = await otea('claim', 'TASKS-1', '--as', 'codex');
+
+      expect(code).toBe(0);
+      expect(out).toMatch(HELD('codex'));
+      expect(out).toContain(
+        'Took TASKS-1 over from claude: its session ended (no MCP server or wait of it runs), so its lease was yours to take.',
       );
     });
 

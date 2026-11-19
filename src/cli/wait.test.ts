@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { createItem } from '../app/items.ts';
 import { approveItem, sendBackItem } from '../app/next.ts';
-import { listAgents, processAlive } from '../app/presence.ts';
+import { listAgents, processAlive, sessionEnded } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
 import { cambios, errores, step, tareasDeRepo } from '../core/board/testing.ts';
@@ -429,6 +429,14 @@ describe('wait', () => {
       await until(() => !processAlive(pid), 15_000);
       // At once, not a listening window later.
       expect(listening()).toBe(false);
+      // P3C-R3-11: its session reads as ended, so an answer is not claimed for it, and another
+      // agent's claim takes over what it held.
+      const project = openProject(repo.dir);
+      try {
+        expect(sessionEnded(project.db, 'claude')).toBe(true);
+      } finally {
+        project.db.close();
+      }
     } finally {
       parent.kill();
       if (processAlive(pid)) process.kill(pid);

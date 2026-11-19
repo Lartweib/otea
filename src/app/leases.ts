@@ -23,7 +23,12 @@ function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {
   return new OteaError('not_lease_holder', message);
 }
 
-export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): Item {
+// `tookOver`: the agent whose lease the claim took over, its session ended (takeItem).
+export function claimItem(
+  ctx: Context,
+  input: LeaseInput,
+  now = systemClock,
+): Item & { tookOver?: string } {
   const { db } = ctx;
   return transaction(db, () => {
     const item = requireWritableItem(db, input.id);
@@ -37,10 +42,14 @@ export function claimItem(ctx: Context, input: LeaseInput, now = systemClock): I
         `${item.id} is in ${where} (turn ${turn}); only items on the agent turn can be claimed`,
       );
     }
-    assertMayClaim(ctx, item, input.actor.name);
     const at = now();
+    assertMayClaim(ctx, item, input.actor.name, at);
+    const held = activeLease(item.lease, at)?.holder;
     const lease = takeItem(db, item, input.actor, at, input.ttlMs);
-    return present({ ...item, lease }, workflow, at);
+    const claimed = present({ ...item, lease }, workflow, at);
+    return held !== undefined && held !== input.actor.name
+      ? { ...claimed, tookOver: held }
+      : claimed;
   });
 }
 

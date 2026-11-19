@@ -1961,7 +1961,9 @@ const wait: Command = {
       const waited = await watch(project.db, check, { ...options, ...beat }).finally(() => {
         owner.stop();
         if (heard && input.channel === 'cli') {
-          endWaiter(project.db, me, process.pid);
+          // A wait whose session ended (it saw its owner gone) stays noted, as one killed with
+          // it does: its agent's session reads as ended (P3C-R3-11).
+          if (!owner.orphaned()) endWaiter(project.db, me, process.pid);
           endProcess(project.db, process.pid);
         }
       });
@@ -2076,9 +2078,20 @@ const claim: Command = {
     const lease = { id, actor, ...(ttl === undefined ? {} : { ttlMs: ttl }) };
     return withAgent(input, (project) => {
       requireProfile(project.db, actor.name, { channel: input.channel });
-      const claimed = itemResult(project, claimItem(project, lease));
+      const item = claimItem(project, lease);
+      const claimed = itemResult(project, item);
+      // P3C-R3-11: the lease of an agent whose session ended is taken over, and said.
+      const over = item.tookOver
+        ? `Took ${item.id} over from ${item.tookOver}: its session ended (no MCP server or wait of it runs), so its lease was yours to take.`
+        : undefined;
       const shared = sharedCheckoutLine(project, input, id);
-      return shared ? { ...claimed, text: `${claimed.text}\n${shared}` } : claimed;
+      const lines = [claimed.text, over, shared].filter((line) => line !== undefined);
+      return {
+        data: item.tookOver
+          ? { ...(claimed.data as object), tookOver: item.tookOver }
+          : claimed.data,
+        text: lines.join('\n'),
+      };
     });
   },
 };

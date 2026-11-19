@@ -90,9 +90,16 @@ export function askedText(id: string): string {
   return `Asked the person on ${id}: the turn is theirs until they answer; the step, round and lease stay as they are. They answer it in Otea (on the item page or the phone); if they answer in the chat instead, put their words on it: otea answer ${id} "<their words>". ${WAKE}; read it then: otea show ${id}`;
 }
 
-// What otea answer says once the person's answer from the chat is on the question.
-export function chatAnswerText(id: string): string {
-  return `Noted the person's answer on ${id}, as given in the chat. The turn is yours again in the same round: address it, then hand off as the step says.`;
+// What otea answer says once the person's answer from the chat is on the question. `asker`: the
+// agent that asked, when another agent noted the answer, and whether its session ended: the item
+// then waits for whoever claims it (P3C-R3-11).
+export function chatAnswerText(id: string, asker?: { name: string; gone: boolean }): string {
+  const noted = `Noted the person's answer on ${id}, as given in the chat.`;
+  if (asker?.gone)
+    return `${noted} ${asker.name}, which asked, is gone (its session ended): claim it to carry on: otea claim ${id}; then address it and hand off as the step says.`;
+  if (asker)
+    return `${noted} It goes back to ${asker.name}, which asked, in the same round; its wait wakes it.`;
+  return `${noted} The turn is yours again in the same round: address it, then hand off as the step says.`;
 }
 
 // What next and show say of an item whose question waits for the person.
