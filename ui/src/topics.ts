@@ -1,5 +1,6 @@
-import type { ItemHit } from '../../src/app/item-search.ts';
+import type { ItemHit, ItemSaid } from '../../src/app/item-search.ts';
 import type { Topic, TopicState } from '../../src/app/topics.ts';
+import { t } from './i18n/i18n.ts';
 import { canSubmit, type FormValues, initialValues } from './intake.ts';
 import type { FieldView, TypeView } from './types.ts';
 
@@ -7,7 +8,7 @@ import type { FieldView, TypeView } from './types.ts';
 // a short conversation. The page lists what waits on someone, what was left hanging first; Te toca
 // folds the answered ones, the person's turn, under its reviews.
 
-export type { ItemHit } from '../../src/app/item-search.ts';
+export type { ItemHit, ItemSaid } from '../../src/app/item-search.ts';
 export type { Topic, TopicState, TopicTurn } from '../../src/app/topics.ts';
 
 // A search over every project gives each topic and item its project (src/app/topics-everywhere.ts).
@@ -28,6 +29,15 @@ export function elsewhere(
   current: string | undefined,
 ): ProjectRef | undefined {
   return found.project && found.project.id !== current ? found.project : undefined;
+}
+
+// What an entry of an item found is and who said it, as the page names it before its words: the
+// person reads «Tu respuesta», «Nota de entrega de quill» (P3C-R3-13). Null for the item's own
+// words, its title or a field, and for an entry of no known kind.
+export function saidWho({ kind, by, via }: ItemSaid): string | null {
+  if (kind === 'answer') return t(via ? 'topics.items.said.answerVia' : 'topics.items.said.answer');
+  if (kind === 'item' || kind === 'other') return null;
+  return t(`topics.items.said.${kind}`, { agent: by });
 }
 
 export type ItemTopic = Topic & { pending: boolean };

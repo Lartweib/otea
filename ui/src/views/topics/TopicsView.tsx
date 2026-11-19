@@ -28,7 +28,9 @@ import {
   type FoundItem,
   type FoundTopic,
   followUpsOf,
+  type ItemSaid,
   type ProjectRef,
+  saidWho,
   type Topic,
   type TopicTurn,
   topicGroups,
@@ -135,8 +137,20 @@ function List({
   );
 }
 
+// An entry of an item found, after what it is and who said it: «Tu respuesta: …».
+function Said({ said }: { said: ItemSaid }) {
+  const who = saidWho(said);
+  return (
+    <span className="tp-sum" data-person={said.person ? '' : undefined}>
+      {who ? <b className="tp-who">{who}: </b> : null}
+      {said.said}
+    </span>
+  );
+}
+
 // A search looks in the items' threads too: a decision is often made there, not in a topic. Each
-// item found shows what it said that holds the words, and opens the item.
+// item found shows what it said that holds the words, with the person's own words beside it when
+// an agent's held more of them (P3C-R3-13), and opens the item.
 function ItemHits({ items }: { items: readonly FoundItem[] }) {
   if (items.length === 0) return null;
   return (
@@ -155,7 +169,12 @@ function ItemHits({ items }: { items: readonly FoundItem[] }) {
               >
                 <span className="tp-id">{item.id}</span>
                 <span className="tp-title">{item.title}</span>
-                {item.said === item.title ? null : <span className="tp-sum">{item.said}</span>}
+                {item.said === item.title && !item.theirs ? null : (
+                  <span className="tp-said">
+                    {item.said === item.title ? null : <Said said={item} />}
+                    {item.theirs ? <Said said={item.theirs} /> : null}
+                  </span>
+                )}
                 {other ? (
                   <span className="tp-turn">
                     <ProjectMark project={other} />
