@@ -26,9 +26,16 @@ function acceptsText(entry: LayoutEntry): string {
   return entry.accepts?.join(', ') ?? DEFAULT_ACCEPTS[entry.module] ?? '';
 }
 
-function hint(entry: LayoutEntry): string {
+// What an empty module asks the agent to attach. A blind compare asks for A and B, never «one from
+// before and one from after» (P5-R2-3).
+export function attachHint(entry: LayoutEntry): string {
   const pair = entry.module === 'images' && entry.variant === 'compare';
-  return t(pair ? 'evidence.attachPair' : 'evidence.attach', { accepts: acceptsText(entry) });
+  const key = !pair
+    ? 'evidence.attach'
+    : entry.blind
+      ? 'evidence.attachBlind'
+      : 'evidence.attachPair';
+  return t(key, { accepts: acceptsText(entry) });
 }
 
 // A quiet well that says what the agent should attach. A required module still empty is drawn
@@ -37,7 +44,7 @@ function Empty({ entry }: { entry: LayoutEntry }) {
   return (
     <div className="ev-empty well" data-required={entry.required ? 'true' : undefined}>
       <span className="t-ui">{emptyText(entry)}</span>
-      <span className="t-cap">{hint(entry)}</span>
+      <span className="t-cap">{attachHint(entry)}</span>
     </div>
   );
 }

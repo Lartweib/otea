@@ -123,6 +123,17 @@ describe('the rounds of the step under review, on the phone', () => {
     expect(marks.get(fresh.id)).toBe('new');
     expect(fileMarks([], [fresh]).size).toBe(0);
   });
+
+  // On a blind compare the old round's image read «igual» and gave away which was old (P5-R2-2).
+  it('leaves the files of a blind compare unmarked', () => {
+    const a = { ...file('A.png', 'image'), module: 'pick', sha256: 'aaa' };
+    const b = { ...file('B.png', 'image'), module: 'pick', sha256: 'bbb' };
+    const log = file('run.log', 'log');
+    const marks = fileMarks([a, log], [a, b, log], new Set(['pick']));
+    expect(marks.has(a.id)).toBe(false);
+    expect(marks.has(b.id)).toBe(false);
+    expect(marks.get(log.id)).toBe('same');
+  });
 });
 
 describe('the note dock on the phone', () => {

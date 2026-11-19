@@ -115,13 +115,20 @@ export function compareFiles(older: readonly Evidence[], newer: readonly Evidenc
 }
 
 // Each file of a round marked against the round before, by its id; nothing on a first round.
+// `blind`: the compare parts judged blind, by module id (blindPartsOf). Their files go unmarked: the
+// old round's image read «igual» and gave away which was old (P5-R2-2).
 export function fileMarks(
   older: readonly Evidence[],
   newer: readonly Evidence[],
+  blind: ReadonlySet<string> = new Set(),
 ): Map<number, 'new' | 'changed' | 'same'> {
   if (older.length === 0) return new Map();
   const was = new Map(older.map((e) => [e.filename, e]));
-  return new Map(newer.map((e) => [e.id, changeOf(e, was)]));
+  return new Map(
+    newer
+      .filter((e) => e.module === null || !blind.has(e.module))
+      .map((e) => [e.id, changeOf(e, was)]),
+  );
 }
 
 // Whether the phone docks "Dejar una nota" at the bottom: while an agent works on it, unless the
@@ -158,12 +165,13 @@ export function partNames(layout: Layout): Map<string, string> {
 export function readerOf(
   rounds: readonly PhoneRound[],
   evidence: readonly Evidence[],
+  blind: ReadonlySet<string> = new Set(),
 ): { files: Evidence[]; marks: Map<number, 'new' | 'changed' | 'same'> } {
   const [newest, prior] = rounds;
   const { images, files } = splitEvidence(newest ? newest.evidence : latestFirst(evidence));
   return {
     files: pairedUp([...images, ...files]),
-    marks: newest && prior ? fileMarks(prior.evidence, newest.evidence) : new Map(),
+    marks: newest && prior ? fileMarks(prior.evidence, newest.evidence, blind) : new Map(),
   };
 }
 

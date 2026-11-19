@@ -1,7 +1,8 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/i18n.ts';
 import type { Evidence } from '../../types.ts';
-import { ImageGallery } from './ImageViews.tsx';
+import { ImageCompare, ImageGallery } from './ImageViews.tsx';
 
 const image = (id: number): Evidence => ({
   id,
@@ -17,6 +18,19 @@ const image = (id: number): Evidence => ({
   createdAt: `2026-01-0${id}T00:00:00Z`,
   actor: { kind: 'agent', name: 'brush' },
   channel: 'cli',
+});
+
+// The blind slider was «Divisor entre antes y después» to a screen reader (P5-R2-3).
+describe('ImageCompare, blind', () => {
+  it('names its divider between A and B, never before and after', () => {
+    setLanguage('es');
+    const a = { ...image(1), role: 'before' as const };
+    const b = { ...image(2), role: 'after' as const };
+    const html = renderToStaticMarkup(<ImageCompare evidence={[a, b]} blind />);
+    expect(html).toContain('aria-label="Divisor entre A y B"');
+    expect(html).not.toMatch(/antes|después/);
+    setLanguage('en');
+  });
 });
 
 describe('ImageGallery', () => {

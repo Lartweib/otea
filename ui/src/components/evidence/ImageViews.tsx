@@ -255,7 +255,7 @@ export function ImageCompare({
               style={{ left: `${split}%` }}
               role="slider"
               tabIndex={0}
-              aria-label={t('evidence.divider')}
+              aria-label={t(blind ? 'evidence.dividerBlind' : 'evidence.divider')}
               aria-orientation="horizontal"
               aria-valuemin={0}
               aria-valuemax={100}

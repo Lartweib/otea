@@ -21,6 +21,7 @@ import { NoteText } from '../../components/NoteText.tsx';
 import { OptionTrade } from '../../components/OptionsModule.tsx';
 import { Unheard } from '../../components/Unheard.tsx';
 import { agoText } from '../../derive/when.ts';
+import { blindPartsOf } from '../../evidence.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import { itemOpened } from '../../kit/pop/toast.tsx';
@@ -452,8 +453,11 @@ function RoundView({
   comment,
   onSeen,
   handed,
+  blind,
 }: {
   r: PhoneRound;
+  // The compare parts judged blind, by module id: their files are never marked (P5-R2-2).
+  blind: ReadonlySet<string>;
   // The fields the step handed off (Commit en main), on the newest round only: their values today.
   handed?: readonly HandedField[] | undefined;
   parts?: ReadonlyMap<string, string> | undefined;
@@ -498,7 +502,7 @@ function RoundView({
         <Files
           evidence={r.evidence}
           noted={notes?.noted}
-          marks={prior ? fileMarks(prior.evidence, r.evidence) : undefined}
+          marks={prior ? fileMarks(prior.evidence, r.evidence, blind) : undefined}
           parts={parts}
           decide={decide}
           comment={comment}
@@ -590,6 +594,7 @@ export function PhoneItem(p: PhoneItemProps) {
     return phoneRounds(read, item.turn === 'human');
   }, [item.events, item.evidence, item.turn, p.type, p.board]);
   const parts = useMemo(() => (p.type ? partNames(p.type.layout) : undefined), [p.type]);
+  const blind = useMemo(() => blindPartsOf(p.type), [p.type]);
   const handed = useMemo(
     () =>
       p.board
@@ -843,6 +848,7 @@ export function PhoneItem(p: PhoneItemProps) {
           comment={shown === newest ? p.notes?.review?.reader : undefined}
           onSeen={markSeen}
           handed={shown === newest ? handed : undefined}
+          blind={blind}
         />
       ) : null}
 

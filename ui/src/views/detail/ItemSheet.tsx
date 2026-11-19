@@ -10,6 +10,7 @@ import { EvidenceReader, type ReaderNote } from '../../components/evidence/Evide
 import { ItemEvidence, ItemReview } from '../../components/evidence/item-evidence.ts';
 import { READ_AT, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { noteAnchor } from '../../components/evidence/video-moment.ts';
+import { blindPartsOf } from '../../evidence.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { TypeIcon } from '../../icons/TypeIcon.tsx';
 import { GhostButton, Icon, StepPill, Swap, toast } from '../../kit/index.ts';
@@ -478,8 +479,8 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     [readerRounds],
   );
   const handed = useMemo(
-    () => readerOf(readerRounds, item.evidence),
-    [readerRounds, item.evidence],
+    () => readerOf(readerRounds, item.evidence, blindPartsOf(type)),
+    [readerRounds, item.evidence, type],
   );
   // While the agent works, the reader reads this round's files, the ones a note can be on.
   const reader = useMemo(
