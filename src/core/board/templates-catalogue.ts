@@ -242,8 +242,8 @@ const BUG_REPORTS: Template = {
         'Lleva @{fbranch} a main sin reescribir commits: con fast-forward y push de main o, si main solo acepta cambios por PR, con un PR que mergeas con gh pr merge. Si choca con main, no lo resuelvas aquí: regrésalo a @{sfix} con otea handoff <id> --way "@{sfix}" --reason "<qué choca>", para que se revise la resolución.',
       ),
       before: w(
-        'Write the short hash in @{fcommit}. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone.',
-        'Escribe el hash corto en @{fcommit}. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre.',
+        'Write the short hash in @{fcommit}. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone. If you landed it from the main checkout of the repository, leave that checkout on main.',
+        'Escribe el hash corto en @{fcommit}. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre. Si lo integraste desde la copia principal del repositorio, déjala en main.',
       ),
     },
   ],
@@ -1004,8 +1004,8 @@ const DESIGN: Template = {
         'La persona la aprobó: integra @{fbranch} en main y empújala. No agregues nada que la persona no haya visto. Si choca con main, no lo resuelvas aquí: regrésala a @{screate} con otea handoff <id> --way "@{screate}" --reason "<qué choca>", para que la persona la vea de nuevo. Una pieza que no está en el repositorio no tiene nada que integrar: entrégala.',
       ),
       before: w(
-        'Write in @{fcommit} the short hash on main; with a blind comparison, say in @{fkey} what A and B were.',
-        'Escribe en @{fcommit} el hash corto en main; si fue a ciegas, di en @{fkey} qué eran A y B.',
+        'Write in @{fcommit} the short hash on main; with a blind comparison, say in @{fkey} what A and B were. If you landed it from the main checkout of the repository, leave that checkout on main.',
+        'Escribe en @{fcommit} el hash corto en main; si fue a ciegas, di en @{fkey} qué eran A y B. Si la integraste desde la copia principal del repositorio, déjala en main.',
       ),
     },
   ],

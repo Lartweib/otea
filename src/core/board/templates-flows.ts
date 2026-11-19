@@ -571,8 +571,8 @@ export const CHANGES: Template = {
         'La persona lo aprobó: rebasa @{branch} sobre main e intégrala con fast-forward y push de main o, si main solo acepta cambios por PR, abre uno y mergéalo con gh pr merge. No agregues nada que la persona no haya aprobado. Si el rebase choca con main, no lo resuelvas aquí: regrésalo a @{doit} con otea handoff <id> --way "@{doit}" --reason "<qué choca>", para que se revise la resolución.',
       ),
       before: w(
-        'Write in @{commit} the short hash of the commit that landed on main. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone.',
-        'Escribe en @{commit} el hash corto del commit que quedó en main. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre.',
+        'Write in @{commit} the short hash of the commit that landed on main. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone. If you landed it from the main checkout of the repository, leave that checkout on main.',
+        'Escribe en @{commit} el hash corto del commit que quedó en main. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre. Si lo integraste desde la copia principal del repositorio, déjala en main.',
       ),
     },
   ],
