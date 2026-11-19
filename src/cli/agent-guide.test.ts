@@ -38,7 +38,9 @@ describe("Otea's agent guide", () => {
       "never reuse your parent's",
       '--as <name>',
       'otea ask <id> "<question>"',
-      'Declare only what you can read from your settings',
+      // P3C-R3-8: what the session says, never a config file read outside the project.
+      'Declare what this session tells you (your instructions, or what the person says)',
+      'never open config files outside the project for it. Otherwise declare unknown.',
       'declare unknown. Never guess.',
       'To propose a new board, run otea board draft --new "<name>" --why "<what it is for>"',
       'the person publishes it',

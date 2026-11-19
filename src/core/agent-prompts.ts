@@ -71,7 +71,7 @@ const WORDS = {
   en: {
     start: (repo: boolean) => [
       'Set up Otea in this project and design with me how we will work. Otea is where I hand you work and review what you hand back. Go one step at a time and tell me what you did after each one.',
-      `1. Set up: ${repo ? 'in the repository root' : 'in this folder'}, run \`otea init\` if the project is not set up yet (no template). Pick a short name of your own (${NAME(exampleName())}) and connect: \`${CONNECT}\`, with unknown for any value you cannot read from your settings (never guess); ${CONNECTS}. Then put your name on every otea command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`. Read the guide: \`otea board\`. ${DESK}`,
+      `1. Set up: ${repo ? 'in the repository root' : 'in this folder'}, run \`otea init\` if the project is not set up yet (no template). Pick a short name of your own (${NAME(exampleName())}) and connect: \`${CONNECT}\`, with unknown for any value this session does not tell you (never guess, and never open config files outside the project to find it); ${CONNECTS}. Then put your name on every otea command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`. Read the guide: \`otea board\`. ${DESK}`,
       repo
         ? '2. Read the project before asking me anything: the README, how the code is laid out, the git history (how often it changes, in what bursts), CLAUDE.md or AGENTS.md, and its CI.'
         : '2. Read the project before asking me anything: what is in this folder, any README or notes, and CLAUDE.md or AGENTS.md.',
@@ -93,7 +93,7 @@ const WORDS = {
       firstIntro:
         'Start working on this project as its agent: its boards are ready. Do not design or change boards.',
       connect: (taken: string, example: string) =>
-        `1. Run \`otea whoami --harness <harness>\` (the tool you run in): it gives back the name you worked under here before. Without one, pick a name of your own (${NAME(example)})${taken}. Then connect: \`${CONNECT}\`, with unknown for any value you cannot read from your settings (never guess); ${CONNECTS}. Then put your name on every command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`.`,
+        `1. Run \`otea whoami --harness <harness>\` (the tool you run in): it gives back the name you worked under here before. Without one, pick a name of your own (${NAME(example)})${taken}. Then connect: \`${CONNECT}\`, with unknown for any value this session does not tell you (never guess, and never open config files outside the project to find it); ${CONNECTS}. Then put your name on every command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`.`,
       worktree:
         'Other agents work in this same checkout: do your work on your own branch in your own git worktree (`git worktree add`), never in files another agent is changing.',
       firstWorktree:
@@ -111,7 +111,7 @@ const WORDS = {
   es: {
     start: (repo: boolean) => [
       'Configura Otea en este proyecto y diseña conmigo cómo vamos a trabajar. Otea es donde te paso trabajo y reviso lo que me devuelves. Ve paso a paso y dime qué hiciste después de cada uno.',
-      `1. Configuración: ${repo ? 'en la raíz del repositorio' : 'en esta carpeta'}, ejecuta \`otea init\` si el proyecto aún no está configurado (sin plantilla). Elige un nombre corto propio (${NAME_ES(exampleName())}) y conéctate: \`${CONNECT_ES}\`, con unknown en lo que no puedas leer de tu configuración (nunca adivines); ${CONNECTS_ES}. Luego pon tu nombre en cada comando de otea (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`. Lee la guía: \`otea board\`. ${DESK_ES}`,
+      `1. Configuración: ${repo ? 'en la raíz del repositorio' : 'en esta carpeta'}, ejecuta \`otea init\` si el proyecto aún no está configurado (sin plantilla). Elige un nombre corto propio (${NAME_ES(exampleName())}) y conéctate: \`${CONNECT_ES}\`, con unknown en lo que esta sesión no te diga (nunca adivines ni abras archivos de configuración fuera del proyecto para buscarlo); ${CONNECTS_ES}. Luego pon tu nombre en cada comando de otea (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`. Lee la guía: \`otea board\`. ${DESK_ES}`,
       repo
         ? '2. Lee el proyecto antes de preguntarme nada: el README, cómo está organizado el código, el historial de git (cada cuánto cambia y en qué rachas), CLAUDE.md o AGENTS.md, y su CI.'
         : '2. Lee el proyecto antes de preguntarme nada: qué hay en esta carpeta, el README o las notas que tenga, y CLAUDE.md o AGENTS.md.',
@@ -133,7 +133,7 @@ const WORDS = {
       firstIntro:
         'Empieza a trabajar en este proyecto como su agente: sus tableros están listos. No diseñes ni cambies tableros.',
       connect: (taken: string, example: string) =>
-        `1. Ejecuta \`otea whoami --harness <harness>\` (la herramienta en la que trabajas): te devuelve el nombre con el que ya trabajaste aquí. Si no te da ninguno, elige un nombre propio (${NAME_ES(example)})${taken}. Luego conéctate: \`${CONNECT_ES}\`, con unknown en lo que no puedas leer de tu configuración (nunca adivines); ${CONNECTS_ES}. Luego pon tu nombre en cada comando (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`.`,
+        `1. Ejecuta \`otea whoami --harness <harness>\` (la herramienta en la que trabajas): te devuelve el nombre con el que ya trabajaste aquí. Si no te da ninguno, elige un nombre propio (${NAME_ES(example)})${taken}. Luego conéctate: \`${CONNECT_ES}\`, con unknown en lo que esta sesión no te diga (nunca adivines ni abras archivos de configuración fuera del proyecto para buscarlo); ${CONNECTS_ES}. Luego pon tu nombre en cada comando (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`.`,
       worktree:
         'Otros agentes trabajan en esta misma copia del repositorio: haz tu trabajo en tu propia rama y en tu propio worktree de git (`git worktree add`), nunca en archivos que otro agente está cambiando.',
       firstWorktree:
