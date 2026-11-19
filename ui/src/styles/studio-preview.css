@@ -2651,6 +2651,17 @@ button.st-offscreen .icon:last-child {
   font-weight: 500;
   color: var(--ink);
 }
+/* the command Publicar's hook offer runs, as the person would type it */
+.bsp-request .bsp-cmd {
+  display: inline-block;
+  margin: 0;
+  font: 400 12px / 1.4 var(--mono);
+  color: var(--ink);
+  background: var(--sheet);
+  padding: 1px 5px;
+  border-radius: 4px;
+  white-space: nowrap;
+}
 
 @media (max-width: 760px) {
   .bsp-tbl .tr .c-more,

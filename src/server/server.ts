@@ -21,6 +21,7 @@ import {
   showItem,
   updateItem,
 } from '../app/items.ts';
+import type { Launcher } from '../app/launcher.ts';
 import { memoryMachine } from '../app/machine.ts';
 import { boardRoundOf, liveBoards, rowFactsOf } from '../app/next.ts';
 import { editNote, leaveNote, notesSummary, notesView, withdrawNote } from '../app/notes.ts';
@@ -91,7 +92,14 @@ import {
   peekPairing,
   revoke,
 } from './pairing.ts';
-import { addPath, forgetPath, projectOverviews, projectSettings, relinkPath } from './projects.ts';
+import {
+  addPath,
+  forgetPath,
+  installGitHooks,
+  projectOverviews,
+  projectSettings,
+  relinkPath,
+} from './projects.ts';
 import { generateVapidKeys, type PushSender, type VapidKeys, webPushSender } from './push.ts';
 import {
   type Client,
@@ -182,6 +190,9 @@ export type ServerOptions = {
     tickMs?: number;
     minuteOfDay?: (ms: number) => number;
   };
+  // How a pre-push hook the desk writes runs this Otea again, as otea hook install --git writes it
+  // (otea serve gives its own); without it, the desk cannot write one.
+  gitHook?: Launcher;
 };
 
 function isTurn(value: string): value is Turn {
@@ -266,6 +277,7 @@ type Doors = {
   env: Env;
   tailscale: TailscaleCli;
   probe: Probe;
+  gitHook: Launcher | undefined;
 };
 
 const TransportBody = z.object({ transport: z.string() });
@@ -387,6 +399,19 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
         assertConfigurable(c, auth);
         const { path } = await pathRequest(c);
         return c.json(forgetPath(project, path, env));
+      })
+      // Publicar's offer on a board that protects a branch: Otea's pre-push hook in every repo of
+      // the project that has none, so git refuses the push the board refuses.
+      .post('/project/git-hook', (c) => {
+        assertConfigurable(c, auth);
+        if (!doors.gitHook) {
+          throw new RejectedRequest(
+            409,
+            'not_available',
+            'This server cannot write a git hook: run otea hook install --git in the repository',
+          );
+        }
+        return c.json(installGitHooks(project, doors.gitHook, env));
       })
       .get('/collections', (c) => c.json(listShownCollectionViews(project)))
       .get('/presets', (c) => c.json(listPresetViews(project)))
@@ -891,6 +916,7 @@ export function createServer(
     env: options.env ?? process.env,
     tailscale: options.tailscale ?? NO_TAILSCALE,
     probe: options.probe ?? fetchProbe,
+    gitHook: options.gitHook,
   };
 
   const open = (project: Project): Host => {

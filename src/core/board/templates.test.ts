@@ -133,6 +133,23 @@ describe('templates', () => {
     ]);
   });
 
+  // Code on main promised «Otea rechaza el push de main hasta que lo apruebes» while nothing
+  // enforced it (P2S-R3-1): only Otea's pre-push hook refuses a push, so the step says so.
+  it('says on Code on main that only the git hook refuses an early push of main', () => {
+    const said = {
+      en: /Otea's git hook \(otea hook install --git\)/,
+      es: /el hook de git de Otea \(otea hook install --git\)/,
+    };
+    for (const lang of ['en', 'es'] as const) {
+      const def = instantiate(requireTemplate('mainline'), lang, {}, sequenceIds());
+      const doit = def.steps[1];
+      expect(doit?.instructions.take).toMatch(said[lang]);
+      expect(doit?.instructions.take).not.toMatch(
+        /Otea refuses a push of main until|Otea rechaza el push de main hasta/,
+      );
+    }
+  });
+
   it('speaks the language asked for', () => {
     const es = instantiate(requireTemplate('bugs'), 'es', {}, sequenceIds());
     const en = instantiate(requireTemplate('bugs'), 'en', {}, sequenceIds());

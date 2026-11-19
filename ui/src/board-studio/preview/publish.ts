@@ -1,6 +1,8 @@
 import { createElement, type ReactNode } from 'react';
+import { type BoardDefinition, guardedBranch } from '../../../../src/core/board/model.ts';
 import type { ItemEffects } from '../../../../src/core/board/plan.ts';
-import { t, tx } from '../../i18n/i18n.ts';
+import { listOf, t, tx } from '../../i18n/i18n.ts';
+import type { GitHookInstall, ProjectSettings } from '../../types.ts';
 
 // Publicar's words that are not a change of the definition: what happens to items in flight for the
 // new capabilities (a wait that holds them, a branch that freezes), which boards of a joined pair
@@ -138,4 +140,25 @@ export function pairToast(
     ),
     undone: t('bs.preview.publish.pair.undone'),
   };
+}
+
+// The repos of the project Publicar offers Otea's pre-push hook for: the ones without it, on a board
+// that protects a branch. Without the hook, git never asks Otea, and a push the board refuses goes
+// through (P2S-R3-1). None while the settings are not read.
+export function hookOffer(def: BoardDefinition, settings: ProjectSettings | null): string[] {
+  if (!settings || !guardedBranch(def)) return [];
+  const repos = settings.paths.flatMap((path) => path.repos);
+  return [...new Set(repos.filter((repo) => repo.gate !== 'hard').map((repo) => repo.name))];
+}
+
+// The toast's words after writing the hook: where it went, and each repo that keeps a pre-push
+// hook of its own, which Otea never overwrites.
+export function hookResultText({ installed, refused }: GitHookInstall): string {
+  const lines = [
+    ...(installed.length
+      ? [t('bs.preview.publish.toast.hook', { repos: listOf(installed.map(({ repo }) => repo)) })]
+      : []),
+    ...refused.map(({ repo }) => t('bs.preview.publish.toast.hookOwn', { repo })),
+  ];
+  return lines.join(' ');
 }

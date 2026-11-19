@@ -390,6 +390,12 @@ export const studioPreview = {
   'bs.preview.publish.publishing': 'Publishing…',
   'bs.preview.publish.seeBoard': 'See the board',
   'bs.preview.publish.closeRequest': 'Close {id}, “{title}”: publishing it takes the draft',
+  'bs.preview.publish.hook':
+    'Install Otea’s git hook in {repos}: without it, git lets a push through before you approve',
+  'bs.preview.publish.toast.hook':
+    'Otea’s git hook is installed in {repos}: git now refuses a push before your approval.',
+  'bs.preview.publish.toast.hookOwn':
+    '{repo} already has a pre-push hook of its own, and Otea leaves it alone: in {repo}, otea hook install --git prints the lines to add to it.',
   'bs.preview.publish.toast.requestClosed': '{id} is closed.',
   'bs.preview.publish.toast.requestReopened': '{id} is open again.',
   'bs.preview.publish.toast.first': '{name} is now running (v1). Agents can take items in {step}.',

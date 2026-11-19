@@ -387,6 +387,12 @@ export const studioPreview = {
   'bs.preview.publish.publishing': 'Publicando…',
   'bs.preview.publish.seeBoard': 'Ver el tablero',
   'bs.preview.publish.closeRequest': 'Cerrar {id}, «{title}»: publicarlo es aceptar el esbozo',
+  'bs.preview.publish.hook':
+    'Instalar el hook de git de Otea en {repos}: sin él, git deja pasar un push antes de que lo apruebes',
+  'bs.preview.publish.toast.hook':
+    'Hook de git de Otea instalado en {repos}: git ya rechaza un push antes de tu aprobación.',
+  'bs.preview.publish.toast.hookOwn':
+    '{repo} ya tiene un hook pre-push propio y Otea no lo toca: en {repo}, otea hook install --git imprime las líneas que hay que agregarle.',
   'bs.preview.publish.toast.requestClosed': '{id} queda cerrado.',
   'bs.preview.publish.toast.requestReopened': '{id} vuelve a estar abierto.',
   'bs.preview.publish.toast.first':

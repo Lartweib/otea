@@ -1,7 +1,16 @@
 import { execFileSync } from 'node:child_process';
-import { mkdirSync, mkdtempSync, realpathSync, renameSync, rmSync } from 'node:fs';
+import {
+  existsSync,
+  mkdirSync,
+  mkdtempSync,
+  readFileSync,
+  realpathSync,
+  renameSync,
+  rmSync,
+  writeFileSync,
+} from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { basename, join } from 'node:path';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
@@ -11,7 +20,7 @@ import { addRepo } from '../app/repos.ts';
 import { tempGitRepo } from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
 import { machineProjects } from './hub.ts';
-import type { ProjectOverview, ProjectSettings } from './projects.ts';
+import type { GitHookInstall, ProjectOverview, ProjectSettings } from './projects.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, SESSION_COOKIE, TOKEN } from './testing.ts';
 
@@ -161,6 +170,51 @@ describe('the projects api', () => {
 
       const settings = await get<ProjectSettings>('/api/project/settings');
       expect(settings.paths[0]?.repos[0]?.name).toBe('keys');
+    });
+
+    // A board that protects a branch keeps its word only where Otea's pre-push hook runs the
+    // check (P2S-R3-1): Publicar offers the hook, and the desk writes it into the project's repos.
+    it("writes Otea's pre-push hook into every repo of the project that has none", async () => {
+      server.close();
+      server = createServer(machineProjects(env, memoryMachine()), {
+        token: TOKEN,
+        env,
+        gitHook: { command: 'node', args: ['/otea/main.ts'] },
+      });
+      const response = await post('/api/project/git-hook', {});
+      expect(response.status).toBe(200);
+      const result = (await response.json()) as GitHookInstall;
+      expect(result.installed.map(({ repo }) => repo)).toEqual([basename(here.root)]);
+      expect(result.refused).toEqual([]);
+      const hook = readFileSync(join(here.root, '.git', 'hooks', 'pre-push'), 'utf8');
+      expect(hook).toContain('node "/otea/main.ts" check --gate push');
+      const settings = await get<ProjectSettings>('/api/project/settings');
+      expect(settings.paths[0]?.repos[0]?.gate).toBe('hard');
+      // Again, it has nothing left to write.
+      const again = (await (await post('/api/project/git-hook', {})).json()) as GitHookInstall;
+      expect(again.installed).toEqual([]);
+    });
+
+    it("leaves a repo's own pre-push hook alone and says how to add Otea's check to it", async () => {
+      server.close();
+      server = createServer(machineProjects(env, memoryMachine()), {
+        token: TOKEN,
+        env,
+        gitHook: { command: 'node', args: ['/otea/main.ts'] },
+      });
+      const own = join(here.root, '.git', 'hooks', 'pre-push');
+      writeFileSync(own, '#!/bin/sh\nnpm test\n');
+      const result = (await (await post('/api/project/git-hook', {})).json()) as GitHookInstall;
+      expect(result.installed).toEqual([]);
+      expect(result.refused[0]?.repo).toBe(basename(here.root));
+      expect(result.refused[0]?.message).toContain('check --gate push');
+      expect(readFileSync(own, 'utf8')).toBe('#!/bin/sh\nnpm test\n');
+    });
+
+    it('cannot write a hook when the server was not told how to run Otea', async () => {
+      const response = await post('/api/project/git-hook', {});
+      expect(response.status).toBe(409);
+      expect(existsSync(join(here.root, '.git', 'hooks', 'pre-push'))).toBe(false);
     });
 
     it('adds a path, relinks a moved one and forgets it, signed in', async () => {

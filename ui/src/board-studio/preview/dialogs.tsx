@@ -20,8 +20,9 @@ import {
 import type { PairWorkspace } from '../pair.ts';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { changeText, problemText } from '../words.ts';
+import { HookOffer, useProjectSettings, writeGitHook } from './HookOffer.tsx';
 import { Effects, PairDiscardDialog, PairPublishDialog } from './PairDialogs.tsx';
-import { effectLines, pairToast, setupLeftText } from './publish.ts';
+import { effectLines, hookOffer, pairToast, setupLeftText } from './publish.ts';
 import { failedText, plainToast } from './toasts.tsx';
 
 export { PracticeDialog } from './Practice.tsx';
@@ -84,6 +85,9 @@ function SinglePublishDialog({
   // The Pedido an agent drafted the board on: publishing is taking the draft, so it closes too,
   // unless the person unticks it.
   const [closeRequest, setCloseRequest] = useState(true);
+  // Otea's pre-push hook, offered ticked on a board that protects a branch (HookOffer.tsx).
+  const [writeHook, setWriteHook] = useState(true);
+  const settings = useProjectSettings(open);
   const id = draft.record.id;
   const saved = draft.save.kind === 'saved';
 
@@ -93,6 +97,7 @@ function SinglePublishDialog({
     if (!open) return;
     setError(null);
     setCloseRequest(true);
+    setWriteHook(true);
     if (!saved) {
       setPlan({ status: 'saving' });
       if (draft.save.kind !== 'saving') draft.retrySave();
@@ -131,6 +136,7 @@ function SinglePublishDialog({
   const along = isNew ? mates : [];
   const alongIds = along.map((mate) => mate.id);
   const alongNames = along.map((mate) => mate.name).join(', ');
+  const hookRepos = hookOffer(def, settings);
 
   const publish = async () => {
     if (!ready) return;
@@ -145,6 +151,7 @@ function SinglePublishDialog({
         closing,
         alongIds,
       );
+      const hooked = hookRepos.length > 0 && writeHook ? await writeGitHook() : '';
       setBusy(false);
       onClose();
       onPublished(result.record);
@@ -172,7 +179,7 @@ function SinglePublishDialog({
           : null;
       plainToast(
         <>
-          {msg} {closed} {view}
+          {msg} {closed} {hooked} {view}
         </>,
         () => {
           restoreBoard(id, ready.from, alongIds)
@@ -223,6 +230,7 @@ function SinglePublishDialog({
         draftStamps: { parent: draft.record.draft?.updatedAt ?? null },
         ...(closing ? { closeRequests: { parent: true, child: true } } : {}),
       });
+      const hooked = hookRepos.length > 0 && writeHook ? await writeGitHook() : '';
       setBusy(false);
       onClose();
       if (result.parent) onPublished(result.parent.record);
@@ -234,14 +242,23 @@ function SinglePublishDialog({
         def.item,
         { rich: true },
       );
-      plainToast(words.done, () => {
-        restorePair({ parent: id, child: split.id, versions: { parent: ready.from, child: null } })
-          .then((back) => {
-            if (back.parent) onPublished(back.parent);
-            plainToast(words.undone);
+      plainToast(
+        <>
+          {words.done} {hooked}
+        </>,
+        () => {
+          restorePair({
+            parent: id,
+            child: split.id,
+            versions: { parent: ready.from, child: null },
           })
-          .catch((e: unknown) => plainToast(failedText(message(e))));
-      });
+            .then((back) => {
+              if (back.parent) onPublished(back.parent);
+              plainToast(words.undone);
+            })
+            .catch((e: unknown) => plainToast(failedText(message(e))));
+        },
+      );
     } catch (e) {
       setBusy(false);
       setError(message(e));
@@ -394,6 +411,7 @@ function SinglePublishDialog({
             </span>
           </label>
         ) : null}
+        <HookOffer repos={hookRepos} checked={writeHook} onChange={setWriteHook} />
         <p className="bsp-dwarn" aria-live="polite">
           {error ? failedText(error) : ''}
         </p>

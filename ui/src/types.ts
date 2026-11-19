@@ -314,6 +314,13 @@ export type GateKind = 'hard' | 'soft';
 
 export type RepoSettings = { name: string; folder: string; gate: GateKind; items: number };
 
+// What writing Otea's pre-push hook into the project's repos did (POST /api/project/git-hook): the
+// repos it went into, and the ones that keep a pre-push hook of their own.
+export type GitHookInstall = {
+  installed: Array<{ repo: string; path: string }>;
+  refused: Array<{ repo: string; message: string }>;
+};
+
 export type ProjectSettings = {
   id: string;
   name: string;

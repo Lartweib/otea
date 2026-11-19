@@ -61,3 +61,13 @@ describe('an empty repos cell', () => {
     expect(html).toContain('<span class="t-cap pj-repo-wide">api/</span>');
   });
 });
+
+describe('the gate of a repo', () => {
+  // The command that makes it hard is one the person can paste: hook install needs --git.
+  it('names the whole command for a repo without the hook', () => {
+    const html = renderToStaticMarkup(
+      createElement(Repos, { repos: [{ name: 'bot', folder: '.', gate: 'soft', items: 1 }] }),
+    );
+    expect(html).toContain('<code class="pj-code">otea hook install --git</code>');
+  });
+});

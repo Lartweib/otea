@@ -14,6 +14,7 @@ import type { ItemTopics, Topic, TopicsView } from './topics.ts';
 import type {
   CollectionView,
   EvidenceRole,
+  GitHookInstall,
   Item,
   ItemView,
   LanView,
@@ -426,6 +427,11 @@ export async function fetchAgentPrompt(
 
 export async function fetchProjectSettings(signal: AbortSignal): Promise<ProjectSettings> {
   return (await get('/api/project/settings', signal)).json();
+}
+
+// Otea's pre-push hook in every repo of the project that has none (Publicar's offer, P2S-R3-1).
+export async function installGitHook(): Promise<GitHookInstall> {
+  return post<GitHookInstall>('/api/project/git-hook', {});
 }
 
 export async function addProjectPath(path: string): Promise<void> {
