@@ -292,6 +292,30 @@ describe('topics and items', () => {
       'TEM-5',
     ]);
   });
+
+  // P4-R3 (P4-R2-7): TEM-3 was suggested for every item: its long answer held common words and
+  // words the items shared only by chance. A suggestion needs a telling word of the topic itself.
+  it('suggests nothing on common words or on words only its full answer holds', () => {
+    addTopic(ctx, { question: '¿Envío gratis por zona o un precio fijo?', actor: quill }, now);
+    answerTopic(
+      ctx,
+      {
+        id: 'TEM-1',
+        summary: 'Por zona: gratis desde $15.000.',
+        full: 'Hace falta todo esto cuando haya tiempo: sacar fotos nuevas para la página, cambiar el horario y avisar por Instagram.',
+        actor: quill,
+      },
+      now,
+    );
+    later(60_000);
+    seedItem('TAR-1', quill, now(), 'Sacar las fotos de las medialunas para la página');
+    seedItem('TAR-2', quill, now(), 'Hace falta todo para cuando');
+    seedItem('TAR-3', quill, now(), 'Poner el envío gratis en la página');
+
+    expect(topicSuggestions(ctx, 'TAR-1', now)).toEqual([]);
+    expect(topicSuggestions(ctx, 'TAR-2', now)).toEqual([]);
+    expect(topicSuggestions(ctx, 'TAR-3', now).map(({ id }) => id)).toEqual(['TEM-1']);
+  });
 });
 
 describe('topics awaiting an agent', () => {

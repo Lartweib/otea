@@ -55,9 +55,23 @@ export function pendingTopics(topics: readonly ItemTopic[]): ItemTopic[] {
   return topics.filter((topic) => topic.pending);
 }
 
-// The last answer of a topic, if any: its summary shows in the list.
+// The last answer of a topic, if any.
 export function lastAnswer(topic: Pick<Topic, 'turns'>) {
   return topic.turns.findLast((turn) => turn.kind === 'answer');
+}
+
+// A topic's own conclusion, what its line in a list says: the last answer to its own question,
+// before any follow-up asked on it (otea topic add --to), which has its answer apart (P4-R3-12).
+export function conclusionOf(topic: Pick<Topic, 'turns'>) {
+  const first = topic.turns.findIndex((turn) => turn.kind === 'question');
+  const next = topic.turns.findIndex((turn, i) => i > first && turn.kind === 'question');
+  const own = next < 0 ? topic.turns : topic.turns.slice(0, next);
+  return own.findLast((turn) => turn.kind === 'answer');
+}
+
+// How many follow-up questions were asked on a topic after its own.
+export function followUpsOf(topic: Pick<Topic, 'turns'>): number {
+  return Math.max(0, topic.turns.filter((turn) => turn.kind === 'question').length - 1);
 }
 
 // The topic open on the topics page, from the hash: `#/topics/TEM-3`. Never another project's,

@@ -528,6 +528,7 @@ export const surfaces = {
   'topics.toca.hint': 'Read them and close them, keep them going or turn them into a task.',
   'topics.related': 'Related topics',
   'topics.related.pending': 'pending',
+  'topics.followUps': { one: '{count} follow-up', other: '{count} follow-ups' },
   'topics.suggest': 'It may come from {id}: “{title}”.',
   'topics.suggest.confirm': 'Link it',
   'topics.suggest.dismiss': 'Not from there',
