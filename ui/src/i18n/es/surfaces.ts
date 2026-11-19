@@ -63,6 +63,7 @@ export const surfaces = {
   'intake.landsOnYou': 'en tu carril, {state}',
   'intake.landsIn': 'en {state}',
   'intake.draft': 'borrador · falta {fields} para crear',
+  'intake.blocked': 'Falta {fields} para crear.',
   'intake.evidence': 'Evidencia',
   'intake.optional': 'opcional',
   'intake.more': 'Más campos ({count})',

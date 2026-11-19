@@ -206,7 +206,12 @@ describe('Nuevo ítem', () => {
     expect(html).toContain('Qué hay que hacer, en una línea');
     expect(html).toContain('llega como');
     expect(html).toContain('data-list="preview"');
-    expect(html).toContain('Lo verás en Errores, en su carril.');
+    // Crear waits for the title, and says so beside it, where the form says where it lands once
+    // it can be created (P6-R2-8).
+    expect(html).toContain('aria-describedby="intake-why"');
+    expect(html).toContain(
+      '<span class="hint" id="intake-why" aria-live="polite">Falta Título para crear.</span>',
+    );
   });
 
   it('the preview row sits on the lane it starts on, inert, untitled until you type', () => {

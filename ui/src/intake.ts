@@ -5,7 +5,7 @@ import type { Lane } from './lanes/geometry.ts';
 import type { Look } from './lanes/looks.ts';
 import { type NodeKind, nodeKind } from './node-kind.ts';
 import { fieldWord, stateWord } from './preset-words.ts';
-import type { FieldView, Turn, TypeView } from './types.ts';
+import type { CollectionView, FieldView, Turn, TypeView } from './types.ts';
 
 export type FormValues = Record<string, string>;
 
@@ -111,6 +111,45 @@ export function landingNote(
   if (turn === 'human') return t('intake.landsOnYou', { state });
   if (turn === 'agent') return t('intake.landsOnAgent', { state });
   return t('intake.landsIn', { state });
+}
+
+// The board a new item starts on: the one asked for (a board's own «Crear», a «+ hijo»), else the
+// board on screen, else the first of the person's own boards; the built-in Pedidos only when there
+// is nothing else (P2S-R2-8, P6-R2-8).
+export function startCollection(
+  collections: readonly CollectionView[],
+  {
+    asked,
+    onScreen,
+    builtins,
+  }: { asked?: string | undefined; onScreen?: string | undefined; builtins: ReadonlySet<string> },
+): CollectionView | undefined {
+  const named = (name: string | undefined) =>
+    name === undefined ? undefined : collections.find((each) => each.name === name);
+  return (
+    named(asked) ??
+    named(onScreen) ??
+    collections.find(({ name }) => !builtins.has(name)) ??
+    collections[0]
+  );
+}
+
+// Why «Crear» waits, said beside it (P6-R2-8): the item it must be part of first, then the fields
+// still missing; undefined when it can be created. `parent`: the board it must be part of, with how
+// many items there are open to pick.
+export function createBlocked({
+  missing,
+  parent,
+}: {
+  missing: readonly string[];
+  parent: { item: string; board: string; open: number } | undefined;
+}): string | undefined {
+  if (parent)
+    return parent.open > 0
+      ? t('bi.create.pickParent', { item: parent.item })
+      : t('bi.create.noParent', { board: parent.board });
+  if (missing.length > 0) return t('intake.blocked', { fields: missing.join(', ') });
+  return undefined;
 }
 
 // The id the item will most likely get: the next number in its collection. The server numbers it.
