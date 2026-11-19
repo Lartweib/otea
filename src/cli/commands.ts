@@ -168,8 +168,8 @@ import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { agentGuideFor, TOPICS_REMINDER, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
-import { isClosed, isLandStep, positionOf } from '../core/board/engine.ts';
-import { guardedBranch, isEvidence, stepById } from '../core/board/model.ts';
+import { isClosed, isLandStep, positionOf, waysOf } from '../core/board/engine.ts';
+import { DONE, guardedBranch, isEvidence, stepById } from '../core/board/model.ts';
 import { DROPPED_NAME } from '../core/board/next.ts';
 import { attachedPart, fieldsByName, partByName, stateName } from '../core/board/reading.ts';
 import type { Lang } from '../core/board/template-words.ts';
@@ -1583,6 +1583,17 @@ function handedBranch(
     };
   const tip = tipOf(cwd, branch, base);
   const unpushed = state?.kind === 'unpushed' && pushes;
+  // No board lets an approval close an item whose code lives only on a branch never pushed (P7-8):
+  // where its Rama is meant for a base and the review's approval closes the item (no land step
+  // after it), the push comes first. With a land step, the approval leads there instead.
+  const step = stepById(board.def, position.step);
+  const closes = step?.reviewer !== 'none' && waysOf(board.def, position.step, item)[0] === DONE;
+  if (state?.kind === 'unpushed' && pushes && guard.guard.base && closes) {
+    throw new OteaError(
+      'missing_fields',
+      `${item.id} not handed off: ${branch} was never pushed to ${state.push}, and the approval of ${step?.name ?? position.step} closes ${item.id}, so it would be Done with its code only on this machine. Push it first (git push -u ${state.push} ${branch}), then hand it off again: ${frozen}.`,
+    );
+  }
   const warning = unpushed
     ? `Note: ${branch} was never pushed to ${state.push}. If the person reviews it on the forge (a pull request), they cannot see it there: ${frozen}.`
     : undefined;

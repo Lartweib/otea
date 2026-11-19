@@ -36,7 +36,7 @@ describe('the Ideas set', () => {
       'Tarea',
     ]);
     expect(ideas?.steps.map(({ name }) => name)).toEqual(['Refinar', 'Diseñar', 'Planificar']);
-    expect(tasks?.steps.map(({ name }) => name)).toEqual(['Preparar', 'Hacer']);
+    expect(tasks?.steps.map(({ name }) => name)).toEqual(['Preparar', 'Hacer', 'Integrar']);
     const view = listedTemplates('en').find(({ key }) => key === 'ideas');
     expect(view?.boards?.map(({ name }) => name)).toEqual(['Ideas', 'Implementation']);
   });
@@ -94,6 +94,30 @@ describe('the Ideas set', () => {
       });
     });
   }
+});
+
+// P7-8: TAR-1..3 went «Aprobar → Hecho · se cierra» while their code sat on an unpushed agent
+// branch and main was untouched: the board recorded no branch, so neither the drift warning nor the
+// merge gates applied. Like Cambios, each task names its Rama and lands on main once approved.
+describe('the Implementación board', () => {
+  it('says where the code goes: each task on its Rama, landed on main once you approve it', () => {
+    const [, tasks] = made('ideas', 'es');
+    if (!tasks) throw new Error('no Implementación');
+    expect(tasks.steps.map(({ name, doer, reviewer }) => `${name}:${doer}/${reviewer}`)).toEqual([
+      'Preparar:any/none',
+      'Hacer:any/you',
+      'Integrar:any/none',
+    ]);
+    const land = stepNamed(tasks, 'Integrar');
+    expect(isLandStep(tasks, land?.id ?? '')).toBe(true);
+    expect(partNamed(tasks, 'Rama')?.guard).toEqual({
+      push: [stepNamed(tasks, 'Hacer')?.id, land?.id],
+      base: 'main',
+    });
+    expect(handOf(tasks, 'Hacer', 'Rama')).toMatchObject({ req: 'always' });
+    expect(handOf(tasks, 'Integrar', 'Commit en main')).toMatchObject({ req: 'always' });
+    expect(stepNamed(tasks, 'Integrar')?.ways).toEqual([stepNamed(tasks, 'Hacer')?.id]);
+  });
 });
 
 describe('the Entregas con PR set', () => {
