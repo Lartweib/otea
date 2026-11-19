@@ -4,7 +4,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { listen } from '../server/listen.ts';
 import { createServer } from '../server/server.ts';
 import { memoryProject } from '../server/testing.ts';
-import { type Cli, cliAt, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, removeOnceReleased, type TempRepo, tempGitRepo } from './testing.ts';
 
 // The first line; --no-open adds how to sign a browser in after it.
 const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:(\d+))\/p\/([a-z0-9-]+)\/\n/;
@@ -40,7 +40,7 @@ describe('open', () => {
 
   afterEach(async () => {
     interrupt.abort();
-    await vi.waitFor(() => repo.remove());
+    await removeOnceReleased(repo.dir);
   });
 
   it("opens this project's page signed in to the running server without printing the token", async () => {
