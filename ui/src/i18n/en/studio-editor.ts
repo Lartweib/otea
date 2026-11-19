@@ -380,7 +380,7 @@ export const studioEditor = {
   'bs.editor.guard.push_note': 'You can tick more than one. It is never pushed during the review.',
   'bs.editor.guard.repo_menu': 'The repository is named by…',
   'bs.editor.guard.frozen':
-    'While you review it, it stays frozen: nobody can push changes, so you approve exactly what you read.',
+    'While you review it, agents leave it alone; if anyone else pushes, the item tells you. Approving approves exactly what was handed off.',
   'bs.editor.guard.hooks':
     'This only holds in the repositories where Otea watches pushes (Settings › Repositories).',
   'bs.editor.guard.no_push': '“{part}” is protected but can be pushed in no step.',

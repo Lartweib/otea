@@ -86,6 +86,7 @@ export function moveSaysOf(
           agent: string | null;
           round: number;
           lands?: string;
+          landStep?: string;
           own?: true;
           unmerged?: true;
           unpushed?: string;
@@ -127,7 +128,9 @@ export function moveSaysOf(
       tail = t('sheet.says.unchanged');
     else if (lands?.lands && lands.own) tail = t('sheet.says.landsOwn', { base: lands.lands });
     else if (lands?.lands !== undefined)
-      tail = lands.lands ? t('sheet.says.lands', { base: lands.lands }) : t('sheet.says.landsAny');
+      tail = lands.lands
+        ? t('sheet.says.lands', { base: lands.lands, step: lands.landStep ?? '' })
+        : t('sheet.says.landsAny', { step: lands.landStep ?? '' });
     else tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
   } else tail = t('sheet.says.yours');
   // What the person approves was never pushed (P7-8): said before they approve it.
