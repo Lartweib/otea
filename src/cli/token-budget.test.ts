@@ -39,8 +39,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Raised to 640 with the guide's line on otea answer (P4-R2-2; measured at 633). Raised to 660
   // with rule 2 saying to declare what the session says and never to open config files outside the
   // project, as an agent read the person's harness settings to learn its effort (P3C-R3-8; measured
-  // at 649).
-  'board index': { text: 660, json: 53, mcp: 53 },
+  // at 649). Raised to 700 with rule 12 saying to set an item aside with otea release --later when
+  // the person wants it later, and never to poll in a loop of one's own, as an agent did both
+  // (P3C-R3-2; measured at 690).
+  'board index': { text: 700, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -101,8 +103,11 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // chat anyway: rule 10 now says that answer goes on the question with otea answer, where it
   // said to tell them to answer in Otea (P4-R2-2; measured at 614). Raised to 640 for rule 2:
   // declare what the session says, never open config files outside the project, as «read from your
-  // settings» sent an agent to the person's harness settings (P3C-R3-8; measured at 630).
-  instructions: { mcp: 640 },
+  // settings» sent an agent to the person's harness settings (P3C-R3-8; measured at 630). Raised
+  // to 680 for rule 12: «leave it for later» is otea release --later, and otea wait is the way to
+  // wait, as an agent released an item plainly, stopped waiting and later polled on its own
+  // (P3C-R3-2; measured at 671).
+  instructions: { mcp: 680 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

@@ -66,9 +66,13 @@ export function releaseItem(ctx: Context, input: LeaseInput, now = systemClock):
     const item = requireWritableItem(db, input.id);
     const at = now();
     const current = activeLease(item.lease, at);
-    if (current?.holder !== input.actor.name) throw notHolder(item, input.actor, at);
+    // An item nobody holds is set aside for later too: an agent that let it go with a plain release
+    // when the person wanted it later sets it aside without claiming it again (P3C-R3-2).
+    const aside = input.later === true && current === null;
+    if (!aside && current?.holder !== input.actor.name) throw notHolder(item, input.actor, at);
     clearLease(db, item.id);
-    const data = { holder: current.holder, cause: input.later ? 'later' : 'release' };
+    const holder = current?.holder ?? input.actor.name;
+    const data = { holder, cause: input.later ? 'later' : 'release' };
     appendEvent(db, { itemId: item.id, type: 'released', actor: input.actor, at, data });
     return present({ ...item, lease: null }, workflowOf(ctx, item), at);
   });

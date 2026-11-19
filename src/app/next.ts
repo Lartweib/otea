@@ -671,14 +671,30 @@ export function leftFor(ctx: Context, id: string): string | undefined {
   return cause === 'reassign' && typeof next === 'string' ? next : undefined;
 }
 
-// The agent that set the item aside for later (otea release --later), while it has not moved nor
-// been claimed since; undefined otherwise.
-export function setAsideBy(ctx: Context, id: string): string | undefined {
+// The agent that last let go of the item (otea release), and why, while it has not moved nor been
+// claimed since; undefined otherwise.
+function agentRelease(ctx: Context, id: string): { agent: string; cause: unknown } | undefined {
   const last = selectEvents(ctx.db, id).findLast(({ type }) =>
     ['claimed', 'released', 'transitioned'].includes(type),
   );
   if (last?.type !== 'released' || last.actor.kind !== 'agent') return undefined;
-  return last.data.cause === 'later' ? last.actor.name : undefined;
+  return { agent: last.actor.name, cause: last.data.cause };
+}
+
+// The agent that set the item aside for later (otea release --later), while it has not moved nor
+// been claimed since; undefined otherwise.
+export function setAsideBy(ctx: Context, id: string): string | undefined {
+  const released = agentRelease(ctx, id);
+  return released?.cause === 'later' ? released.agent : undefined;
+}
+
+// What next and wait add when they offer an agent the item it just let go of: a plain release
+// leaves it free, so it comes straight back, and the agent stopped waiting, then polled on its
+// own (P3C-R3-2). Undefined for any other item.
+export function laterLine(ctx: Context, id: string, agent: string): string | undefined {
+  const released = agentRelease(ctx, id);
+  if (released?.agent !== agent || released.cause !== 'release') return undefined;
+  return `You released ${id}: if the person asked you to leave it for later, otea release ${id} --later sets it aside, so next and wait skip it; then keep waiting with otea wait, never a polling loop of your own.`;
 }
 
 // On a Pedido an agent drafts a board on, how to hand the draft in follows the instructions of the
@@ -1136,10 +1152,15 @@ export function nextFor(
     const item = lease ? { ...first.item, lease } : first.item;
     if (!lease) saveOffer(ctx.db, { agent, item: item.id, state: item.state, at });
     const { sentBack, roundNotes } = itemOnBoard(ctx, item, board.def);
+    const later = laterLine(ctx, item.id, agent);
     return {
       item: item.id,
       collection: board.collection,
-      text: [textFor(ctx, item, board.def, at, agent), ...mergeLines(toMerge)].join('\n'),
+      text: [
+        textFor(ctx, item, board.def, at, agent),
+        ...mergeLines(toMerge),
+        ...(later === undefined ? [] : [later]),
+      ].join('\n'),
       ...(sentBack === undefined ? {} : { sentBack }),
       ...(lease ? { lease } : {}),
       ...(roundNotes.length === 0 ? {} : { notes: roundNotes }),
