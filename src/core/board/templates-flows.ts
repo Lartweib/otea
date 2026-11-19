@@ -232,6 +232,26 @@ const IDEAS: Template = {
   },
 };
 
+// Where an approved change reaches main (Cambios, Implementación): an agent rebases its Rama on main
+// and brings it in, so an approval never closes an item whose code lives only on its branch (P7-8).
+const LAND: Template['steps'][number] = {
+  key: 'land',
+  name: w('Land', 'Integrar'),
+  doer: 'any',
+  reviewer: 'none',
+  hand: [['commit', 'always']],
+  // A rebase that conflicts goes back to the step it was done in, to be reviewed again (P1-R2-3).
+  ways: ['doit'],
+  take: w(
+    'The person approved it: rebase @{branch} on main and bring it in with a fast-forward push of main or, where main takes changes only through a PR, open one and merge it with gh pr merge. Add nothing the person did not approve. If the rebase conflicts with main, do not resolve it here: take it back to @{doit} with otea handoff <id> --way "@{doit}" --reason "<what conflicts>", so the resolution is reviewed.',
+    'La persona lo aprobó: rebasa @{branch} sobre main e intégrala con fast-forward y push de main o, si main solo acepta cambios por PR, abre uno y mergéalo con gh pr merge. No agregues nada que la persona no haya aprobado. Si el rebase choca con main, no lo resuelvas aquí: regrésalo a @{doit} con otea handoff <id> --way "@{doit}" --reason "<qué choca>", para que se revise la resolución.',
+  ),
+  before: w(
+    'Write in @{commit} the short hash of the commit that landed on main. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone. If you landed it from the main checkout of the repository, leave that checkout on main.',
+    'Escribe en @{commit} el hash corto del commit que quedó en main. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre. Si lo integraste desde la copia principal del repositorio, déjala en main.',
+  ),
+};
+
 const IMPLEMENTATION: Template = {
   key: 'implementation',
   icon: 'checklist',
@@ -302,6 +322,22 @@ const IMPLEMENTATION: Template = {
       name: w('Changes', 'Cambios'),
       hint: w("The task's diff", 'El diff de la tarea'),
     },
+    {
+      key: 'branch',
+      kind: 'branch',
+      name: w('Branch', 'Rama'),
+      hint: w('task/<id>-<topic>, made from main', 'tarea/<id>-<tema>, creada desde main'),
+      guard: { push: ['doit', 'land'], base: 'main' },
+    },
+    {
+      key: 'commit',
+      kind: 'text',
+      name: w('Commit on main', 'Commit en main'),
+      hint: w(
+        'the short hash of the commit that landed on main',
+        'el hash corto del commit que quedó en main',
+      ),
+    },
   ],
   form: [
     ['todo', true],
@@ -332,6 +368,7 @@ const IMPLEMENTATION: Template = {
       doer: 'any',
       reviewer: 'you',
       hand: [
+        ['branch', 'always'],
         ['did', 'always'],
         ['tests', 'always', true],
         ['changes', 'no', true],
@@ -339,14 +376,15 @@ const IMPLEMENTATION: Template = {
       waits: ['parts', 'blockers'],
       note: w('What you did and what you tested', 'Qué hiciste y qué probaste'),
       take: w(
-        'Read the idea this task implements and its architecture document before you start. Do only what @{todo} says; whatever does not fit, propose it as another task.',
-        'Lee la idea que esta tarea implementa y su documento de arquitectura antes de empezar. Haz solo lo que dice @{todo}; lo que no entre, propónlo como otra tarea.',
+        'Read the idea this task implements and its architecture document before you start. Make @{branch} from main and work only there; a task divided into subtasks lands through them, so write main in @{branch}. Do only what @{todo} says; whatever does not fit, propose it as another task.',
+        'Lee la idea que esta tarea implementa y su documento de arquitectura antes de empezar. Crea @{branch} desde main y trabaja solo ahí; una tarea dividida en subtareas se integra a través de ellas, así que escribe main en @{branch}. Haz solo lo que dice @{todo}; lo que no entre, propónlo como otra tarea.',
       ),
       before: w(
         'Each criterion of @{donewhen} has its test in @{tests}.',
         'Cada criterio de @{donewhen} tiene su prueba en @{tests}.',
       ),
     },
+    LAND,
   ],
   anytime: [],
   split: { always: false },
@@ -366,6 +404,8 @@ const IMPLEMENTATION: Template = {
     tests: 'main',
     changes: 'main',
     size: 'side',
+    branch: 'side',
+    commit: 'side',
   },
   samples: {
     en: ['Habit data model', 'Today screen'],
@@ -558,23 +598,7 @@ export const CHANGES: Template = {
         'Adjunta @{diff} contra main. Si es de interfaz visual, @{shots} antes y después; si es de línea de comandos, la @{term} en su lugar (nunca capturas de una terminal). Si es un error, @{tests} con la prueba nueva pasando. En la nota, di qué cambiaste, cómo lo probaste y qué quedó afuera.',
       ),
     },
-    {
-      key: 'land',
-      name: w('Land', 'Integrar'),
-      doer: 'any',
-      reviewer: 'none',
-      hand: [['commit', 'always']],
-      // A rebase that conflicts goes back to Hacerlo, to be reviewed again (P1-R2-3).
-      ways: ['doit'],
-      take: w(
-        'The person approved it: rebase @{branch} on main and bring it in with a fast-forward push of main or, where main takes changes only through a PR, open one and merge it with gh pr merge. Add nothing the person did not approve. If the rebase conflicts with main, do not resolve it here: take it back to @{doit} with otea handoff <id> --way "@{doit}" --reason "<what conflicts>", so the resolution is reviewed.',
-        'La persona lo aprobó: rebasa @{branch} sobre main e intégrala con fast-forward y push de main o, si main solo acepta cambios por PR, abre uno y mergéalo con gh pr merge. No agregues nada que la persona no haya aprobado. Si el rebase choca con main, no lo resuelvas aquí: regrésalo a @{doit} con otea handoff <id> --way "@{doit}" --reason "<qué choca>", para que se revise la resolución.',
-      ),
-      before: w(
-        'Write in @{commit} the short hash of the commit that landed on main. Delete the branch if you may; your harness may ask the person to allow it, and Otea does not need it gone. If you landed it from the main checkout of the repository, leave that checkout on main.',
-        'Escribe en @{commit} el hash corto del commit que quedó en main. Borra la rama si puedes; tu entorno puede pedirle permiso a la persona, y Otea no necesita que se borre. Si lo integraste desde la copia principal del repositorio, déjala en main.',
-      ),
-    },
+    LAND,
   ],
   anytime: ['kind', 'video', 'impact', 'effort'],
   motives: [

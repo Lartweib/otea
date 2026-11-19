@@ -5,7 +5,10 @@ import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { approveItem, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
+import { publishAs } from '../app/testing.ts';
 import { stateOf } from '../core/board/engine.ts';
+import { sequenceIds } from '../core/board/ids.ts';
+import { instantiate, requireTemplate } from '../core/board/templates.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { selectEvents, updateItemState } from '../store/queries.ts';
 import { COMMANDS } from './commands.ts';
@@ -307,5 +310,74 @@ describe('a handoff of a branch', () => {
         await client.close();
       }
     });
+  });
+});
+
+// P7-8: no board whose steps change code lets an approval close an item while its code lives only on
+// a branch never pushed. One with no land step after the review, whose Rama is meant for main, closes
+// on the approval: the handoff asks for the push first, as it does for commits the remote never got.
+describe('a handoff of a branch never pushed, on a board whose approval closes the item', () => {
+  let repo: ReturnType<typeof tempGitRepo>;
+  let otea: Cli;
+  const git = (...args: string[]) =>
+    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
+      cwd: repo.dir,
+      stdio: 'pipe',
+      encoding: 'utf8',
+    }).trim();
+  const BRANCH = 'cambio/1-regar';
+
+  beforeEach(async () => {
+    repo = tempGitRepo();
+    otea = cliAt(repo.dir, { OTEA_AGENT: 'quill' });
+    await cliAt(repo.dir)('init', '--template', 'none');
+    declareProfiles(repo.dir, 'quill');
+    // Cambios without Integrar: Hacerlo's approval closes the item.
+    const def = instantiate(requireTemplate('changes'), 'es', {}, sequenceIds());
+    const doit = def.steps.find(({ name }) => name === 'Hacerlo');
+    if (!doit) throw new Error('no Hacerlo');
+    def.steps = def.steps.filter(({ name }) => name !== 'Integrar');
+    for (const part of Object.values(def.parts))
+      if (part.guard) part.guard = { ...part.guard, push: [doit.id] };
+    const project = openProject(repo.dir);
+    try {
+      publishAs(project, def, 'bcam');
+    } finally {
+      project.db.close();
+    }
+    await otea('create', '--collection', 'Cambios', '--title', 'Regar', '--field', 'Qué quiero=x');
+    await otea('update', 'CAM-1', '--field', `Rama=${BRANCH}`);
+    writeFileSync(join(repo.dir, 'a.txt'), 'root\n');
+    git('add', 'a.txt');
+    git('commit', '-q', '-m', 'root');
+    git('branch', '-M', 'main');
+    git('checkout', '-q', '-b', BRANCH);
+    writeFileSync(join(repo.dir, 'b.txt'), 'regar\n');
+    git('add', 'b.txt');
+    git('commit', '-q', '-m', 'regar');
+    git('remote', 'add', 'origin', 'https://example.invalid/regar.git');
+    const opened = openProject(repo.dir);
+    try {
+      const state = stateOf({ step: doit.id, phase: 'doing' });
+      updateItemState(opened.db, 'CAM-1', state, '2026-11-19T10:00:00Z');
+    } finally {
+      opened.db.close();
+    }
+    writeFileSync(join(repo.dir, 'regar.diff'), 'diff --git a/b.txt b/b.txt\n+regar\n');
+    expect((await otea('claim', 'CAM-1')).code).toBe(0);
+    expect((await otea('attach', 'CAM-1', 'regar.diff')).code).toBe(0);
+  });
+
+  afterEach(() => repo.remove());
+
+  it('refuses it until the branch is pushed', async () => {
+    const refused = await otea('handoff', 'CAM-1', '--note', 'regar');
+
+    expect(refused.code).toBe(8);
+    expect(refused.err).toContain(
+      `CAM-1 not handed off: ${BRANCH} was never pushed to origin, and the approval of Hacerlo closes CAM-1, so it would be Done with its code only on this machine. Push it first (git push -u origin ${BRANCH}), then hand it off again: once handed off, Rama is frozen while it is reviewed.`,
+    );
+    git('update-ref', `refs/remotes/origin/${BRANCH}`, BRANCH);
+    expect((await otea('handoff', 'CAM-1', '--note', 'regar')).code).toBe(0);
   });
 });

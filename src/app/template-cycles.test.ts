@@ -146,11 +146,11 @@ describe('a project made from an official template', () => {
     expect(requireItem(ctx.db, idea).state).toBe('done');
 
     const task = newItem(ctx, tasks);
-    expect(runToDone(ctx, task, tasks)).toEqual(['Preparar', 'Hacer']);
+    expect(runToDone(ctx, task, tasks)).toEqual(['Preparar', 'Hacer', 'Integrar']);
     expect(requireItem(ctx.db, task).state).toBe('done');
     // A task born complete, as Planificar makes them, skips Preparar.
     const planned = newItem(ctx, tasks, { all: true });
-    expect(runToDone(ctx, planned, tasks)).toEqual(['Hacer']);
+    expect(runToDone(ctx, planned, tasks)).toEqual(['Hacer', 'Integrar']);
   });
 
   it('takes a Trabajo through Analizar and Entregar once its Entrega is merged in', () => {
