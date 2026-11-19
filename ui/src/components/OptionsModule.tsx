@@ -96,25 +96,32 @@ export function OptionsModule({
                     <span className="t-cap">{t('pick.yourComment')}</span> {picked.comment}
                   </p>
                 ) : null}
-                {option.gains.length + option.costs.length > 0 ? (
-                  <div className="op-trade">
-                    <ul className="op-gains" aria-label={t('options.gains')}>
-                      {option.gains.map((gain) => (
-                        <li key={gain}>{gain}</li>
-                      ))}
-                    </ul>
-                    <ul className="op-costs" aria-label={t('options.costs')}>
-                      {option.costs.map((cost) => (
-                        <li key={cost}>{cost}</li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+                <OptionTrade option={option} />
               </div>
             </li>
           );
         })}
       </ol>
     </section>
+  );
+}
+
+// What an option gains (a green +) and what it costs (a red −); nothing when it lists neither. The
+// phone draws an option with it too (P7-R2-5).
+export function OptionTrade({ option }: { option: DecisionOption }) {
+  if (option.gains.length + option.costs.length === 0) return null;
+  return (
+    <div className="op-trade">
+      <ul className="op-gains" aria-label={t('options.gains')}>
+        {option.gains.map((gain) => (
+          <li key={gain}>{gain}</li>
+        ))}
+      </ul>
+      <ul className="op-costs" aria-label={t('options.costs')}>
+        {option.costs.map((cost) => (
+          <li key={cost}>{cost}</li>
+        ))}
+      </ul>
+    </div>
   );
 }

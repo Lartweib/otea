@@ -238,6 +238,31 @@ describe('reviewing an item on the phone', () => {
     expect(html).toContain('<dd>abc123</dd>');
   });
 
+  // Pros («+ ») and cons («- ») drew as the same «•» bullets on the phone, where the desk shows a
+  // green + and a red − (P7-R2-5).
+  it('draws the options a step handed off with their gains and costs apart', () => {
+    const html = renderToStaticMarkup(
+      <HandedList
+        fields={[
+          {
+            ref: 'options',
+            name: 'Opciones',
+            value:
+              '### A · SQLite local (recomendada)\nTodo queda en el dispositivo.\n+ funciona sin red\n- sin sincronizar\n\n### B · Backend\n+ sincroniza\n- cuesta dinero',
+            long: true,
+            options: true,
+          },
+        ]}
+      />,
+    );
+    const gains = html.slice(html.indexOf('class="op-gains"'));
+    expect(gains).toMatch(/^class="op-gains"[^>]*><li>funciona sin red<\/li><\/ul>/);
+    expect(html).toMatch(/class="op-costs"[^>]*><li>sin sincronizar<\/li><\/ul>/);
+    expect(html).toContain('<b>SQLite local</b>');
+    expect(html).toContain('<p class="op-summary">Todo queda en el dispositivo.</p>');
+    expect(html).not.toContain('<li>+ ');
+  });
+
   it('leaves the desk sheet as it was', () => {
     const html = render(review, false);
     expect(html).toContain('class="sheet-bar');

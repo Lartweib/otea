@@ -18,6 +18,7 @@ import {
 } from '../../components/evidence/EvidenceViewer.tsx';
 import { pickableOn, type ReaderPick } from '../../components/evidence/reader-pick.ts';
 import { NoteText } from '../../components/NoteText.tsx';
+import { OptionTrade } from '../../components/OptionsModule.tsx';
 import { Unheard } from '../../components/Unheard.tsx';
 import { agoText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
@@ -25,6 +26,7 @@ import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import { itemOpened } from '../../kit/pop/toast.tsx';
 import type { Look } from '../../lanes/looks.ts';
 import { anyoneWaits } from '../../listening.ts';
+import { type DecisionOption, parseOptions } from '../../options.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { useKeyboardInset } from '../../phone/CaptureSheet.tsx';
 import { useSideWord, valueWord } from '../../preset-words.ts';
@@ -342,13 +344,24 @@ function Quote({ text }: { text: string }) {
 
 // What a step handed off that is not a file, by name: a long field drawn as Markdown (its headings,
 // lists and tables), a short one as it is (IDEA2-2: a brief read raw, «## Problema» and pipes).
-export function HandedList({ fields }: { fields: readonly HandedField[] }) {
+export function HandedList({
+  fields,
+  agent,
+}: {
+  fields: readonly HandedField[];
+  // Who handed them off: the one who recommends an option.
+  agent?: string | undefined;
+}) {
   return (
     <dl className="p-handed">
       {fields.map((f) => (
         <div key={f.ref} className={f.long ? 'long' : undefined}>
           <dt>{f.name}</dt>
-          {f.long ? (
+          {f.options && parseOptions(f.value).length > 0 ? (
+            <dd>
+              <PhoneOptions options={parseOptions(f.value)} agent={agent} />
+            </dd>
+          ) : f.long ? (
             <dd>
               <NoteText className="p-text" text={f.value} />
             </dd>
@@ -358,6 +371,46 @@ export function HandedList({ fields }: { fields: readonly HandedField[] }) {
         </div>
       ))}
     </dl>
+  );
+}
+
+// Options a step handed off, as the desk reads them: each one's letter and name, the one the agent
+// recommends, its summary, then what it gains (+) and costs (−). As Markdown its pros and cons were
+// the same «•» bullets (P7-R2-5).
+function PhoneOptions({
+  options,
+  agent,
+}: {
+  options: readonly DecisionOption[];
+  agent?: string | undefined;
+}) {
+  return (
+    <ol className="op-list">
+      {options.map((option) => (
+        <li
+          key={option.letter}
+          className="op-option"
+          data-recommended={option.recommended || undefined}
+        >
+          <span className="op-letter" aria-hidden="true">
+            {option.letter}
+          </span>
+          <div className="op-body">
+            <div className="op-name">
+              <b>{option.name}</b>
+              {option.recommended ? (
+                <span className="op-tag">
+                  {agent ? <AgentMark name={agent} decorative /> : null}
+                  {t('options.recommends')}
+                </span>
+              ) : null}
+            </div>
+            {option.summary ? <p className="op-summary">{option.summary}</p> : null}
+            <OptionTrade option={option} />
+          </div>
+        </li>
+      ))}
+    </ol>
   );
 }
 
@@ -420,7 +473,7 @@ function RoundView({
         <Lab x={newest && r.n > 1 ? t('phone.r.newIn', { n: r.n }) : t('toca.round', { n: r.n })}>
           {t('phone.r.delivered')}
         </Lab>
-        {handed?.length ? <HandedList fields={handed} /> : null}
+        {handed?.length ? <HandedList fields={handed} agent={r.by} /> : null}
         {r.note ? (
           <NoteText className="p-text" text={r.note} />
         ) : handed?.length ? null : (

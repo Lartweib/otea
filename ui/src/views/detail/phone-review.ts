@@ -170,7 +170,15 @@ export function readerOf(
 // What a step handed off that is not a file (Commit en main): its fields that hold a value, by name,
 // in the step's order. A step that hands off only fields still shows what it delivered.
 // `long` marks a long-text field: its value is Markdown, drawn as such, never read raw (IDEA2-2).
-export type HandedField = { ref: string; name: string; value: string; long: boolean };
+// `options`: a long field the board shows as options (`show: 'options'`), drawn as the desk draws
+// them, gains and costs apart (P7-R2-5).
+export type HandedField = {
+  ref: string;
+  name: string;
+  value: string;
+  long: boolean;
+  options?: boolean;
+};
 
 export function handedFields(
   def: BoardDefinition,
@@ -190,6 +198,7 @@ export function handedFields(
         name: part.name,
         value: typeof value === 'string' ? value : JSON.stringify(value),
         long: part.kind === 'long',
+        ...(part.kind === 'long' && part.show === 'options' ? { options: true } : {}),
       },
     ];
   });
