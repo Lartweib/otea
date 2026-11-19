@@ -107,7 +107,7 @@ describe('next and the board moves', () => {
 
     expect(code).toBe(0);
     expect(out).toBe(
-      `Nothing to do on Criaturas right now.\n\n${reminder('kiln')}\n\nWait for one: otea wait --turn agent --unclaimed --collection Criaturas --as kiln in the background if you can, then otea next --collection Criaturas --as kiln.\n`,
+      `Nothing to do on Criaturas right now.\n\n${reminder('kiln')}\n\nWait for one: otea wait --turn agent --unclaimed --collection Criaturas --as kiln in the background if you can, then otea next --collection Criaturas --as kiln. Only a running wait hears the desk: approvals, answers and notes from the person.\n`,
     );
     expect((await otea('next', '--collection', 'Nope')).code).toBe(3);
   });

@@ -1195,7 +1195,7 @@ function refuse(
 function refuseAsking(id: string, asking: ItemQuestion): never {
   throw new OteaError(
     'invalid_transition',
-    `Not handed off ${id}: the question to the person waits for their answer ("${asking.text}"); otea wait --turn agent wakes you when they answer`,
+    `Not handed off ${id}: the question to the person waits for their answer ("${asking.text}"), and they answer it in Otea, not in the chat; otea wait --turn agent wakes you when they answer`,
     { kind: 'question', item: id, why: 'asking' },
   );
 }
