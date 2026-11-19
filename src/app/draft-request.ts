@@ -1,8 +1,10 @@
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isClosed, positionOf } from '../core/board/engine.ts';
 import { readDefinition } from '../core/board/schema.ts';
 import type { Lang } from '../core/board/templates.ts';
+import { activeLease } from '../core/lease.ts';
 import { findBoard, findDraft, findVersion, listBoards } from '../store/boards.ts';
 import { findItem, selectEvents } from '../store/queries.ts';
 import type { Context } from './context.ts';
@@ -76,6 +78,22 @@ export function draftRequestOf(
     };
   }
   return publishedRequestOf(ctx, item);
+}
+
+// The board drafts an agent began and has not handed in yet, each with its Pedido and the agent
+// that holds it now (null when none does): what a new session is pointed to (otea whoami), as one
+// a restart cut off may have been drafting one.
+export function openDraftsOf(
+  ctx: Context,
+  at: string,
+): { item: string; name: string; holder: string | null }[] {
+  return listBoards(ctx.db).flatMap(({ id }) => {
+    const draft = findDraft(ctx.db, id);
+    const item = draft?.requestItem ? findItem(ctx.db, draft.requestItem) : undefined;
+    if (!draft || !item || draft.agentNote !== null || isClosed(positionOf(item.state))) return [];
+    const holder = activeLease(item.lease, at)?.holder ?? null;
+    return [{ item: item.id, name: readDefinition(draft.definition).name, holder }];
+  });
 }
 
 // The board whose publish closed the Pedido, while that publish stands (undoing it writes

@@ -32,10 +32,12 @@ export type JoinFacts = {
 // harness. Nothing it writes names it, so another agent's connect never takes anything from it.
 const CONNECT = 'otea connect --as <name> --model <model> --effort <effort>';
 const CONNECT_ES = 'otea connect --as <nombre> --model <modelo> --effort <esfuerzo>';
+// A restart a harness needs to load the server comes first, before the interview: a new session
+// would not know what was said (p3-company run 2), unless it reopens the same conversation.
 const CONNECTS =
-  "it writes AGENTS.md and prints the MCP server to add to your own harness's config: add it yourself if you have not, and tell me if I must restart you or approve it; until it loads, the otea command does the same";
+  "it writes AGENTS.md and prints the MCP server to add to your own harness's config: add it yourself if you have not. If your harness must restart or reload to load it, or I must approve it, ask me now, before step 2, and tell me to reopen this same conversation with your harness's resume option, if it has one, so you keep what we said; Otea keeps every item and board draft either way. Until it loads, the otea command does the same";
 const CONNECTS_ES =
-  'escribe AGENTS.md e imprime el servidor MCP que tienes que agregar a la configuración de tu propio harness: agrégalo tú si no lo tienes, y dime si tengo que reiniciarte o aprobarlo; hasta que cargue, el comando otea hace lo mismo';
+  'escribe AGENTS.md e imprime el servidor MCP que tienes que agregar a la configuración de tu propio harness: agrégalo tú si no lo tienes. Si tu harness tiene que reiniciarse o recargarse para cargarlo, o tengo que aprobarlo, pídemelo ahora, antes del paso 2, y dime que reabra esta misma conversación con la opción de reanudar de tu harness, si la tiene, para que conserves lo que hablamos; Otea guarda todos los ítems y borradores de tableros de todos modos. Hasta que cargue, el comando otea hace lo mismo';
 const DRAFT =
   'otea board draft --new "<name>" --why "<what it is for, in my words>" --template <key>';
 const NAME = (example: string) => `lowercase letters, digits and dashes, such as ${example}`;

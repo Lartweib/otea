@@ -60,6 +60,19 @@ describe('the start prompt', () => {
     expect(startPrompt('es')).toContain('agrégalo tú');
   });
 
+  // p3-company run 2: the person restarted the agent after the interview so MCP would load, and
+  // the new session had lost what the interview said. A restart comes first, before the interview,
+  // and reopens the same conversation where the harness can.
+  it('asks for any restart the MCP server needs before the interview, reopening the same conversation', () => {
+    for (const prompt of [startPrompt('en'), joinPrompt('en', { boards: [], working: [] })])
+      expect(prompt).toContain(
+        "If your harness must restart or reload to load it, or I must approve it, ask me now, before step 2, and tell me to reopen this same conversation with your harness's resume option, if it has one, so you keep what we said; Otea keeps every item and board draft either way.",
+      );
+    expect(startPrompt('es')).toContain(
+      'Si tu harness tiene que reiniciarse o recargarse para cargarlo, o tengo que aprobarlo, pídemelo ahora, antes del paso 2, y dime que reabra esta misma conversación con la opción de reanudar de tu harness, si la tiene, para que conserves lo que hablamos; Otea guarda todos los ítems y borradores de tableros de todos modos.',
+    );
+  });
+
   // P4-R3-9: the agent ran otea serve in its own shell, so the desk died with its session.
   it('leaves the desk to the person, and says --no-open if the agent must start it', () => {
     expect(startPrompt('en')).toContain(

@@ -32,7 +32,7 @@ import {
 } from '../app/collections.ts';
 import { cropNote } from '../app/crop.ts';
 import { listDevices, revokeDevice } from '../app/devices.ts';
-import { handInText } from '../app/draft-request.ts';
+import { handInText, openDraftsOf } from '../app/draft-request.ts';
 import { listEvents } from '../app/events.ts';
 import { attachEvidence, detachEvidence, evidenceReadPath } from '../app/evidence.ts';
 import { type Brings, checkGate, type GateCheck, protectedBases, type Tip } from '../app/gates.ts';
@@ -721,7 +721,7 @@ function mcpInstructionText(entry: McpEntry): string[] {
     ),
     `As JSON: ${json}`,
     "That JSON is one shape; every harness has its own, and may skip a server in another shape without a word: translate it to your harness's schema, or add the server with your harness's own mcp add command, at project scope. The usual project files, as examples: Claude Code: .mcp.json (under mcpServers); OpenCode: opencode.json (under mcp, with command as one array of the command and its args, and env as environment).",
-    'It names no agent: each session names itself (--as; MCP tools: as). If your harness already has a server named otea that runs anything else (an older Otea, or mcp --as <name>), replace it for this project with this one. Then restart or reload your session if your harness needs it to load the server, approve it if your harness asks, and call any Otea tool. Until then, and whenever MCP is off, the otea command does the same.',
+    "It names no agent: each session names itself (--as; MCP tools: as). If your harness already has a server named otea that runs anything else (an older Otea, or mcp --as <name>), replace it for this project with this one. If your harness must restart or reload to load the server, ask the person for it now, before you go on, and to reopen this same conversation with your harness's resume option, if it has one, so you keep what was said; Otea keeps every item and board draft either way. Approve it if your harness asks, then call any Otea tool. Until then, and whenever MCP is off, the otea command does the same.",
     'Run otea connect --check now (with --as <name>), and again after that call: only it tells whether the server loaded, and the desk warns until it does.',
   ];
 }
@@ -2116,55 +2116,79 @@ const whoami: Command = {
     const client = input.channel === 'mcp' ? input.harness?.name : undefined;
     const harness = option('harness') ?? client;
     return withProject(cwd, (project) => {
-      // Over MCP this server asks: a name it hears is this session's own.
-      const session = input.channel === 'mcp' ? process.pid : undefined;
-      if (input.agent !== undefined) {
-        assertAgentName(input.agent);
-        const advice = nameFor(project.db, { folder: cwd, harness, session });
-        return {
-          data: { ...advice, name: input.agent, given: true },
-          text: `You are ${input.agent}: put it on every command (--as ${input.agent}; MCP tools: as).`,
-        };
-      }
-      // The name it is told is handed to this session: one asking at the same time gets another.
-      const advice = offerName(project.db, { folder: cwd, harness, session });
-      const others = advice.others.length > 0 ? advice.others : [];
-      if (advice.name !== null) {
-        const known = findAgent(project.db, advice.name);
-        const when = known ? ` (last seen ${timeText(known.lastSeen)})` : '';
-        return {
-          data: { ...advice, reuse: true },
-          text: [
-            `Reuse your name: ${advice.name}${when}, the agent that worked here before ${throughText(advice)}, with no session working under it now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
-            ...(advice.lately
-              ? [
-                  `${advice.name} acted moments ago: keep the name unless you know another terminal of yours works as ${advice.name} now; then take a new name of your own. Decide it yourself: never ask the person which name to use.`,
-                ]
-              : []),
-            ...(others.length > 0
-              ? [`Others that worked here and are not connected now: ${others.join(', ')}.`]
-              : []),
-          ].join('\n'),
-        };
-      }
-      if (advice.suggested !== null) {
-        const name = advice.suggested;
-        return {
-          data: { ...advice, reuse: false },
-          text: `Take the name ${name}: your earlier name here is taken by a session working now, and ${name} is handed to this session only. Put it on every command: --as ${name} (MCP tools: as).`,
-        };
-      }
-      const taken =
-        advice.working.length > 0
-          ? `, not one of the agents connected now (${advice.working.join(', ')})`
-          : '';
-      return {
-        data: { ...advice, reuse: false },
-        text: `No earlier session of yours is known here: pick a new short name of your own (lowercase letters, digits and dashes)${taken}, and put it on every command (--as <name>; MCP tools: as).`,
-      };
+      const told = nameTold(project, input, harness);
+      const name = told.data.given ? input.agent : (told.data.name ?? told.data.suggested);
+      const drafts = openDraftLines(project, name ?? null);
+      return drafts.length === 0 ? told : { ...told, text: [told.text, ...drafts].join('\n') };
     });
   },
 };
+
+// A board draft a restart may have cut off (p3-company run 2): Otea kept it, and a new session is
+// pointed to it, the command to carry it on with when the name it takes is the one holding it.
+function openDraftLines(project: Project, name: string | null): string[] {
+  return openDraftsOf(project, systemClock()).map(({ item, name: board, holder }) => {
+    const held = holder === null ? '' : `, held by ${holder}`;
+    if (holder !== null && holder !== name)
+      return `A board draft is open on ${item}, "${board}"${held}.`;
+    return `A board draft is open on ${item}, "${board}"${held}: Otea kept it as it was. If you were drafting it, carry it on: otea show ${item} --as ${name ?? '<name>'} says how to hand it in.`;
+  });
+}
+
+// What whoami tells the session about its name.
+function nameTold(
+  project: Project,
+  input: Input,
+  harness: string | undefined,
+): { data: NameAdvice & { given?: boolean; reuse?: boolean }; text: string } {
+  const { cwd } = input;
+  // Over MCP this server asks: a name it hears is this session's own.
+  const session = input.channel === 'mcp' ? process.pid : undefined;
+  if (input.agent !== undefined) {
+    assertAgentName(input.agent);
+    const advice = nameFor(project.db, { folder: cwd, harness, session });
+    return {
+      data: { ...advice, name: input.agent, given: true },
+      text: `You are ${input.agent}: put it on every command (--as ${input.agent}; MCP tools: as).`,
+    };
+  }
+  // The name it is told is handed to this session: one asking at the same time gets another.
+  const advice = offerName(project.db, { folder: cwd, harness, session });
+  const others = advice.others.length > 0 ? advice.others : [];
+  if (advice.name !== null) {
+    const known = findAgent(project.db, advice.name);
+    const when = known ? ` (last seen ${timeText(known.lastSeen)})` : '';
+    return {
+      data: { ...advice, reuse: true },
+      text: [
+        `Reuse your name: ${advice.name}${when}, the agent that worked here before ${throughText(advice)}, with no session working under it now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
+        ...(advice.lately
+          ? [
+              `${advice.name} acted moments ago: keep the name unless you know another terminal of yours works as ${advice.name} now; then take a new name of your own. Decide it yourself: never ask the person which name to use.`,
+            ]
+          : []),
+        ...(others.length > 0
+          ? [`Others that worked here and are not connected now: ${others.join(', ')}.`]
+          : []),
+      ].join('\n'),
+    };
+  }
+  if (advice.suggested !== null) {
+    const name = advice.suggested;
+    return {
+      data: { ...advice, reuse: false },
+      text: `Take the name ${name}: your earlier name here is taken by a session working now, and ${name} is handed to this session only. Put it on every command: --as ${name} (MCP tools: as).`,
+    };
+  }
+  const taken =
+    advice.working.length > 0
+      ? `, not one of the agents connected now (${advice.working.join(', ')})`
+      : '';
+  return {
+    data: { ...advice, reuse: false },
+    text: `No earlier session of yours is known here: pick a new short name of your own (lowercase letters, digits and dashes)${taken}, and put it on every command (--as <name>; MCP tools: as).`,
+  };
+}
 
 // The profile an agent runs as: declared with --model and --effort (--harness too for a
 // command-line agent the first time; an MCP client names its own), or shown without them.
