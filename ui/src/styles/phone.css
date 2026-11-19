@@ -711,13 +711,23 @@
     top: calc(56px + 8px + env(safe-area-inset-top, 0px));
     bottom: auto;
   }
-  /* So does any toast while Triage, the reader or an item's docked moves are up: their moves are
-     at the foot, and a tap on Aprobar must never land on Deshacer (P7-4, P7-R2-1). */
-  body:has(.tri) .toast,
-  body:has(.p-read) .toast,
-  body:has(.p-dock) .toast {
+  /* So does any toast while the reader is up: its moves are at the foot (P7-4). */
+  body:has(.p-read) .toast {
     top: calc(56px + 8px + env(safe-area-inset-top, 0px));
     bottom: auto;
+  }
+  /* In Triage, under its «← Te toca» line, over the title only: under the top bar it covered the
+     way back (P7-4, P7-R2-8). */
+  body:has(.tri) .toast {
+    top: calc(56px + 74px + env(safe-area-inset-top, 0px));
+    bottom: auto;
+  }
+  /* On an item page with its moves docked, just above the dock (PhoneItem measures it): a tap on
+     Aprobar never lands on Deshacer (P7-R2-1), and the item's head and «← Te toca» stay clear
+     (P7-R2-8). */
+  body:has(.p-dock) .toast {
+    top: auto;
+    bottom: calc(var(--p-dock-h, 160px) + 8px);
   }
 
   /* The topbar: the project pill takes what the agents pill leaves. */

@@ -584,6 +584,22 @@ export function PhoneItem(p: PhoneItemProps) {
   const now = app.now;
   // The toast of a move made on another item goes as this one opens (P7-R2-1).
   useEffect(() => itemOpened(item.id), [item.id]);
+  // The dock's height, for a toast to sit just above it (phone.css): over the dock it hid Aprobar
+  // (P7-R2-1), under the top it hid the item's head (P7-R2-8).
+  const dockEl = useRef<HTMLElement>(null);
+  useLayoutEffect(() => {
+    const dock = dockEl.current;
+    const root = document.documentElement;
+    if (!dock || typeof ResizeObserver === 'undefined') return;
+    const measure = () => root.style.setProperty('--p-dock-h', `${dock.offsetHeight}px`);
+    measure();
+    const seen = new ResizeObserver(measure);
+    seen.observe(dock);
+    return () => {
+      seen.disconnect();
+      root.style.removeProperty('--p-dock-h');
+    };
+  });
 
   // ---- the rounds of the step under review, as rounds.ts reads them (the engine's numbers) ----
   const rounds = useMemo(() => {
@@ -893,7 +909,7 @@ export function PhoneItem(p: PhoneItemProps) {
 
       {docked ? <div className="p-push" /> : null}
       {docked && leave ? (
-        <section className="p-dock" aria-label={t('phone.r.dock')}>
+        <section ref={dockEl} className="p-dock" aria-label={t('phone.r.dock')}>
           <div className="btns">
             <button
               ref={noteBtn}
@@ -910,7 +926,7 @@ export function PhoneItem(p: PhoneItemProps) {
           <p className="hint">{tx('notes.phone.hint', { beat: <b>{t('notes.phone.beat')}</b> })}</p>
         </section>
       ) : docked ? (
-        <section className="p-dock" aria-label={t('phone.r.dock')}>
+        <section ref={dockEl} className="p-dock" aria-label={t('phone.r.dock')}>
           <div className={(primary || picking) && sendback ? 'btns two' : 'btns'}>
             {sendback ? (
               <button
