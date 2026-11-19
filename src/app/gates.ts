@@ -12,7 +12,9 @@ import {
 import {
   type BoardDefinition,
   DROPPED,
+  type Guard,
   guardedBranch,
+  type Part,
   stepById,
   TITLE,
 } from '../core/board/model.ts';
@@ -248,6 +250,36 @@ function landingPushRefusal(
   return `push refused: ${item.id} is being landed in ${placeText(def, position)}: the person approved ${branch} at ${short(tip.commit)}, and this push writes changes nobody reviewed. Push only the approved commits${rebased}; for anything else, ${reviewAgainText(def, item.id, position)}.`;
 }
 
+// Whether an item stands at or past the first step that works on the protected branch: one that
+// hands it or pushes it.
+function reachedBranch(
+  def: BoardDefinition,
+  part: Part & { guard: Guard },
+  state: string,
+): boolean {
+  const position = positionOf(state);
+  if (isClosed(position)) return true;
+  const first = def.steps.findIndex(
+    (step) => part.guard.push.includes(step.id) || step.hand.some(({ ref }) => ref === part.id),
+  );
+  const at = def.steps.findIndex((step) => step.id === position.step);
+  return first < 0 || at >= first;
+}
+
+// Whether an item ever stood at or past that step, now or in its history: only then may it hold
+// work on the branch.
+function workedOnBranch(
+  ctx: Context,
+  def: BoardDefinition,
+  part: Part & { guard: Guard },
+  item: { id: string; state: string },
+): boolean {
+  if (reachedBranch(def, part, item.state)) return true;
+  return selectEvents(ctx.db, item.id).some(
+    ({ type, data }) => type === 'transitioned' && reachedBranch(def, part, String(data.to)),
+  );
+}
+
 function isDropped(position: Position): boolean {
   return isClosed(position) && position.closed === DROPPED;
 }
@@ -312,7 +344,13 @@ function baseCheck(
         repo === undefined || fields.repo === undefined || sameRepo(item.fields[repo], fields.repo),
     )
     .filter((item) => !isClosed(positionOf(item.state)))
-    .filter((item) => !approvedTipOf(ctx, item.id, base)?.unchanged);
+    .filter((item) => !approvedTipOf(ctx, item.id, base)?.unchanged)
+    // On a board whose Rama starts at the base (P2S-R3-10), every new item names it before any work:
+    // one that never reached the step that hands or pushes the branch made no commit there, so a
+    // push of the base does not wait on it.
+    .filter(
+      (item) => !branch || branch.initial !== base || workedOnBranch(ctx, board.def, branch, item),
+    );
   const own = onBase.map((item): GateVerdict => {
     const position = positionOf(item.state);
     const round = itemOnBoard(ctx, item, board.def).round;

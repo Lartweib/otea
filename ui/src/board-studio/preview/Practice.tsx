@@ -7,6 +7,7 @@ import {
   motiveById,
   stepById,
   type Target,
+  workedBase,
 } from '../../../../src/core/board/model.ts';
 import { listOf, listOr, t, tx } from '../../i18n/i18n.ts';
 import { Dialog } from '../../kit/pop/Dialog.tsx';
@@ -308,9 +309,18 @@ function gateSentence(state: PracticeState, round: number): string {
           : t('bs.preview.try.git.reviewYou', { id, step: step?.name ?? '' });
       break;
     }
-    case 'not_push_step':
-      why = t('bs.preview.try.git.notPushStep', { id, step: step?.name ?? '', steps: pushSteps });
+    case 'not_push_step': {
+      const base = workedBase(def);
+      why = base
+        ? t('bs.preview.try.git.notPushStepBase', {
+            id,
+            base,
+            step: step?.name ?? '',
+            steps: pushSteps,
+          })
+        : t('bs.preview.try.git.notPushStep', { id, step: step?.name ?? '', steps: pushSteps });
       break;
+    }
     case 'not_done':
       why = step
         ? t('bs.preview.try.git.notDone', { id, step: step.name, n: round })
@@ -468,15 +478,22 @@ export function PracticeDialog({ draft, pair, open, onClose }: PracticeDialogPro
     </button>
   );
 
+  // On a board that works straight on its base (Código en main) the base is the item's own branch:
+  // pushing it is all there is, and nothing is merged (P2S-R3-2).
+  const base = workedBase(state.def);
   const gitLine = view.guarded ? (
     <div className="gitln">
-      <span className="pvtag">{t('bs.preview.try.git.try')}</span>
+      <span className="pvtag">
+        {base ? t('bs.preview.try.git.tryBase', { base }) : t('bs.preview.try.git.try')}
+      </span>
       <button type="button" className="chipb" onClick={() => play((s) => tryGate(s, 'push'))}>
         {t('bs.preview.try.git.push')}
       </button>
-      <button type="button" className="chipb" onClick={() => play((s) => tryGate(s, 'merge'))}>
-        {t('bs.preview.try.git.merge')}
-      </button>
+      {base ? null : (
+        <button type="button" className="chipb" onClick={() => play((s) => tryGate(s, 'merge'))}>
+          {t('bs.preview.try.git.merge')}
+        </button>
+      )}
       {state.gate ? (
         <span className={state.gate.answer.allowed ? 'gitans ok' : 'gitans'}>
           {gateSentence(state, view.round)}

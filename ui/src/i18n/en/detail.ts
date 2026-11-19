@@ -434,6 +434,7 @@ export const detail = {
   'sheet.says.yours': 'it stays yours',
   'sheet.says.lands': 'an agent then merges it into {base} and pushes {base} to the remote',
   'sheet.says.landsAny': 'an agent then merges it and pushes it to the remote',
+  'sheet.says.landsOwn': 'an agent then pushes {base} to the remote',
   'sheet.says.unpushed': 'note: {branch} was never pushed to the remote',
   'sheet.says.unchanged': 'it brings no code change: there is nothing to push',
   'sheet.says.closesUnmerged':
@@ -674,6 +675,8 @@ export const detail = {
   'bi.branch.merged': 'merged',
   'bi.branch.landed': 'merged in {step}',
   'bi.branch.landing': 'an agent merges it into {base} now and pushes {base} to the remote',
+  'bi.branch.landingOwn': 'an agent pushes {base} to the remote now',
+  'bi.branch.landedOwn': 'pushed in {step}',
   'bi.branch.closed': 'no longer pushed',
   'bi.branch.noPush': 'no pushes in {step}',
   'bi.request.board': 'Board {name}',

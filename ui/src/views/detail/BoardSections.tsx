@@ -260,12 +260,15 @@ export function WaitChecklist({
 // "Rama feat/x en api · se puede subir / congelada mientras la revisas / se puede fusionar".
 export function BranchLine({ strip }: { strip: BranchStrip | null }) {
   if (!strip) return null;
+  // A branch that is the base itself is pushed, never merged (P2S-R3-2).
   const said =
     strip.key === 'landing'
-      ? t('bi.branch.landing', { base: strip.base ?? '' })
-      : strip.key === 'noPush' || strip.key === 'landed'
-        ? t(`bi.branch.${strip.key}`, { step: strip.step ?? '' })
-        : t(`bi.branch.${strip.key}` as 'bi.branch.push');
+      ? t(strip.own ? 'bi.branch.landingOwn' : 'bi.branch.landing', { base: strip.base ?? '' })
+      : strip.key === 'landed' && strip.own
+        ? t('bi.branch.landedOwn', { step: strip.step ?? '' })
+        : strip.key === 'noPush' || strip.key === 'landed'
+          ? t(`bi.branch.${strip.key}`, { step: strip.step ?? '' })
+          : t(`bi.branch.${strip.key}` as 'bi.branch.push');
   return (
     <div className={`bstrip ${strip.tone}`} data-c title={t('bi.branch.label')}>
       <Icon name="branch" />

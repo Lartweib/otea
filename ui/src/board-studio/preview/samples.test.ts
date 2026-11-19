@@ -106,6 +106,12 @@ describe('sampleValue', () => {
     expect(sampleValue({ ...part('fdesc'), kind: 'number' }, 4)).toBe('7');
     expect(sampleValue({ ...part('fbiome'), options: [] }, 0)).toBe('—');
   });
+
+  // On a main-only board the preview named «fix/example» (P2S-R3-2): the branch it starts on.
+  it('names the branch a new item starts on, when the board says one', () => {
+    expect(sampleValue({ ...part('fdesc'), kind: 'branch' }, 0)).toBe('fix/example');
+    expect(sampleValue({ ...part('fdesc'), kind: 'branch', initial: 'main' }, 0)).toBe('main');
+  });
 });
 
 describe('sampleRaw', () => {

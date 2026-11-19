@@ -326,6 +326,10 @@ describe('branchStrip: the protected branch where the item stands', () => {
       key: 'landing',
       base: 'main',
     });
+    expect(branchStrip(landing, 'sland', fields)?.own).toBeUndefined();
+    // Its branch the base itself (a main-only board): pushed, never merged (P2S-R3-2).
+    const onMain = { ...fields, fbranch: 'main' };
+    expect(branchStrip(landing, 'sland', onMain)).toMatchObject({ key: 'landing', own: true });
   });
 
   it('is nothing on a board without a protected branch, or before the branch is named', () => {
@@ -674,6 +678,14 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
       lands: 'main',
     });
     expect(backOf(def, { ...review, fields: { [branch.id]: '' } }, 'sland').lands).toBeUndefined();
+    // Its branch the base itself (a main-only board): pushed, never merged (P2S-R3-2).
+    expect(backOf(def, { ...review, fields: { [branch.id]: 'main' } }, 'sland')).toMatchObject({
+      lands: 'main',
+      own: true,
+    });
+    expect(
+      backOf(def, { ...review, fields: { [branch.id]: 'feat/x' } }, 'sland').own,
+    ).toBeUndefined();
     const plain = tareasDeRepo();
     expect(backOf(plain, { ...review, fields: {} }, 'done').unmerged).toBeUndefined();
     expect(backOf(plain, { ...review, fields: { [branch.id]: 'feat/x' } }, 'done').unmerged).toBe(

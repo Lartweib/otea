@@ -443,6 +443,7 @@ export const detail = {
   'sheet.says.yours': 'sigue siendo tuyo',
   'sheet.says.lands': 'luego un agente la fusiona en {base} y sube {base} al remoto',
   'sheet.says.landsAny': 'luego un agente la fusiona y la sube al remoto',
+  'sheet.says.landsOwn': 'luego un agente sube {base} al remoto',
   'sheet.says.unpushed': 'ojo: {branch} nunca se subió al remoto',
   'sheet.says.unchanged': 'no trae cambios de código: no hay nada que subir',
   'sheet.says.closesUnmerged':
@@ -682,6 +683,8 @@ export const detail = {
   'bi.branch.merged': 'fusionada',
   'bi.branch.landed': 'fusionada en {step}',
   'bi.branch.landing': 'un agente la fusiona en {base} ahora y sube {base} al remoto',
+  'bi.branch.landingOwn': 'un agente sube {base} al remoto ahora',
+  'bi.branch.landedOwn': 'subida en {step}',
   'bi.branch.closed': 'ya no se sube',
   'bi.branch.noPush': 'sin subidas en {step}',
   'bi.request.board': 'Tablero {name}',

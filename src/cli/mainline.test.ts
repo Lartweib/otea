@@ -135,4 +135,31 @@ describe('the Code on main board', () => {
     approve(other);
     expect(await pushMain()).toMatchObject({ code: 0 });
   });
+
+  // Rama had to be typed «main» on every item (P2S-R3-10): it starts there. An item still being
+  // clarified made no commit on main, so a push of main never waits on it.
+  it('starts a new item on main, and never holds a push of main while it is clarified', async () => {
+    const asked = await otea(
+      'create',
+      '--collection',
+      'Código',
+      '--title',
+      'Otro pedido',
+      '--field',
+      'Qué quiero=y',
+      '--json',
+    );
+    expect(asked.code, asked.err).toBe(0);
+    const fresh = JSON.parse(asked.out);
+    expect(fresh.fields).toContainEqual(expect.objectContaining({ name: 'Rama', value: 'main' }));
+    expect(fresh.stateName).toBe('Aclarar');
+
+    expect((await otea('claim', id)).code).toBe(0);
+    change('bot.py', 'print(2)\n');
+    writeFileSync(join(repo.dir, 'regar.diff'), 'diff --git a/bot.py b/bot.py\n');
+    expect((await otea('attach', id, 'regar.diff')).code).toBe(0);
+    expect((await otea('handoff', id, '--note', 'regar')).code).toBe(0);
+    approve(id);
+    expect(await pushMain()).toMatchObject({ code: 0 });
+  });
 });

@@ -119,7 +119,7 @@ export function sampleValue(part: Part, seed = 0): string {
     case 'url':
       return 'example.com/docs';
     case 'branch':
-      return 'fix/example';
+      return part.initial ?? 'fix/example';
     case 'long':
       return t('bs.preview.value.long');
     case 'text':

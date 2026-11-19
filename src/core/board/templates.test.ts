@@ -4,7 +4,15 @@ import { viewsOf } from './analysis.ts';
 import { backWaysOf, initialPosition, mayTake, waysOf } from './engine.ts';
 import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
-import { DONE, EVIDENCE_KINDS, EVIDENCE_SHOWS, partOf, usedRefs } from './model.ts';
+import {
+  DONE,
+  EVIDENCE_KINDS,
+  EVIDENCE_SHOWS,
+  guardedBranch,
+  partOf,
+  usedRefs,
+  workedBase,
+} from './model.ts';
 import { problemsOf } from './problems.ts';
 import {
   blankBoard,
@@ -148,6 +156,16 @@ describe('templates', () => {
         /Otea refuses a push of main until|Otea rechaza el push de main hasta/,
       );
     }
+  });
+
+  // Rama had to be typed «main» on every item of Code on main (P2S-R3-10): it starts there.
+  it('starts every item of Code on main on main, a board that works straight on its base', () => {
+    const def = instantiate(requireTemplate('mainline'), 'es', {}, sequenceIds());
+    expect(guardedBranch(def)?.initial).toBe('main');
+    expect(workedBase(def)).toBe('main');
+    expect(workedBase(instantiate(requireTemplate('changes'), 'es', {}, sequenceIds()))).toBe(
+      undefined,
+    );
   });
 
   it('speaks the language asked for', () => {

@@ -159,6 +159,14 @@ describe('what an approve leads to, said before it acts', () => {
     );
   });
 
+  it('says the base itself is pushed, never merged, on a main-only board (P2S-R3-2)', () => {
+    const p = planMoves([land], { own: false, word });
+    const lands = () => ({ agent: null, round: 1, lands: 'main', own: true as const });
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
+      'an agent then pushes main to the remote',
+    );
+  });
+
   it('says before an approve that the item brings no code change (P2S-R3-3)', () => {
     const p = planMoves([land], { own: false, word });
     const lands = () => ({ agent: null, round: 1, lands: 'main', unchanged: true as const });

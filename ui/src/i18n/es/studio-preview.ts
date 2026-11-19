@@ -282,6 +282,7 @@ export const studioPreview = {
   'bs.preview.try.reopenAsk': '¿Y si se reabre una parte mientras lo revisas?',
   'bs.preview.try.reopen': 'Simular: se reabre {id}',
   'bs.preview.try.git.try': 'prueba la rama ahora',
+  'bs.preview.try.git.tryBase': 'prueba subir {base} ahora',
   'bs.preview.try.git.push': 'Subir cambios',
   'bs.preview.try.git.merge': 'Fusionar',
   'bs.preview.try.git.allowed': '{what}: permitido.',
@@ -295,6 +296,8 @@ export const studioPreview = {
     '{id} espera a que {who} lo revise en {step}: mientras tanto la rama queda congelada.',
   'bs.preview.try.git.notPushStep':
     '{id} está en {step}; su rama solo se sube mientras se hace {steps}.',
+  'bs.preview.try.git.notPushStepBase':
+    '{id} está en {step}; {base} solo se sube mientras se hace {steps}.',
   'bs.preview.try.git.notDone':
     '{id} está en {step}, ronda {n}; su rama solo se fusiona cuando {id} esté Hecho.',
   'bs.preview.try.git.notDoneDropped':

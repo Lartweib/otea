@@ -642,6 +642,8 @@ export const MAINLINE: Template = {
           'main: the work is done straight on it',
           'main: el trabajo se hace directo en ella',
         ),
+        // Every item works on main: it starts there, never typed by hand (P2S-R3-10).
+        initial: 'main',
         guard: { push: ['land'], base: 'main' },
       };
     if (part.key === 'diff')
