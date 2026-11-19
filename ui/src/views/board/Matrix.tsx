@@ -108,6 +108,7 @@ export function MatrixView({
                   <Chip
                     key={it.id}
                     item={it}
+                    aside
                     on={ticked.includes(it.id)}
                     onTick={onTick}
                     onOpen={onOpen}
@@ -216,18 +217,21 @@ function Grid(p: {
   );
 }
 
+// `aside`: in Sin estimar, where nothing is estimated yet, so no chip says «estimado» (P4-R3-4).
 function Chip({
   item,
+  aside = false,
   on,
   onTick,
   onOpen,
 }: {
   item: Item;
+  aside?: boolean;
   on: boolean;
   onTick: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
-  const guessed = Object.keys(item.estimates ?? {}).length > 0;
+  const guessed = !aside && Object.keys(item.estimates ?? {}).length > 0;
   const by = Object.values(item.estimates ?? {})[0];
   const pinned = item.priority?.pin !== undefined;
   return (
@@ -391,6 +395,7 @@ export function PhoneMatrix({
             <PhoneRow
               key={it.id}
               item={it}
+              aside
               on={ticked.includes(it.id)}
               onTick={onTick}
               onOpen={onOpen}
@@ -447,16 +452,18 @@ export function PhoneMatrix({
 
 function PhoneRow({
   item,
+  aside = false,
   on,
   onTick,
   onOpen,
 }: {
   item: Item;
+  aside?: boolean;
   on: boolean;
   onTick: (id: string) => void;
   onOpen: (id: string) => void;
 }) {
-  const guessed = Object.keys(item.estimates ?? {}).length > 0;
+  const guessed = !aside && Object.keys(item.estimates ?? {}).length > 0;
   return (
     <div className={`pmx-row${on ? ' on' : ''}`}>
       <button type="button" className="pmx-tick" aria-pressed={on} onClick={() => onTick(item.id)}>

@@ -222,3 +222,22 @@ describe("Te toca's head on the phone", () => {
     expect(html).toMatch(/Hoy entregaron <span class="n">.*1.*<\/span>, aprobaste/);
   });
 });
+
+// P4-R3-11: the Matrix order was PEN-6 then PEN-4, but «Tus propios pasos» listed PEN-4 first, by
+// age: your own steps follow the order you fixed, then the rest by age.
+describe('your own steps on Te toca', () => {
+  it('come in the order you fixed on the Matrix, then the rest oldest first', () => {
+    const own = (id: string, minutes: number, rank?: number): Item =>
+      item({
+        id,
+        state: 'reported',
+        createdBy: you,
+        updatedAt: ago(minutes),
+        ...(rank === undefined ? {} : { priority: { rank } }),
+      });
+    const all = [own('P4', 90), own('P5', 120), own('P6', 30, 1), own('P7', 60, 2)];
+    const keys = tocaBlocks(app(all), false).map((b) => b.key);
+    const rows = keys.filter((k) => k.startsWith('P'));
+    expect(rows).toEqual(['P6', 'P7', 'P5', 'P4']);
+  });
+});

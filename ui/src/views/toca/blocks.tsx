@@ -27,6 +27,7 @@ import { actedWith } from '../../presence.ts';
 import { stateWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
 import type { Item, TypeView } from '../../types.ts';
+import { byPriority } from '../board/matrix.ts';
 import { deliveryOf, evidenceWords, quietLine } from './phone.ts';
 import { spanText } from './words.ts';
 
@@ -380,10 +381,14 @@ export function tocaBlocks(
       continue;
     }
     if (phone && !YOURS.includes(sec)) quietBlock();
+    const aged = (by.get(sec) ?? []).sort((a, b) => at(a) - at(b));
+    // Your own steps follow the order you fixed on the Matrix, then the rest by age (P4-R3-11).
     const rows =
       sec === 'cerrados'
-        ? (by.get(sec) ?? []).sort((a, b) => at(b) - at(a)).slice(0, CLOSED_SHOWN)
-        : (by.get(sec) ?? []).sort((a, b) => at(a) - at(b));
+        ? aged.reverse().slice(0, CLOSED_SHOWN)
+        : sec === 'propios'
+          ? byPriority(aged)
+          : aged;
     const gloss = GLOSS[sec];
     const triage = sec === 'revisiones' && !atasco && rows.length > 1;
     blocks.push({
