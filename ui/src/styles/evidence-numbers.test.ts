@@ -28,3 +28,13 @@ describe('the notes under a file in the desk reader', () => {
     expect(body).toMatch(/overflow-y: auto;/);
   });
 });
+
+// A note on a paragraph or a phrase of a document left only a dashed outline, no number to match
+// it to its note (P5-R2-8).
+describe('a passage of a document a note is on', () => {
+  it('carries the note’s number, as an image’s pin does', () => {
+    expect(rule('.ev-reader-view .ev-doc-body [data-noted]::after')).toMatch(
+      /content: attr\(data-noted\);/,
+    );
+  });
+});

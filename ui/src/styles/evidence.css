@@ -1560,6 +1560,22 @@
   outline-offset: 2px;
   border-radius: 3px;
 }
+/* Its number, as the list under the file and an image's pins have it: a dashed outline alone
+   left the text with no mark you could match to a note (P5-R2-8). */
+.ev-reader-view .ev-doc-body [data-noted]::after {
+  content: attr(data-noted);
+  display: inline-grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  margin-left: 6px;
+  padding: 0 5px;
+  border-radius: 9px;
+  background: var(--you-wash);
+  color: var(--you);
+  font: 600 11px / 1 var(--sans);
+  vertical-align: 2px;
+}
 
 /* A screenshot zoomed in the reader (P4-11): it grows past the stage, which scrolls. */
 .ev-reader-zoom {
