@@ -3,7 +3,7 @@ import { addCollection } from '../app/collections.ts';
 import { listDevices, pairDevice, revokeDevice } from '../app/devices.ts';
 import { createItem, moveItem } from '../app/items.ts';
 import type { Project } from '../app/project.ts';
-import { CODE_TTL_MS, formatCode, MAX_ATTEMPTS, MAX_WRONG_CODES } from './lan.ts';
+import { CODE_KEPT_MS, CODE_TTL_MS, formatCode, MAX_ATTEMPTS, MAX_WRONG_CODES } from './lan.ts';
 import type { PairingView } from './pairing.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
@@ -242,6 +242,10 @@ describe('LAN access', () => {
       expect(
         (await call('/p/memory-aaaaaa/api/lan/code', { method: 'POST', body: {}, cookie })).status,
       ).toBe(403);
+      expect(
+        (await call('/p/memory-aaaaaa/api/lan/code/fresh', { method: 'POST', body: {}, cookie }))
+          .status,
+      ).toBe(403);
       const revoke = await call(`/p/memory-aaaaaa/api/devices/${id}/revoke`, {
         method: 'POST',
         body: {},
@@ -410,6 +414,79 @@ describe('LAN access', () => {
       expect(response.status).toBe(201);
       expect(code).not.toBe(old);
       expect((await pairPhone(old)).response.status).toBe(401);
+    });
+
+    // P7-R3-5: the dialog opened on the code otea serve issued minutes before, under «Caduca en 10
+    // minutos».
+    describe('opening the pairing dialog', () => {
+      const open = () => desk('/p/memory-aaaaaa/api/lan/code/fresh', { method: 'POST', body: {} });
+      const codeOf = async (response: Response) => ((await response.json()) as PairingView).code;
+
+      it('shows a new code with its whole lifetime ahead, once the last one is a while old', async () => {
+        const old = issue();
+        clock += 4 * 60 * 1000;
+
+        const response = await open();
+        const code = await codeOf(response);
+
+        expect(response.status).toBe(200);
+        expect(code?.code).not.toBe(old);
+        expect(Date.parse(code?.expiresAt ?? '')).toBe(clock + CODE_TTL_MS);
+        expect(code?.url).toBe(`http://${LAN_HOST}/pair#code=${code?.code}`);
+        expect((await pairPhone(old)).response.status).toBe(401);
+      });
+
+      it('keeps the code a moment old, the one another tab or otea serve shows', async () => {
+        const shown = issue();
+        clock += CODE_KEPT_MS - 1;
+
+        expect((await codeOf(await open()))?.code).toBe(shown);
+      });
+
+      it('keeps the code a phone is pairing with', async () => {
+        const shown = issue();
+        clock += 5 * 60 * 1000;
+        const peek = await call('/api/pair/peek', { method: 'POST', body: { code: shown } });
+        expect(peek.status).toBe(200);
+
+        expect((await codeOf(await open()))?.code).toBe(shown);
+        expect((await pairPhone(shown)).response.status).toBe(201);
+      });
+
+      it('shows no code while phone access is off', async () => {
+        const local = createServer(project, { token: TOKEN });
+        const response = await Promise.resolve(
+          local.app.request(
+            '/p/memory-aaaaaa/api/lan/code/fresh',
+            {
+              method: 'POST',
+              headers: {
+                host: LOCAL_HOST,
+                origin: `http://${LOCAL_HOST}`,
+                cookie: SESSION_COOKIE,
+                'content-type': 'application/json',
+              },
+              body: '{}',
+            },
+            { incoming: { socket: { remoteAddress: '127.0.0.1' } } },
+          ),
+        );
+        local.close();
+
+        expect(response.status).toBe(200);
+        expect(await response.json()).toMatchObject({ enabled: false, code: null });
+        expect(local.phone.codes.current()).toBeUndefined();
+      });
+
+      it('needs the signed-in browser', async () => {
+        const response = await desk('/p/memory-aaaaaa/api/lan/code/fresh', {
+          method: 'POST',
+          body: {},
+          cookie: '',
+        });
+
+        expect(response.status).toBe(403);
+      });
     });
 
     it('needs the signed-in browser to see the code', async () => {

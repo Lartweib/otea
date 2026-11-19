@@ -1,5 +1,12 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { fetchItem, reassignItem, restartItem, resumeItem, undoRelease } from './api.ts';
+import {
+  fetchItem,
+  freshPairingCode,
+  reassignItem,
+  restartItem,
+  resumeItem,
+  undoRelease,
+} from './api.ts';
 
 // Retomar, Reasignar and their Deshacer, as the UI asks the server.
 
@@ -45,6 +52,19 @@ describe('an item set aside for later, from the UI', () => {
     stubFetch();
     await resumeItem('ERR-7');
     expect(calls).toEqual([{ path: '/api/items/ERR-7/resume', body: {} }]);
+  });
+});
+
+// P7-R3-5: the pairing dialog opens on a fresh code, pointed at the network picked.
+describe('the pairing dialog, from the UI', () => {
+  it('asks for a fresh code when it opens', async () => {
+    stubFetch();
+    await freshPairingCode();
+    await freshPairingCode('192.168.1.24');
+    expect(calls).toEqual([
+      { path: '/api/lan/code/fresh', body: {} },
+      { path: '/api/lan/code/fresh?address=192.168.1.24', body: {} },
+    ]);
   });
 });
 

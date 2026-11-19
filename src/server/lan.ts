@@ -93,6 +93,9 @@ export async function localName(
 }
 
 export const CODE_TTL_MS = 10 * 60 * 1000;
+// How recently a code was issued, or read by a phone, for the pairing dialog to keep it when it
+// opens: another tab or otea serve just showed it, or a phone is pairing with it.
+export const CODE_KEPT_MS = 60 * 1000;
 // Wrong codes the current one survives; then it is thrown away and the desk shows a new one.
 export const MAX_WRONG_CODES = 5;
 // Pairing attempts one address may make per window, right or wrong.
@@ -122,6 +125,8 @@ export type Clock = () => number;
 export class PairingCodes {
   #current: PairingCode | undefined;
   #wrong = 0;
+  // When the current code was issued or last read right by a phone.
+  #usedAt = 0;
   readonly #now: Clock;
 
   constructor(now: Clock = Date.now) {
@@ -132,9 +137,17 @@ export class PairingCodes {
     let code = '';
     for (let index = 0; index < CODE_LENGTH; index += 1)
       code += ALPHABET[randomInt(ALPHABET.length)];
-    this.#current = { code, expiresAt: this.#now() + CODE_TTL_MS };
+    this.#usedAt = this.#now();
+    this.#current = { code, expiresAt: this.#usedAt + CODE_TTL_MS };
     this.#wrong = 0;
     return this.#current;
+  }
+
+  // The code the pairing dialog opens on, with its whole lifetime ahead: a new one, unless the
+  // current one was issued or read by a phone in the last CODE_KEPT_MS.
+  fresh(): PairingCode {
+    const current = this.current();
+    return current && this.#now() - this.#usedAt < CODE_KEPT_MS ? current : this.issue();
   }
 
   // The code the desk shows, while it is still good.
@@ -151,7 +164,10 @@ export class PairingCodes {
       if (this.#wrong >= MAX_WRONG_CODES) this.#current = undefined;
       return 'wrong';
     }
-    return current.expiresAt > this.#now() ? 'ok' : 'expired';
+    const now = this.#now();
+    if (current.expiresAt <= now) return 'expired';
+    this.#usedAt = now;
+    return 'ok';
   }
 
   redeem(given: string): Redeemed {

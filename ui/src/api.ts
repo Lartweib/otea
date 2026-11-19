@@ -357,6 +357,12 @@ export function newPairingCode(address?: string): Promise<LanView> {
   return post<LanView>(`/api/lan/code${lanQuery(address)}`, {});
 }
 
+// What the pairing dialog opens on: a new code, unless the current one was issued or read by a
+// phone a moment ago (another tab, otea serve, a phone pairing now).
+export function freshPairingCode(address?: string): Promise<LanView> {
+  return post<LanView>(`/api/lan/code/fresh${lanQuery(address)}`, {});
+}
+
 // The phone transport, its URL and whether Otea answers there (this computer's browser only).
 export async function fetchPhone(signal: AbortSignal): Promise<PhoneStatus> {
   return (await get('/api/phone', signal)).json();

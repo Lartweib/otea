@@ -324,6 +324,14 @@ function machineApi(doors: Doors): Hono<OteaEnv> {
         assertPhoneOn(phone).codes.issue();
         return c.json(pairingView(machine, phone, port(), c.req.query('address')), 201);
       })
+      // The pairing dialog opened: it shows a code with its whole lifetime ahead, not the one otea
+      // serve issued minutes before (P7-R3-5), unless that one may be in someone's hands now.
+      .post('/lan/code/fresh', (c) => {
+        assertCanManageDevices(c, auth);
+        assertSameOrigin(c);
+        if (phone.chosen()) phone.codes.fresh();
+        return c.json(pairingView(machine, phone, port(), c.req.query('address')));
+      })
       // How a phone reaches the desk: the chosen transport, its URL and whether it answers there.
       .get('/phone', async (c) => {
         assertCanManageDevices(c, auth);
