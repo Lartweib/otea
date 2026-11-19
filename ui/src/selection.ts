@@ -1,7 +1,8 @@
 // Routes live in the hash (SPEC §6.2): `#/` Te toca, `#/atasco`, `#/b/<board>` a board, `#/triage`,
 // `#/projects`, `#/settings`, `#/performance`, `#/lan` (the pairing dialog over Te toca), `#/studio[/...]` (see
 // StudioPage), `#/modules[/<name>]` and `#/brief/<id>,<id>`. An open item appends
-// `/i/<id>` to Te toca, Atasco and a board (`#/b/Errores/i/ERR-214`; `#/i/ERR-214` on Te toca). A
+// `/i/<id>` to Te toca, Atasco, a board and Triage (`#/b/Errores/i/ERR-214`; `#/i/ERR-214` on
+// Te toca; `#/triage/i/ERR-214` over the pass, which goes on as it was once it closes). A
 // bare `#<id>`, the CLI's deep link, opens the item on Te toca. Item ids never start with a slash.
 export type ViewRoute =
   | { view: 'toca' }
@@ -78,7 +79,9 @@ export function routeFromHash(hash: string): Route {
     const name = decode(path.slice(MODULES.length + 1));
     return name ? { view: 'modules', name } : { view: 'modules' };
   }
-  if (path === TRIAGE) return { view: 'triage' };
+  if (path === TRIAGE || path.startsWith(`${TRIAGE}/`)) {
+    return withItem({ view: 'triage' }, path.slice(TRIAGE.length));
+  }
   if (path === BRIEF || path.startsWith(`${BRIEF}/`)) {
     const ids = path
       .slice(BRIEF.length + 1)
@@ -131,7 +134,7 @@ export function boardHash(board: string): string {
   return `#${BOARD}${encodeURIComponent(board)}`;
 }
 
-// The hash of a route; an open item only on the views that list items.
+// The hash of a route; an open item only on the views that list items, and over Triage.
 export function hashOf(route: Route): string {
   const item = route.item ? `${ITEM}${encodeURIComponent(route.item)}` : '';
   switch (route.view) {
@@ -142,7 +145,7 @@ export function hashOf(route: Route): string {
     case 'board':
       return `${boardHash(route.board)}${item}`;
     case 'triage':
-      return TRIAGE_HASH;
+      return `${TRIAGE_HASH}${item}`;
     case 'projects':
       return PROJECTS_HASH;
     case 'settings':

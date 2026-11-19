@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Move } from '../../types.ts';
-import { type MoveChoice, moveSaysOf, planMoves } from './moves.ts';
+import { type MoveChoice, moveSaysOf, otherMoves, planMoves } from './moves.ts';
 
 const must = (c: MoveChoice | null | undefined): MoveChoice => {
   if (!c) throw new Error('no move');
@@ -62,6 +62,23 @@ describe('the moves, from the transitions and never from state names', () => {
     const plan = planMoves([accept, back], { own: false, word });
     expect(plan.primary?.move.to).toBe('accepted');
     expect(plan.quiet.map((c) => [c.kind, c.label])).toEqual([['move', 'Move to reported']]);
+  });
+
+  // The other ways on that the phone's page and Triage offer under Aprobar and Devolver (P7-R2-3,
+  // P7-R3-2): a move to another step, never a send-back, a discard or a move that waits.
+  it('names the other ways on: the quiet moves to another step that can be made now', () => {
+    const accept: Move = { to: 'accepted', by: 'human', reasonRequired: false, turn: 'agent' };
+    const ask: Move = { to: 'needs_info', by: 'human', reasonRequired: false, turn: 'human' };
+    const waiting: Move = { ...ask, to: 'review', requires: ['children_closed'] };
+    const plan = planMoves([accept, fixed, fixing, ask, waiting, wontFix], {
+      own: false,
+      word,
+      waits: { children: { total: 1, open: 1, done: 0, discarded: 0 } },
+    });
+    expect(otherMoves(plan).map((c) => [c.move.to, c.label])).toEqual([
+      ['fixed', 'Move to fixed'],
+      ['needs_info', 'Move to needs_info'],
+    ]);
   });
 
   it('never makes a move waiting for children the primary, and says why it waits', () => {

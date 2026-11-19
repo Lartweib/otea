@@ -57,6 +57,8 @@ describe('selection', () => {
     ['#/performance', { view: 'performance' }],
     ['#/projects/x', { view: 'toca' }],
     ['#/triagex', { view: 'toca' }],
+    ['#/triage/x', { view: 'toca' }],
+    ['#/triage/i/ERR-9', { view: 'triage', item: 'ERR-9' }],
     ['#/lan', { view: 'lan' }],
     ['#/i/%E0%A4%A', { view: 'toca' }],
   ])('routes %j to %j', (hash, route) => {
@@ -71,6 +73,7 @@ describe('selection', () => {
     [{ view: 'board', board: 'Errores' }, '#/b/Errores'],
     [{ view: 'board', board: 'Mis cosas', item: 'MC-1' }, '#/b/Mis%20cosas/i/MC-1'],
     [{ view: 'triage' }, '#/triage'],
+    [{ view: 'triage', item: 'ERR-214' }, '#/triage/i/ERR-214'],
     [{ view: 'projects' }, '#/projects'],
     [{ view: 'settings' }, '#/settings'],
     [{ view: 'performance' }, '#/performance'],
@@ -84,8 +87,9 @@ describe('selection', () => {
     expect(routeFromHash(hash)).toEqual(route);
   });
 
-  it('opens an item only on the views that list items', () => {
-    expect(hashOf({ view: 'triage', item: 'A' })).toBe('#/triage');
+  it('opens an item only on the views that list items, and over Triage', () => {
+    expect(hashOf({ view: 'settings', item: 'A' })).toBe('#/settings');
+    expect(hashOf({ view: 'triage', item: 'A' })).toBe('#/triage/i/A');
   });
 
   it('writes Te toca with nothing open as a hash', () => {

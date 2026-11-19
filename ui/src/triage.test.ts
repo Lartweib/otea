@@ -43,11 +43,18 @@ import {
   triSync,
 } from './triage.ts';
 import type { Evidence, ItemEvent, Move } from './types.ts';
+import { otherMoves, planMoves } from './views/detail/moves.ts';
 
 const done: Move = { to: 'done', by: 'human-ui', reasonRequired: false, turn: 'none' };
 const backWithReason: Move = { to: 'todo', by: 'human-ui', reasonRequired: true, turn: 'agent' };
 const back: Move = { to: 'todo', by: 'human-ui', reasonRequired: false, turn: 'agent' };
-const discard: Move = { to: 'discarded', by: 'human', reasonRequired: true, turn: 'none' };
+const discard: Move = {
+  to: 'discarded',
+  by: 'human',
+  reasonRequired: true,
+  turn: 'none',
+  closes: 'discarded',
+};
 const ask: Move = { to: 'needs_info', by: 'human', reasonRequired: false, turn: 'human' };
 
 describe('triagePlan with open children', () => {
@@ -104,7 +111,47 @@ describe('triagePlan', () => {
   });
 
   it('never sends back with a move that keeps the turn with you or closes the item', () => {
-    expect(triagePlan([done, ask, discard])).toEqual({ forward: done });
+    const plan = triagePlan([done, ask, discard]);
+    expect(plan.forward).toBe(done);
+    expect(plan.back).toBeUndefined();
+  });
+
+  // A Decisión at Diseñar offered only «Aprobar → Planificar» in Triage, while its page also had
+  // «Mover a Hecho» (P7-R3-2): the card offers the item page's other moves too.
+  it('offers the moves the item page offers, beside the swipes', () => {
+    const plan: Move = { to: 'splanit__doing', by: 'human', reasonRequired: false, turn: 'agent' };
+    const close: Move = {
+      to: 'done',
+      by: 'human',
+      reasonRequired: false,
+      turn: 'none',
+      closes: 'done',
+    };
+    const again: Move = { to: 'sdesign__doing', by: 'human', reasonRequired: true, turn: 'agent' };
+    const moves = [plan, close, again];
+    const triaged = triagePlan(moves);
+    expect(triaged).toEqual({ forward: plan, back: again, more: [close] });
+    // The same as the item page's «Mover a …», never a rule of its own.
+    const page = otherMoves(planMoves(moves, { own: false, word: (s) => s })).map((c) => c.move);
+    expect(triaged.more).toEqual(page);
+    expect(swipeAction('right', triaged)).toEqual({ kind: 'move', to: 'splanit__doing' });
+    expect(swipeAction('left', triaged)).toEqual({ kind: 'explain', to: 'sdesign__doing' });
+  });
+
+  it('offers no other move that discards, that a swipe already makes, or that waits', () => {
+    expect(triagePlan([done, ask, discard]).more).toEqual([ask]);
+    // The way back that needs no reason is Devolver's, not a «Mover a …» of its own.
+    expect(triagePlan([done, back]).more).toBeUndefined();
+    const gate = { to: ['done', 'needs_info'], note: 'TAR-6 sigue sin terminar' };
+    expect(triagePlan([done, ask, backWithReason], {}, gate).more).toBeUndefined();
+  });
+
+  it('leaves to the pick the other approvals of a decision that carry it', () => {
+    const design: Move = { to: 'design', by: 'human', reasonRequired: false, turn: 'agent' };
+    const refine: Move = { to: 'refine', by: 'human', reasonRequired: true, turn: 'agent' };
+    const close: Move = { to: 'done', by: 'human', reasonRequired: false, turn: 'none' };
+    const plan = triagePlan([design, close, refine], undefined, undefined, ['design', 'done']);
+    expect(plan).toEqual({ pick: design, back: refine });
   });
 
   it('has no forward when no move is primary', () => {

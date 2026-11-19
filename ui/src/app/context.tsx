@@ -142,11 +142,14 @@ export function typeOfItem(
 }
 
 // The route that opens an item: the current list's when the item's row is in it, else its board.
+// Over Triage it always opens there: the pass stays as it was under it, and closing the item goes
+// back to it (P7-R3-2).
 export function routeToOpen(
   route: Route,
   item: Pick<Item, 'id' | 'collection'>,
   inView: boolean,
 ): Route {
+  if (route.view === 'triage') return { view: 'triage', item: item.id };
   if (LISTS.has(route.view) && inView) {
     const { item: _open, ...view } = route;
     return { ...view, item: item.id } as Route;

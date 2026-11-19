@@ -69,6 +69,13 @@ export function planMoves(
   return plan;
 }
 
+// The other ways on, offered under Aprobar and Devolver on the phone's page and on a Triage card:
+// a move to another step that can be made now, such as «Mover a Hecho» (P7-R2-3, P7-R3-2).
+// Discarding stays on the item's page.
+export function otherMoves(plan: MovePlan): MoveChoice[] {
+  return plan.quiet.filter((c) => c.kind === 'move' && !c.blocked);
+}
+
 export type Says = { verb: string; state: string; tail: string };
 
 // The line under the moves: "Approve → fixed · it closes" (the component bolds the arrow and state).
