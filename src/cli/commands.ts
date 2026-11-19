@@ -109,7 +109,7 @@ import {
   setProjectIcon,
 } from '../app/project.ts';
 import { type ProofSource, tickPoint } from '../app/proofs.ts';
-import { answerWaiting, askedByAgent, askQuestion } from '../app/questions.ts';
+import { answerWaiting, askedByAgent, askQuestion, wakesWhileAsking } from '../app/questions.ts';
 import { readerFilter } from '../app/reader-filter.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { relayDecision } from '../app/relay.ts';
@@ -1605,22 +1605,25 @@ const wait: Command = {
           ? { topics: 'on', text: `The person turned topics on. ${TOPICS_TEXT}` }
           : undefined;
       // An agent waiting on the agent turn while its own question waits for the person waits for
-      // the answer: other free work would wake it at once, and the answer would go unread.
+      // the answer, and for its send-backs and new work; work already free when it asked does not
+      // wake it (wakesWhileAsking).
       const onItsQuestion = () =>
         input.actor.kind === 'agent' && turn === 'agent' && askedByAgent(project, me).length > 0;
+      const keep = () => {
+        const offerable = forMe ? offerableTo(project, me) : undefined;
+        const asking =
+          input.actor.kind === 'agent' && turn === 'agent'
+            ? wakesWhileAsking(project, me)
+            : undefined;
+        if (!asking) return offerable;
+        return (item: Item) => asking(item) && (offerable?.(item) ?? true);
+      };
       const lookFor = () =>
         topicsTurnedOn() ??
         noteWaiting(project, me) ??
         (input.actor.kind === 'agent' ? topicWaiting(project, me) : undefined) ??
         answerWaiting(project, me) ??
-        (onItsQuestion()
-          ? undefined
-          : oldestWaiting(
-              project,
-              filter,
-              undefined,
-              forMe ? offerableTo(project, me) : undefined,
-            ));
+        oldestWaiting(project, filter, undefined, keep());
       // Waiting is listening: the agent is heard as it waits, so it counts as connected and its
       // profile stays confirmed.
       // When it was last heard: a wait whose session ended stops its agent listening at once.
