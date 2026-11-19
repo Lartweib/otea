@@ -772,6 +772,9 @@ function isTheirs(
   if (asker !== undefined && asker !== agent) return false;
   // Planned work waits for the plan that made it to be approved.
   if (plannedBy(ctx, item)) return false;
+  // A step that waits for parts or blockers still being worked on is not the agent's work yet: its
+  // handoff cannot pass, and offering it would loop the agent on it (P7-R2-2).
+  if (waitsOpen(def, on)) return false;
   const mine =
     position.phase === 'doing'
       ? mayTake(def, position.step)
@@ -878,12 +881,14 @@ function waitsForMerges(
   return on.links.parts.some(({ id }) => merging.has(id));
 }
 
-// Whether the step being done waits for parts or blockers still open: its handoff cannot pass yet.
+// Whether the step being done waits for parts or blockers still being worked on: its handoff cannot
+// pass yet. One Done and waiting only to be merged is merge work for an agent (waitsForMerges).
 function waitsOpen(def: BoardDefinition, on: ItemOnBoard): boolean {
   const position = on.position;
   if (isClosed(position) || position.phase !== 'doing') return false;
   const step = stepById(def, position.step);
-  return step !== undefined && openWaits(step, on.facts).length > 0;
+  if (step === undefined) return false;
+  return openWaits(step, on.facts).some(({ open }) => open?.some(({ unmerged }) => !unmerged));
 }
 
 // How far along its board an open item stands: whether it waits for a review, and its step's place.
@@ -969,23 +974,22 @@ export function nextFor(
             held: activeLease(item.lease, at) !== null,
             left: leftFor(ctx, item.id) === agent,
             returned: on.sentBack !== undefined,
-            waiting: waitsOpen(board.def, on),
             merges: waitsForMerges(board.def, on, merging),
             ...progressOf(board.def, item),
           };
         }),
     );
     // What the agent holds, then what the person left for it (Reasignar), then what was sent back
-    // to it; then anything that can move on before a step that waits for parts or blockers still
-    // open (its handoff cannot pass yet); then what the person put on top, then the order they
-    // fixed (app/priority.ts); then work already handed on comes before new work: a review, then the
-    // step furthest along (its earlier steps are approved), and only then the oldest.
+    // to it; then anything that can move on before a step that waits for its parts to be merged;
+    // then what the person put on top, then the order they fixed (app/priority.ts); then work
+    // already handed on comes before new work: a review, then the step furthest along (its earlier
+    // steps are approved), and only then the oldest. A step that waits for what is still open is
+    // never offered (isTheirs).
     candidates.sort(
       (a, b) =>
         Number(b.held) - Number(a.held) ||
         Number(b.left) - Number(a.left) ||
         Number(b.returned) - Number(a.returned) ||
-        Number(a.waiting) - Number(b.waiting) ||
         Number(a.merges) - Number(b.merges) ||
         byOrder(pinOf(a.item), pinOf(b.item)) ||
         byOrder(rankOf(a.item), rankOf(b.item)) ||

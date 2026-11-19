@@ -17,6 +17,7 @@ import {
   itemOnBoard,
   nextFor,
   OFFER_MS,
+  offerableTo,
   sendBackItem,
 } from './next.ts';
 import { linkItems } from './relations.ts';
@@ -373,6 +374,35 @@ describe('the order next offers work in', () => {
     );
 
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(blocker.id);
+  });
+
+  // P7-R2-2: a parent waiting on children in the person's review is no agent work.
+  it('offers no item whose step waits for what is still open, nor counts it for a wait', () => {
+    const ctx = memoryContext();
+    const def = creatures();
+    def.steps = def.steps.map((s) =>
+      s.id === 'sanimate' ? { ...s, waits: ['blockers' as const] } : s,
+    );
+    board(ctx, def);
+    const along = creature(ctx, 'Avanzada');
+    attach(ctx, along.id, 'eart');
+    handoffItem(ctx, { id: along.id, actor: quill, channel: 'cli' }, now);
+    approveItem(ctx, { id: along.id, actor: you, channel: 'ui' }, now);
+    const blocker = creature(ctx, 'Antes');
+    linkItems(
+      ctx,
+      { id: blocker.id, kind: 'blocks', other: along.id, actor: you, channel: 'ui' },
+      now,
+    );
+    // The blocker waits in the person's review: nothing is the agent's to do.
+    attach(ctx, blocker.id, 'eart');
+    handoffItem(ctx, { id: blocker.id, actor: quill, channel: 'cli' }, now);
+
+    expect(nextFor(ctx, 'kiln', {}, now)).toMatchObject({ item: null, idle: true });
+    expect(offerableTo(ctx, 'kiln', now)(along)).toBe(false);
+    // Once the blocker is approved and done, the item is the agent's again.
+    approveItem(ctx, { id: blocker.id, actor: you, channel: 'ui', way: 'Done' }, now);
+    expect(nextFor(ctx, 'kiln', {}, now).item).toBe(along.id);
   });
 });
 
