@@ -354,6 +354,49 @@ describe('check', () => {
       });
     });
 
+    // git switch -c X origin/main gives X the upstream origin/main: what the remote has of X is
+    // still origin/X, so an approved branch pushed there lands (P1-R2-1).
+    it('compares a branch made from origin/main with origin/<branch>, not with its upstream', async () => {
+      person(task, 'implementing');
+      commit('keys');
+      git('update-ref', 'refs/remotes/origin/chg-1/keys', 'chg-1/keys');
+      git('branch', '-q', '--set-upstream-to=origin/main', 'chg-1/keys');
+      await otea('move', task, 'implementing__review');
+      person(task, 'done');
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'chg-1/keys');
+
+      expect(await push('--branch', '--repo')).toMatchObject({
+        code: 0,
+        out: `push allowed: ${task} is Done; main takes its branch.\n`,
+      });
+      git('checkout', '-q', 'chg-1/keys');
+      commit('after the review');
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'chg-1/keys');
+      expect(await push('--branch', '--repo')).toEqual({
+        code: 19,
+        out: `push refused: chg-1/keys holds commits origin/chg-1/keys never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n`,
+        err: '',
+      });
+    });
+
+    it('falls back to the upstream when the remote has no branch of the same name', async () => {
+      person(task, 'implementing');
+      commit('keys');
+      git('branch', '-q', '--set-upstream-to=origin/main', 'chg-1/keys');
+      await otea('move', task, 'implementing__review');
+      person(task, 'done');
+      git('checkout', '-q', 'main');
+      git('merge', '-q', '--ff-only', 'chg-1/keys');
+
+      expect(await push('--branch', '--repo')).toEqual({
+        code: 19,
+        out: `push refused: chg-1/keys holds commits origin/main never got, so nobody reviewed them; main takes ${task}'s branch only as it was pushed.\n`,
+        err: '',
+      });
+    });
+
     it('refuses a push into the base that brings in commits no item’s branch holds', async () => {
       person(task, 'implementing');
       commit('keys');

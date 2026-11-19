@@ -136,14 +136,32 @@ function commitsOutside(
   return listed.split(/\r?\n/).filter(Boolean);
 }
 
-// The remote branch a local one is pushed to, by name (origin/feat/x): its upstream, or else
-// origin/<branch>; undefined when the remote has none.
+// The remote branch a local one is pushed to, by name (origin/feat/x): the remote-tracking branch
+// of the same name, on the remote its upstream names or else on origin; only when the remote has
+// none of that name, its upstream. git switch -c feat/x origin/main gives feat/x the upstream
+// origin/main, yet what the review saw is what was pushed to origin/feat/x (P1-R2-1). Undefined
+// when the remote has neither.
 function remoteName(cwd: string, branch: string): string | undefined {
+  const remotes = [configured(cwd, `branch.${branch}.remote`), 'origin'].filter(
+    (remote): remote is string => remote !== undefined && remote !== '.',
+  );
+  for (const remote of new Set(remotes)) {
+    if (commitOf(cwd, `refs/remotes/${remote}/${branch}`)) return `${remote}/${branch}`;
+  }
   try {
-    const upstream = git(cwd, 'rev-parse', '--abbrev-ref', `${branch}@{upstream}`);
-    if (upstream) return upstream;
-  } catch {}
-  return commitOf(cwd, `refs/remotes/origin/${branch}`) ? `origin/${branch}` : undefined;
+    return git(cwd, 'rev-parse', '--abbrev-ref', `${branch}@{upstream}`) || undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+// A git config value, or undefined when it is not set.
+function configured(cwd: string, key: string): string | undefined {
+  try {
+    return git(cwd, 'config', '--get', key) || undefined;
+  } catch {
+    return undefined;
+  }
 }
 
 function isAncestor(cwd: string, ancestor: string, of: string): boolean {
@@ -167,10 +185,10 @@ export function mergedInto(cwd: string, branch: string, base: string): boolean {
   );
 }
 
-// What the remote has of a branch, as this checkout last saw it: its upstream, or else
-// origin/<branch>.
+// What the remote has of a branch, as this checkout last saw it: the remote branch it is pushed
+// to (remoteName), or else origin/<branch>.
 export function remoteOf(cwd: string, branch: string): string {
-  return commitOf(cwd, `${branch}@{upstream}`) ? `${branch}@{upstream}` : `origin/${branch}`;
+  return remoteName(cwd, branch) ?? `origin/${branch}`;
 }
 
 // Whether cwd is in a repo's main checkout, not one of its linked worktrees (git worktree add);
