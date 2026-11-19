@@ -213,9 +213,10 @@ export type PillMark = 'working' | 'idle' | 'none' | 'offline';
 
 // The pill's 16 px mark: the working node with its orbit while an agent holds a lease, a ring with
 // agents connected, a dashed ring with none (one gone quiet is not connected); offline while the
-// stream is down (it cannot count).
+// stream is down (it cannot count). The first moments of a page load, before the stream is ready,
+// are not offline: they count what the server gave (P1-R2-8).
 export function pillMark(connection: Connection, rows: readonly AgentRow[]): PillMark {
-  if (connection !== 'live') return 'offline';
+  if (connection === 'reconnecting') return 'offline';
   const { holding, idle, connected } = agentCounts(rows);
   if (holding > 0) return 'working';
   return idle + connected > 0 ? 'idle' : 'none';
@@ -233,7 +234,7 @@ export type PillSummary =
 // What the pill says (mock §1): what happens, not how many there are. "2 trabajando" before "3
 // agentes"; with nobody working, how many wait; nobody connected; or that it cannot tell.
 export function pillSummary(connection: Connection, rows: readonly AgentRow[]): PillSummary {
-  if (connection !== 'live') return { kind: 'offline' };
+  if (connection === 'reconnecting') return { kind: 'offline' };
   const c = agentCounts(rows);
   if (c.live === 0) return { kind: 'none' };
   // Only agents gone quiet: nobody listens, as Te toca says; the pill still names the silence.

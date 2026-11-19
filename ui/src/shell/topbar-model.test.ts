@@ -271,6 +271,9 @@ describe('the agents pill', () => {
     expect(pillMark('live', rows([agent('a')]))).toBe('idle');
     expect(pillMark('live', [])).toBe('none');
     expect(pillMark('reconnecting', rows([agent('a')]))).toBe('offline');
+    // The first moments of a page load, before the stream says it is ready, are not offline
+    // (P1-R2-8): the agents are counted as the server gave them.
+    expect(pillMark('connecting', rows([agent('a')]))).toBe('idle');
   });
 
   it('says what happens, not how many: working first, the total in grey', () => {
@@ -325,5 +328,6 @@ describe('the agents pill', () => {
   it('says nobody is connected, or that it cannot count while offline', () => {
     expect(pillSummary('live', [])).toEqual({ kind: 'none' });
     expect(pillSummary('reconnecting', rows([agent('a')]))).toEqual({ kind: 'offline' });
+    expect(pillSummary('connecting', [])).toEqual({ kind: 'none' });
   });
 });
