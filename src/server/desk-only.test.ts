@@ -25,6 +25,8 @@ const DESK_ONLY: DeskRoute[] = [
   { path: '/api/project/paths', body: (repo) => ({ path: repo }) },
   { path: '/api/project/paths/relink', body: (repo) => ({ from: repo, to: repo }) },
   { path: '/api/project/paths/forget', body: (repo) => ({ path: repo }) },
+  // Writing Otea's pre-push hook into the project's repos.
+  { path: '/api/project/git-hook', body: () => ({}) },
   { path: '/api/boards', body: () => ({ name: 'Criaturas', lang: 'es' }) },
   { path: '/api/boards/set', body: () => ({ set: 'product', lang: 'es', boards: [] }) },
   {

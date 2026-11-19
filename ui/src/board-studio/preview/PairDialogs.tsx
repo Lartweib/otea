@@ -17,7 +17,15 @@ import {
 import { draftOf, type PairRole, type PairWorkspace } from '../pair.ts';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { changeText, problemText } from '../words.ts';
-import { effectLines, type Published, pairToast, publishRoles, setupLeftText } from './publish.ts';
+import { HookOffer, useProjectSettings, writeGitHook } from './HookOffer.tsx';
+import {
+  effectLines,
+  hookOffer,
+  type Published,
+  pairToast,
+  publishRoles,
+  setupLeftText,
+} from './publish.ts';
 import { failedText, plainToast } from './toasts.tsx';
 
 // Publicar and Descartar for a joined pair (WORKSPACE rows 4–6): one plan grouped by board, errors
@@ -59,12 +67,16 @@ export function PairPublishDialog({
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [attempt, setAttempt] = useState(0);
+  // Otea's pre-push hook, offered ticked when a board of the pair protects a branch (HookOffer.tsx).
+  const [writeHook, setWriteHook] = useState(true);
+  const settings = useProjectSettings(open);
   const saved = ROLES.every((role) => draftOf(pair, role).save.kind === 'saved');
 
   // biome-ignore lint/correctness/useExhaustiveDependencies: once per opening, after both saves land
   useEffect(() => {
     if (!open) return;
     setError(null);
+    setWriteHook(true);
     if (!saved) {
       setLoading({ status: 'saving' });
       for (const role of ROLES) {
@@ -108,6 +120,9 @@ export function PairPublishDialog({
       .problems.filter((p) => p.level === 'error')
       .map((problem) => ({ role, problem })),
   );
+  const hookRepos = [
+    ...new Set(roles.flatMap((role) => hookOffer(draftOf(pair, role).def, settings))),
+  ];
   const warnings = roles.flatMap((role) =>
     (plans?.[role]?.problems ?? [])
       .filter((p) => p.level === 'warning')
@@ -129,6 +144,7 @@ export function PairPublishDialog({
         moves: sent,
         draftStamps: stamps,
       });
+      const hooked = hookRepos.length > 0 && writeHook ? await writeGitHook() : '';
       setBusy(false);
       onClose();
       const recs: Published[] = roles.map((role) => {
@@ -157,7 +173,7 @@ export function PairPublishDialog({
       ) : null;
       plainToast(
         <>
-          {words.done} {view}
+          {words.done} {hooked} {view}
         </>,
         () => {
           const versions = Object.fromEntries(
@@ -342,6 +358,7 @@ export function PairPublishDialog({
             {setupLeftText(setupLeft)}
           </p>
         ) : null}
+        <HookOffer repos={hookRepos} checked={writeHook} onChange={setWriteHook} />
         <p className="bsp-dwarn" aria-live="polite">
           {error ? failedText(error) : ''}
         </p>

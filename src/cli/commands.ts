@@ -60,7 +60,7 @@ import {
   updateItem,
 } from '../app/items.ts';
 import { keepWaitingCommand, keepWaitingLine, waitAgainLine } from '../app/keep-waiting.ts';
-import { oteaLauncher, withHome } from '../app/launcher.ts';
+import { type Launcher, oteaLauncher, withHome } from '../app/launcher.ts';
 import { claimItem, heartbeatItem, releaseItem } from '../app/leases.ts';
 import { openMachine, rememberLocalProject, withMachine } from '../app/machine.ts';
 import { markMerged, reopenItem } from '../app/merged.ts';
@@ -2500,6 +2500,8 @@ type ServeOptions = {
   tailscale: TailscaleCli;
   probe: Probe;
   warn: Input['warn'];
+  // How a git hook the desk writes runs this Otea again (Publicar's offer), as hook install --git.
+  gitHook: Launcher;
 };
 
 // The project the command runs in, when there is one; a local one is remembered for the server to
@@ -2563,7 +2565,7 @@ async function serveUntil(
   cwd: string,
   options: ServeOptions,
 ): Promise<Served> {
-  const { port, lan, tailscale, probe, warn } = options;
+  const { port, lan, tailscale, probe, warn, gitHook } = options;
   const here = projectHere(cwd);
   const home = oteaHome();
   // One server per Otea home: a second otea serve points at the one running.
@@ -2588,6 +2590,7 @@ async function serveUntil(
       // The server's own key pair for Web Push, kept beside the UI token.
       notify: { keys: ensureVapidKeys(home, { warn }) },
       network: localNetwork,
+      gitHook,
     });
     const listening = await listen(server, port);
     // Open to the local network when it was left open (Settings › Phone, otea phone lan --open),
@@ -2659,7 +2662,7 @@ const serve: Command = {
   summary: `Serve the live UI of every project on this computer on 127.0.0.1 (default port ${DEFAULT_PORT}) until Ctrl+C, and open this project's page signed in; when this computer's otea serve runs already, it opens this project there instead. It also opens to phones on the same network when that was left open (Settings > Phone, otea phone lan --open), and --lan opens it for this run only; a phone on Tailscale (otea phone tailscale) pairs without it`,
   args: [],
   options: { port: {}, 'no-open': { flag: true }, lan: { flag: true } },
-  execute: async ({ cwd, option, flag, signal, openUrl, warn, tailscale, probe }) => {
+  execute: async ({ cwd, option, flag, signal, openUrl, warn, tailscale, probe, home }) => {
     // A server whose starter is gone (an agent's session that ran it in the background ended)
     // stops, as it would with the terminal that ran it.
     const owner = watchOwner(signal);
@@ -2669,6 +2672,7 @@ const serve: Command = {
       tailscale,
       probe,
       warn,
+      gitHook: withHome(OTEA, home),
     }).catch((error: unknown) => {
       owner.stop();
       throw error;

@@ -14,11 +14,13 @@ import {
   withRegistry,
 } from '../app/home.ts';
 import { type Item, listItems } from '../app/items.ts';
+import type { Launcher } from '../app/launcher.ts';
 import { liveBoards } from '../app/next.ts';
 import { addPathToProject, databasePath, type Env, type Project } from '../app/project.ts';
 import { identityAt, listRepos, type Repo, readReposAtFolder, reposInside } from '../app/repos.ts';
 import { listTopics } from '../app/topics.ts';
-import { hasOteaGitHook } from '../cli/hooks.ts';
+import { CommandFailure } from '../cli/command.ts';
+import { hasOteaGitHook, installGitHook } from '../cli/hooks.ts';
 import { OteaError } from '../core/errors.ts';
 import { stateLabel } from '../core/workflow.ts';
 import type { Storage } from '../store/registry.ts';
@@ -170,25 +172,31 @@ function repoOf(path: string, parent: string, { itemRepos, known }: RepoNames): 
   };
 }
 
+// The repos a path holds: itself when it is a linked repo, the ones inside a linked folder.
+function reposAt(path: OverviewPath): string[] {
+  if (path.missing) return [];
+  return path.kind === 'repo' ? [path.path] : reposInside(path.path);
+}
+
 function pathSettings(path: OverviewPath, names: RepoNames): PathSettings {
-  if (path.missing) return { ...path, repos: [] };
-  const repos =
-    path.kind === 'repo'
-      ? [repoOf(path.path, path.path, names)]
-      : reposInside(path.path).map((repo) => repoOf(repo, path.path, names));
-  return { ...path, repos };
+  return { ...path, repos: reposAt(path).map((repo) => repoOf(repo, path.path, names)) };
 }
 
 // Parent folders first, then linked repos, and the missing ones last.
 const byPlace = (a: OverviewPath, b: OverviewPath) =>
   Number(a.missing) - Number(b.missing) || Number(a.kind === 'repo') - Number(b.kind === 'repo');
 
+// The paths the project links, as the registry has them; a local project's one folder.
+function projectPaths(project: Project, env: Env): OverviewPath[] {
+  const { identity, root } = project;
+  const listed = withRegistry(env, listProjects)?.find((each) => each.id === identity.id);
+  return listed?.paths ?? [{ path: root, kind: kindOf(root), missing: false }];
+}
+
 export function projectSettings(project: Project, env: Env = process.env): ProjectSettings {
   const { identity, storage, root, dataDir } = project;
   const listed = withRegistry(env, listProjects)?.find((each) => each.id === identity.id);
-  const paths: OverviewPath[] = listed?.paths ?? [
-    { path: root, kind: kindOf(root), missing: false },
-  ];
+  const paths = projectPaths(project, env);
   const items = listItems(project);
   const boards = liveBoards(project);
   const itemRepos = items.map((item) => repoOfItem(project, item, boards));
@@ -257,4 +265,38 @@ export function forgetPath(project: Project, path: string, env: Env = process.en
     const { link, remaining } = forgetProjectPath(registry, path);
     return { path: link.path, remaining };
   });
+}
+
+// What writing Otea's pre-push hook into the project's repos did: the repos it wrote it into, and
+// the ones it left alone with why (a pre-push hook of their own, which Otea never overwrites).
+export type GitHookInstall = {
+  installed: Array<{ repo: string; path: string }>;
+  refused: Array<{ repo: string; message: string }>;
+};
+
+// Writes Otea's pre-push hook into every repo of the project that has none, so a push the boards
+// refuse is refused by git too (P2S-R3-1); a repo that has it already is left as it is. `otea` is
+// how the hook runs this Otea again, as otea hook install --git writes it.
+export function installGitHooks(
+  project: Project,
+  otea: Launcher,
+  env: Env = process.env,
+): GitHookInstall {
+  const repos = [...new Set(projectPaths(project, env).flatMap(reposAt))];
+  const known = listRepos(project, env);
+  const nameOf = (path: string) => {
+    const identity = identityAt(path);
+    return known.find((repo) => repo.identity === identity)?.name ?? basename(path);
+  };
+  const result: GitHookInstall = { installed: [], refused: [] };
+  for (const repo of repos.filter((path) => !hasOteaGitHook(path))) {
+    try {
+      const change = installGitHook(repo, otea);
+      result.installed.push({ repo: nameOf(repo), path: change.path });
+    } catch (error) {
+      if (!(error instanceof CommandFailure)) throw error;
+      result.refused.push({ repo: nameOf(repo), message: error.message });
+    }
+  }
+  return result;
 }

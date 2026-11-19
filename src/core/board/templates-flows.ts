@@ -618,7 +618,8 @@ export const CHANGES: Template = {
 // remote before they see it (P2S-R2-1): an agent commits on main without pushing, and pushes main
 // only in the step after the person's approval. Each item's branch is main itself and only that
 // step pushes it, so the gate refuses a push of main while any of the board's items is not
-// approved yet.
+// approved yet; git asks the gate only where Otea's pre-push hook is installed (P2S-R3-1), which
+// Publicar offers to write.
 export const MAINLINE: Template = {
   ...CHANGES,
   key: 'mainline',
@@ -664,8 +665,8 @@ export const MAINLINE: Template = {
       return {
         ...step,
         take: w(
-          'Work straight on main, with no branch, and write main in @{branch}. Meet each point of @{check}; if something is ambiguous, ask with otea ask before going on. If it is a bug, write a failing test first. Commit on main but never push: Otea refuses a push of main until the person approves.',
-          'Trabaja directo en main, sin rama, y escribe main en @{branch}. Cumple cada punto de @{check}; si algo es ambiguo, pregunta con otea ask antes de seguir. Si es un error, escribe primero una prueba que falle. Commitea en main pero nunca hagas push: Otea rechaza el push de main hasta que la persona lo apruebe.',
+          "Work straight on main, with no branch, and write main in @{branch}. Meet each point of @{check}; if something is ambiguous, ask with otea ask before going on. If it is a bug, write a failing test first. Commit on main but never push: main goes up only in @{land}, once the person approves. Where the repo has Otea's git hook (otea hook install --git), git refuses an earlier push; without it, nothing stops one but you.",
+          'Trabaja directo en main, sin rama, y escribe main en @{branch}. Cumple cada punto de @{check}; si algo es ambiguo, pregunta con otea ask antes de seguir. Si es un error, escribe primero una prueba que falle. Commitea en main pero nunca hagas push: main se sube solo en @{land}, cuando la persona lo aprueba. Si el repositorio tiene el hook de git de Otea (otea hook install --git), git rechaza un push antes de eso; sin él, nada lo impide salvo tú.',
         ),
         before: w(
           'Attach the @{diff} of the commits not pushed yet. For a visual interface change, @{shots} before and after; for a command-line one, the @{term} instead (never screenshots of a terminal). For a bug, @{tests} with the new test passing. In the note, say what you changed, how you tested it and what was left out.',
