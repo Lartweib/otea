@@ -3010,7 +3010,7 @@ const topicAdd: Command = {
       const done = to === undefined ? `Recorded ${topic.id}` : `Added the follow-up to ${topic.id}`;
       return {
         data: topic,
-        text: `${done}. Answer it with otea topic answer ${topic.id} --summary "<short answer>" --full "<your full answer>".`,
+        text: `${done}. Answer it with otea topic answer ${topic.id} --summary "<short answer>" --full "<your answer as you gave it>".`,
       };
     });
   },

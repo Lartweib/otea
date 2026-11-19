@@ -19,6 +19,7 @@ import {
   topicsAwaitingText,
   topicsOfItem,
   topicsOn,
+  topicText,
   topicWaiting,
 } from './topics.ts';
 
@@ -120,6 +121,16 @@ describe('a topic', () => {
       full: 'Texto completo…',
       source: 'agent',
     });
+  });
+
+  // P3C-R2-10: «Full answer (copied by the agent)» read as a verbatim copy, which it is not.
+  it('shows the full answer as the one the agent saved, not as a copy', () => {
+    addTopic(ctx, { question: 'q', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-1', summary: 's', full: 'Todo el texto.', actor: quill }, now);
+
+    const text = topicText(requireTopic(ctx, 'TEM-1', now));
+    expect(text).toContain('   Answer saved by the agent:\n   Todo el texto.');
+    expect(text).not.toContain('copied');
   });
 
   it('refuses an answer from the person', () => {
@@ -305,7 +316,8 @@ describe('topics awaiting an agent', () => {
     noteTopic(ctx, { id: 'TEM-2', text: 'Y en Windows', actor: fede }, now);
     topicWaiting(ctx, 'quill', now);
 
-    const answer = 'otea topic answer <id> --summary "<short answer>" --full "<your full answer>"';
+    const answer =
+      'otea topic answer <id> --summary "<short answer>" --full "<your answer as you gave it>"';
     expect(topicsAwaitingText(topicsAwaiting(ctx, 'quill', now))).toBe(
       [
         'Topics waiting for your answer (the person reads it in Temas):',

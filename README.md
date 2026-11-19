@@ -268,7 +268,7 @@ otea create --collection Cambios --title "Exclude node_modules" --field "Qué qu
 ```
 
 - An open topic is the agent's turn; once answered it is yours, and Te toca folds the answered ones under its lanes. One nobody touched for a day reads as left hanging.
-- Each answer shows its summary, with the full answer folded below, both as the agent copied them. Otea reads no harness transcript: what a topic keeps is the agent's own copy, whatever tool it runs in.
+- Each answer shows its summary, with the answer folded below, «guardada por el agente»: the agent saves it as it gave it in the chat, but Otea reads no harness transcript, so what a topic keeps is the agent's own account, not a verbatim copy, whatever tool it runs in.
 - From the page you can turn a topic into a task on a board you pick, linked both ways. An item lists its related topics, says while it is your turn that one is still open, and offers to close them once it is finished; a topic the same agent opened shortly before making the item, and that shares a word with it, is suggested for you to link or wave off (the three closest at most).
 - While topics are on, the agent guide (MCP instructions, `otea board`) tells agents to record each side question before answering it, a follow-up on the topic it follows, and never small talk, a check-in or a question about something said before. For that last one they look in the topics (`topic_list` with `search`, `topic_show`); `otea next` and `otea wait` remind them. While off it never mentions them.
 - `otea topic --help` lists the topic commands.

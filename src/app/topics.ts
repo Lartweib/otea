@@ -24,7 +24,8 @@ type StoredState = 'open' | 'answered' | 'closed' | 'task';
 export type TopicState = StoredState | 'hanging';
 // An event is a line Otea writes in the thread itself, such as the topic's task being deleted.
 export type TopicTurnKind = 'question' | 'answer' | 'note' | 'event';
-// Where an answer's full text came from: copied by the agent, or read from its session's transcript.
+// Where an answer's full text came from: saved by the agent (its own account of what it said, not a
+// verbatim copy), or read from its session's transcript.
 export type AnswerSource = 'agent' | 'session';
 
 export type TopicTurn = {
@@ -564,7 +565,7 @@ export function topicWaiting(
   return {
     topic: row.topic_id,
     note: row.text,
-    text: `The person left a note on topic ${row.topic_id}: "${row.text}"\nAnswer it with otea topic answer ${row.topic_id} --summary "<short answer>" --full "<your full answer>".`,
+    text: `The person left a note on topic ${row.topic_id}: "${row.text}"\nAnswer it with otea topic answer ${row.topic_id} --summary "<short answer>" --full "<your answer as you gave it>".`,
   };
 }
 
@@ -593,7 +594,7 @@ export function topicsAwaitingText(topics: readonly Topic[]): string | undefined
     'Topics waiting for your answer (the person reads it in Temas):',
     ...topics.map((topic) => {
       const { id, title } = topic;
-      const answer = `otea topic answer ${id} --summary "<short answer>" --full "<your full answer>"`;
+      const answer = `otea topic answer ${id} --summary "<short answer>" --full "<your answer as you gave it>"`;
       const notes = notesSinceAnswer(topic);
       if (notes.length === 0) return `  ${id} "${title}": ${answer}`;
       const wrote = notes.map((note) => `"${note}"`).join(' ');
@@ -633,9 +634,9 @@ export function topicText(topic: Topic): string {
         `${turn.n}. The task ${turn.text} was deleted with its board, so the topic is pending again.`,
       );
     } else if (turn.kind === 'answer') {
-      const from = turn.source === 'session' ? 'read from the session' : 'copied by the agent';
+      const from = turn.source === 'session' ? 'read from the session' : 'saved by the agent';
       lines.push(`${turn.n}. Answer by ${who}: ${turn.text}`);
-      if (turn.full) lines.push(`   Full answer (${from}):\n${turn.full.replace(/^/gm, '   ')}`);
+      if (turn.full) lines.push(`   Answer ${from}:\n${turn.full.replace(/^/gm, '   ')}`);
     } else {
       const label = turn.kind === 'question' ? 'Question' : 'Note from the person';
       lines.push(`${turn.n}. ${label}: ${turn.text}`);
