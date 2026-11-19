@@ -328,7 +328,10 @@ describe('the agent and the notes', () => {
     const reply = (note: number, actor = kiln) =>
       refusal(() => replyNote(ctx, { id: item.id, note, text: 'x', actor, channel: 'cli' }, now));
 
-    expect(reply(4)).toMatchObject({ code: 'not_found', message: `${item.id} has no note 4` });
+    expect(reply(4)).toMatchObject({
+      code: 'not_found',
+      message: expect.stringMatching(new RegExp(`^${item.id} has no note 4: .*send-back reason`)),
+    });
     expect(reply(1, scout).code).toBe('lease_held');
     expect(reply(1, you as never).code).toBe('forbidden');
     replyNote(ctx, { id: item.id, note: 1, text: 'Sí', actor: kiln, channel: 'cli' }, now);

@@ -1609,12 +1609,27 @@ const dropCommand: Command = {
   },
 };
 
+// Approving and sending back a step the person reviews is theirs, in the desk; the person who runs
+// approve at a terminal, told to by an agent, gets «Name yourself first» otherwise (P2S-R3-7).
+function personReviews(input: Input, what: 'approve' | 'send-back'): void {
+  if (input.agent !== undefined || input.channel === 'mcp') return;
+  const [id = '<id>'] = input.args;
+  const doing = what === 'approve' ? `Approving ${id} is` : `Sending ${id} back is`;
+  throw new OteaError(
+    'unnamed_agent',
+    `${doing} the person's, in the desk: open ${id} there (otea serve gives its address) and approve it or send it back. An agent never approves a step the person reviews. An agent reviewing a step agents review names itself: otea ${what} ${id} --as <name>.`,
+  );
+}
+
 const approveCommand: Command = {
   name: 'approve',
   summary: 'Approve the step you review, along --way when it has several; --note for the next step',
   args: ['id'],
   options: { way: { placeholder: 'step' }, note: {} },
-  execute: (input) => boardMove(input, approveItem),
+  execute: (input) => {
+    personReviews(input, 'approve');
+    return boardMove(input, approveItem);
+  },
 };
 
 const sendBack: Command = {
@@ -1624,6 +1639,7 @@ const sendBack: Command = {
   args: ['id'],
   options: { reason: { required: true } },
   execute: (input) => {
+    personReviews(input, 'send-back');
     input.required('reason');
     return boardMove(input, sendBackItem);
   },
@@ -2176,16 +2192,27 @@ function withNotes(project: Project, id: string, output: Output): Output {
   };
 }
 
+// What a note's number is, and what a send-back reason is instead (P2S-R3-5): an agent tried to
+// answer a send-back reason with reply, as if it were a note.
+const SEND_BACK_IS_NO_NOTE =
+  'A send-back reason is not a note: address it in your work, then say what you did in the note of your next handoff (otea handoff <id> --note "...")';
+// In every MCP agent's tool list: kept short (token-budget.test.ts).
+const NOTE_ABOUT =
+  "the number of the person's note you answer. A send-back reason is not a note: answer it in your next handoff's note";
+
 const reply: Command = {
   name: 'reply',
   summary:
     'Answer a note the person left while you do a step (--note, its number; next, show and heartbeat print them): a short answer; the step, round and lease stay as they are. A handoff waits until every note of the round is answered',
   args: ['id', 'answer'],
-  options: { note: { required: true, placeholder: 'n' } },
+  options: { note: { required: true, placeholder: 'n', about: NOTE_ABOUT } },
   execute: (input) => {
     const [id = '', answer = ''] = input.args;
     const given = input.required('note');
-    if (!/^[1-9]\d*$/.test(given)) throw new UsageError('--note must be the number of a note');
+    if (!/^[1-9]\d*$/.test(given))
+      throw new UsageError(
+        `--note must be the number of one of the person's notes (next, show and heartbeat print each with its number). ${SEND_BACK_IS_NO_NOTE}`,
+      );
     const { actor, channel } = input;
     return withAgent(input, (project) => {
       const replied = replyNote(project, { id, note: Number(given), text: answer, actor, channel });

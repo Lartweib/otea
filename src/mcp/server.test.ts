@@ -101,6 +101,17 @@ describe('mcp server', () => {
       }
     });
 
+    // reply's note was described as "n", and an agent answering a send-back reason with it failed
+    // three times (P2S-R3-5): it says what the number is, and that a send-back reason is not one.
+    it("describes reply's note, and says a send-back reason is not one", async () => {
+      const { tools } = await client.listTools();
+      const reply = tools.find(({ name }) => name === 'reply');
+      const note = reply?.inputSchema.properties?.note as { description?: string } | undefined;
+      expect(note?.description).toBe(
+        "the number of the person's note you answer. A send-back reason is not a note: answer it in your next handoff's note",
+      );
+    });
+
     it('marks the tools that only read as read-only', async () => {
       const { tools } = await client.listTools();
       const readOnly = tools.filter(({ annotations }) => annotations?.readOnlyHint);
@@ -256,6 +267,10 @@ describe('mcp server', () => {
       const reply = await call('reply', { id: 'TASKS-1', answer: 'Hecho', note: 1 });
       expect(reply.content[0]?.text).not.toMatch(/expected string|Invalid input/i);
       expect(reply.content[0]?.text).toContain('note');
+      // No such note: what a note is, and what to do with a send-back reason instead.
+      expect(reply.content[0]?.text).toContain('a send-back reason is not one');
+      const worded = await call('reply', { id: 'TASKS-1', answer: 'Hecho', note: 'the reason' });
+      expect(worded.content[0]?.text).toContain('A send-back reason is not a note');
 
       const events = await data('events', { id: 'TASKS-1', since: 0 });
       expect(Array.isArray(events)).toBe(true);

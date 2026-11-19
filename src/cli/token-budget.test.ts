@@ -68,8 +68,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // for topic_list's all-projects and topic_show's project: what was concluded about one project is
   // often asked in another (P6-R2-4; measured at 5078). Raised for board_draft's change, an agent
   // proposing a field or a step for a published board, which agents told the person they could not
-  // do (P4-6; measured at 5134 with board_draft's summary trimmed).
-  tools: { mcp: 5140 },
+  // do (P4-6; measured at 5134 with board_draft's summary trimmed). Raised for reply's note, whose
+  // description was only "n": an agent answered a send-back reason with it three times, so it says
+  // what the number is and that a send-back reason is not one (P2S-R3-5; measured at 5162).
+  tools: { mcp: 5170 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to

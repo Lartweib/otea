@@ -100,4 +100,27 @@ describe('names in output', () => {
       await client.close();
     }
   });
+
+  // Impacto came back as "low" while the desk said «baja» (P2S-R3-6): a level has its label too.
+  it('gives a level field its label beside its key, as a choice has', async () => {
+    const person = cliAt(repo.dir);
+    expect((await person('board', 'add', 'Cambios', '--template', 'changes')).code).toBe(0);
+    const made = await json(
+      'create',
+      '--collection',
+      'Cambios',
+      '--title',
+      'Botón',
+      '--field',
+      'Qué quiero=x',
+      '--field',
+      'Impacto=low',
+    );
+    expect(made.fields).toContainEqual({
+      id: expect.any(String),
+      name: 'Impacto',
+      value: 'low',
+      label: 'baja',
+    });
+  });
 });

@@ -18,6 +18,9 @@ export type OptionSpec = {
   // the command then reads an empty string and picks its default.
   optionalValue?: boolean;
   placeholder?: string;
+  // What the value is, in a sentence: an MCP tool describes the option with it (else with its
+  // placeholder).
+  about?: string;
 };
 
 export type Input = {

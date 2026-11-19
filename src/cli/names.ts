@@ -10,7 +10,7 @@ import { type EventRecord, findItem } from '../store/queries.ts';
 // What --json and MCP give a program: the stored ids, the keys it can send back, with the names a
 // person reads beside them. On a board the ids are hidden (todo, f3k9x2ab), so a program never has
 // to translate one itself: a state gets its step's name, a field `{ id, name, value }` (a choice
-// also its `label`), a move or an event its steps' names.
+// or a level also its `label`), a move or an event its steps' names.
 
 export type Board = BoardDefinition | undefined;
 
@@ -58,7 +58,8 @@ function stateThen(def: Board, id: unknown, kept: unknown): string {
 }
 const partOf = (def: Board, id: unknown): Part | undefined => def?.parts[String(id)];
 const partName = (def: Board, id: unknown) => partOf(def, id)?.name ?? String(id);
-const OPTIONS: readonly string[] = ['choice', 'multi'];
+// The kinds whose stored value is a key: each comes back with its label (a level too, P2S-R3-6).
+const OPTIONS: readonly string[] = ['choice', 'multi', 'level'];
 
 type Field = { id: string; name: string; value: unknown; label?: string };
 

@@ -335,7 +335,11 @@ export function replyNote(ctx: Context, input: ReplyNoteInput, now = systemClock
     const item = requireWritableItem(ctx.db, id);
     const at = now();
     const left = notesOf(selectEvents(ctx.db, item.id)).find(({ note }) => note === input.note);
-    if (!left) throw new OteaError('not_found', `${item.id} has no note ${input.note}`);
+    if (!left)
+      throw new OteaError(
+        'not_found',
+        `${item.id} has no note ${input.note}: the person's notes are numbered (next and show print them), and a send-back reason is not one: address it, then say what you did in the note of your next handoff`,
+      );
     if (left.answer)
       throw new OteaError(
         'invalid_transition',
