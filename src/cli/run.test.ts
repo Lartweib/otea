@@ -8,6 +8,17 @@ import { type Cli, cliAt, tempGitRepo } from './testing.ts';
 // What init says to do next, after what it did.
 const NEXT = `${INIT_NEXT.join('\n')}\n`;
 
+// P4-R3-9: after init's «Next: otea serve…» an agent ran the desk in its own shell, and the desk
+// died with the agent's session.
+describe("init's next step", () => {
+  it('leaves the desk to the person, in a terminal of their own or the desktop app', () => {
+    expect(INIT_NEXT).toEqual([
+      "Next: run otea serve in a terminal of your own, or open the Otea desktop app: the desk gives you the text to paste into your agent's chat (otea prompt prints it here).",
+      'An agent setting itself up runs otea connect --as <name> --model <id> --effort <level>; it never starts the desk for the person (if it must, otea serve --no-open).',
+    ]);
+  });
+});
+
 describe('run', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let otea: Cli;

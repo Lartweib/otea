@@ -60,6 +60,26 @@ describe('the start prompt', () => {
     expect(startPrompt('es')).toContain('agrégalo tú');
   });
 
+  // P4-R3-9: the agent ran otea serve in its own shell, so the desk died with its session.
+  it('leaves the desk to the person, and says --no-open if the agent must start it', () => {
+    expect(startPrompt('en')).toContain(
+      'Never start the desk (otea serve) yourself: I run it in a terminal of my own or open the Otea desktop app, since one you start closes with your session. If I ask you to start it anyway, run otea serve --no-open.',
+    );
+    expect(startPrompt('es')).toContain(
+      'Nunca abras tú el escritorio (otea serve): lo abro yo en una terminal mía o con la app de escritorio de Otea, porque el que abres tú se cierra con tu sesión. Si igual te pido que lo abras, ejecuta otea serve --no-open.',
+    );
+  });
+
+  // P4-R3-10: Temas is off by default, and the interview never offered it.
+  it('asks in the interview whether to keep the side questions, and how to turn that on', () => {
+    expect(startPrompt('en')).toContain(
+      'Ask me too whether you should keep a record of the side questions I ask you off the work (Topics); if I say yes, turn it on: `otea topic on`.',
+    );
+    expect(startPrompt('es')).toContain(
+      'Pregúntame también si quiero que lleves registro de las preguntas sueltas que te hago fuera del trabajo (Temas); si digo que sí, actívalo: `otea topic on`.',
+    );
+  });
+
   it('speaks the language of the screen', () => {
     expect(startPrompt('es')).toMatch(/^Configura Otea/);
     expect(startPrompt('en')).toMatch(/^Set up Otea/);

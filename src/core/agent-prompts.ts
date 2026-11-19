@@ -53,6 +53,16 @@ function exampleName(taken: readonly string[] = []): string {
 const DRAFT_ES =
   'otea board draft --new "<nombre>" --why "<para qué es, con mis palabras>" --template <clave>';
 const LOOP = 'otea wait --turn agent --unclaimed';
+// The desk is the person's to open (P4-R3-9): one an agent starts in its shell closes with it.
+const DESK =
+  'Never start the desk (otea serve) yourself: I run it in a terminal of my own or open the Otea desktop app, since one you start closes with your session. If I ask you to start it anyway, run otea serve --no-open.';
+const DESK_ES =
+  'Nunca abras tú el escritorio (otea serve): lo abro yo en una terminal mía o con la app de escritorio de Otea, porque el que abres tú se cierra con tu sesión. Si igual te pido que lo abras, ejecuta otea serve --no-open.';
+// Topics are off until the person turns them on (P4-R3-10): the interview offers them.
+const TOPICS =
+  'Ask me too whether you should keep a record of the side questions I ask you off the work (Topics); if I say yes, turn it on: `otea topic on`.';
+const TOPICS_ES =
+  'Pregúntame también si quiero que lleves registro de las preguntas sueltas que te hago fuera del trabajo (Temas); si digo que sí, actívalo: `otea topic on`.';
 const PROFILE = 'otea profile --as <name> --model <model> --effort <effort> --harness <harness>';
 const PROFILE_ES =
   'otea profile --as <nombre> --model <modelo> --effort <esfuerzo> --harness <harness>';
@@ -61,11 +71,11 @@ const WORDS = {
   en: {
     start: (repo: boolean) => [
       'Set up Otea in this project and design with me how we will work. Otea is where I hand you work and review what you hand back. Go one step at a time and tell me what you did after each one.',
-      `1. Set up: ${repo ? 'in the repository root' : 'in this folder'}, run \`otea init\` if the project is not set up yet (no template). Pick a short name of your own (${NAME(exampleName())}) and connect: \`${CONNECT}\`, with unknown for any value you cannot read from your settings (never guess); ${CONNECTS}. Then put your name on every otea command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`. Read the guide: \`otea board\`.`,
+      `1. Set up: ${repo ? 'in the repository root' : 'in this folder'}, run \`otea init\` if the project is not set up yet (no template). Pick a short name of your own (${NAME(exampleName())}) and connect: \`${CONNECT}\`, with unknown for any value you cannot read from your settings (never guess); ${CONNECTS}. Then put your name on every otea command (\`--as <name>\`; MCP tools: as). Declare it for this session too: \`${PROFILE}\`. Read the guide: \`otea board\`. ${DESK}`,
       repo
         ? '2. Read the project before asking me anything: the README, how the code is laid out, the git history (how often it changes, in what bursts), CLAUDE.md or AGENTS.md, and its CI.'
         : '2. Read the project before asking me anything: what is in this folder, any README or notes, and CLAUDE.md or AGENTS.md.',
-      `3. Ask me, one question at a time and in plain words, only what you still need: what kind of work happens here, what you do and what I do, what I need to see to approve something (${repo ? 'a diff, screenshots, a video, test results, a document' : 'screenshots, the page or file itself, a document'}), how many review rounds are usual, and what must never happen without me${repo ? ' (for code: whether anything may reach the remote before I see it)' : ''}.`,
+      `3. Ask me, one question at a time and in plain words, only what you still need: what kind of work happens here, what you do and what I do, what I need to see to approve something (${repo ? 'a diff, screenshots, a video, test results, a document' : 'screenshots, the page or file itself, a document'}), how many review rounds are usual, and what must never happen without me${repo ? ' (for code: whether anything may reach the remote before I see it)' : ''}. ${TOPICS}`,
       `4. Design the board or boards. Start from the closest template (\`otea board draft --help\` lists them, sets too) and adapt it: \`${DRAFT}\`; \`otea board draft <request id>\` (the id it printed) prints it as JSON. Edit it, with the evidence each review needs, and hand it in with \`otea board draft <request id> --file board.json\` until it reports nothing wrong. You never publish it.`,
       '5. Tell me where to review it (Studio, from the link the draft prints), that I publish it, and to try it with a first item; offer to adjust it with a new draft if something does not fit.',
       `Then keep working until I stop you: run \`otea next\`, do the step, hand it off and run \`otea next\` again; when there is nothing, run \`${LOOP}\` (in the background if you can) and then \`otea next\`. Answer my notes with \`otea reply\`.`,
@@ -101,11 +111,11 @@ const WORDS = {
   es: {
     start: (repo: boolean) => [
       'Configura Otea en este proyecto y diseña conmigo cómo vamos a trabajar. Otea es donde te paso trabajo y reviso lo que me devuelves. Ve paso a paso y dime qué hiciste después de cada uno.',
-      `1. Configuración: ${repo ? 'en la raíz del repositorio' : 'en esta carpeta'}, ejecuta \`otea init\` si el proyecto aún no está configurado (sin plantilla). Elige un nombre corto propio (${NAME_ES(exampleName())}) y conéctate: \`${CONNECT_ES}\`, con unknown en lo que no puedas leer de tu configuración (nunca adivines); ${CONNECTS_ES}. Luego pon tu nombre en cada comando de otea (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`. Lee la guía: \`otea board\`.`,
+      `1. Configuración: ${repo ? 'en la raíz del repositorio' : 'en esta carpeta'}, ejecuta \`otea init\` si el proyecto aún no está configurado (sin plantilla). Elige un nombre corto propio (${NAME_ES(exampleName())}) y conéctate: \`${CONNECT_ES}\`, con unknown en lo que no puedas leer de tu configuración (nunca adivines); ${CONNECTS_ES}. Luego pon tu nombre en cada comando de otea (\`--as <nombre>\`; herramientas MCP: as). Decláralo también para esta sesión: \`${PROFILE_ES}\`. Lee la guía: \`otea board\`. ${DESK_ES}`,
       repo
         ? '2. Lee el proyecto antes de preguntarme nada: el README, cómo está organizado el código, el historial de git (cada cuánto cambia y en qué rachas), CLAUDE.md o AGENTS.md, y su CI.'
         : '2. Lee el proyecto antes de preguntarme nada: qué hay en esta carpeta, el README o las notas que tenga, y CLAUDE.md o AGENTS.md.',
-      `3. Pregúntame, una pregunta a la vez y con palabras simples, solo lo que te falte: qué clase de trabajo se hace aquí, qué haces tú y qué hago yo, qué necesito ver para aprobar algo (${repo ? 'un diff, capturas, un vídeo, resultados de pruebas, un documento' : 'capturas, la página o el archivo mismo, un documento'}), cuántas rondas de revisión son normales y qué no debe pasar nunca sin mí${repo ? ' (en el código: si algo puede llegar al remoto antes de que yo lo vea)' : ''}.`,
+      `3. Pregúntame, una pregunta a la vez y con palabras simples, solo lo que te falte: qué clase de trabajo se hace aquí, qué haces tú y qué hago yo, qué necesito ver para aprobar algo (${repo ? 'un diff, capturas, un vídeo, resultados de pruebas, un documento' : 'capturas, la página o el archivo mismo, un documento'}), cuántas rondas de revisión son normales y qué no debe pasar nunca sin mí${repo ? ' (en el código: si algo puede llegar al remoto antes de que yo lo vea)' : ''}. ${TOPICS_ES}`,
       `4. Diseña el tablero o los tableros. Parte de la plantilla más cercana (\`otea board draft --help\` las lista, también los conjuntos) y adáptala: \`${DRAFT_ES}\`; \`otea board draft <id del Pedido>\` (el id que imprimió) lo imprime en JSON. Edítalo, con la evidencia que pide cada revisión, y entrégalo con \`otea board draft <id del Pedido> --file board.json\` hasta que no marque nada mal. Nunca lo publicas tú.`,
       '5. Dime dónde revisarlo (Studio, desde el enlace que imprime el borrador), que lo publico yo, y que lo pruebe con un primer ítem; ofréceme ajustarlo con un borrador nuevo si algo no encaja.',
       `Después sigue trabajando hasta que te detenga: ejecuta \`otea next\`, haz el paso, entrégalo y vuelve a ejecutar \`otea next\`; cuando no haya nada, ejecuta \`${LOOP}\` (en segundo plano si puedes) y luego \`otea next\`. Contesta mis notas con \`otea reply\`.`,
