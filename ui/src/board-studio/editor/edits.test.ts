@@ -20,6 +20,7 @@ import {
   setDoer,
   setFormRequired,
   setInstruction,
+  setLead,
   setRequirement,
   setReviewer,
   setRole,
@@ -217,6 +218,19 @@ describe('ways and backs', () => {
     expect(def.steps[0]?.ways).toEqual(['spolish']);
     removeWay(def, 'sconcept', 'spolish');
     expect(def.steps[0]?.ways).toEqual([]);
+  });
+
+  // p4 leftover: a step's lead (Pendientes' «Tu parte» to Hecho while «Lo hago yo» is sí) could
+  // not be seen nor changed in Studio.
+  it('sets, changes and removes where a field leads the step', () => {
+    const def = creatures();
+    const lead = { to: 'done', when: { part: 'fbiome', value: 'cwood' } };
+    setLead(def, 'sconcept', lead);
+    expect(def.steps[0]?.lead).toEqual(lead);
+    setLead(def, 'sconcept', { ...lead, to: 'spolish' });
+    expect(def.steps[0]?.lead?.to).toBe('spolish');
+    setLead(def, 'sconcept', undefined);
+    expect(def.steps[0] && 'lead' in def.steps[0]).toBe(false);
   });
 
   it('sets where a send-back lands', () => {

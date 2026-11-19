@@ -10,6 +10,7 @@ import {
   type EvidenceKind,
   type FieldKind,
   isEvidenceKind,
+  type Lead,
   MOTIVE,
   type PartKind,
   type Requirement,
@@ -330,6 +331,15 @@ export function setWhen(def: BoardDefinition, stepId: string, ref: string, when:
 }
 
 // ---- where it goes next, and back ----
+
+// «Si <campo> es <valor>, va a…»: while the item's field holds the value, the step leads it to
+// `to` instead of the next step (Step.lead, Pendientes' «Tu parte»); none takes the lead off.
+export function setLead(def: BoardDefinition, stepId: string, lead: Lead | undefined): void {
+  const step = stepOf(def, stepId);
+  if (!step) return;
+  if (lead) step.lead = lead;
+  else delete step.lead;
+}
 
 export function addWay(def: BoardDefinition, stepId: string, target: Target): void {
   const step = stepOf(def, stepId);

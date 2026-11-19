@@ -105,6 +105,12 @@ export const studioEditor = {
   'bs.editor.ways.remove': 'Quitar este camino',
   'bs.editor.ways.add': 'o a otro sitio',
   'bs.editor.ways.menu': 'o a…',
+  // El desvío de un paso según un campo del ítem (Step.lead): Pendientes lleva «Tu parte» a Hecho.
+  'bs.editor.lead.add': 'o a otro paso según un campo',
+  'bs.editor.lead.if': 'Si',
+  'bs.editor.lead.is': 'es',
+  'bs.editor.lead.to': 'va a',
+  'bs.editor.lead.remove': 'Quitar este desvío',
   'bs.editor.ways.to_done': 'termina aquí',
   'bs.editor.ways.to_step': 'salta los pasos de en medio',
   'bs.editor.ways.approve': 'Al aprobar eliges: Aprobar {ways}.',
