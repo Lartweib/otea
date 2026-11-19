@@ -100,7 +100,9 @@ describe('otea profile', () => {
     it('is what the help says to declare, never a guess', async () => {
       const { out } = await otea('profile', '--help');
 
-      expect(out).toContain('only what you can read from your settings');
+      expect(out).toContain('Declare what this session tells you');
+      expect(out).toContain('never open config files outside the project');
+      expect(out).not.toContain('settings');
       expect(out).toContain('declare unknown. Never guess');
     });
   });
@@ -120,7 +122,7 @@ describe('otea profile', () => {
       expect(code).toBe(2);
       expect(err).toContain('claude has no profile yet');
       expect(err).toContain('otea profile --model <id> --effort <level> --as claude');
-      expect(err).toContain('unknown for one you cannot read; never guess');
+      expect(err).toContain('unknown for one this session does not tell you; never guess');
     });
 
     it('keeps the profile on its event', async () => {

@@ -96,7 +96,7 @@ export function requireProfile(
       channel === 'cli' ? ' (add --harness <name> the first time, such as claude-code)' : '';
     throw new OteaError(
       'profile_required',
-      `${agent} has no profile yet: declare the model and effort you run as, exactly as your harness names them (unknown for one you cannot read; never guess), with ${how}${harness}`,
+      `${agent} has no profile yet: declare the model and effort you run as, exactly as your harness names them (unknown for one this session does not tell you; never guess), with ${how}${harness}`,
     );
   }
   if (confirmed && !declared.confirmed) {

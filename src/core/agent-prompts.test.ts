@@ -178,3 +178,21 @@ describe('the join prompt', () => {
     expect(agentPrompt('join', 'es', facts)).toBe(joinPrompt('es', facts));
   });
 });
+
+// P3C-R3-8: «read from your settings» sent an agent to open the person's harness config to learn
+// its effort. The prompts say to declare what the session tells it, and never to open config files.
+describe('declaring the profile in the prompts', () => {
+  for (const lang of ['en', 'es'] as const) {
+    it(`asks for what the session says, never a config file outside the project (${lang})`, () => {
+      const join = joinPrompt(lang, { boards: [], working: [] });
+      for (const text of [startPrompt(lang), join]) {
+        expect(text).toContain(
+          lang === 'es'
+            ? 'con unknown en lo que esta sesión no te diga (nunca adivines ni abras archivos de configuración fuera del proyecto para buscarlo)'
+            : 'with unknown for any value this session does not tell you (never guess, and never open config files outside the project to find it)',
+        );
+        expect(text).not.toMatch(lang === 'es' ? /leer de tu configuración/ : /your settings/);
+      }
+    });
+  }
+});

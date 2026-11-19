@@ -36,8 +36,11 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // chat request going on a board first and waiting in a background shell (measured at 512).
   // Raised to 560 for otea whoami, which gives a new session the name it worked under. Raised to
   // 630 with the guide's lines on answering in Otea and on staying in the wait (measured at 606).
-  // Raised to 640 with the guide's line on otea answer (P4-R2-2; measured at 633).
-  'board index': { text: 640, json: 53, mcp: 53 },
+  // Raised to 640 with the guide's line on otea answer (P4-R2-2; measured at 633). Raised to 660
+  // with rule 2 saying to declare what the session says and never to open config files outside the
+  // project, as an agent read the person's harness settings to learn its effort (P3C-R3-8; measured
+  // at 649).
+  'board index': { text: 660, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -74,7 +77,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // what the number is and that a send-back reason is not one (P2S-R3-5; measured at 5162).
   // Raised for answer, the person's answer to a question given in the chat, which an agent could
   // not put on the question and asked the person to paste into Otea (P4-R2-2; measured at 5272).
-  tools: { mcp: 5280 },
+  // Raised for profile's help: declare what the session says, never a config file opened outside
+  // the project, which an agent read to learn its effort (P3C-R3-8; measured at 5288).
+  tools: { mcp: 5300 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to
@@ -94,8 +99,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // wait: only it hears the desk, agents went back to it neither after a chat reply nor stopped it
   // safely (P2S-6, P8-R2-13, P8-R2-11; measured at 587). Raised to 620 because people answer in the
   // chat anyway: rule 10 now says that answer goes on the question with otea answer, where it
-  // said to tell them to answer in Otea (P4-R2-2; measured at 614).
-  instructions: { mcp: 620 },
+  // said to tell them to answer in Otea (P4-R2-2; measured at 614). Raised to 640 for rule 2:
+  // declare what the session says, never open config files outside the project, as «read from your
+  // settings» sent an agent to the person's harness settings (P3C-R3-8; measured at 630).
+  instructions: { mcp: 640 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.
