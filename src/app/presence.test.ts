@@ -270,13 +270,35 @@ describe('agent presence', () => {
       });
 
       // P6-R2-10, P4-R2-10: the harness loaded the server, the agent uses the command line.
-      it('says MCP is unused, not missing, once the harness loaded the server since', () => {
+      it('says MCP is unused, not missing, while a server the harness loaded runs', () => {
         as('espiga', 'claude-code');
         markMcpAsked(ctx.db, 'espiga', T0);
-        mcpLoaded(ctx.db, { name: 'claude-code', version: '2.1.0' }, at(T1));
+        mcpLoaded(ctx.db, { name: 'claude-code', version: '2.1.0' }, at(T1), 101);
 
-        expect(mcp('espiga')).toBe('unused');
-        expect(listAgents(ctx.db, at(T2))[0]?.mcpMissing).toBe(false);
+        const alive = (pid: number) => pid === 101;
+        const agents = listAgents(ctx.db, at(T2), alive);
+        expect(agents.find((a) => a.name === 'espiga')?.mcp).toBe('unused');
+        expect(agents[0]?.mcpMissing).toBe(false);
+      });
+
+      // P4-R3-7: a session with no MCP at all read «conectado por CLI, MCP sin usar», because an
+      // earlier session of that harness had loaded the server.
+      it('says MCP is missing once the server the harness loaded has ended', () => {
+        as('espiga', 'claude-code');
+        markMcpAsked(ctx.db, 'espiga', T0);
+        mcpLoaded(ctx.db, { name: 'claude-code', version: '2.1.0' }, at(T1), 101);
+        hearAgent(
+          ctx.db,
+          { agent: 'espiga', channel: 'mcp', harness: CLAUDE_CODE, session: 101 },
+          at(T1),
+        );
+        as('espiga-2', 'claude-code');
+        seeAgent(ctx.db, { agent: 'espiga-2', channel: 'cli', harness: CLI_HARNESS }, at(T2));
+
+        const gone = listAgents(ctx.db, at(T2), () => false);
+        expect(gone.find((a) => a.name === 'espiga-2')?.mcp).toBe('missing');
+        const running = listAgents(ctx.db, at(T2), (pid) => pid === 101);
+        expect(running.find((a) => a.name === 'espiga-2')?.mcp).toBe('unused');
       });
 
       it('says nothing once the agent is heard through the server', () => {

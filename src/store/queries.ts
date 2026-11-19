@@ -821,17 +821,20 @@ export function upsertAgent(
 }
 
 // A harness that loaded Otea's MCP server: its key (one spelling for every way it is written), the
-// name its client gave, and when it last did.
-export type McpLoad = { harness: string; name: string; at: string };
+// name its client gave, when it last did, and the process of that server (null when not known).
+export type McpLoad = { harness: string; name: string; at: string; session: number | null };
 
 export function saveMcpLoad(db: DatabaseSync, load: McpLoad): void {
-  const sql = `INSERT INTO mcp_loads (harness, name, at) VALUES (:harness, :name, :at)
-    ON CONFLICT (harness) DO UPDATE SET name = excluded.name, at = excluded.at`;
+  const sql = `INSERT INTO mcp_loads (harness, name, at, session)
+    VALUES (:harness, :name, :at, :session)
+    ON CONFLICT (harness) DO UPDATE SET
+      name = excluded.name, at = excluded.at, session = excluded.session`;
   db.prepare(sql).run(load);
 }
 
 export function selectMcpLoads(db: DatabaseSync): McpLoad[] {
-  return db.prepare('SELECT harness, name, at FROM mcp_loads ORDER BY at DESC').all() as McpLoad[];
+  const sql = 'SELECT harness, name, at, session FROM mcp_loads ORDER BY at DESC';
+  return db.prepare(sql).all() as McpLoad[];
 }
 
 // Notes that an agent asked to work through Otea's MCP server (otea connect), now.

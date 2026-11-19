@@ -348,11 +348,17 @@ export function quietVoices(
 }
 
 // A harness loaded Otea's MCP server (its client's initialize): every agent of that harness can
-// reach it, whatever name it took, and otea connect --check says the server works.
-export function mcpLoaded(db: DatabaseSync, harness: Harness, now: Clock = systemClock): void {
+// reach it, whatever name it took, and otea connect --check says the server works. `session`: the
+// server's process, so the desk says MCP is at hand only while it runs (P4-R3-7).
+export function mcpLoaded(
+  db: DatabaseSync,
+  harness: Harness,
+  now: Clock = systemClock,
+  session?: number,
+): void {
   const key = harnessKey(harness.name);
   if (key === '') return;
-  saveMcpLoad(db, { harness: key, name: harness.name, at: now() });
+  saveMcpLoad(db, { harness: key, name: harness.name, at: now(), session: session ?? null });
 }
 
 // A profile's harness is the MCP client's: when the client names another one, the profile follows.
@@ -395,23 +401,25 @@ export function listAgents(
       harness && harness.toLowerCase() !== 'cli' ? harness : declaredOf.get(name)?.profile.harness;
     return named ? harnessKey(named) : null;
   };
-  // Per harness: the latest ask for MCP, and the latest time one of its agents was heard through it.
-  const latest = (
-    into: Map<string, string>,
-    key: string | null,
-    value: string | null | undefined,
-  ) => {
-    if (!key || key === 'cli' || !value) return;
-    const known = into.get(key);
-    if (known === undefined || known < value) into.set(key, value);
-  };
+  // Per harness: the latest ask for MCP.
   const asks = new Map<string, string>();
-  const mcpHeard = new Map<string, string>();
   for (const record of records) {
-    latest(asks, keyOf(record), record.mcpAskedAt);
-    latest(mcpHeard, keyOf(record), record.mcpAt);
+    const key = keyOf(record);
+    const value = record.mcpAskedAt;
+    if (!key || key === 'cli' || !value) continue;
+    const known = asks.get(key);
+    if (known === undefined || known < value) asks.set(key, value);
   }
-  const loads = new Map(selectMcpLoads(db).map((load) => [load.harness, load.at]));
+  // The harnesses with an MCP server running now: the last one each loaded, or one an agent of it
+  // listens through. A load an ended session left is no server at hand (P4-R3-7).
+  const serving = new Set<string>();
+  for (const load of selectMcpLoads(db))
+    if (load.session !== null && alive(load.session)) serving.add(load.harness);
+  for (const record of records) {
+    const key = keyOf(record);
+    const session = listeners.get(record.name)?.session ?? null;
+    if (key && session !== null && alive(session)) serving.add(key);
+  }
   const mcpOf = (record: (typeof records)[number]): AgentPresence['mcp'] => {
     if (record.mcpAt) return null;
     const key = keyOf(record);
@@ -420,8 +428,7 @@ export function listAgents(
       .sort()
       .at(-1);
     if (asked === undefined) return null;
-    const since = [key ? loads.get(key) : undefined, key ? mcpHeard.get(key) : undefined];
-    return since.some((each) => each !== undefined && each >= asked) ? 'unused' : 'missing';
+    return key && serving.has(key) ? 'unused' : 'missing';
   };
   const agents = records.map((record) => {
     const { name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, folder } = record;
