@@ -11,6 +11,7 @@ import { claimItem, releaseItem } from './leases.ts';
 import { approveItem, handoffItem, nextFor, offerableTo } from './next.ts';
 import { leaveNote } from './notes.ts';
 import { pinItems, setOrder } from './priority.ts';
+import { askQuestion } from './questions.ts';
 import { linkItems } from './relations.ts';
 import { resumeItem } from './restart.ts';
 import { SET_ASIDE_LIFTED, setAsideOf } from './set-aside.ts';
@@ -152,6 +153,25 @@ describe('setting an item aside for later', () => {
     expect(refused.code).toBe('not_claimable');
     expect(refused.message).toBe(
       `${item.id} is in the review of Concepto, on the person’s turn: otea next offers it again once it is back on an agent’s; nothing to set aside.`,
+    );
+  });
+});
+
+describe('setting aside an item whose question waits', () => {
+  it('is refused: the person’s answer brings it back', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const along = animating(ctx);
+    claimItem(ctx, { id: along.id, actor: kiln }, now);
+    askQuestion(ctx, { id: along.id, text: '¿Con musgo?', actor: kiln, channel: 'cli' }, now);
+
+    const refused = refusal(() =>
+      releaseItem(ctx, { id: along.id, actor: kiln, later: true }, now),
+    );
+
+    expect(refused.code).toBe('not_claimable');
+    expect(refused.message).toBe(
+      `${along.id} waits for the person’s answer to kiln’s question: otea next offers it again once they answer; nothing to set aside. To let go of it: otea release ${along.id}`,
     );
   });
 });
