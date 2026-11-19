@@ -2,6 +2,7 @@ import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
 import { t } from '../../i18n/i18n.ts';
 import { Button, useEscape } from '../../kit/index.ts';
 import { Choreo, part } from '../../motion/choreo.ts';
+import { draftStore, dropDraft, keepDraft, readDraft } from './note-draft.ts';
 
 // The notes form, drawn from «Devolver…» (SPEC §10.3, mock:3108-3141): a line leads from the
 // button's centre, the surface unrolls pushing what is below down, the fields resolve. Cancel and
@@ -26,6 +27,8 @@ type NotesFormProps = {
   // Words of its own are optional (a send-back that goes with your review's comments, P4-7): the
   // placeholder that says so.
   optional?: string | undefined;
+  // Where its words are kept until sent (note-draft.ts): a reload lost them (P4-R2-9).
+  draft?: string | undefined;
 };
 
 export function NotesForm({
@@ -41,10 +44,15 @@ export function NotesForm({
   extra,
   says,
   optional,
+  draft,
 }: NotesFormProps) {
   const el = useRef<HTMLDivElement>(null);
   const ch = useRef<Choreo | null>(null);
-  const [text, setText] = useState('');
+  const [text, setText] = useState(() => (draft ? readDraft(draftStore(), draft) : ''));
+  const write = (value: string) => {
+    setText(value);
+    if (draft) keepDraft(draftStore(), draft, value);
+  };
   const gone = useRef(onGone);
   gone.current = onGone;
 
@@ -162,14 +170,17 @@ export function NotesForm({
             rows={3}
             aria-label={words?.aria ?? t('sheet.notes.aria', { agent: who })}
             value={text}
-            onChange={(e) => setText(e.target.value)}
+            onChange={(e) => write(e.target.value)}
           />
           {extra}
           <div className="nbtns" data-i>
             <Button
               variant="primary"
               disabled={!text.trim() && optional === undefined}
-              onClick={() => onSend(text.trim())}
+              onClick={() => {
+                if (draft) dropDraft(draftStore(), draft);
+                onSend(text.trim());
+              }}
             >
               {words?.send ?? t('sheet.notes.send')}
             </Button>

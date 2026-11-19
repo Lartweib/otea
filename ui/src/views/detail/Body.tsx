@@ -250,7 +250,9 @@ export function bodySections(o: {
                 entry={block.entry}
                 canWrite={canWrite}
                 quiet={!!board}
-                noVerdict={!!board?.picking}
+                // On a board the page's own Devolver and Aprobar decide: a second note box here
+                // left the top «Enviar» disabled with words typed below (P4-R2-9).
+                noVerdict={!!board}
                 {...(board ? { board: board.steps, stepName: board.railName } : {})}
               />
             </Plain>
