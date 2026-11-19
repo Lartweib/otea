@@ -162,9 +162,17 @@ describe('the paired page', () => {
 });
 
 describe('a toast on an item page with moves at its foot', () => {
-  it('sits under the top, off the docked Aprobar and Devolver (P7-R2-1)', () => {
+  // Off the docked Aprobar and Devolver (P7-R2-1), and off the item's head and «← Te toca», which
+  // a toast under the top covered (P7-R2-8): just above the dock, by its measured height.
+  it('sits just above the dock, never over it nor over the head', () => {
     const r = rules(phone, 'body:has(.p-dock) .toast');
-    expect(r).toMatch(/top:\s*calc\(56px \+ 8px \+ env\(safe-area-inset-top, 0px\)\)/);
-    expect(r).toMatch(/bottom:\s*auto/);
+    expect(r).toMatch(/top:\s*auto/);
+    expect(r).toMatch(/bottom:\s*calc\(var\(--p-dock-h, \d+px\) \+ 8px\)/);
+  });
+
+  it('sits under Triage’s «← Te toca» line, not over it (P7-R2-8)', () => {
+    const r = rules(phone, 'body:has(.tri) .toast');
+    expect(r).toMatch(/top:\s*calc\(56px \+ \d+px \+ env\(safe-area-inset-top, 0px\)\)/);
+    expect(r).not.toMatch(/top:\s*calc\(56px \+ 8px/);
   });
 });
