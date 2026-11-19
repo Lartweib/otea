@@ -1,4 +1,5 @@
 import { activeLease } from './active-lease.ts';
+import { t } from './i18n/i18n.ts';
 import type { Agent } from './presence.ts';
 import type { Item } from './types.ts';
 
@@ -14,6 +15,33 @@ const AT_WORK_MS = 150_000;
 export function anyoneWaits(agents: readonly Agent[] | null | undefined): boolean {
   if (!agents) return true;
   return agents.some((a) => a.waiting !== false);
+}
+
+// The agents at work now (P7-R2-12): each holds an item it acted on lately, and not one that only
+// waits for your answer. While one is, an item nobody hears waits its turn in a queue: the desk
+// says so calmly, not as an alarm.
+export function busyAgents(
+  agents: readonly Agent[] | null | undefined,
+  items: readonly Pick<Item, 'id' | 'asks'>[],
+  now: number,
+): string[] {
+  return (agents ?? [])
+    .filter((a) => a.live && now - (Date.parse(a.lastSeen) || 0) <= AT_WORK_MS)
+    .filter((a) => a.holding.some((id) => !items.find((it) => it.id === id)?.asks))
+    .map((a) => a.name);
+}
+
+// What the desk says of an item nobody hears: «nadie está escuchando» (a warning), or, while an
+// agent is at work on another item, that it waits in the queue for it (calm).
+export function unheardWords(busy: readonly string[]): { text: string; calm: boolean } {
+  if (busy.length === 0) return { text: t('listen.none'), calm: false };
+  return { text: t('listen.busy', { count: busy.length, agent: busy[0] ?? '' }), calm: true };
+}
+
+// The same, as a sentence for the item's header.
+export function unheardLead(busy: readonly string[]): string {
+  if (busy.length === 0) return t('listen.lead');
+  return t('listen.busyLead', { count: busy.length, agent: busy[0] ?? '' });
 }
 
 // Whether an item waits for an agent that nobody will bring: on the agent turn, no agent waiting,

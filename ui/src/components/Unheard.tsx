@@ -1,4 +1,5 @@
 import { t, tx } from '../i18n/i18n.ts';
+import { unheardWords } from '../listening.ts';
 
 // The command an agent runs to keep hearing the desk.
 export const KEEP_WAITING = 'otea wait --turn agent --unclaimed';
@@ -14,5 +15,18 @@ export function Unheard({ className = 'said unheard' }: { className?: string }) 
         command: <code>{KEEP_WAITING}</code>,
       })}
     </p>
+  );
+}
+
+// The mark on a row nobody hears: «nadie está escuchando» as a warning, or, while an agent is at
+// work on another item (`busy`), that it waits in the queue, in grey (P7-R2-12). It never gives
+// way with an ellipsis, as the board name does (P8-R2-7).
+export function UnheardMark({ busy }: { busy: readonly string[] }) {
+  const { text, calm } = unheardWords(busy);
+  return (
+    <span className="mpt" data-unheard={calm ? 'calm' : ''}>
+      <span className="sep">·</span>
+      <span className={calm ? 'calm' : 'warn'}>{text}</span>
+    </span>
   );
 }
