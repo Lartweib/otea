@@ -286,13 +286,47 @@ describe('searching topics', () => {
     expect(ids('nada de esto')).toEqual([]);
   });
 
-  it('ignores accents and needs every word, in any order', () => {
-    addTopic(ctx, { question: '¿Qué concluimos sobre la migración?', actor: quill }, now);
+  it('ignores accents, and finds a topic with any of the words, the most words first', () => {
     addTopic(ctx, { question: 'La migracion de datos', actor: quill }, now);
+    addTopic(ctx, { question: '¿Qué concluimos sobre la migración?', actor: quill }, now);
 
     const ids = (search: string) => listTopics(ctx, { search }, now).map(({ id }) => id);
     expect(ids('migracion')).toEqual(['TEM-1', 'TEM-2']);
-    expect(ids('migración concluimos')).toEqual(['TEM-1']);
+    expect(ids('migración concluimos')).toEqual(['TEM-2', 'TEM-1']);
     expect(ids('  ')).toEqual(['TEM-1', 'TEM-2']);
+  });
+
+  // P3C-R2-7: «cursor paginación» found nothing, as no topic held both words.
+  it('finds a topic that holds only some of the words', () => {
+    addTopic(ctx, { question: '¿Cómo paginamos la API?', title: 'Paginación', actor: quill }, now);
+    answerTopic(ctx, { id: 'TEM-1', summary: 'Con offset y limit.', actor: quill }, now);
+
+    expect(listTopics(ctx, { search: 'cursor paginación' }, now).map(({ id }) => id)).toEqual([
+      'TEM-1',
+    ]);
+  });
+
+  // P4-R2-5: «envios moto» missed the topic about «envíos en motos».
+  it('folds plurals both ways: a plural finds the singular and a singular the plural', () => {
+    addTopic(ctx, { question: '¿Cuánto cobramos los envíos en motos?', actor: quill }, now);
+    addTopic(ctx, { question: 'Which test cases fail?', actor: quill }, now);
+    addTopic(ctx, { question: '¿Y las paginaciones?', actor: quill }, now);
+
+    const ids = (search: string) => listTopics(ctx, { search }, now).map(({ id }) => id);
+    expect(ids('envio moto')).toEqual(['TEM-1']);
+    expect(ids('envios')).toEqual(['TEM-1']);
+    expect(ids('case')).toEqual(['TEM-2']);
+    expect(ids('tests')).toEqual(['TEM-2']);
+    expect(ids('paginacion')).toEqual(['TEM-3']);
+  });
+
+  it('skips words too common to tell topics apart, and matches whole words', () => {
+    addTopic(ctx, { question: 'Node o Deno', actor: quill }, now);
+    addTopic(ctx, { question: 'La licencia del proyecto', actor: quill }, now);
+
+    const ids = (search: string) => listTopics(ctx, { search }, now).map(({ id }) => id);
+    expect(ids('nada de esto')).toEqual([]);
+    expect(ids('la licencia')).toEqual(['TEM-2']);
+    expect(ids('ode')).toEqual([]);
   });
 });

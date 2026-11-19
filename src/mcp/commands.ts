@@ -93,6 +93,10 @@ export const READ_ONLY = new Set([
   'whoami',
 ]);
 
+// Reads that need no name: what was concluded before is reference, not work an agent does, so a
+// call that names nobody reads it, and nobody is seen.
+export const NAMELESS_READS = new Set(['topic list', 'topic show']);
+
 // A tool is named after its command, with words joined by underscores (send-back is send_back).
 export function toolName(command: string): string {
   return command.replace(/[ -]/g, '_');

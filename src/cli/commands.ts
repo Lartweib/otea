@@ -3042,7 +3042,7 @@ const topicAnswer: Command = {
 const topicList: Command = {
   name: 'topic list',
   summary:
-    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too); --search finds every topic that mentions all the words, with its answer',
+    'List the side topics that wait on someone, what is left hanging first (--all, closed ones too); --search finds the topics with any of the words, the most first, each with its answer',
   args: [],
   options: { all: { flag: true }, search: { placeholder: 'words' } },
   execute: (input) =>

@@ -14,9 +14,9 @@ import { NO_FORGE } from '../cli/forge.ts';
 import { OTEA_VERSION } from '../cli/version.ts';
 import { agentGuideFor } from '../core/agent-guide.ts';
 import { OteaError } from '../core/errors.ts';
-import { type Actor, agentActor, assertAgentName } from '../core/item.ts';
+import { type Actor, agentActor, assertAgentName, PERSON_READER } from '../core/item.ts';
 import { parseDuration } from '../core/lease.ts';
-import { AGENT_COMMANDS, READ_ONLY, toolName } from './commands.ts';
+import { AGENT_COMMANDS, NAMELESS_READS, READ_ONLY, toolName } from './commands.ts';
 import { mcpWords } from './words.ts';
 
 export { AGENT_COMMANDS, CLI_ONLY_COMMANDS, toolName } from './commands.ts';
@@ -148,8 +148,9 @@ function inputFor(
     get actor(): Actor {
       return agentActor(agent, NAME_YOURSELF);
     },
-    // Over MCP the caller is always an agent: reading needs its name too.
+    // Over MCP the caller is always an agent: reading needs its name too, but for the topics.
     get reader(): Actor {
+      if (agent === undefined && NAMELESS_READS.has(command.name)) return PERSON_READER;
       return agentActor(agent, NAME_YOURSELF);
     },
     agent,

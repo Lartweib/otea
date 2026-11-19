@@ -472,34 +472,70 @@ const ORDER: Readonly<Record<TopicState, number>> = {
 // Text as a search compares it: lower case, without accents (migración finds migracion).
 const folded = (text: string) => text.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase();
 
-// Whether a topic holds every word searched, anywhere in it: its id, title, the question, each
-// answer's summary and full text, and the person's notes.
-function matches(topic: Topic, words: readonly string[]): boolean {
-  const parts = topic.turns.flatMap((turn) => [turn.text, turn.full ?? '']);
-  const text = folded([topic.id, topic.title, ...parts].join('\n'));
-  return words.every((word) => text.includes(word));
+// Words a search skips, Spanish and English: too common to tell one topic from another.
+const COMMON_WORDS = new Set(
+  (
+    'a al como con de del el en es esa ese eso esta este esto la las lo los mas no o para pero ' +
+    'por que se si sin sobre su sus un una uno unos unas y ' +
+    'an and are as at be by for how in is it of on or that the this to what with'
+  ).split(' '),
+);
+
+// The words of a text as a search compares them: folded, split on anything not a letter or digit.
+const wordsOf = (text: string) =>
+  folded(text)
+    .split(/[^\p{L}\p{N}]+/u)
+    .filter((word) => word !== '');
+
+// A searched word and its singular, when it reads as a plural: envíos, envio; cases, case;
+// paginaciones, paginacion. Short words stay as they are (mes, gas).
+function formsOf(word: string): string[] {
+  const forms = [word];
+  if (word.length > 3 && word.endsWith('s')) forms.push(word.slice(0, -1));
+  if (word.length > 4 && word.endsWith('es')) forms.push(word.slice(0, -2));
+  return forms;
 }
 
+// The words searched, without the common ones, unless they are all common.
+function searchWords(search: string): string[][] {
+  const words = [...new Set(wordsOf(search))];
+  const telling = words.filter((word) => !COMMON_WORDS.has(word));
+  return (telling.length > 0 ? telling : words).map(formsOf);
+}
+
+// How many of the words searched a topic holds, anywhere in it: its id, title, the question, each
+// answer's summary and full text, and the person's notes. A word matches a whole word of the
+// topic, or the start of one when it has four letters or more (moto finds motos, pagin paginación).
+function score(topic: Topic, searched: readonly string[][]): number {
+  const parts = topic.turns.flatMap((turn) => [turn.text, turn.full ?? '']);
+  const words = new Set(wordsOf([topic.id, topic.title, ...parts].join('\n')));
+  const holds = (form: string) =>
+    words.has(form) || (form.length >= 4 && [...words].some((word) => word.startsWith(form)));
+  return searched.filter((forms) => forms.some(holds)).length;
+}
+
+const byState = (a: Topic, b: Topic) =>
+  ORDER[a.state] - ORDER[b.state] || a.id.localeCompare(b.id, 'en', { numeric: true });
+
 // The topics, what is left hanging first; closed ones and those turned into tasks only when asked.
-// A search looks in every topic, closed ones too: the person asks what was concluded before.
+// A search looks in every topic, closed ones too, as the person asks what was concluded before: it
+// finds a topic that holds any of the words, the one that holds the most first.
 export function listTopics(
   ctx: Context,
   filter: { all?: boolean; search?: string } = {},
   now = systemClock,
 ): Topic[] {
   const at = now();
-  const words = folded(filter.search ?? '')
-    .split(/\s+/)
-    .filter((word) => word !== '');
-  const searching = words.length > 0;
+  const searched = searchWords(filter.search ?? '');
   const rows = ctx.db.prepare('SELECT * FROM topics ORDER BY seq').all() as TopicRow[];
-  return rows
-    .map((row) => toTopic(ctx, row, at))
-    .filter((topic) => (searching ? matches(topic, words) : filter.all || isPending(topic.state)))
-    .sort(
-      (a, b) =>
-        ORDER[a.state] - ORDER[b.state] || a.id.localeCompare(b.id, 'en', { numeric: true }),
-    );
+  const topics = rows.map((row) => toTopic(ctx, row, at));
+  if (searched.length === 0)
+    return topics.filter((topic) => filter.all || isPending(topic.state)).sort(byState);
+  return topics
+    .map((topic) => ({ topic, score: score(topic, searched) }))
+    .filter(({ score }) => score > 0)
+    .sort((a, b) => b.score - a.score || byState(a.topic, b.topic))
+    .map(({ topic }) => topic);
 }
 
 export type TopicWaiting = { topic: string; note: string; text: string };

@@ -442,7 +442,7 @@ export async function forgetProjectPath(path: string): Promise<void> {
 
 // Side topics (topics.ts): the list and whether the project keeps them; one topic's note, close
 // and conversion into a task; an item's linked and suggested topics.
-// `search`: words every topic found mentions, closed ones too (the page's search box).
+// `search`: words a topic found mentions, any of them, the most first, closed ones too (the page's search box).
 export async function fetchTopics(
   signal: AbortSignal,
   all = false,
