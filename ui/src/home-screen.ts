@@ -32,9 +32,15 @@ export function shortcutOf(project: { id: string; name: string } | null): {
     : { manifest: '/manifest.webmanifest', title: 'Otea' };
 }
 
+// A browser fetches a manifest without cookies unless its link asks for them; a project's manifest
+// waits for the device's cookie (a phone without it is sent to the pairing screen, and its shortcut
+// gets no icon), so the link always asks, set before the new address is.
 export function offerShortcut(project: { id: string; name: string } | null): void {
   const { manifest, title } = shortcutOf(project);
   const link = document.querySelector<HTMLLinkElement>('link[rel="manifest"]');
+  if (link && link.getAttribute('crossorigin') !== 'use-credentials') {
+    link.setAttribute('crossorigin', 'use-credentials');
+  }
   if (link && link.getAttribute('href') !== manifest) link.setAttribute('href', manifest);
   document
     .querySelector<HTMLMetaElement>('meta[name="apple-mobile-web-app-title"]')

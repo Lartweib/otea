@@ -2,6 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { pairDevice } from '../app/devices.ts';
 import type { Project } from '../app/project.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
@@ -106,6 +107,28 @@ describe('home screen on the LAN', () => {
     expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('javascript');
     expect(response.headers.get('cache-control')).toBe('no-cache');
+  });
+
+  // A project's shortcut names the project, so it waits for the device's cookie. A browser sends
+  // none with a manifest request unless the page's link asks for it (crossorigin="use-credentials",
+  // ui/index.html): without it the phone reads a redirect, and its shortcut gets no icon.
+  it('serves a project’s manifest to a paired device only, by its cookie', async () => {
+    const path = `/p/${project.identity.id}/manifest.webmanifest`;
+    const { token } = pairDevice(server.machine, 'Pixel · Chrome');
+
+    const without = await get(path);
+    const withCookie = await Promise.resolve(
+      server.app.request(
+        path,
+        { headers: { host: `${DESK}:4400`, cookie: `otea_device_4400=${token}` } },
+        { incoming: { socket: { remoteAddress: PHONE } } },
+      ),
+    );
+
+    expect(without.status).toBe(302);
+    expect(without.headers.get('location')).toBe('/pair');
+    expect(withCookie.status).toBe(200);
+    expect(await withCookie.json()).toMatchObject({ short_name: project.identity.name });
   });
 
   it('still keeps everything else from an unpaired device', async () => {
