@@ -15,6 +15,10 @@ export const AGENTS_BLOCK = [
   '',
   'This project hands work between humans and agents through Otea. Run `otea next` (or call the `next` tool of the Otea MCP server) to get the item to take and what its step asks, and `otea board <name>` (the `board` tool) to read the instructions of a board. Hand off with `otea handoff <id>`; `otea show <id>` says what to do next with each item.',
   '',
+  // The file stays as written while the guide follows the project (agentGuideFor): it says where
+  // the current one is instead of going stale in silence.
+  'The guide below is as it was when this block was written. A rule the project turned on since (such as Topics) is not here: `otea board` (the `board` tool) prints the guide as it stands now.',
+  '',
   AGENT_GUIDE,
   END,
 ].join('\n');

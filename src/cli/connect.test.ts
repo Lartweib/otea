@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
+import { execFileSync } from 'node:child_process';
+import { chmodSync, existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
@@ -20,6 +21,8 @@ const BLOCK = [
   '## Otea',
   '',
   'This project hands work between humans and agents through Otea. Run `otea next` (or call the `next` tool of the Otea MCP server) to get the item to take and what its step asks, and `otea board <name>` (the `board` tool) to read the instructions of a board. Hand off with `otea handoff <id>`; `otea show <id>` says what to do next with each item.',
+  '',
+  'The guide below is as it was when this block was written. A rule the project turned on since (such as Topics) is not here: `otea board` (the `board` tool) prints the guide as it stands now.',
   '',
   AGENT_GUIDE,
   '<!-- otea:end -->',
@@ -149,15 +152,24 @@ describe('setup for agents', () => {
       expect(read('AGENTS.md')).toBe(`${BLOCK}\n`);
       expect(existsSync(join(repo.dir, '.mcp.json'))).toBe(false);
       expect(out).toContain(`Added the Otea block to ${join(repo.dir, 'AGENTS.md')}`);
-      expect(out).toContain('a line @AGENTS.md in it imports this file');
+      // No harness is said to need an import: only one that does not read AGENTS.md.
+      expect(out).toContain("if your harness doesn't read AGENTS.md, import it");
+      expect(out).not.toContain('Claude Code reads CLAUDE.md');
       expect(out).toContain(
         "add this MCP server to your harness's MCP config yourself, for this project only",
       );
-      expect(out).toContain('never your global config');
+      expect(out).toContain('Never edit your user or global config');
       expect(out).toMatch(/^ {2}name {5}otea$/m);
       expect(out).toMatch(/^ {2}command {2}node$/m);
       expect(out).toContain(`As JSON: ${JSON.stringify({ otea: entry() })}`);
-      expect(out).toContain('otea connect --check');
+      // The JSON is one shape among many: the agent translates it or uses its harness's own command,
+      // and the usual project files are named as examples only.
+      expect(out).toContain("translate it to your harness's schema");
+      expect(out).toContain('mcp add');
+      expect(out).toContain('Claude Code: .mcp.json');
+      expect(out).toContain('OpenCode: opencode.json');
+      expect(out).toContain('environment');
+      expect(out.trimEnd().split('\n').at(-1)).toMatch(/^Run otea connect --check now/);
     });
 
     it('prints the server and what it did with AGENTS.md with --json', async () => {
@@ -181,6 +193,44 @@ describe('setup for agents', () => {
         args: ['--disable-warning=ExperimentalWarning', MAIN, 'mcp', '--project', own],
         env: { OTEA_HOME: home },
       });
+    });
+
+    it('prints the otea command when otea is on PATH, so the config survives a moved checkout', async () => {
+      const bin = join(repo.dir, 'bin');
+      mkdirSync(bin);
+      writeFileSync(join(bin, 'otea'), '#!/bin/sh\n');
+      chmodSync(join(bin, 'otea'), 0o755);
+      writeFileSync(join(bin, 'otea.cmd'), '@echo off\r\n');
+      const onPath = cliAt(repo.dir, { PATH: bin });
+
+      const { mcp } = JSON.parse((await onPath('connect', '--json')).out);
+      const { out } = await onPath('connect');
+
+      // A harness on Windows starts no .cmd shim by itself: cmd /c runs it.
+      const command =
+        process.platform === 'win32'
+          ? { command: 'cmd', args: ['/c', 'otea', 'mcp', '--project', id] }
+          : { command: 'otea', args: ['mcp', '--project', id] };
+      expect(mcp).toEqual({ name: 'otea', ...command });
+      expect(out).toContain(`As JSON: ${JSON.stringify({ otea: command })}`);
+      expect(out).not.toContain('main.ts');
+    });
+
+    it('writes AGENTS.md in the worktree it runs in, not in the main checkout', async () => {
+      const git = (...args: string[]) =>
+        execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
+          cwd: repo.dir,
+          stdio: 'ignore',
+        });
+      git('commit', '--quiet', '--allow-empty', '-m', 'first');
+      const tree = join(repo.dir, 'wt');
+      git('worktree', 'add', '--quiet', '--detach', tree);
+
+      const { agentsMd } = JSON.parse((await cliAt(tree)('connect', '--json')).out);
+
+      expect(agentsMd).toEqual({ path: join(tree, 'AGENTS.md'), action: 'created' });
+      expect(readFileSync(join(tree, 'AGENTS.md'), 'utf8')).toBe(`${BLOCK}\n`);
+      expect(existsSync(join(repo.dir, 'AGENTS.md'))).toBe(false);
     });
 
     it('declares the profile of the agent named, and the desk warns until it is heard over MCP', async () => {

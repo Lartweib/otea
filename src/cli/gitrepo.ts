@@ -332,13 +332,19 @@ export function inMainCheckout(cwd: string): boolean {
   }
 }
 
+// The top folder of the checkout at cwd (a linked worktree's own, not the main checkout's), or
+// undefined outside a repo.
+export function checkoutRoot(cwd: string): string | undefined {
+  try {
+    return resolve(git(cwd, 'rev-parse', '--show-toplevel'));
+  } catch {
+    return undefined;
+  }
+}
+
 // The top folder of the repo at cwd, or cwd itself outside a repo.
 export function repoRoot(cwd: string): string {
-  try {
-    return git(cwd, 'rev-parse', '--show-toplevel');
-  } catch {
-    return resolve(cwd);
-  }
+  return checkoutRoot(cwd) ?? resolve(cwd);
 }
 
 // Where the repo at cwd keeps a path of its git dir, following its config (core.hooksPath for

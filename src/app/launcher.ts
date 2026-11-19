@@ -1,3 +1,6 @@
+import { accessSync, constants, statSync } from 'node:fs';
+import { join } from 'node:path';
+
 // How what Otea writes for later (an MCP entry, a hook) runs this Otea again. A checkout runs on the
 // system's Node; the desktop app runs its own CLI on its Electron as Node (ELECTRON_RUN_AS_NODE), the
 // way VS Code's `code` does, so a machine with the app needs no Node.
@@ -15,6 +18,41 @@ export function oteaLauncher(main: string, runtime: Runtime): Launcher {
     return { command: 'node', args: ['--disable-warning=ExperimentalWarning', main] };
   }
   return { command: runtime.execPath, args: [main], env: { ELECTRON_RUN_AS_NODE: '1' } };
+}
+
+// Whether path is a file this computer can run: any file on Windows (PATHEXT picks the ending), an
+// executable one elsewhere.
+function runnable(path: string, platform: NodeJS.Platform): boolean {
+  try {
+    if (!statSync(path).isFile()) return false;
+    if (platform !== 'win32') accessSync(path, constants.X_OK);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+// The otea command on $PATH (npm link, an installed package), as a harness starts it, so what the
+// agent adds survives a checkout that moves; undefined when no otea is there. A harness on Windows
+// starts the .cmd shim npm puts there only through cmd /c, as it does npx.
+export function pathLauncher(
+  env: Readonly<Record<string, string | undefined>>,
+  platform: NodeJS.Platform = process.platform,
+): Launcher | undefined {
+  const windows = platform === 'win32';
+  const dirs = (env.PATH ?? env.Path ?? '').split(windows ? ';' : ':').filter(Boolean);
+  const endings = windows
+    ? (env.PATHEXT ?? '.COM;.EXE;.BAT;.CMD').split(';').filter(Boolean)
+    : [''];
+  for (const dir of dirs) {
+    for (const ending of endings) {
+      if (!runnable(join(dir, `otea${ending}`), platform)) continue;
+      return /^\.(bat|cmd)$/i.test(ending)
+        ? { command: 'cmd', args: ['/c', 'otea'] }
+        : { command: 'otea', args: [] };
+    }
+  }
+  return undefined;
 }
 
 // The launcher carrying an Otea home set apart ($OTEA_HOME), so what runs it later (the MCP
