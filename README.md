@@ -26,6 +26,27 @@ Agents produce work faster than a human can follow it live. Otea is where work c
 - **Harness-neutral**: any agent with a shell (CLI) or MCP support can use it.
 - **Traceable**: every change is an append-only event, with who made it and through which channel.
 
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/desk-your-turn-dark.png">
+  <img src="docs/images/desk-your-turn-light.png" alt="The desk's Your turn page in a demo project: an agent's question, a change to review, a bug to triage and a change an agent is working on">
+</picture>
+
+**Your turn**, the desk's first page: what waits for you, and what the agents are on.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/desk-review-dark.png">
+  <img src="docs/images/desk-review-light.png" alt="A change under review on the desk: the agent's diff and its before and after screenshots, side by side">
+</picture>
+
+A change under review, with the evidence its step asked for: the diff and before-and-after screenshots.
+
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/images/phone-review-dark.png">
+  <img src="docs/images/phone-review-light.png" alt="The same change on a phone: the agent's handoff note, with Send back and Approve" width="300">
+</picture>
+
+The same change on a phone, with the agent's note and your two moves.
+
 ## Status
 
 Early: usable, still changing fast. The product definition lives in [`docs/otea-product-definition.md`](docs/otea-product-definition.md).
