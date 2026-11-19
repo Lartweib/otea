@@ -515,16 +515,24 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     if (shownId !== undefined) markSeen(shownId);
   }, [shownId, item.id]);
   const [start, setStart] = useState<ReaderPick | undefined>(undefined);
-  const onRead = (id?: number, pick?: ReaderPick) => {
+  // Opened to write a note on `start` (a line of the inline diff), not to read it.
+  const [write, setWrite] = useState(false);
+  const onRead = (id?: number, pick?: ReaderPick, writing = false) => {
     const at = id === undefined ? 0 : reader.files.findIndex((e) => e.id === id);
     setStart(pick);
+    setWrite(writing);
     setReading({ item: item.id, at: Math.max(0, at), open: true });
   };
-  // A note's cite on a line or a node opens the reader there.
+  // A note's cite on a line or a node opens the reader there; a line of the inline diff opens it
+  // to write a note on that line, the focus in the note's box.
   useEffect(() => {
     const open = (e: Event) => {
-      const { evidence, pick } = (e as CustomEvent<{ evidence: number; pick: ReaderPick }>).detail;
-      if (reader.files.some(({ id }) => id === evidence)) onRead(evidence, pick);
+      const {
+        evidence,
+        pick,
+        write: writing,
+      } = (e as CustomEvent<{ evidence: number; pick: ReaderPick; write?: boolean }>).detail;
+      if (reader.files.some(({ id }) => id === evidence)) onRead(evidence, pick, writing === true);
     };
     window.addEventListener(READ_AT, open);
     return () => window.removeEventListener(READ_AT, open);
@@ -1005,6 +1013,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
                   seen={seen}
                   decide={decide}
                   start={start}
+                  write={write}
                   note={readerNote}
                 />
               ) : null}

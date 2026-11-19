@@ -194,6 +194,7 @@ export function EvidenceReader({
   decide,
   note,
   start,
+  write = false,
   draft = '',
   onDraft,
   draftPick = null,
@@ -206,6 +207,9 @@ export function EvidenceReader({
   decide?: ReaderDecide | undefined;
   note?: ReaderNote | undefined;
   start?: ReaderPick | undefined;
+  // Opened to write a note on `start` (from a line of the inline diff): the dialog's focus starts
+  // in the note's box. Never on a note's cite, which opens the reader to read.
+  write?: boolean;
   // The note already begun elsewhere (the phone's note sheet), carried into the reader's.
   draft?: string;
   // The note as it is typed, kept by the caller: closing the reader never loses it (DR2-10).
@@ -398,6 +402,7 @@ export function EvidenceReader({
       </div>
       <textarea
         ref={noteArea}
+        data-autofocus={write ? '' : undefined}
         rows={2}
         value={text}
         placeholder={t('notes.pick.placeholder')}

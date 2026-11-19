@@ -121,6 +121,28 @@ describe('ReaderPane: the desk reader', () => {
     expect(html).toMatch(/grabacion\.webm[\s\S]*?class="rd-notes">2 notes</);
   });
 
+  // p3 leftover: a line of the inline diff opened the reader with the line picked, but the focus
+  // stayed on the file list, so what the person typed next went nowhere.
+  it('puts the focus in the note box when it opens to write on a line, and on the file otherwise', () => {
+    const note = { onSend: async () => true };
+    const pane = (write: boolean) =>
+      renderToStaticMarkup(
+        <ReaderPane
+          evidence={files}
+          at={0}
+          onAt={noop}
+          seen={new Set()}
+          note={note}
+          start={{ line: 1, quote: 'x' }}
+          write={write}
+        />,
+      );
+    expect(pane(true)).toMatch(/<textarea[^>]*data-autofocus=""/);
+    expect(pane(true)).not.toMatch(/class="rd-file"[^>]*data-autofocus/);
+    expect(pane(false)).not.toMatch(/<textarea[^>]*data-autofocus/);
+    expect(pane(false)).toMatch(/class="rd-file"[^>]*data-autofocus=""/);
+  });
+
   it('names a file with no part by its kind', () => {
     const html = renderToStaticMarkup(
       <ReaderPane evidence={[strip, shot]} at={0} onAt={noop} seen={new Set()} />,
