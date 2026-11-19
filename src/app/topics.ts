@@ -1,6 +1,6 @@
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { type Searched, searchWords, wordsHeld } from '../core/search-words.ts';
+import { type Searched, searchWords, tellingWords, wordsHeld } from '../core/search-words.ts';
 import { transaction } from '../store/database.ts';
 import type { ItemRecord } from '../store/queries.ts';
 import type { Context } from './context.ts';
@@ -469,9 +469,10 @@ function itemWords(item: ItemRecord): string {
 }
 
 // Open topics the item may have come from, for the person to confirm: one the same agent opened
-// shortly before it made the item, or one of the same session, that shares a word with the item.
-// The topics that share the most words come first, then the latest; three at most. Never one
-// already linked or dismissed for it.
+// shortly before it made the item, or one of the same session, that shares a telling word with
+// the item in what the topic itself says (its title, questions and the answers' summaries, never a
+// full answer's long text). The topics that share the most words come first, then the latest;
+// three at most; none rather than noise (P4-R2-7). Never one already linked or dismissed for it.
 export function topicSuggestions(
   ctx: Context,
   item: string,
@@ -479,7 +480,7 @@ export function topicSuggestions(
   session?: string,
 ): Topic[] {
   const record = requireItem(ctx.db, item);
-  const searched = searchWords(itemWords(record));
+  const searched = tellingWords(itemWords(record));
   const madeAt = Date.parse(record.createdAt);
   const at = now();
   const rows = ctx.db
@@ -498,11 +499,17 @@ export function topicSuggestions(
       return opened <= madeAt && madeAt - opened <= SUGGEST_WITHIN_MS;
     })
     .map((row) => toTopic(ctx, row, at))
-    .map((topic) => ({ topic, score: score(topic, searched) }))
+    .map((topic) => ({ topic, score: said(topic, searched) }))
     .filter(({ score }) => score > 0)
     .sort((a, b) => b.score - a.score || b.topic.createdAt.localeCompare(a.topic.createdAt))
     .slice(0, SUGGEST_AT_MOST)
     .map(({ topic }) => topic);
+}
+
+// How many of the words a topic says itself: its title, its questions and its answers' summaries.
+function said(topic: Topic, searched: Searched): number {
+  const own = topic.turns.filter(({ kind }) => kind === 'question' || kind === 'answer');
+  return wordsHeld([topic.title, ...own.map(({ text }) => text)].join('\n'), searched);
 }
 
 const ORDER: Readonly<Record<TopicState, number>> = {

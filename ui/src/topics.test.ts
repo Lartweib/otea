@@ -2,11 +2,13 @@ import { describe, expect, it } from 'vitest';
 import {
   answeredTopics,
   capped,
+  conclusionOf,
   convertBoard,
   convertDraft,
   convertFields,
   convertReady,
   elsewhere,
+  followUpsOf,
   lastAnswer,
   pendingTopics,
   type Topic,
@@ -59,6 +61,34 @@ describe('topics on the page', () => {
         { ...topic('TEM-2', 'closed'), pending: false },
       ]).map(({ id }) => id),
     ).toEqual(['TEM-1']);
+  });
+
+  // P4-R3-12: TEM-3's line showed its follow-up's summary («Envío gratis desde $15.000…»), not
+  // the zona-or-fijo conclusion of its own question.
+  it('reads a topic’s own conclusion, and counts the follow-ups asked on it', () => {
+    const quill = { kind: 'agent' as const, name: 'quill' };
+    const turn = (n: number, kind: 'question' | 'answer' | 'note', text: string) => ({
+      n,
+      kind,
+      text,
+      by: quill,
+      at: '',
+    });
+    const followed: Topic = {
+      ...topic('TEM-3', 'answered'),
+      turns: [
+        turn(1, 'question', '¿Zona o fijo?'),
+        turn(2, 'answer', 'Por zona.'),
+        turn(3, 'note', '¿Y los domingos?'),
+        turn(4, 'answer', 'Por zona, también los domingos.'),
+        turn(5, 'question', '¿Desde cuánto es gratis?'),
+        turn(6, 'answer', 'Envío gratis desde $15.000.'),
+      ],
+    };
+    expect(conclusionOf(followed)?.text).toBe('Por zona, también los domingos.');
+    expect(followUpsOf(followed)).toBe(1);
+    expect(conclusionOf(topic('TEM-1', 'answered', ['a', 'b']))?.text).toBe('b');
+    expect(followUpsOf(topic('TEM-1', 'answered', ['a']))).toBe(0);
   });
 
   it('reads the last answer, and the topic a route opens', () => {

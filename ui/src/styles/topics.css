@@ -109,6 +109,10 @@
   font: 500 14px / 1.35 var(--sans);
   overflow-wrap: anywhere;
 }
+/* The follow-ups asked on a topic, after its conclusion: one phrase, never split over two lines. */
+.tp-fu {
+  white-space: nowrap;
+}
 .tp-sum {
   font-size: 12.5px;
   line-height: 1.4;

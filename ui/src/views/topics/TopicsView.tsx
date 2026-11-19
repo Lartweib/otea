@@ -19,6 +19,7 @@ import { AgentMark, Button, GhostButton, toast } from '../../kit/index.ts';
 import { fieldWord, valueWord } from '../../preset-words.ts';
 import { hashFor, topicsHash } from '../../selection.ts';
 import {
+  conclusionOf,
   convertBoard,
   convertDraft,
   convertFields,
@@ -26,7 +27,7 @@ import {
   elsewhere,
   type FoundItem,
   type FoundTopic,
-  lastAnswer,
+  followUpsOf,
   type ProjectRef,
   type Topic,
   type TopicTurn,
@@ -59,7 +60,8 @@ function ProjectMark({ project }: { project: ProjectRef | undefined }) {
 }
 
 function Row({ topic, open }: { topic: FoundTopic; open: boolean }) {
-  const answer = lastAnswer(topic);
+  const answer = conclusionOf(topic);
+  const more = followUpsOf(topic);
   const other = elsewhere(topic, currentProjectId());
   return (
     <li>
@@ -71,7 +73,17 @@ function Row({ topic, open }: { topic: FoundTopic; open: boolean }) {
       >
         <span className="tp-id">{topic.id}</span>
         <span className="tp-title">{topic.title}</span>
-        {answer ? <span className="tp-sum">{answer.text}</span> : null}
+        {answer || more > 0 ? (
+          <span className="tp-sum">
+            {answer?.text ?? ''}
+            {more > 0 ? (
+              <span className="tp-fu">
+                {answer ? ' · ' : ''}
+                {t('topics.followUps', { count: more })}
+              </span>
+            ) : null}
+          </span>
+        ) : null}
         <span className="tp-turn" data-turn={topic.turn}>
           {other ? (
             <>

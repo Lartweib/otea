@@ -533,6 +533,7 @@ export const surfaces = {
   'topics.related': 'Temas relacionados',
   'topics.related.pending': 'pendiente',
   'topics.suggest': 'Puede venir de {id}: «{title}».',
+  'topics.followUps': { one: '{count} seguimiento', other: '{count} seguimientos' },
   'topics.suggest.confirm': 'Vincular',
   'topics.suggest.dismiss': 'No viene de ahí',
   'topics.review.hint': 'Tienes un tema abierto sobre esto: {ids}.',
