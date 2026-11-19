@@ -4,7 +4,7 @@ import type { BoardDefinition } from '../../../../src/core/board/model.ts';
 import { creatures } from '../../../../src/core/board/testing.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Item } from '../../types.ts';
-import { PhoneMatrix } from './Matrix.tsx';
+import { PhoneMatrix, pickedInTapOrder } from './Matrix.tsx';
 
 afterEach(() => setLanguage('en'));
 
@@ -81,6 +81,14 @@ describe('the Matrix on the phone', () => {
       'B',
       'A',
     ]);
+  });
+
+  // «Fijar el orden» took the ticked items in id order: tapping IDE-10 then IDE-8 fixed IDE-8 first
+  // (P7-R2-4). The desk keeps the order of the clicks; so does the phone.
+  it('fixes the order in the order you tapped', () => {
+    const items = ['A', 'B', 'C'].map((id) => item(id, {}));
+    expect(pickedInTapOrder(items, ['C', 'A']).map((it) => it.id)).toEqual(['C', 'A']);
+    expect(pickedInTapOrder(items, ['B', 'gone', 'A']).map((it) => it.id)).toEqual(['B', 'A']);
   });
 
   it('heads a zone with its quadrant, then each value beside its axis', () => {
