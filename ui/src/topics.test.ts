@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { setLanguage } from './i18n/i18n.ts';
 import {
   answeredTopics,
   capped,
@@ -9,8 +10,10 @@ import {
   convertReady,
   elsewhere,
   followUpsOf,
+  type ItemSaid,
   lastAnswer,
   pendingTopics,
+  saidWho,
   type Topic,
   topicGroups,
   topicOfRoute,
@@ -182,6 +185,29 @@ describe('the board a topic turns into a task on', () => {
   it('is left for the person to pick when the topic names no item on a board offered', () => {
     expect(convertBoard({ links: [] }, boards, items)).toBe('');
     expect(convertBoard({ links: ['OLD-9'] }, boards, items)).toBe('');
+  });
+});
+
+// P3C-R3-13: a search showed an agent's note that held the words, never the person's answer that
+// decided it. Each entry found says what it is and who said it.
+describe('what an item found in a search said', () => {
+  const said = (kind: ItemSaid['kind'], via?: string): ItemSaid => ({
+    said: 'x',
+    by: kind === 'answer' ? 'human' : 'quill',
+    at: '',
+    kind,
+    person: kind === 'answer',
+    ...(via ? { via } : {}),
+  });
+
+  it('names its kind and its author, and nothing for the item’s own words', () => {
+    setLanguage('es');
+    expect(saidWho(said('answer', 'quill'))).toBe('Tu respuesta en el chat');
+    expect(saidWho(said('answer'))).toBe('Tu respuesta');
+    expect(saidWho(said('handoff'))).toBe('Nota de entrega de quill');
+    expect(saidWho(said('item'))).toBeNull();
+    setLanguage('en');
+    expect(saidWho(said('reply'))).toBe("quill's reply");
   });
 });
 

@@ -122,6 +122,19 @@
   -webkit-box-orient: vertical;
   overflow: hidden;
 }
+/* What an item found said, and the person's own words beside it: one cell, so the id spans it. */
+.tp-said {
+  display: grid;
+  row-gap: 2px;
+  min-width: 0;
+}
+.tp-who {
+  font-weight: 500;
+  color: var(--ink);
+}
+.tp-sum[data-person] .tp-who {
+  color: var(--you);
+}
 .tp-turn {
   font-size: 12px;
   color: var(--ink-3);

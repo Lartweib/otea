@@ -1,5 +1,5 @@
 import type { Context } from './context.ts';
-import { type ItemHit, searchItems } from './item-search.ts';
+import { type ItemHit, itemHitLines, searchItems } from './item-search.ts';
 import { systemClock } from './items.ts';
 import { listTopics, type Topic } from './topics.ts';
 
@@ -70,10 +70,8 @@ export function topicsEverywhereText(found: TopicsEverywhere, search?: string): 
     blocks.push(
       [
         "In the items' threads (otea show <id>, in that project):",
-        ...found.items.map(({ project, id, title, said }) =>
-          said === title
-            ? `${project.name}  ${id}  ${title}`
-            : `${project.name}  ${id}  ${title}\n    ${said}`,
+        ...found.items.flatMap((hit) =>
+          itemHitLines(hit, `${hit.project.name}  ${hit.id}  ${hit.title}`),
         ),
       ].join('\n'),
     );
