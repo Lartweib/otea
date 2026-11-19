@@ -881,6 +881,20 @@ function waitsForMerges(
   return on.links.parts.some(({ id }) => merging.has(id));
 }
 
+// What next says of an item whose step waits for Done parts still to be merged: merge them first,
+// naming each; undefined for any other item. otea wait says it with the item it woke for, so the
+// agent reads the merge to make there, not only after otea next (P6-R2-9).
+export function mergeFirstFor(ctx: Context, id: string): string | undefined {
+  const item = requireItem(ctx.db, id);
+  const board = liveBoardOf(ctx, item.collection);
+  if (!board) return undefined;
+  const toMerge = liveBoards(ctx).flatMap((each) => waitingToMerge(ctx, each));
+  const on = itemOnBoard(ctx, item, board.def);
+  if (!waitsForMerges(board.def, on, new Set(toMerge.map(({ id }) => id)))) return undefined;
+  const theirs = toMerge.filter(({ id }) => on.links.parts.some((part) => part.id === id));
+  return mergeFirstText(item.id, theirs);
+}
+
 // Whether the step being done waits for parts or blockers still being worked on: its handoff cannot
 // pass yet. One Done and waiting only to be merged is merge work for an agent (waitsForMerges).
 function waitsOpen(def: BoardDefinition, on: ItemOnBoard): boolean {
