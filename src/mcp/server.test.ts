@@ -508,6 +508,32 @@ describe('mcp server', () => {
       }
     });
 
+    // P3C-R2-7: looking up what was concluded before is a read; topic_list refused it unnamed.
+    it('reads the topics without a name on a server started without one', async () => {
+      await otea('topic', 'on');
+      await otea('topic', 'add', '¿Conviene ESM o CommonJS?');
+      const bare = await connect(repo.dir);
+      try {
+        const listed = await call('topic_list', { search: 'commonjs' }, bare);
+        const shown = await call('topic_show', { id: 'TEM-1' }, bare);
+
+        expect(listed.isError, listed.content[0]?.text).toBeFalsy();
+        expect(JSON.parse(listed.content[0]?.text ?? '')).toEqual(
+          await json('topic', 'list', '--search', 'commonjs'),
+        );
+        expect(shown.isError, shown.content[0]?.text).toBeFalsy();
+        expect(error(await call('topic_add', { question: 'q' }, bare)).code).toBe('unnamed_agent');
+        const project = openProject(repo.dir);
+        try {
+          expect(listAgents(project.db).map(({ name }) => name)).toEqual(['claude']);
+        } finally {
+          project.db.close();
+        }
+      } finally {
+        await bare.close();
+      }
+    });
+
     // A server started under a name is that agent's: its subagents are <name>-<role>, and another
     // agent's name would spread one agent over several (P3C-7).
     it('refuses, on a server started under a name, a call as another agent', async () => {
