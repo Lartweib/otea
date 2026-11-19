@@ -33,6 +33,7 @@ import {
   type StepRounds,
   type WaitRow,
 } from './board-item.ts';
+import { type DiffOffTip, diffOffTipText } from './diff-tip.ts';
 import { type Drift, driftText } from './drift.ts';
 import type { MergedOutside } from './merged-outside.ts';
 
@@ -262,15 +263,18 @@ export function WaitChecklist({
 
 // "Rama feat/x en api · se puede subir / congelada mientras la revisas / se puede fusionar".
 // Under it, what a clone without Otea's hook pushed to the branch since the handoff (P3C-R3-1).
-// In its land step, when the PC saw it merged outside Otea, it says so instead (P1-R3-9).
+// In its land step, when the PC saw it merged outside Otea, it says so instead (P1-R3-9); under
+// it too, when the attached diff does not come from the tip handed off (P1-R3-1).
 export function BranchLine({
   strip,
   drift = null,
   outside = null,
+  off = null,
 }: {
   strip: BranchStrip | null;
   drift?: Drift | null;
   outside?: MergedOutside | null;
+  off?: DiffOffTip | null;
 }) {
   if (!strip) return null;
   const said = branchSaid(strip, outside);
@@ -283,14 +287,22 @@ export function BranchLine({
       <span className="bsaid">{said}</span>
     </div>
   );
-  if (!drift) return line;
+  if (!drift && !off) return line;
   return (
     <>
       {line}
-      <div className="bstrip drift" data-c role="status">
-        <Icon name="warn" />
-        <span>{driftText(drift)}</span>
-      </div>
+      {drift ? (
+        <div className="bstrip drift" data-c role="status">
+          <Icon name="warn" />
+          <span>{driftText(drift)}</span>
+        </div>
+      ) : null}
+      {off ? (
+        <div className="bstrip drift" data-c role="status">
+          <Icon name="warn" />
+          <span>{diffOffTipText(off)}</span>
+        </div>
+      ) : null}
     </>
   );
 }

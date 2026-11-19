@@ -70,6 +70,7 @@ import { TURNS, type Turn } from '../core/workflow.ts';
 import { type EventFilter, itemOfClientKey, selectStateEntries } from '../store/queries.ts';
 import { boardsApi } from './boards.ts';
 import { type ChangeFeed, createChangeFeed } from './changes.ts';
+import { diffOffTip } from './diff-tip.ts';
 import { branchDrift } from './drift.ts';
 import {
   errorBody,
@@ -602,6 +603,11 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
         const merged = mergedOutside(project, project.root, getItem(project, c.req.param('id')));
         return c.json({ merged: merged?.land ? merged : null });
       })
+      // The attached diff of an item in review, when it does not come from the tip its handoff
+      // recorded (P1-R3-1): the desk says so before the person approves.
+      .get('/items/:id/diff-tip', async (c) =>
+        c.json({ off: await diffOffTip(project, c.req.param('id')) }),
+      )
       .get('/items/:id/opened', (c) =>
         c.json({ evidence: openedFiles(project, c.req.param('id')) }),
       )

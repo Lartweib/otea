@@ -690,6 +690,12 @@ export const detail = {
   'bi.branch.drift':
     'Someone pushed commits to the branch after the handoff: {list}. Approving approves only what was handed off, {handed}.',
   'bi.branch.driftBy': '{commit} by {author}',
+  'bi.branch.diffOff': {
+    one: 'The attached diff does not come from what was handed off on {branch} ({tip}): {files} differs from that tip. Approving approves what was handed off, not the diff.',
+    other:
+      'The attached diff does not come from what was handed off on {branch} ({tip}): {files} differ from that tip. Approving approves what was handed off, not the diff.',
+  },
+  'bi.branch.diffOffMore': '{count} more',
   'bi.branch.moved':
     'The branch changed on the remote after the handoff: it is now at {now}. Approving approves only what was handed off, {handed}.',
   'bi.request.board': 'Board {name}',

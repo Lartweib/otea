@@ -2,6 +2,7 @@ import type { MergedOutside } from '../../src/cli/merged-outside.ts';
 import { withoutUndone } from '../../src/core/board/history.ts';
 import type { PerformanceView } from '../../src/core/board/performance.ts';
 import type { NotifyPrefs } from '../../src/core/notify/planner.ts';
+import type { DiffOffTip } from '../../src/server/diff-tip.ts';
 import type { Drift } from '../../src/server/drift.ts';
 import type { FeedEvent } from './activity.ts';
 import { apiUrl } from './base.ts';
@@ -266,6 +267,14 @@ export async function fetchMergedOutside(
   const url = `/api/items/${encodeURIComponent(id)}/merged-outside`;
   const body = (await (await get(url, signal)).json()) as { merged: MergedOutside | null };
   return body.merged;
+}
+
+// Whether the attached diff of an item in review comes from another tip than the one handed off
+// (src/server/diff-tip.ts, P1-R3-1): null when it matches, or when the PC cannot tell.
+export async function fetchDiffOffTip(id: string, signal: AbortSignal): Promise<DiffOffTip | null> {
+  const url = `/api/items/${encodeURIComponent(id)}/diff-tip`;
+  const body = (await (await get(url, signal)).json()) as { off: DiffOffTip | null };
+  return body.off;
 }
 
 export async function postOpened(id: string, evidence: number): Promise<void> {
