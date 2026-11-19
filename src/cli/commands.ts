@@ -143,6 +143,7 @@ import {
   UnknownRepo,
 } from '../app/repos.ts';
 import type { TailscaleCli } from '../app/tailscale.ts';
+import { approvedTipOf } from '../app/tips.ts';
 import {
   addTopic,
   answerTopic,
@@ -165,7 +166,7 @@ import { validateProject } from '../app/validate.ts';
 import { watch } from '../app/watch.ts';
 import { agentGuideFor, TOPICS_REMINDER, TOPICS_RULE } from '../core/agent-guide.ts';
 import { agentPrompt, isPromptKind, PROMPT_KINDS, type PromptKind } from '../core/agent-prompts.ts';
-import { isClosed, positionOf } from '../core/board/engine.ts';
+import { isClosed, isLandStep, positionOf } from '../core/board/engine.ts';
 import { guardedBranch, isEvidence, stepById } from '../core/board/model.ts';
 import { DROPPED_NAME } from '../core/board/next.ts';
 import { attachedPart, fieldsByName, partByName, stateName } from '../core/board/reading.ts';
@@ -224,6 +225,7 @@ import {
   currentBranch,
   hasCommit,
   inMainCheckout,
+  landedIn,
   mergeTake,
   pushState,
   remoteOf,
@@ -1535,12 +1537,23 @@ function handedBranch(
       `${item.id} not handed off: ${guard.name} names ${branch}, a branch this checkout has neither here nor on the remote${where}. Set ${guard.name} to the branch that holds the work, otea update ${item.id} --field "${guard.name}=${on}", then hand it off again: ${frozen}.`,
     );
   }
-  if (state?.kind === 'ahead' && pushes) {
+  // On the land step, once what the person approved is in the base as the remote has it (a forge
+  // squash-merged the branch as it was pushed), commits here the remote never got (a rebase made
+  // before the merge) need no push (P3C-R3-10).
+  const landed =
+    state?.kind === 'ahead' && isLandStep(board.def, position.step) && guard.guard.base
+      ? landedBase(project, cwd, item.id, branch, guard.guard.base)
+      : undefined;
+  if (state?.kind === 'ahead' && pushes && landed === undefined) {
     throw new OteaError(
       'missing_fields',
       `${item.id} not handed off: ${branch} holds commits ${state.remote} never got. Push it first (git push ${state.push} ${branch}), then hand it off again: ${frozen}, so the review would never see them.`,
     );
   }
+  if (state?.kind === 'ahead' && landed !== undefined)
+    return {
+      said: `${branch} holds commits ${state.remote} never got, but what the person approved is in ${landed} already, so they need no push: never push a merged branch to pass a check.`,
+    };
   const tip = tipOf(cwd, branch, base);
   const unpushed = state?.kind === 'unpushed' && pushes;
   const warning = unpushed
@@ -1561,6 +1574,20 @@ function handedBranch(
     ...(warning ? { warning } : {}),
     ...(said ? { said } : {}),
   };
+}
+
+// The base as the remote has it (origin/main), when what the person approved of the item's branch
+// is in it already; undefined otherwise, or with no approved tip to tell.
+function landedBase(
+  project: Project,
+  cwd: string,
+  id: string,
+  branch: string,
+  base: string,
+): string | undefined {
+  const approved = approvedTipOf(project, id, branch);
+  const onto = remoteOf(cwd, base);
+  return approved && landedIn(cwd, approved.commit, onto) ? onto : undefined;
 }
 
 const handoffCommand: Command = {
