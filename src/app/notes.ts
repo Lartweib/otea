@@ -455,9 +455,13 @@ export function notesSummary(
     .filter((note) => note.answer !== undefined)
     .sort((a, b) => (a.answer?.at ?? '').localeCompare(b.answer?.at ?? ''))
     .at(-1);
+  // Only while the agent does the step is a note waiting for its answer: comments left while you
+  // review go with the send-back, and a list counted them «sin respuesta» before (P5-8).
+  const position = positionOf(item.state);
+  const doing = !isClosed(position) && position.phase === 'doing';
   return {
     count: roundNotes.length,
-    unanswered: unansweredOf(roundNotes).length,
+    unanswered: doing ? unansweredOf(roundNotes).length : 0,
     ...(latest?.answer
       ? { replied: { note: latest.note, by: latest.answer.by, at: latest.answer.at } }
       : {}),
