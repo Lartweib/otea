@@ -271,7 +271,7 @@ export function setChoices(
     return kept ? { id: kept.id, name } : { id: make('c'), name };
   });
   const live = new Set(part.options.map((c) => c.id));
-  if (part.initial !== undefined && part.kind !== 'level' && part.kind !== 'yesno')
+  if (part.initial !== undefined && part.kind === 'choice')
     if (!live.has(part.initial)) delete part.initial;
   for (const s of def.steps)
     for (const h of s.hand)

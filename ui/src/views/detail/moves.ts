@@ -86,6 +86,7 @@ export function moveSaysOf(
           agent: string | null;
           round: number;
           lands?: string;
+          own?: true;
           unmerged?: true;
           unpushed?: string;
           unchanged?: true;
@@ -124,6 +125,7 @@ export function moveSaysOf(
     // change, which leaves it nothing to push (P2S-R3-3).
     if (lands?.lands !== undefined && kind === 'approve' && lands.unchanged)
       tail = t('sheet.says.unchanged');
+    else if (lands?.lands && lands.own) tail = t('sheet.says.landsOwn', { base: lands.lands });
     else if (lands?.lands !== undefined)
       tail = lands.lands ? t('sheet.says.lands', { base: lands.lands }) : t('sheet.says.landsAny');
     else tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');

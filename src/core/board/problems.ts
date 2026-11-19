@@ -281,6 +281,7 @@ function initialFits(kind: string, options: readonly { id: string }[], value: st
   if (kind === 'level') return (LEVELS as readonly string[]).includes(value);
   if (kind === 'yesno') return value === 'yes' || value === 'no';
   if (kind === 'choice') return options.some(({ id }) => id === value);
+  if (kind === 'branch') return isBranchName(value);
   return false;
 }
 

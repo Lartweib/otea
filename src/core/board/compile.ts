@@ -118,8 +118,7 @@ function fieldOf(part: Part, required: boolean): RawField {
     ...(required ? { required: 'create' as const } : {}),
     ...(module === 'enum' && values ? { values } : {}),
     ...(part.initial !== undefined &&
-    INITIAL_KINDS.includes(part.kind as never) &&
-    module !== 'text'
+    ((INITIAL_KINDS.includes(part.kind as never) && module !== 'text') || part.kind === 'branch')
       ? { default: part.initial }
       : {}),
     label: part.name,

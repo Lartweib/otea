@@ -75,7 +75,7 @@ export type Part = {
   options: Choice[];
   show?: string;
   // "Empieza en…": the value a new item starts with, on choice (a choice id), level (a LEVELS key)
-  // and yes-or-no ('yes' | 'no') fields.
+  // and yes-or-no ('yes' | 'no') fields; on a branch field, a branch name (Código en main: main).
   initial?: string;
   // "Otea protege esta rama", on a branch field only: pushes are allowed only while one of `push`
   // (step ids) is being done, never during its review, and merging only at Hecho. `repo` is the
@@ -263,6 +263,14 @@ export function guardedBranch(def: BoardDefinition): (Part & { guard: Guard }) |
   return Object.values(def.parts).find(
     (part): part is Part & { guard: Guard } => part.kind === 'branch' && part.guard !== undefined,
   );
+}
+
+// The base a board works straight on, with no branches (Código en main): its protected branch
+// starts at its base, so a push of the base is the item's own push and nothing is merged.
+export function workedBase(def: BoardDefinition): string | undefined {
+  const part = guardedBranch(def);
+  const base = part?.guard.base;
+  return base !== undefined && part?.initial === base ? base : undefined;
 }
 
 // The default way out of a step: the next step, or DONE after the last.

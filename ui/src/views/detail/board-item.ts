@@ -303,6 +303,8 @@ export type BranchStrip = {
   step?: string;
   // In the land step: the base an agent merges it into and pushes now.
   base?: string;
+  // Its branch is the base itself (a main-only board): an agent pushes it, nothing is merged.
+  own?: true;
 };
 
 export function branchStrip(
@@ -316,7 +318,10 @@ export function branchStrip(
   const value = branch ? fields[branch.id]?.trim() : undefined;
   if (!branch || !value) return null;
   const repoValue = branch.guard.repo ? fields[branch.guard.repo]?.trim() : undefined;
-  const repo = repoValue ? { repo: repoValue } : {};
+  const repo = {
+    ...(repoValue ? { repo: repoValue } : {}),
+    ...(value === branch.guard.base ? { own: true as const } : {}),
+  };
   const position = positionOf(state);
   if (isClosed(position)) {
     if (position.closed !== DONE) return { tone: 'off', key: 'closed', value, ...repo };
@@ -567,6 +572,8 @@ export function backOf(
   agent: string | null;
   round: number;
   lands?: string;
+  // The branch is the base itself: the land step pushes it, nothing is merged (P2S-R3-2).
+  own?: true;
   unmerged?: true;
   unpushed?: string;
   unchanged?: true;
@@ -592,8 +599,12 @@ export function backOf(
   const turn = turnAt(def, { step: target.step, phase: 'doing' });
   const agent = null;
   const round = (rounds.rounds[target.step] ?? 0) + 1;
+  const own =
+    branch && String(item.fields?.[branch.id] ?? '').trim() === branch.guard.base
+      ? { own: true as const }
+      : {};
   return branch && land?.id === target.step
-    ? { agent, round, lands: branch.guard.base ?? '', ...warn }
+    ? { agent, round, lands: branch.guard.base ?? '', ...own, ...warn }
     : { agent, round, ...warn };
 }
 

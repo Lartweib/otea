@@ -281,6 +281,7 @@ export const studioPreview = {
   'bs.preview.try.reopenAsk': 'What if a part reopens while you review it?',
   'bs.preview.try.reopen': 'Simulate: {id} reopens',
   'bs.preview.try.git.try': 'try the branch now',
+  'bs.preview.try.git.tryBase': 'try pushing {base} now',
   'bs.preview.try.git.push': 'Push changes',
   'bs.preview.try.git.merge': 'Merge',
   'bs.preview.try.git.allowed': '{what}: allowed.',
@@ -294,6 +295,8 @@ export const studioPreview = {
     '{id} waits for {who} to review it in {step}: meanwhile the branch is frozen.',
   'bs.preview.try.git.notPushStep':
     '{id} is in {step}; its branch is pushed only while {steps} is being done.',
+  'bs.preview.try.git.notPushStepBase':
+    '{id} is in {step}; {base} is pushed only while {steps} is being done.',
   'bs.preview.try.git.notDone':
     '{id} is in {step}, round {n}; its branch is merged only once {id} is Done.',
   'bs.preview.try.git.notDoneDropped':

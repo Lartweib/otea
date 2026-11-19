@@ -133,4 +133,12 @@ describe('problemsOf, the later settings', () => {
       },
     ]);
   });
+
+  it('lets a protected branch start at a branch name, and blocks one that is not', () => {
+    const def = tareasDeRepo();
+    def.parts.fbranch = { ...def.parts.fbranch!, initial: 'main' };
+    expect(found(def).filter(({ code }) => code === 'initial_invalid')).toEqual([]);
+    def.parts.fbranch = { ...def.parts.fbranch!, initial: 'no such..branch' };
+    expect(found(def).map(({ code }) => code)).toContain('initial_invalid');
+  });
 });
