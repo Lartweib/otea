@@ -114,20 +114,29 @@ export function profileReminder(profile: Profile, agent: string, channel: AgentC
 }
 
 // The profile a person gives an agent they connect (otea connect): its harness is the MCP client's,
-// named once the client connects, and the agent confirms it in its first session.
+// named once the client connects, and the agent confirms it in its first session. Without a harness
+// named it keeps the one the agent declared (else the command line); the same profile it declared
+// already stays as confirmed as it was, so connecting after `otea profile` undoes nothing (P8-R2-3).
 export function presetProfile(
   db: DatabaseSync,
   { agent, model, effort, given }: Omit<ProfileInput, 'channel' | 'harness'>,
   now: Clock = systemClock,
 ): ProfileView {
   if (given !== undefined) assertProfileValue('harness', given);
-  const profile: Profile = {
-    harness: given ?? 'mcp',
-    model: assertProfileValue('model', model),
-    effort: assertProfileValue('effort', effort),
-  };
-  transaction(db, () =>
-    saveProfile(db, agent, profile, { at: now(), channel: 'cli', confirmed: false }),
-  );
-  return profileView(profile);
+  return transaction(db, () => {
+    const known = findProfile(db, agent);
+    const profile: Profile = {
+      harness: given ?? known?.profile.harness ?? CLI_HARNESS.name,
+      model: assertProfileValue('model', model),
+      effort: assertProfileValue('effort', effort),
+    };
+    const same =
+      known !== undefined &&
+      known.profile.harness === profile.harness &&
+      known.profile.model === profile.model &&
+      known.profile.effort === profile.effort;
+    const confirmed = same && known.confirmed;
+    saveProfile(db, agent, profile, { at: now(), channel: 'cli', confirmed });
+    return profileView(profile);
+  });
 }
