@@ -263,6 +263,24 @@ describe('reviewing an item on the phone', () => {
     expect(html).not.toContain('<li>+ ');
   });
 
+  // A Decisión at Diseñar offered only Devolver and «Aprobar → Planificar» on the phone; the desk's
+  // «Mover a Hecho» was missing, so it could not be closed from the phone (P7-R2-3).
+  it('offers the other moves in the dock, as the desk does; discarding stays on the desk', () => {
+    setLanguage('es');
+    const html = render({
+      ...review,
+      transitions: [
+        ...review.transitions,
+        { to: 'reported', by: 'human-ui', reasonRequired: false, turn: 'agent' },
+      ],
+    });
+    const dock = html.slice(html.indexOf('class="p-dock"'));
+    expect(dock).toMatch(
+      /class="p-ways"><button[^>]*data-move="reported"[^>]*>Mover a [^<]+<\/button>/,
+    );
+    expect(dock).not.toContain('data-move="wont_fix"');
+  });
+
   it('leaves the desk sheet as it was', () => {
     const html = render(review, false);
     expect(html).toContain('class="sheet-bar');

@@ -1591,6 +1591,17 @@
   font: 600 15.5px var(--sans);
   letter-spacing: -0.005em;
 }
+/* The other ways on, under the two buttons: «Mover a Hecho» (P7-R2-3). */
+.p-dock .p-ways {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px 12px;
+  margin: 6px 0 0;
+}
+.p-dock .p-ways .btn {
+  min-height: 44px;
+}
 .p-dock .hint {
   margin: 8px 0 0;
   text-align: center;
