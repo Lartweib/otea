@@ -671,6 +671,11 @@ export function findAgent(db: DatabaseSync, name: string): AgentRecord | undefin
   return row && toAgent(row as AgentRow);
 }
 
+// Forgets a name seen on nothing but a command that failed: an agent that never declared a profile.
+export function forgetAgent(db: DatabaseSync, name: string): void {
+  db.prepare('DELETE FROM agents WHERE name = ? AND profile IS NULL').run(name);
+}
+
 // Notes that an agent listens now: its MCP server is open, or its otea wait blocks.
 // `session`: the MCP server heard, kept until another server is; a command-line wait gives none.
 export function markListening(

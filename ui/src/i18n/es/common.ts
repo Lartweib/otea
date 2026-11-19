@@ -181,7 +181,7 @@ export const common = {
   'refusal.notStuck': '{item} no está atascado: {holder} lo tiene reservado.',
   'refusal.notStuckFree': '{item} no está atascado: no le venció ninguna reserva.',
   'refusal.agentName':
-    '«{name}» no sirve como nombre de agente: usa hasta 24 minúsculas, cifras y guiones sueltos, empezando por una letra (no «you» ni «human»).',
+    '«{name}» no sirve como nombre de agente: usa hasta 40 minúsculas, cifras y guiones sueltos, empezando por una letra (no «you» ni «human»).',
   'refusal.move.none': 'Ese movimiento no existe desde aquí.',
   'refusal.move.reason': 'Este movimiento necesita un motivo.',
   'refusal.move.notAllowed': 'No puedes hacer este movimiento.',

@@ -178,7 +178,7 @@ export const common = {
   'refusal.notStuck': '{item} is not stuck: {holder} holds it.',
   'refusal.notStuckFree': '{item} is not stuck: no lease of it ran out.',
   'refusal.agentName':
-    '“{name}” cannot name an agent: use up to 24 lowercase letters, digits and single dashes, starting with a letter (not “you” or “human”).',
+    '“{name}” cannot name an agent: use up to 40 lowercase letters, digits and single dashes, starting with a letter (not “you” or “human”).',
   'refusal.move.none': 'There is no such move from here.',
   'refusal.move.reason': 'This move needs a reason.',
   'refusal.move.notAllowed': 'You may not make this move.',

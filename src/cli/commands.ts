@@ -178,6 +178,7 @@ import {
   type EventFilter,
   findAgent,
   findProfile,
+  forgetAgent,
   markMcpAsked,
   type ProfileView,
   profileView,
@@ -333,37 +334,52 @@ function seen(project: Project, input: Input, actor: Actor = input.actor): void 
   });
 }
 
+// Runs a command seen as `actor`: noted first, so the command finds it, and forgotten again when it
+// was never seen before and the command fails (P2S-R2-3): a failed command is no agent at work, the
+// desk would list it «sin perfil», and whoami would hand its name out.
+function seenWhile<T>(project: Project, input: Input, actor: Actor, run: () => T): T {
+  const fresh = actor.kind === 'agent' && !findAgent(project.db, actor.name);
+  seen(project, input, actor);
+  if (!fresh) return run();
+  const forget = (error: unknown): never => {
+    forgetAgent(project.db, actor.name);
+    throw error;
+  };
+  try {
+    const result = run();
+    return (result instanceof Promise ? result.catch(forget) : result) as T;
+  } catch (error) {
+    return forget(error);
+  }
+}
+
 // Opens the project for a command an agent runs, noting the agent as seen first.
 // An agent's write: refused when the agent is pinned to another project (otea connect).
 function withAgent<T>(input: Input, use: (project: Project) => T): T {
   return withProject(input.cwd, (project) => {
     assertPinned(input.pin, project.identity);
-    seen(project, input);
-    return use(project);
+    return seenWhile(project, input, input.actor, () => use(project));
   });
 }
 
 // Opens the project for a command that only reads: an agent that gave its name is seen; the person
 // reading without one is not.
 function withReader<T>(input: Input, use: (project: Project) => T): T {
-  return withProject(input.cwd, (project) => {
-    seen(project, input, input.reader);
-    return use(project);
-  });
+  return withProject(input.cwd, (project) =>
+    seenWhile(project, input, input.reader, () => use(project)),
+  );
 }
 
 async function withReaderWhile<T>(input: Input, use: (project: Project) => Promise<T>): Promise<T> {
-  return withProjectWhile(input.cwd, (project) => {
-    seen(project, input, input.reader);
-    return use(project);
-  });
+  return withProjectWhile(input.cwd, (project) =>
+    seenWhile(project, input, input.reader, () => use(project)),
+  );
 }
 
 async function withAgentWhile<T>(input: Input, use: (project: Project) => Promise<T>): Promise<T> {
   return withProjectWhile(input.cwd, (project) => {
     assertPinned(input.pin, project.identity);
-    seen(project, input);
-    return use(project);
+    return seenWhile(project, input, input.actor, () => use(project));
   });
 }
 
@@ -2785,12 +2801,26 @@ const mcp: Command = {
     const greeted = (harness: Harness | undefined) => {
       client = harness;
     };
+    // The names this server heard that were unknown before it did: one whose first call fails is
+    // forgotten again, so a failed call leaves no agent «sin perfil» on the desk (P2S-R2-3).
+    const newcomers = new Set<string>();
     const heard = (name: string) => {
       const fresh = !used.has(name);
       used.add(name);
       claimedBy(cwd, name, fresh);
+      if (!knownAgent(cwd, name)) newcomers.add(name);
       heardBy(cwd, name, client, warn, false, fresh, note(name));
       voices.add(name);
+    };
+    const failed = (name: string) => {
+      if (!newcomers.delete(name)) return;
+      voices.delete(name);
+      lastHeard.delete(name);
+      try {
+        withProject(cwd, (project) => forgetAgent(project.db, name));
+      } catch {
+        // No project to forget it in.
+      }
     };
     const beat = setInterval(() => {
       for (const name of voices)
@@ -2819,6 +2849,7 @@ const mcp: Command = {
           greeted,
           heard,
           still: (name) => claimedBy(cwd, name, false),
+          failed,
         }),
         signal,
       );
@@ -2830,6 +2861,15 @@ const mcp: Command = {
     return undefined;
   },
 };
+
+// Whether the project knows the agent already (no project: as good as known, nothing to forget).
+function knownAgent(cwd: string, name: string): boolean {
+  try {
+    return withProject(cwd, (project) => findAgent(project.db, name) !== undefined);
+  } catch {
+    return true;
+  }
+}
 
 // Whether a project resolves from the folder (or OTEA_PROJECT names one).
 function projectAt(cwd: string): boolean {
