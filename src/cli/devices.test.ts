@@ -1,6 +1,6 @@
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { lanAddresses } from '../server/lan.ts';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, removeOnceReleased, tempGitRepo } from './testing.ts';
 
 describe('devices', () => {
   let repo: ReturnType<typeof tempGitRepo>;
@@ -16,7 +16,7 @@ describe('devices', () => {
 
   afterEach(async () => {
     interrupt.abort();
-    await vi.waitFor(() => repo.remove());
+    await removeOnceReleased(repo.dir);
   });
 
   it('lists none before any device pairs', async () => {

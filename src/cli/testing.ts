@@ -3,7 +3,7 @@ import { cpSync, mkdirSync, mkdtempSync, realpathSync, rmSync, writeFileSync } f
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { afterAll, beforeAll } from 'vitest';
+import { afterAll, beforeAll, vi } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { openProject } from '../app/project.ts';
 import { saveProfile } from '../store/queries.ts';
@@ -116,6 +116,17 @@ const tempFolder = () => realpathSync.native(mkdtempSync(join(tmpdir(), 'otea-cl
 
 // A process that just ended can hold the folder a moment longer on Windows.
 const removeFolder = (dir: string) => rmSync(dir, { recursive: true, force: true, maxRetries: 10 });
+
+// Removes the folder of a project an `otea serve` run in this process served, once the server, just
+// interrupted, lets go of it. The server closes the project on the event loop, so this polls without
+// blocking it: rmSync's own retries sleep synchronously, holding up the very close they wait on, and
+// cost ~5.5s each time.
+export function removeOnceReleased(dir: string): Promise<void> {
+  return vi.waitFor(() => rmSync(dir, { recursive: true, force: true }), {
+    timeout: 10_000,
+    interval: 20,
+  });
+}
 
 function tempRepoAt(dir: string): TempRepo {
   return {

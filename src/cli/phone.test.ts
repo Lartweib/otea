@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { type FakeTailscale, fakeTailscale, TAILNET_HOST } from '../app/tailscale-testing.ts';
-import { type Cli, cliAt, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, removeOnceReleased, tempGitRepo } from './testing.ts';
 
 // otea phone, with the fake tailscale CLI: no test runs `tailscale up` or `tailscale serve`.
 describe('otea phone', () => {
@@ -32,7 +32,7 @@ describe('otea phone', () => {
 
   afterEach(async () => {
     interrupt.abort();
-    await vi.waitFor(() => repo.remove());
+    await removeOnceReleased(repo.dir);
     process.env.OTEA_HOME = shared;
     await vi.waitFor(() => rmSync(home, { recursive: true, force: true }));
   });

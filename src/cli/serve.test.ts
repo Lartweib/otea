@@ -2,7 +2,7 @@ import { existsSync, readFileSync } from 'node:fs';
 import { createServer, type Server } from 'node:net';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
+import { type Cli, cliAt, presetCollection, removeOnceReleased, tempGitRepo } from './testing.ts';
 
 // `Otea running at <origin>/p/<project id>/`: every project has its page on the one server.
 const URL_LINE = /^Otea running at (http:\/\/127\.0\.0\.1:\d+)\/p\/([a-z0-9-]+)\/\n$/;
@@ -44,7 +44,7 @@ describe('serve', () => {
 
   afterEach(async () => {
     interrupt.abort();
-    await vi.waitFor(() => repo.remove());
+    await removeOnceReleased(repo.dir);
   });
 
   it('serves the project on 127.0.0.1, under its own path, until interrupted', async () => {
@@ -93,7 +93,7 @@ describe('serve', () => {
     } finally {
       // The server holds the second project open until it stops.
       interrupt.abort();
-      await vi.waitFor(() => other.remove());
+      await removeOnceReleased(other.dir);
     }
   });
 
@@ -216,7 +216,7 @@ describe('serve outside any project', () => {
       await vi.waitFor(() => expect(fetch(url)).rejects.toThrow());
     } finally {
       interrupt.abort();
-      await vi.waitFor(() => repo.remove());
+      await removeOnceReleased(repo.dir);
     }
   });
 });
