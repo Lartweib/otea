@@ -22,6 +22,14 @@ describe('modelFamily', () => {
     expect(modelFamily('qwen3-coder')).toBe('qwen3-coder');
   });
 
+  // P8-R2-8: opencode/big-pickle and big-pickle made two rows in Rendimiento.
+  it('groups a model named with its provider with the same model named without it', () => {
+    expect(modelFamily('opencode/big-pickle')).toBe('big-pickle');
+    expect(modelFamily('big-pickle')).toBe('big-pickle');
+    expect(modelFamily('anthropic/claude-sonnet-4-5')).toBe('sonnet');
+    expect(modelFamily('openrouter/qwen/qwen3-coder')).toBe('qwen3-coder');
+  });
+
   it('keeps a model the agent could not read as its own bucket, never a family', () => {
     expect(modelFamily(UNKNOWN)).toBe('unknown');
     expect(modelFamily('Unknown')).toBe('unknown');
