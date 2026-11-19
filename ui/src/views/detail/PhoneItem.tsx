@@ -22,6 +22,7 @@ import { Unheard } from '../../components/Unheard.tsx';
 import { agoText } from '../../derive/when.ts';
 import { t, tx } from '../../i18n/i18n.ts';
 import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
+import { itemOpened } from '../../kit/pop/toast.tsx';
 import type { Look } from '../../lanes/looks.ts';
 import { anyoneWaits } from '../../listening.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
@@ -524,6 +525,8 @@ export function PhoneItem(p: PhoneItemProps) {
   const app = useApp();
   const { item, plan, facts, word } = p;
   const now = app.now;
+  // The toast of a move made on another item goes as this one opens (P7-R2-1).
+  useEffect(() => itemOpened(item.id), [item.id]);
 
   // ---- the rounds of the step under review, as rounds.ts reads them (the engine's numbers) ----
   const rounds = useMemo(() => {

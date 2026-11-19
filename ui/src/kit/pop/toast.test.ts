@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { holdsOn, seenAtMount, toast, toastClass } from './toast.tsx';
+import { holdsOn, itemOpened, seenAtMount, sentAway, toast, toastClass } from './toast.tsx';
 
 describe('a toast host that mounts later', () => {
   it('starts past the toast already shown, so it never replays an old one', () => {
@@ -23,5 +23,25 @@ describe('what holds a toast up', () => {
     expect(holdsOn('mouse')).toBe(true);
     expect(holdsOn('touch')).toBe(false);
     expect(holdsOn('pen')).toBe(false);
+  });
+});
+
+describe('a toast when another item opens', () => {
+  it('goes, so its Deshacer never sits over the next item’s moves (P7-R2-1)', () => {
+    toast({ msg: 'Aprobaste IDE-19', id: 'IDE-19', undo: () => undefined });
+    const shown = seenAtMount();
+    itemOpened('IDE-19');
+    expect(sentAway()).not.toBe(shown);
+    itemOpened('IDE-5');
+    expect(sentAway()).toBe(shown);
+  });
+
+  it('a toast with no item goes too; a newer toast stays until the next opening', () => {
+    toast({ msg: 'Orden fijado' });
+    const shown = seenAtMount();
+    itemOpened('IDE-5');
+    expect(sentAway()).toBe(shown);
+    toast({ msg: 'Aprobaste IDE-5', id: 'IDE-5' });
+    expect(sentAway()).toBe(shown);
   });
 });
