@@ -114,7 +114,7 @@ import {
 } from './items.ts';
 import { type LandsFirst, landsFirst, landsFirstLine, landsFirstText } from './land-order.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
-import { sessionEnded } from './presence.ts';
+import { sessionEnded, sessionRuns } from './presence.ts';
 import { priorityOf } from './priority.ts';
 import { approvedTipOf } from './tips.ts';
 
@@ -881,6 +881,9 @@ function mayTakeNow(
 ): boolean {
   const lease = activeLease(item.lease, at);
   if (lease && lease.holder !== agent) return false;
+  // A lease that ran out while its holder's session runs is still its holder's (P1-R3-6).
+  const ranOut = !lease && item.lease && item.lease.holder !== agent ? item.lease : null;
+  if (ranOut && sessionRuns(ctx.db, ranOut.holder, () => at)) return false;
   const position = positionOf(item.state);
   if (isClosed(position)) return false;
   // A question waits for the person: the turn is theirs until they answer it.

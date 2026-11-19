@@ -102,6 +102,7 @@ import {
   nameFor,
   offerName,
   quietVoices,
+  renewLeases,
   seeAgent,
   waitBeat,
 } from '../app/presence.ts';
@@ -353,6 +354,8 @@ function seen(project: Project, input: Input, actor: Actor = input.actor): void 
     folder: input.cwd,
     ...(newSession ? { newSession } : {}),
   });
+  // Any call of it keeps what it holds (P1-R3-6).
+  renewLeases(project.db, actor.name);
 }
 
 // Runs a command seen as `actor`: noted first, so the command finds it, and forgotten again when it

@@ -89,7 +89,7 @@ describe('notes from the person in the engine', () => {
     expect(lines.slice(0, 6)).toEqual([
       'CRI-1 · Criatura · Concepto, round 1',
       'Your turn: do this step.',
-      'You hold it until 2026-11-13 13:46 UTC; otea heartbeat CRI-1 keeps it longer.',
+      'You hold it until 2026-11-13 13:46 UTC; your otea calls keep it, and on a long step with none (a rebase, a test run), otea heartbeat CRI-1 every 10 minutes.',
       'Notes from the person: 1, 1 unanswered',
       '  1 · "¿Y la cola?"',
       '      unanswered: otea reply CRI-1 --note 1 "<your short answer>"',

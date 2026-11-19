@@ -144,7 +144,7 @@ function heldElsewhere(input: NextInput): string | undefined {
 // so no other agent takes it meanwhile.
 function holdLine({ id, holder, me }: NextInput): string {
   if (holder && holder.name === me)
-    return `You hold it until ${timeText(holder.expiresAt)}; otea heartbeat ${id} keeps it longer.`;
+    return `You hold it until ${timeText(holder.expiresAt)}; your otea calls keep it, and on a long step with none (a rebase, a test run), otea heartbeat ${id} every 10 minutes.`;
   if (holder) return `Held by ${holder.name} until ${timeText(holder.expiresAt)}.`;
   return `Claim it first: otea claim ${id} (otea next --claim takes and claims the next in one call).`;
 }

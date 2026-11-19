@@ -347,7 +347,7 @@ describe('nextText with a lease', () => {
       holder: { name: 'inv-a', expiresAt: until },
     });
     expect(text.split('\n')[2]).toBe(
-      `You hold it until ${timeText(until)}; otea heartbeat CRI-12 keeps it longer.`,
+      `You hold it until ${timeText(until)}; your otea calls keep it, and on a long step with none (a rebase, a test run), otea heartbeat CRI-12 every 10 minutes.`,
     );
     expect(text).not.toContain('Claim it first');
   });

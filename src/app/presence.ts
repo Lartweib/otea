@@ -311,6 +311,35 @@ export function sessionEnded(
   return listenersEnded(selectListenerProcesses(db).get(agent), runningProcesses(db, now, alive));
 }
 
+// Whether the agent's session runs now: some process it was heard listening through (its MCP
+// server, its wait) still runs. Never for an agent heard through none, such as one at the command
+// line between its commands: nothing tells. A lease of it that ran out is still its own then
+// (P1-R3-6): it may be at work on a long step with no otea call.
+export function sessionRuns(
+  db: DatabaseSync,
+  agent: string,
+  now: Clock = systemClock,
+  alive: (pid: number) => boolean = processAlive,
+): boolean {
+  const processes = selectListenerProcesses(db).get(agent);
+  if (!processes) return false;
+  return !listenersEnded(processes, runningProcesses(db, now, alive));
+}
+
+// Any otea call of an agent keeps what it holds (P1-R3-6): each live lease of it with less than half
+// of a default lease left is extended to a default lease from now, never shortened, so a busy agent
+// writes it rarely. A lease that already ran out stays as it is: the agent claims it again.
+export function renewLeases(db: DatabaseSync, agent: string, now: Clock = systemClock): void {
+  const at = now();
+  const half = leaseExpiry(at, DEFAULT_LEASE_TTL_MS / 2);
+  const until = leaseExpiry(at, DEFAULT_LEASE_TTL_MS);
+  for (const { id, lease } of selectLeases(db)) {
+    const live = activeLease(lease, at);
+    if (live?.holder !== agent || live.expiresAt >= half) continue;
+    takeLease(db, id, { holder: agent, expiresAt: until }, at);
+  }
+}
+
 // Whether every process an agent was heard listening through (its MCP server, its wait) has ended;
 // never for one heard through none.
 function listenersEnded(
