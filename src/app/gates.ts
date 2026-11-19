@@ -75,8 +75,9 @@ export type Brought = {
 };
 
 // The commit and tree of a branch an agent handed off for review (recorded with its handoff): what
-// the person approved, which is all the branch may bring in once it is approved.
-export type Tip = { branch: string; commit: string; tree: string };
+// the person approved, which is all the branch may bring in once it is approved. `unchanged`: a
+// main-only item handed off with nothing on the base the remote lacks, no code change (P2S-R3-3).
+export type Tip = { branch: string; commit: string; tree: string; unchanged?: true };
 export type Landing = { branch: string; tip?: Tip };
 export type Brings = () => readonly string[] | Brought;
 
@@ -302,14 +303,16 @@ function baseCheck(
     };
   });
   // An open item whose branch is the base itself works straight on it (a main-only board): a push
-  // or merge of the base is its own, allowed by its own step as for any branch.
+  // or merge of the base is its own, allowed by its own step as for any branch. One handed off as
+  // no code change brings nothing in, so a push never waits on it (P2S-R3-3).
   const onBase = selectItems(ctx.db, { collection: board.collection })
     .filter((item) => branch && base !== '' && item.fields[branch.id] === base)
     .filter(
       (item) =>
         repo === undefined || fields.repo === undefined || sameRepo(item.fields[repo], fields.repo),
     )
-    .filter((item) => !isClosed(positionOf(item.state)));
+    .filter((item) => !isClosed(positionOf(item.state)))
+    .filter((item) => !approvedTipOf(ctx, item.id, base)?.unchanged);
   const own = onBase.map((item): GateVerdict => {
     const position = positionOf(item.state);
     const round = itemOnBoard(ctx, item, board.def).round;

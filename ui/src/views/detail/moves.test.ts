@@ -158,6 +158,14 @@ describe('what an approve leads to, said before it acts', () => {
       'an agent then merges it into main and pushes main to the remote; note: tar-1 was never pushed to the remote',
     );
   });
+
+  it('says before an approve that the item brings no code change (P2S-R3-3)', () => {
+    const p = planMoves([land], { own: false, word });
+    const lands = () => ({ agent: null, round: 1, lands: 'main', unchanged: true as const });
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
+      'it brings no code change: there is nothing to push',
+    );
+  });
 });
 
 describe('moveSaysOf on a board', () => {

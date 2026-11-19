@@ -1459,7 +1459,9 @@ function boardMove(
 
 // A step that hands a branch hands the work on it: an agent's handoff of one with no commits over
 // its base (the board's protected base, else origin's default branch, main or master) leaves the
-// review nothing to see. Only a branch this checkout has, here or on origin, is checked.
+// review nothing to see. Only a branch this checkout has, here or on origin, is checked. The base
+// itself, on a board that works straight on it, is handed off with no commit as no code change
+// (P2S-R3-3, handedBranch).
 function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput): void {
   if (move.actor.kind !== 'agent' || move.way !== undefined) return;
   const item = getItem(project, move.id);
@@ -1472,6 +1474,7 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
     const branch = part?.kind === 'branch' ? item.fields[part.id] : undefined;
     if (!part || hand.req === 'no' || typeof branch !== 'string' || branch.trim() === '') continue;
     const base = part.guard?.base;
+    if (branch.trim() === base) continue;
     const bases = [...(base ? [base, `origin/${base}`] : []), 'origin/HEAD', 'main', 'master'];
     const over = commitsOver(cwd, branch.trim(), bases);
     if (over?.count !== 0) continue;
@@ -1489,12 +1492,13 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
 // remote branch of its name never got, on a step that pushes it (P3C-R2-2); one never pushed
 // though the repo has a remote is handed off with a warning, and the person sees it when they
 // approve (P7-8). The base itself, on a board that works straight on it, is never pushed before
-// the approval.
+// the approval; when it holds nothing the remote lacks, the item made no code change (a setting, a
+// question): it goes to review as such, said, and the push gate never waits on it (P2S-R3-3).
 function handedBranch(
   project: Project,
   cwd: string,
   move: BoardMoveInput,
-): { tip?: NonNullable<BoardMoveInput['tip']>; warning?: string } {
+): { tip?: NonNullable<BoardMoveInput['tip']>; warning?: string; said?: string } {
   const item = getItem(project, move.id);
   const board = liveBoardOf(project, item.collection);
   const position = positionOf(item.state);
@@ -1530,9 +1534,20 @@ function handedBranch(
   const warning = unpushed
     ? `Note: ${branch} was never pushed to ${state.push}. If the person reviews it on the forge (a pull request), they cannot see it there: ${frozen}.`
     : undefined;
+  const unchanged =
+    base &&
+    hands &&
+    move.actor.kind === 'agent' &&
+    move.way === undefined &&
+    pushState(cwd, branch)?.kind === 'pushed';
+  const said = unchanged
+    ? `${item.id} goes to review with no commit: ${branch} holds nothing the remote lacks, so the person reviews no code change and the push gate does not wait on it.`
+    : undefined;
+  const kept = tip && unpushed ? { ...tip, pushed: false as const } : tip;
   return {
-    ...(tip ? { tip: unpushed ? { ...tip, pushed: false as const } : tip } : {}),
+    ...(kept ? { tip: unchanged ? { ...kept, unchanged: true as const } : kept } : {}),
     ...(warning ? { warning } : {}),
+    ...(said ? { said } : {}),
   };
 }
 
@@ -1544,10 +1559,12 @@ const handoffCommand: Command = {
   options: { way: { placeholder: 'step' }, reason: {}, note: {} },
   execute: (input) => {
     let warning: string | undefined;
+    let said: string | undefined;
     const moved = boardMove(input, (project, move) => {
       refuseEmptyBranch(project, input.cwd, move);
       const handed = handedBranch(project, input.cwd, move);
       warning = handed.warning;
+      said = handed.said;
       return handoffItem(project, { ...move, ...(handed.tip ? { tip: handed.tip } : {}) });
     });
     // An agent goes on to the next item: the reply says so, so it does not stop after one.
@@ -1556,8 +1573,13 @@ const handoffCommand: Command = {
         ? 'Next: call next, and keep going until the person stops you.'
         : 'Next: otea next';
     return {
-      data: { ...(moved.data as object), next, ...(warning ? { warning } : {}) },
-      text: [moved.text, ...(warning ? [warning] : []), next].join('\n'),
+      data: {
+        ...(moved.data as object),
+        next,
+        ...(warning ? { warning } : {}),
+        ...(said ? { unchanged: said } : {}),
+      },
+      text: [moved.text, ...(said ? [said] : []), ...(warning ? [warning] : []), next].join('\n'),
     };
   },
 };
