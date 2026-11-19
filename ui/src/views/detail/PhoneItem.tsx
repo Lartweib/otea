@@ -437,7 +437,7 @@ function RoundThread({
       open={open}
       onToggle={() => setOpen((v) => !v)}
     >
-      <Thread notes={notes} evidence={evidence} now={now} agent={null} />
+      <Thread notes={notes} evidence={evidence} now={now} agent={null} at={at} />
     </Fold>
   );
 }
@@ -791,7 +791,13 @@ export function PhoneItem(p: PhoneItemProps) {
           <Lab x={<span className="you">{`${noteWords.count} · ${noteWords.state}`}</span>}>
             {t('notes.title')}
           </Lab>
-          <Thread notes={roundNotes} evidence={item.evidence} now={now} agent={leave.to} />
+          <Thread
+            notes={roundNotes}
+            evidence={item.evidence}
+            now={now}
+            agent={leave.to}
+            at={{ step: leave.step, round: leave.round }}
+          />
         </section>
       ) : null}
       {docked ? null : (

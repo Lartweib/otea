@@ -138,13 +138,19 @@ function Exchange({
   evidence,
   now,
   agent,
+  at,
 }: {
   note: ItemNote;
   evidence: readonly Evidence[];
   now: number;
   agent: string | null;
+  at?: { step: string; round: number } | undefined;
 }) {
   const open = !note.answer;
+  // A comment of your review waits in it until a send-back takes it; once it went, the agent owes
+  // its answer as for any note (P5-R2-11). Without `at`, the thread is the review's own.
+  const inReview =
+    note.review !== undefined && (!at || (note.step === at.step && note.round === at.round));
   const cited = note.anchor ? evidence.find(({ id }) => id === note.anchor?.evidence) : undefined;
   const who = note.answer?.by ?? note.to ?? agent;
   const profile = profileWords(note.answer?.profile);
@@ -179,7 +185,7 @@ function Exchange({
         </div>
       ) : (
         <div className="nt-msg wait">
-          {note.review ? (
+          {inReview ? (
             // A comment left while you reviewed: nobody answers it unless you send the step back.
             <>
               <p>{t('notes.review.waiting')}</p>
@@ -198,21 +204,25 @@ function Exchange({
 }
 
 // The thread of a round's notes, oldest first.
+// `at`: the round the thread shows in, so a review comment that went with a send-back reads as a
+// note the agent owes an answer to.
 export function Thread({
   notes,
   evidence,
   now,
   agent,
+  at,
 }: {
   notes: readonly ItemNote[];
   evidence: readonly Evidence[];
   now: number;
   agent: string | null;
+  at?: { step: string; round: number } | undefined;
 }) {
   return (
     <div className="nt-thread">
       {notes.map((note) => (
-        <Exchange key={note.note} note={note} evidence={evidence} now={now} agent={agent} />
+        <Exchange key={note.note} note={note} evidence={evidence} now={now} agent={agent} at={at} />
       ))}
     </div>
   );
@@ -240,11 +250,14 @@ export function NotesSection({
   evidence,
   now,
   agent,
+  at,
 }: {
   notes: readonly ItemNote[];
   evidence: readonly Evidence[];
   now: number;
   agent: string | null;
+  // The round being done, where a review comment that went with the send-back now waits.
+  at?: { step: string; round: number } | undefined;
 }) {
   const words = countWords(notes);
   const open = notesCount(notes).unanswered > 0;
@@ -258,7 +271,7 @@ export function NotesSection({
           {words.state}
         </span>
       </div>
-      <Thread notes={notes} evidence={evidence} now={now} agent={agent} />
+      <Thread notes={notes} evidence={evidence} now={now} agent={agent} at={at} />
     </section>
   );
 }
@@ -370,7 +383,7 @@ export function RoundNotesLine({
       >
         <Icon name="chevron" />
         <b>
-          {waiting === count
+          {notes.every((n) => n.review !== undefined)
             ? t('notes.round.review', { count })
             : t('notes.round.done', { count })}
         </b>
@@ -378,7 +391,7 @@ export function RoundNotesLine({
       </button>
       <div className="rn-body" id={body}>
         <div className="rn-inner" inert={!open}>
-          <Thread notes={notes} evidence={evidence} now={now} agent={null} />
+          <Thread notes={notes} evidence={evidence} now={now} agent={null} at={at} />
         </div>
       </div>
     </div>
