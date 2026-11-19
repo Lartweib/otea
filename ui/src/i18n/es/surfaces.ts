@@ -491,11 +491,11 @@ export const surfaces = {
   'topics.turn.anyAgent': 'Le toca a un agente',
   'topics.turn.human': 'Te toca',
   'topics.you': 'Tú',
-  'topics.fullAnswer': 'Ver la respuesta completa',
+  'topics.fullAnswer': 'Ver la respuesta',
   'topics.taskDeleted':
     'La tarea {id} se borró con su tablero, así que el tema vuelve a estar pendiente.',
   'topics.source.session': 'leída de la sesión',
-  'topics.source.agent': 'copiada por el agente',
+  'topics.source.agent': 'guardada por el agente',
   'topics.waiting': '{agent} todavía no contestó.',
   'topics.waitingAny': 'Ningún agente contestó todavía.',
   'topics.resume': 'Retomar la sesión',

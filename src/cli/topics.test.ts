@@ -241,7 +241,7 @@ describe('otea topic', () => {
     const followed = await otea('topic', 'add', '--to', 'TEM-1', '¿Y en moto?');
     expect(followed.code).toBe(0);
     expect(followed.out.trim()).toBe(
-      'Added the follow-up to TEM-1. Answer it with otea topic answer TEM-1 --summary "<short answer>" --full "<your full answer>".',
+      'Added the follow-up to TEM-1. Answer it with otea topic answer TEM-1 --summary "<short answer>" --full "<your answer as you gave it>".',
     );
     const listed = JSON.parse((await otea('topic', 'list', '--all', '--json')).out) as {
       id: string;
@@ -305,6 +305,8 @@ describe('otea topic', () => {
     await cliAt(repo.dir)('topic', 'on');
     const guide = (await otea('board')).out;
     expect(guide).toContain('Before you answer it, record it');
+    // P3C-R2-10: the saved answer is the one given in the chat, as it was said.
+    expect(guide).toContain('--full "<your answer as you gave it>"');
     expect(guide).toContain('otea topic list --search');
   });
 
