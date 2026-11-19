@@ -14,6 +14,7 @@ import type { FeedEvent } from './activity.ts';
 import { handedNote, type TocaContext, tocaSection } from './derive/toca.ts';
 import { clamp, sstep } from './motion/curves.ts';
 import type { Evidence, Item, ItemView, Move } from './types.ts';
+import { otherMoves, planMoves } from './views/detail/moves.ts';
 
 // Triaje (SPEC §10.4, mock:3995-4036): the reviews, one card at a time. Aprobar is the primary move,
 // Devolver… sends the item back to an agent with notes, Después leaves it for the end of the pass.
@@ -27,10 +28,13 @@ export type Direction = 'right' | 'left';
 // with why, never swiped.
 // pick: the approval of a decision's review, made only by picking one of its options on its page
 // (never by a swipe or a press here): it stands where forward would.
+// more: the other moves the item's page offers as «Mover a …» (otherMoves), never swiped, such as
+// a Decisión at Diseñar closing in Hecho beside going on to Planificar (P7-R3-2).
 export type TriagePlan = {
   forward?: Move;
   pick?: Move;
   back?: Move;
+  more?: Move[];
   blocked?: Array<{ move: Move; note: string }>;
 };
 
@@ -58,10 +62,18 @@ export function triagePlan(
   const picked = primary && picks?.includes(primary.to) ? primary : undefined;
   const forward = picked ? undefined : primary;
   const back = free.find((move) => move !== primary && move.turn === 'agent');
+  // The item page's rule, over the moves that are free here: an approval that carries the pick is
+  // made on the page, with it.
+  const more = otherMoves(
+    planMoves(free, { own: false, word: (state) => state, ...(waits ? { waits } : {}) }),
+  )
+    .map(({ move }) => move)
+    .filter((move) => move !== back && !picks?.includes(move.to));
   return {
     ...(forward ? { forward } : {}),
     ...(picked ? { pick: picked } : {}),
     ...(back ? { back } : {}),
+    ...(more.length > 0 ? { more } : {}),
     ...(blocked.length > 0 ? { blocked } : {}),
   };
 }

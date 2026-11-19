@@ -74,7 +74,11 @@ const review: ItemView = {
   relations: [],
 };
 
-const app = (phone: boolean, agents: object[] = []) =>
+const app = (
+  phone: boolean,
+  agents: object[] = [],
+  route: App['route'] = { view: 'toca', item: 'ERR-214' },
+) =>
   ({
     connection: 'live',
     version: 1,
@@ -85,13 +89,18 @@ const app = (phone: boolean, agents: object[] = []) =>
     collectionOf: (n: string) => (n === 'Errores' ? errores : undefined),
     agents,
     feed: [],
-    route: { view: 'toca', item: 'ERR-214' },
+    route,
     phone,
   }) as unknown as App;
 
-const render = (shown: ItemView = review, phone = true, agents: object[] = []) =>
+const render = (
+  shown: ItemView = review,
+  phone = true,
+  agents: object[] = [],
+  route?: App['route'],
+) =>
   renderToStaticMarkup(
-    <AppTestProvider value={app(phone, agents)}>
+    <AppTestProvider value={app(phone, agents, route)}>
       <ItemSheet
         item={shown}
         full={false}
@@ -135,6 +144,14 @@ describe('reviewing an item on the phone', () => {
     expect(html).toMatch(/class="p-back"[^>]*>.*Te toca<\/button>/);
     expect(html).not.toContain('class="sheet-bar');
     expect(html).not.toContain('d-hist');
+  });
+
+  // Opened from Triage, the page went back to the item's board (P7-R3-2): it says Triage, where
+  // closing it goes.
+  it('says it goes back to Triage when it was opened there', () => {
+    setLanguage('es');
+    const html = render(review, true, [], { view: 'triage', item: 'ERR-214' });
+    expect(html).toMatch(/class="p-back"[^>]*>.*Triaje<\/button>/);
   });
 
   it('shows the rounds of the step as one segment, newest first, and Comparar', () => {

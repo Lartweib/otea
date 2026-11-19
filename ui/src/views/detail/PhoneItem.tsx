@@ -37,7 +37,7 @@ import { evidenceWords } from '../toca/phone.ts';
 import { Acts, type ActsMode } from './Acts.tsx';
 import type { Facts } from './facts.ts';
 import { toastOf } from './frame.ts';
-import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
+import { type MoveChoice, type MovePlan, moveSaysOf, otherMoves } from './moves.ts';
 import { AnchorPicker, countWords, showPiece, Thread } from './NotesThread.tsx';
 import type { ItemNote } from './notes.ts';
 import { useOpened } from './opened.ts';
@@ -673,8 +673,8 @@ export function PhoneItem(p: PhoneItemProps) {
   const picking = p.mode === 'pick' ? p.pick : undefined;
   // The other ways on, under Aprobar and Devolver as on the desk: a move to another step, such as
   // «Mover a Hecho». A Decisión at Diseñar could not be closed from the phone (P7-R2-3). Discarding
-  // stays on the desk, as the phone's review always had it.
-  const moreMoves = dock ? plan.quiet.filter((c) => c.kind === 'move' && !c.blocked) : [];
+  // stays on the desk, as the phone's review always had it. Triage offers the same (otherMoves).
+  const moreMoves = dock ? otherMoves(plan) : [];
   // Whether what is handed to an agent here is heard (P7-R2-9): said beside the move that does it.
   const heard = hearing(app.agents, app.all, now);
   const [pickOpen, setPickOpen] = useState(false);

@@ -58,6 +58,7 @@ import {
 import type { Evidence, Item, ItemView, Move } from '../types.ts';
 import { useStudioBoard } from '../views/board/studio-board.tsx';
 import type { ItemBoardBlock } from '../views/detail/board-item.ts';
+import { toastOf } from '../views/detail/frame.ts';
 import { askPick } from '../views/detail/pick-intent.ts';
 import { NoteText } from './NoteText.tsx';
 import {
@@ -284,7 +285,8 @@ type CardProps = {
   phone: boolean;
   wordOf: (state: string) => string;
   register: (id: string, el: HTMLElement | null) => void;
-  onDecide: (kind: TriKind, reason?: string, from?: From) => void;
+  // to: one of the other moves (plan.more), made by its button, never by a swipe.
+  onDecide: (kind: TriKind, reason?: string, from?: From, to?: string) => void;
   onOpen: () => void;
 };
 
@@ -320,7 +322,7 @@ function planOf(view: ItemView | undefined, round: RoundShown): TriagePlan | und
   return triagePlan(view.transitions, waitsOf(view), round.gate, round.picks);
 }
 
-function TriCard({
+export function TriCard({
   item,
   under,
   view,
@@ -334,6 +336,8 @@ function TriCard({
   onOpen,
 }: CardProps) {
   const [notes, setNotes] = useState(false);
+  // The other move the notes go with, when one asks for a reason; else they go with Devolver.
+  const [noteFor, setNoteFor] = useState<Move | null>(null);
   const card = useRef<HTMLElement | null>(null);
   const drag = useRef<Drag | null>(null);
   const home = useRef<Flight | null>(null);
@@ -341,6 +345,7 @@ function TriCard({
   const forward = plan?.forward;
   const pick = plan?.pick;
   const back = plan?.back;
+  const more = plan?.more ?? [];
   // The card under the top one waits complete (inert): it is the same card, brought forward.
   const ready = !!plan;
 
@@ -351,13 +356,25 @@ function TriCard({
       return;
     }
     if (!forward) return;
+    setNoteFor(null);
     if (forward.reasonRequired) setNotes(true);
     else onDecide('approve');
   };
   const sendBack = () => {
     if (!back) return;
+    setNoteFor(null);
     if (back.reasonRequired) setNotes(true);
     else onDecide('send');
+  };
+  // An other move goes on as an approval does (onto the approved pile), asking its reason first
+  // when it needs one.
+  const moveOn = (move: Move) => {
+    if (!move.reasonRequired) {
+      onDecide('approve', '', undefined, move.to);
+      return;
+    }
+    setNoteFor(move);
+    setNotes(true);
   };
 
   // The card follows the pointer; toward a side with no move it gives only a little.
@@ -491,11 +508,17 @@ function TriCard({
             variant="quiet"
             disabled={!ready || !back}
             onClick={sendBack}
-            aria-expanded={notes}
+            aria-expanded={notes && !noteFor}
           >
             {t('triage.sendBack')}
           </Button>
         ) : null}
+        {/* The other ways on, as the item's page has them: «Mover a Hecho» (P7-R3-2). */}
+        {more.map((move) => (
+          <Button key={move.to} variant="text" data-move={move.to} onClick={() => moveOn(move)}>
+            {t('sheet.move.moveTo', { state: wordOf(move.to) })}
+          </Button>
+        ))}
         <Button variant="text" onClick={() => onDecide('later')}>
           {t('triage.later')}
         </Button>
@@ -521,10 +544,15 @@ function TriCard({
       ) : null}
       <Notes
         open={notes}
-        onCancel={() => setNotes(false)}
+        onCancel={() => {
+          setNotes(false);
+          setNoteFor(null);
+        }}
         onSend={(reason) => {
           setNotes(false);
-          onDecide('send', reason);
+          setNoteFor(null);
+          if (noteFor) onDecide('approve', reason, undefined, noteFor.to);
+          else onDecide('send', reason);
         }}
       />
     </article>
@@ -808,13 +836,22 @@ export function Triage() {
     };
   };
 
-  const decide = (kind: TriKind, reason = '', from?: From) => {
+  const decide = (kind: TriKind, reason = '', from?: From, to?: string) => {
     if (!cur || flying.current) return;
     const id = cur;
     const it = known.current.get(id);
     const shown = shownOf(id);
     const plan = shown ? planOf(shown.view, shown.round) : undefined;
-    const move = kind === 'approve' ? plan?.forward : kind === 'send' ? plan?.back : undefined;
+    // An other move (Mover a …) goes on as an approval does: thrown right, onto the approved pile.
+    const other = to === undefined ? undefined : plan?.more?.find((m) => m.to === to);
+    const move =
+      to !== undefined
+        ? other
+        : kind === 'approve'
+          ? plan?.forward
+          : kind === 'send'
+            ? plan?.back
+            : undefined;
     if (kind !== 'later' && !move) return;
     const side: Direction = kind === 'approve' ? 'right' : 'left';
     flying.current = id;
@@ -831,8 +868,10 @@ export function Triage() {
     if (move && it) {
       exits.current.set(id, side);
       const state = stateWord(typeOfItem(it, app.collectionOf), move.to);
-      const msg =
-        kind === 'approve'
+      // An other move says what the item's page says for it.
+      const msg = other
+        ? toastOf(other.closes === 'done' ? 'close' : 'move', it.title, state)
+        : kind === 'approve'
           ? t('triage.toastApprove', { title: it.title, state })
           : t('triage.toastSend', { title: it.title, state });
       app.move(id, move.to, reason, msg).catch((error: unknown) => {

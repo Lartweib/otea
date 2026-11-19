@@ -16,6 +16,8 @@
 }
 .tri .thd .back {
   justify-self: start;
+  /* One line, also compacted beside an item opened from the pass (P7-R3-2). */
+  white-space: nowrap;
 }
 .tri .ttitle {
   display: grid;
