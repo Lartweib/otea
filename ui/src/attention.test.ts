@@ -62,6 +62,24 @@ describe('attentionTitle', () => {
     expect(attentionTitle({ yours: 0, working: true })).toBe('Otea');
     expect(attentionTitle({ yours: 0, working: false })).toBe('Otea');
   });
+
+  // A phone's «Add to Home screen» names the shortcut after the title: it offered «(1) Otea» for
+  // every project (P7-13, P6-R2-6).
+  it('starts with the project, the count after it, on the desk', () => {
+    expect(attentionTitle({ yours: 2, working: false }, { project: 'standupo' })).toBe(
+      'standupo (2) · Otea',
+    );
+    expect(attentionTitle({ yours: 0, working: false }, { project: 'standupo' })).toBe(
+      'standupo · Otea',
+    );
+  });
+
+  it('is the project alone on the phone, never with the count', () => {
+    expect(attentionTitle({ yours: 3, working: true }, { project: 'landing', phone: true })).toBe(
+      'landing',
+    );
+    expect(attentionTitle({ yours: 3, working: false }, { phone: true })).toBe('Otea');
+  });
 });
 
 describe('nextLeaseExpiry', () => {

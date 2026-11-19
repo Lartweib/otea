@@ -117,9 +117,13 @@ function Shell() {
   const app = useApp();
   const ws = useWorkspace();
   const { yours, working } = useAttention(app.all);
-  useEffect(() => applyAttention({ yours, working }), [yours, working]);
   const projectId = app.project?.id;
   const projectName = app.project?.name;
+  const phone = app.phone;
+  useEffect(
+    () => applyAttention({ yours, working }, { project: projectName, phone }),
+    [yours, working, projectName, phone],
+  );
   useEffect(
     () =>
       offerShortcut(
