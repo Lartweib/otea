@@ -137,13 +137,26 @@ describe('attach', () => {
 
     const { out } = await otea('show', 'TASKS-1');
 
-    expect(out).toContain(
-      'Evidence:\n  #1  before  image  before.png  10 B  Blank\n  #2  single  log    test.log    14 B\n\nEvents:',
+    expect(out).toMatch(
+      /Evidence:\n {2}#1 {2}before {2}image {2}before\.png {2}10 B {2}Blank\n {2}#2 {2}single {2}log {4}test\.log {4}14 B\n {2}Open a file at its number and name: #1 is \S+[\\/]1[\\/]before\.png\n\nEvents:/,
     );
     expect(out).toMatch(
       /agent:claude {2}evidence_added {2}#1 before image before\.png \("Blank"\)/,
     );
     expect((await json('show', 'TASKS-1')).evidence).toHaveLength(2);
+  });
+
+  // A file the person attached (Referencias) had only its name and hash: the agent said it found no
+  // sketch (P5-R2-4). show gives each file a path to open, under the name it was attached with.
+  it('gives each file a path an agent can open, under its own name', async () => {
+    await otea('attach', 'TASKS-1', 'shots/before.png', '--role', 'before');
+
+    const [entry] = (await json('show', 'TASKS-1')).evidence;
+    expect(entry.path).toMatch(/[\\/]before\.png$/);
+    expect(readFileSync(entry.path, 'utf8')).toBe('png-before');
+    expect((await otea('show', 'TASKS-1')).out).toContain(entry.path);
+    const again = (await json('show', 'TASKS-1')).evidence[0];
+    expect(again.path).toBe(entry.path);
   });
 
   it('leaves show without an evidence section when there is none', async () => {
@@ -169,7 +182,7 @@ describe('attach', () => {
     expect(code).toBe(0);
     expect(out).toBe('Detached #2 before.png from TASKS-1.\n');
     const shown = await otea('show', 'TASKS-1');
-    expect(shown.out).toContain('Evidence:\n  #1  single  log  test.log  14 B\n');
+    expect(shown.out).toContain('Evidence:\n  #1  single  log  test.log  14 B\n  Open a file');
     expect(shown.out).toMatch(/evidence_detached {2}#2 before\.png/);
     expect((await otea('detach', 'TASKS-1', 'two')).code).toBe(2);
     const again = await otea('detach', 'TASKS-1', '2', '--json');

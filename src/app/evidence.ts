@@ -1,6 +1,15 @@
 import { createHash, randomUUID } from 'node:crypto';
-import { existsSync, mkdirSync, readFileSync, renameSync, statSync, writeFileSync } from 'node:fs';
-import { basename, join } from 'node:path';
+import {
+  copyFileSync,
+  existsSync,
+  linkSync,
+  mkdirSync,
+  readFileSync,
+  renameSync,
+  statSync,
+  writeFileSync,
+} from 'node:fs';
+import { basename, dirname, join } from 'node:path';
 import type { Channel, Performer } from '../core/authority.ts';
 import { gateAt, isClosed, positionOf } from '../core/board/engine.ts';
 import { guardedBranch, stepById } from '../core/board/model.ts';
@@ -45,6 +54,28 @@ export function evidenceDir(dataDir: string): string {
 
 export function evidenceFile(dataDir: string, sha256: string): string {
   return join(evidenceDir(dataDir), sha256);
+}
+
+// A path an agent can open: the stored file under the name it was attached with, so a reader that
+// goes by the extension opens a sketch as an image. Linked to the stored copy (copied where a link
+// is refused), once, in files/<its number>/ beside evidence/. A file the person attached had only
+// its name and hash, and the agent found no sketch (P5-R2-4). Undefined when the stored copy is gone.
+export function evidenceReadPath(
+  dataDir: string,
+  evidence: Pick<EvidenceRecord, 'id' | 'sha256' | 'filename'>,
+): string | undefined {
+  const stored = evidenceFile(dataDir, evidence.sha256);
+  if (!existsSync(stored)) return undefined;
+  const name = basename(evidence.filename).replace(/[<>:"/\\|?*]/g, '_') || 'file';
+  const named = join(dataDir, 'files', String(evidence.id), name);
+  if (existsSync(named)) return named;
+  mkdirSync(dirname(named), { recursive: true });
+  try {
+    linkSync(stored, named);
+  } catch {
+    copyFileSync(stored, named);
+  }
+  return named;
 }
 
 // `path` is absolute: the CLI and the MCP tool resolve it against their working directory. `module`

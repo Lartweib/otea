@@ -20,7 +20,9 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Raised when show's Next: became next's whole answer on a board, and again when a preset's
   // playbook became the board's text: Next: gives its first paragraph and where the rest is.
   // Raised when --json and MCP gave each field as { id, name, value } and each step its name.
-  show: { text: 580, json: 1170, mcp: 1170 },
+  // Raised when each file got a path an agent can open: one per file in --json and MCP, one line
+  // with the first as the example in the text (P5-R2-4; measured at 584, 1174 and 1179).
+  show: { text: 640, json: 1290, mcp: 1290 },
   // One row per item; measured with that bug alone. Raised with show, for the same names.
   list: { text: 25, json: 285, mcp: 285 },
   // Raised when otea board began with Otea's agent guide (instructions below): read once a session.
