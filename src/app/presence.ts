@@ -381,16 +381,25 @@ export function profileChangedAt(db: DatabaseSync, agent: string): string | null
 // command-line agent between its commands may still be at work), which the session is told;
 // `others`, the rest that fit; `working`, the names connected now or handed to another session
 // lately; `suggested`, when no name fits but this one's earlier name is taken, a free one of its
-// stem to take instead.
+// stem to take instead; `harness`, the harness the name to reuse is known by (null when unknown),
+// and `sameHarness`, whether it is the one the session named.
 export type NameAdvice = {
   name: string | null;
   lately: boolean;
   others: string[];
   working: string[];
   suggested: string | null;
+  harness: string | null;
+  sameHarness: boolean;
 };
 
-const harnessKey = (name: string) => name.toLowerCase().replace(/[^a-z0-9]/g, '');
+// A harness as one key, however it is written: "Claude Code" is claude-code, and "Open Code 2.0"
+// is opencode, its version left out.
+const harnessKey = (name: string) =>
+  name
+    .toLowerCase()
+    .replace(/[\s_-]*v?\d+(?:\.\d+)*$/, '')
+    .replace(/[^a-z0-9]/g, '');
 
 function sameFolder(a: string, b: string): boolean {
   const [x, y] = [pathKey(a, process.platform), pathKey(b, process.platform)];
@@ -415,11 +424,17 @@ export function nameFor(
     ...new Set([...agents.filter(({ live }) => live).map(({ name }) => name), ...handed]),
   ];
   const wanted = harness && harness.toLowerCase() !== 'cli' ? harnessKey(harness) : undefined;
-  // The harnesses it is known by: its MCP client's, and the one its profile declares.
+  // The harnesses it is known by: its MCP client's, and the one its profile declares. A profile
+  // declared for the command line (a test name, P6-R2-2) is known as cli; the command line it was
+  // merely seen through says nothing of the harness behind it.
   const harnesses = (agent: AgentPresence) =>
-    [agent.harness, agent.profile?.harness]
-      .filter((each): each is string => Boolean(each) && each?.toLowerCase() !== 'cli')
+    [agent.harness?.toLowerCase() === 'cli' ? null : agent.harness, agent.profile?.harness]
+      .filter((each): each is string => Boolean(each))
       .map(harnessKey);
+  // The best fit first: an agent whose harness is the one named, then one with a profile, then one
+  // with none (a name seen only on a failed command, P2S-R2-3); the most recently seen within each.
+  const rank = (agent: AgentPresence) =>
+    wanted !== undefined && harnesses(agent).includes(wanted) ? 2 : agent.profile ? 1 : 0;
   // Busy: a lease, or another session listening under the name. The MCP server asking (`session`,
   // its process id) is no other session: a harness that keeps one server for its new sessions
   // (OpenCode does) asks through the server its agent was heard by. A server that is gone (its
@@ -439,16 +454,19 @@ export function nameFor(
       const known = harnesses(agent);
       return wanted === undefined || known.length === 0 || known.includes(wanted);
     })
-    .sort((a, b) => Date.parse(b.lastSeen) - Date.parse(a.lastSeen));
+    .sort((a, b) => rank(b) - rank(a) || Date.parse(b.lastSeen) - Date.parse(a.lastSeen));
   const fits = earlier.filter((agent) => !busy(agent));
   const [first] = fits;
   const taken = first === undefined ? earlier[0] : undefined;
+  const known = first ? (first.profile?.harness ?? first.harness) : null;
   return {
     name: first?.name ?? null,
     lately: first?.live === true,
     others: fits.slice(1).map(({ name }) => name),
     working: working.filter((name) => name !== first?.name),
     suggested: taken ? freeName(db, taken.name, handed) : null,
+    harness: first && harnesses(first).length > 0 ? known : null,
+    sameHarness: first !== undefined && wanted !== undefined && harnesses(first).includes(wanted),
   };
 }
 
