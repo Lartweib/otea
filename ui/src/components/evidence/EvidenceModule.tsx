@@ -9,6 +9,7 @@ import { BlindPick } from './EvidenceViewer.tsx';
 import { FileView } from './FileViews.tsx';
 import { ImageCompare, ImageGallery, ImageSingle } from './ImageViews.tsx';
 import { ItemReview } from './item-evidence.ts';
+import { pickAt, READ_AT } from './reader-pick.ts';
 import { ReportOr } from './TestReportView.tsx';
 import { DiffView, LogView } from './TextViews.tsx';
 import { VideoFrames, VideoPlayer } from './VideoViews.tsx';
@@ -144,6 +145,30 @@ function BlindCompare({ held }: { held: Evidence[] }) {
   );
 }
 
+// A line of the diff on the item's page takes a note the way the reader's does (P3C-R3-7): while a
+// note can be left, a click on it opens the reader there, the line picked and the note box ready.
+export function NotableDiff({ evidence }: { evidence: Evidence }) {
+  const { note } = useContext(ItemReview);
+  if (!note) return <DiffView evidence={evidence} />;
+  return (
+    // biome-ignore lint/a11y/noStaticElementInteractions: a click on a line opens the reader on it; the reader takes notes by keyboard too
+    // biome-ignore lint/a11y/useKeyWithClickEvents: the reader, a button away, is the keyboard's way to a line
+    <div
+      className="ev-notable"
+      data-picking="true"
+      title={t('evidence.noteLine')}
+      onClick={(e) => {
+        const hit = pickAt(e.target);
+        if (!hit) return;
+        const detail = { evidence: evidence.id, pick: hit.pick };
+        window.dispatchEvent(new CustomEvent(READ_AT, { detail }));
+      }}
+    >
+      <DiffView evidence={evidence} />
+    </div>
+  );
+}
+
 function Body({ entry, held, title }: { entry: LayoutEntry; held: Evidence[]; title: string }) {
   const { module, variant } = entry;
   if (module === 'images' && variant === 'compare')
@@ -160,7 +185,7 @@ function Body({ entry, held, title }: { entry: LayoutEntry; held: Evidence[]; ti
           return <VideoFrames key={shown.id} evidence={shown} />;
         }
         if (module === 'recording') return <VideoPlayer key={shown.id} evidence={shown} />;
-        if (module === 'diff') return <DiffView key={shown.id} evidence={shown} />;
+        if (module === 'diff') return <NotableDiff key={shown.id} evidence={shown} />;
         if (module === 'files') return <FileView key={shown.id} evidence={shown} />;
         return (
           <ReportOr key={shown.id} evidence={shown}>
