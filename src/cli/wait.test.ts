@@ -5,11 +5,13 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { fileURLToPath } from 'node:url';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { sendBackItem } from '../app/next.ts';
+import { createItem } from '../app/items.ts';
+import { approveItem, sendBackItem } from '../app/next.ts';
 import { listAgents, processAlive } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
-import { errores } from '../core/board/testing.ts';
+import { cambios, errores, step, tareasDeRepo } from '../core/board/testing.ts';
+import { updateItemState } from '../store/queries.ts';
 import { listProcesses, ownerChain, type ProcessRow } from './owner.ts';
 import {
   type Cli,
@@ -249,6 +251,90 @@ describe('wait', () => {
 
       expect(code).toBe(13);
       expect(err).toContain('your question on TASKS-1');
+    });
+  });
+
+  // P2S-6, P3C-15, P6-R2-9: what the person does on the desk reaches a waiting agent, with the
+  // action it now has to take.
+  describe('after the person acts on the desk', () => {
+    // A Cambio divides into Tareas de repo; a Tarea ends with Integrar, which an agent does.
+    const repoBoards = (land: boolean) => {
+      const project = openProject(repo.dir);
+      try {
+        const tasks = tareasDeRepo();
+        if (land) tasks.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+        publishAs(project, tasks, 'brt');
+        publishAs(project, cambios(), 'bcam');
+        const parent = createItem(project, {
+          collection: 'Cambios',
+          title: 'Nube',
+          fields: { fwhat: 'x' },
+          actor: { kind: 'human', name: 'human' },
+        });
+        const task = createItem(project, {
+          collection: 'Tareas de repo',
+          title: 'API',
+          fields: { frepo: 'api', fbranch: 'feat/x' },
+          parent: parent.id,
+          actor: { kind: 'human', name: 'human' },
+        });
+        return { parent: parent.id, task: task.id };
+      } finally {
+        project.db.close();
+      }
+    };
+    const inState = (id: string, state: string) => {
+      const project = openProject(repo.dir);
+      try {
+        updateItemState(project.db, id, state, new Date().toISOString());
+      } finally {
+        project.db.close();
+      }
+    };
+
+    it('wakes when an approval hands the item on to a step an agent does', async () => {
+      const { task } = repoBoards(true);
+      inState(task, 'simpl__review');
+      const args = ['--turn', 'agent', '--unclaimed', '--collection', 'Tareas de repo'];
+      const waiting = startCli(repo.dir, 'wait', ...args, '--as', 'claude');
+      expect(await settled(waiting)).toBe(false);
+
+      const project = openProject(repo.dir);
+      try {
+        approveItem(project, { id: task, actor: { kind: 'human', name: 'human' }, channel: 'ui' });
+      } finally {
+        project.db.close();
+      }
+
+      expect(await waiting.done).toBe(0);
+      expect(waiting.out()).toMatch(new RegExp(`^${task} {2}Integrar {2}agent {2}API\\n`));
+    });
+
+    it('names the merges to make first when it wakes for a parent that waits for them', async () => {
+      const { parent, task } = repoBoards(false);
+      inState(task, 'done');
+      inState(parent, 'sexec');
+
+      const { code, out } = await otea(
+        'wait',
+        '--turn',
+        'agent',
+        '--unclaimed',
+        '--collection',
+        'Cambios',
+        '--as',
+        'claude',
+      );
+
+      expect(code).toBe(0);
+      expect(out).toContain(
+        [
+          `Merge first: ${parent} waits for its parts to be merged.`,
+          '',
+          'Waiting to be merged',
+          `  ${task} (feat/x) is Done: merge its PR, then otea merged ${task} --pr <url>.`,
+        ].join('\n'),
+      );
     });
   });
 

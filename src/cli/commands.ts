@@ -71,6 +71,7 @@ import {
   dropItem,
   handoffItem,
   liveBoardOf,
+  mergeFirstFor,
   nextFor,
   offerableTo,
   sendBackItem,
@@ -1674,7 +1675,10 @@ const wait: Command = {
         return { ...waited, asked: onItsQuestion() ? askedByAgent(project, me) : [] };
       }
       const { found } = waited;
-      const woke = 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
+      const row = 'text' in found ? { data: found, text: found.text } : itemResult(project, found);
+      // A parent whose parts wait to be merged: the merges are what the agent does now.
+      const merges = 'text' in found ? undefined : mergeFirstFor(project, found.id);
+      const woke = merges === undefined ? row : { ...row, text: `${row.text}\n${merges}` };
       // While topics are on, what woke the agent reminds it to record side questions.
       const reminded = 'topics' in found ? woke : withTopicsReminder(project, input.actor, woke);
       // An agent woken on its turn reads what woke it, then waits again: told so in exact words.
