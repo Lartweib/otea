@@ -363,6 +363,17 @@
 .m .sep {
   color: var(--rule-2);
 }
+/* «nadie está escuchando» never gives way with an ellipsis: the board name does (P8-R2-7); in the
+   queue behind an agent at work on another item it reads calm, in grey (P7-R2-12) */
+.m .mpt[data-unheard] {
+  flex: none;
+}
+.m .mpt[data-unheard] > :last-child {
+  overflow: visible;
+}
+.m .calm {
+  color: var(--ink-3);
+}
 .m .warn,
 .warn-t {
   color: var(--warn);

@@ -63,6 +63,11 @@ export const common = {
   'lease.heldExpired': 'held by {holder}, its lease expired at {time}',
   'listen.none': 'nobody is listening',
   'listen.lead': 'Nobody is listening.',
+  'listen.busy': { one: 'queued: {agent} is busy', other: 'queued: {count} agents are busy' },
+  'listen.busyLead': {
+    one: 'Nobody is listening now: {agent} is busy with another item.',
+    other: 'Nobody is listening now: {count} agents are busy with other items.',
+  },
   'listen.notice':
     '{lead} No agent waits in otea wait: this stays here until one comes back. Ask your agent to keep listening with {command}.',
   'severity.bars': 'Severity {level} of 4',

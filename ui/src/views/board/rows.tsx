@@ -1,5 +1,6 @@
 import type { MouseEvent, ReactNode } from 'react';
 import type { FeedEvent } from '../../activity.ts';
+import { UnheardMark } from '../../components/Unheard.tsx';
 import { agentOf, isStuck } from '../../derive/toca.ts';
 import { whenText } from '../../derive/when.ts';
 import type { GridColumn } from '../../grid.ts';
@@ -32,6 +33,8 @@ export type RowCtx = {
   onTick: (id: string, shift: boolean) => void;
   // The agents seen, to mark what waits for an agent while none listens; absent, nothing is marked.
   agents?: readonly Agent[] | null | undefined;
+  // The agents at work on another item (busyAgents): what nobody hears then waits in the queue.
+  busy?: readonly string[];
 };
 
 const MIN = 60_000;
@@ -207,12 +210,7 @@ export function listaBlocks(entries: readonly Entry[], ctx: RowCtx): LaneBlock[]
                   <span>{signal}</span>
                 </span>
               ))}
-              {unheard(it, ctx.agents, ctx.now) ? (
-                <span className="mpt" data-unheard="">
-                  <span className="sep">·</span>
-                  <span className="warn">{t('listen.none')}</span>
-                </span>
-              ) : null}
+              {unheard(it, ctx.agents, ctx.now) ? <UnheardMark busy={ctx.busy ?? []} /> : null}
             </div>
           </div>
           <span className="sev" data-leaf="">

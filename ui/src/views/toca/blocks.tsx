@@ -3,6 +3,7 @@ import type { FeedEvent } from '../../activity.ts';
 import { type App, typeOfItem } from '../../app/context.tsx';
 import { onPublishedBoard } from '../../board-studio/home/boards-store.ts';
 import { Prof } from '../../components/Prof.tsx';
+import { UnheardMark } from '../../components/Unheard.tsx';
 import { mainPath } from '../../derive/path.ts';
 import {
   agentOf,
@@ -21,7 +22,7 @@ import { laneOf } from '../../lanes/geometry.ts';
 import type { Universe } from '../../lanes/handoff.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
-import { unheard } from '../../listening.ts';
+import { busyAgents, unheard } from '../../listening.ts';
 import { actedWith } from '../../presence.ts';
 import { stateWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
@@ -274,10 +275,7 @@ function TocaRow({
             </span>
           ) : null}
           {sec === 'encamino' && unheard(it, app.agents, app.now) ? (
-            <span className="mpt" data-unheard="">
-              <span className="sep">·</span>
-              <span className="warn">{t('listen.none')}</span>
-            </span>
+            <UnheardMark busy={busyAgents(app.agents, app.all, app.now)} />
           ) : null}
         </div>
         {delivered && (delivered.note || files) ? (

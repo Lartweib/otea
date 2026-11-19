@@ -66,6 +66,14 @@ export const common = {
   'lease.heldExpired': 'en manos de {holder}; su reserva venció ({time})',
   'listen.none': 'nadie está escuchando',
   'listen.lead': 'Nadie está escuchando.',
+  'listen.busy': {
+    one: 'en cola: {agent} está ocupado',
+    other: 'en cola: {count} agentes ocupados',
+  },
+  'listen.busyLead': {
+    one: 'Nadie escucha ahora: {agent} está ocupado con otro ítem.',
+    other: 'Nadie escucha ahora: {count} agentes están ocupados con otros ítems.',
+  },
   'listen.notice':
     '{lead} Ningún agente espera con otea wait: esto queda aquí hasta que uno vuelva. Pídele a tu agente que siga atento con {command}.',
   'severity.bars': 'Gravedad {level} de 4',

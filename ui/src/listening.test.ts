@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ago, item as fixture, inMinutes, NOW } from './derive/fixtures.ts';
-import { anyoneWaits, unheard } from './listening.ts';
+import { anyoneWaits, busyAgents, unheard } from './listening.ts';
 import type { Agent } from './presence.ts';
 import type { Item } from './types.ts';
 
@@ -50,5 +50,27 @@ describe('unheard', () => {
     const lease = { holder: 'a', expiresAt: inMinutes(10) };
     expect(unheard(item({ lease }), [agent('a')], NOW)).toBe(false);
     expect(unheard(item({ lease }), [agent('a', { lastSeen: ago(10) })], NOW)).toBe(true);
+  });
+});
+
+// P7-R2-12: every queued item read «nadie está escuchando» in red while the only agent worked on
+// another item; that is a queue, not an alarm.
+describe('busyAgents', () => {
+  const lease = { holder: 'a', expiresAt: inMinutes(10) };
+  const items = [item({ id: 'TASK-2', lease })];
+
+  it('names the agents at work on an item they hold', () => {
+    expect(busyAgents([agent('a', { holding: ['TASK-2'] }), agent('b')], items, NOW)).toEqual([
+      'a',
+    ]);
+  });
+
+  it('names none gone idle on what it holds, nor one only waiting for your answer', () => {
+    expect(
+      busyAgents([agent('a', { holding: ['TASK-2'], lastSeen: ago(10) })], items, NOW),
+    ).toEqual([]);
+    const asks = { question: 1, by: 'a', text: 'Which one?', at: ago(1) };
+    const asking = [item({ id: 'TASK-2', lease, asks })];
+    expect(busyAgents([agent('a', { holding: ['TASK-2'] })], asking, NOW)).toEqual([]);
   });
 });

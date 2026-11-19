@@ -189,6 +189,15 @@ describe('the item sheet', () => {
     expect(heard).not.toContain('data-unheard');
   });
 
+  // P8-R2-7: the header only said «Espera a un agente» while nobody would bring one.
+  it('says in the header that nobody is listening on an item that waits for an agent', () => {
+    setLanguage('es');
+    const queued: ItemView = { ...item, state: 'fixing', turn: 'agent', events: [] };
+    const lone = { name: 'Mender', harness: null, holding: [], lastSeen: ago(30), live: true };
+    const silent = render(queued, { ...app, agents: [{ ...lone, waiting: false }] } as App);
+    expect(silent).toContain('>Espera a un agente. Nadie está escuchando.</span></p>');
+  });
+
   it('lets the person free a live lease, and says how long it has left, not the item’s age', () => {
     const held: ItemView = {
       ...item,

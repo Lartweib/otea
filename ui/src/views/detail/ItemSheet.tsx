@@ -17,6 +17,7 @@ import { GhostButton, Icon, StepPill, Swap, toast } from '../../kit/index.ts';
 import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
+import { busyAgents, unheard, unheardLead } from '../../listening.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { ItemTypeScope, stateWord, stateWordIn, typeWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
@@ -351,7 +352,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     archived: item.archived?.board,
     reopened: onBoard?.reopened?.why,
   });
-  const standText = tx(
+  const standWords = tx(
     stand.key as 'sheet.stand.handedRound',
     {
       agent: <b>{stand.agent}</b>,
@@ -360,6 +361,15 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       ...(stand.why ? { why: stand.why } : {}),
       ...(stand.board ? { board: stand.board } : {}),
     } as never,
+  );
+  // An item nobody will bring an agent to says so in its header too, not only below (P8-R2-7).
+  const silentHere = unheard(item, app.agents, now);
+  const standText = silentHere ? (
+    <>
+      {standWords} {unheardLead(busyAgents(app.agents, app.all, now))}
+    </>
+  ) : (
+    standWords
   );
   const pathIndex = (state: string) => (type ? routeIndex(type, state, facts.visited) : -1);
   const presetDips = facts.sentBack.map((r) => ({
@@ -939,7 +949,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
               {links ? <PartOfLine parent={links.parent} /> : null}
               <div data-c>
                 <Swap
-                  k={`${stand.key}:${stand.agent ?? ''}:${stand.round ?? ''}:${stand.time ?? ''}`}
+                  k={`${stand.key}:${stand.agent ?? ''}:${stand.round ?? ''}:${stand.time ?? ''}:${silentHere}`}
                   as="p"
                   className="standfirst"
                   dy={4}
