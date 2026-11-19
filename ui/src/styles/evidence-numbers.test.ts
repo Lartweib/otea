@@ -18,3 +18,13 @@ describe('a line number', () => {
     expect(body).not.toMatch(/opacity/);
   });
 });
+
+// The picture in the desk reader shrank with each note listed under it (400 → 364 → 322 px), and
+// the next click landed off the spot (P5-R2-9): the list holds a few rows, then scrolls.
+describe('the notes under a file in the desk reader', () => {
+  it('keep one height and scroll, instead of shrinking the picture with each note', () => {
+    const body = rule('.rd-main .ev-reader-left');
+    expect(body).toMatch(/(^|\s)height: \d+px;/);
+    expect(body).toMatch(/overflow-y: auto;/);
+  });
+});
