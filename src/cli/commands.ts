@@ -199,6 +199,7 @@ import {
 import { prState } from './gh.ts';
 import {
   branchesBrought,
+  checkoutRoot,
   commitsOver,
   currentBranch,
   inMainCheckout,
@@ -656,8 +657,8 @@ const migrateCommand: Command = {
   },
 };
 
-// How what Otea writes (.mcp.json, hooks) runs this Otea again: a checkout on Node, the desktop app
-// on its own Electron.
+// How what Otea writes (hooks, the MCP server connect prints) runs this Otea again: a checkout on
+// Node, the desktop app on its own Electron. connect prefers the otea command on $PATH.
 const OTEA = oteaLauncher(fileURLToPath(new URL('./main.ts', import.meta.url)), {
   execPath: process.execPath,
   electron: process.versions.electron,
@@ -669,7 +670,7 @@ function mcpInstructionText(entry: McpEntry): string[] {
   const env = Object.entries(entry.env ?? {}).map(([name, value]) => `${name}=${value}`);
   const json = JSON.stringify({ [MCP_SERVER]: entry });
   return [
-    "To use Otea's MCP tools, add this MCP server to your harness's MCP config yourself, for this project only (the project's own config or your harness's per-folder scope, never your global config: the server is pinned to this project). It is a local stdio server; Otea writes no harness config:",
+    "To use Otea's MCP tools, add this MCP server to your harness's MCP config yourself, for this project only: in the project's own config file or your harness's project scope. Never edit your user or global config: the server is pinned to this project. It is a local stdio server; Otea writes no harness config:",
     indent(
       columns([
         ['name', MCP_SERVER],
@@ -679,7 +680,9 @@ function mcpInstructionText(entry: McpEntry): string[] {
       ]),
     ),
     `As JSON: ${json}`,
-    'It names no agent: each session names itself (--as; MCP tools: as). If your harness already has a server named otea that runs anything else (an older Otea, or mcp --as <name>), replace it for this project with this one. Then restart or reload your session so it loads the server, approve it if your harness asks, call any Otea tool, and run otea connect --check: the desk shows the agent connected, or warns that it is not. Until then, and whenever MCP is off, the otea command does the same.',
+    "That JSON is one shape; every harness has its own, and may skip a server in another shape without a word: translate it to your harness's schema, or add the server with your harness's own mcp add command, at project scope. The usual project files, as examples: Claude Code: .mcp.json (under mcpServers); OpenCode: opencode.json (under mcp, with command as one array of the command and its args, and env as environment).",
+    'It names no agent: each session names itself (--as; MCP tools: as). If your harness already has a server named otea that runs anything else (an older Otea, or mcp --as <name>), replace it for this project with this one. Then restart or reload your session if your harness needs it to load the server, approve it if your harness asks, and call any Otea tool. Until then, and whenever MCP is off, the otea command does the same.',
+    'Run otea connect --check now (with --as <name>), and again after that call: only it tells whether the server loaded, and the desk warns until it does.',
   ];
 }
 
@@ -746,12 +749,16 @@ const connect: Command = {
       }
       return { root: project.root, id: project.identity.id };
     });
-    const agentsMd = writeAgentsMd(root);
-    const mcp = { name: MCP_SERVER, ...mcpEntry(withHome(OTEA, input.home), id) };
-    const old = oldMcpEntry(root);
+    // AGENTS.md goes in the checkout the agent works in: a linked worktree's own, so its agents
+    // read it there.
+    const here = checkoutRoot(cwd) ?? root;
+    const agentsMd = writeAgentsMd(here);
+    const entry = mcpEntry(withHome(input.oteaOnPath?.() ?? OTEA, input.home), id);
+    const mcp = { name: MCP_SERVER, ...entry };
+    const old = oldMcpEntry(here);
     const text = [
-      `${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}: every agent that reads AGENTS.md finds Otea there (Claude Code reads CLAUDE.md: a line @AGENTS.md in it imports this file)`,
-      ...mcpInstructionText(mcpEntry(withHome(OTEA, input.home), id)),
+      `${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}: every agent that reads AGENTS.md finds Otea there (if your harness doesn't read AGENTS.md, import it from the file it reads)`,
+      ...mcpInstructionText(entry),
       ...(old
         ? [
             `${old} still has the otea entry an older otea connect wrote, which gives every session there one agent name: remove that entry and add the server as above.`,
