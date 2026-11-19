@@ -21,6 +21,7 @@ import {
   saveProcessBeat,
   saveProfile,
   selectAgents,
+  selectLastReleases,
   selectLeases,
   selectListener,
   selectListenerProcesses,
@@ -56,6 +57,8 @@ export type Sighting = {
   folder?: string | undefined;
   // The command-line wait it is heard through (its process id), while that wait runs.
   waiter?: number;
+  // A command it ran (not a listener's beat): when it last acted (P1-R3-8).
+  call?: boolean;
 };
 
 // Seen again after this long away, an agent connects anew (its connectedAt starts over).
@@ -149,7 +152,11 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
   // Heard through the MCP server: its harness loaded Otea's server.
   const mcp = sighting.channel === 'mcp';
   const moved = sighting.folder !== undefined && sighting.folder !== known?.folder;
-  const unchanged = fresh && same && connectedAt === known?.connectedAt && !moved;
+  // A command it ran is noted as an act, as precisely as a sighting.
+  const acted =
+    sighting.call === true &&
+    (!known?.actedAt || Date.parse(at) - Date.parse(known.actedAt) >= SEEN_PRECISION_MS);
+  const unchanged = fresh && same && connectedAt === known?.connectedAt && !moved && !acted;
   if (unchanged && (!mcp || known?.mcpAt)) return false;
   upsertAgent(db, {
     name: sighting.agent,
@@ -158,6 +165,7 @@ export function seeAgent(db: DatabaseSync, sighting: Sighting, now: Clock = syst
     connectedAt,
     ...(mcp ? { mcpAt: at } : {}),
     ...(sighting.folder === undefined ? {} : { folder: sighting.folder }),
+    ...(sighting.call ? { actedAt: at } : {}),
   });
   return true;
 }
@@ -484,6 +492,16 @@ export function listAgents(
   // Every listener process it was heard through has ended.
   const silenced = (name: string) => listenersEnded(listeners.get(name), alive);
   const records = selectAgents(db);
+  const released = selectLastReleases(db);
+  const names = records.map(({ name }) => name);
+  // A subagent that let go of what it held and ran nothing since, for a short while, has finished,
+  // whatever wait of it still beats in its parent's shells (P1-R3-8).
+  const finished = (record: (typeof records)[number], held: readonly string[]) => {
+    const release = released.get(record.name);
+    if (held.length > 0 || release === undefined || !isSubagent(record.name, names)) return false;
+    const quiet = Date.parse(record.actedAt ?? record.lastSeen) <= Date.parse(release);
+    return quiet && Date.parse(at) - Date.parse(release) > ACTIVE_WINDOW_MS;
+  };
   const declaredOf = new Map(records.map(({ name }) => [name, findProfile(db, name)]));
   // The harness an agent works through, as one key: its MCP client's, else the one it declared.
   const keyOf = ({ name, harness }: (typeof records)[number]): string | null => {
@@ -524,10 +542,13 @@ export function listAgents(
     const { name, harness, harnessVersion, connectedAt, lastSeen, mcpAt, folder } = record;
     const held = holding.get(name) ?? [];
     const heardAt = heard.get(name);
-    const gone = heardAt !== undefined && silenced(name);
+    const done = finished(record, held);
+    const gone = done || (heardAt !== undefined && silenced(name));
     const listening = within(heardAt) && !gone;
-    // Its session ended: it was last heard through a listener now gone, and did nothing since.
-    const ended = gone && Date.parse(lastSeen) <= Date.parse(heardAt);
+    // Its session ended: it was last heard through a listener now gone, and did nothing since; or
+    // it is a subagent that finished.
+    const ended =
+      done || (gone && heardAt !== undefined && Date.parse(lastSeen) <= Date.parse(heardAt));
     // It acted lately (a command-line agent between its commands); a profile given for it by
     // the person, with no sighting of its own, is no act.
     const active = connectedAt !== null && since(lastSeen, ACTIVE_WINDOW_MS);
@@ -558,6 +579,16 @@ export function listAgents(
       Date.parse(b.lastSeen) - Date.parse(a.lastSeen) ||
       a.name.localeCompare(b.name),
   );
+}
+
+// Whether `name` is a subagent's, as the guide has them named: another agent's name, then a role
+// (claude-haiku-hacer, claude-haiku-integrar-2). A number alone after it is another session of the
+// same agent (claude-2, as whoami hands it out), never a subagent.
+export function isSubagent(name: string, names: readonly string[]): boolean {
+  return names.some((parent) => {
+    if (parent === name || !name.startsWith(`${parent}-`)) return false;
+    return !/^\d+$/.test(name.slice(parent.length + 1));
+  });
 }
 
 // What changes when an agent's presence does, leaving out `live`, which only time changes: the
