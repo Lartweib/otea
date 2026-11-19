@@ -155,6 +155,53 @@ describe('otea whoami', () => {
     }
   });
 
+  // P6-R2-2: a CLI test name (profile --harness cli) was handed to a Claude session.
+  it('gives no name declared for the command line to a session of another harness', async () => {
+    await workedHere('probe', 'cli');
+    later();
+
+    expect(await json(otea, 'whoami', '--harness', 'claude-code')).toMatchObject({ name: null });
+  });
+
+  // P2S-R2-3: a name seen only through a failed command was offered before one with a profile.
+  it('prefers the name whose profile names the harness over one with no profile', async () => {
+    await workedHere('a1', 'claude-code');
+    await cliAt(repo.dir, { OTEA_AGENT: 'a2-probe' })('list');
+    later();
+    // a2-probe was seen last.
+    const project = openProject(repo.dir);
+    try {
+      const after = new Date(Date.now() - 9 * 60_000).toISOString();
+      project.db.prepare("UPDATE agents SET last_seen = ? WHERE name = 'a2-probe'").run(after);
+    } finally {
+      project.db.close();
+    }
+
+    expect(await json(otea, 'whoami', '--harness', 'claude-code')).toMatchObject({
+      name: 'a1',
+      others: ['a2-probe'],
+    });
+  });
+
+  // P8-R2-9: "Open Code 2.0" matched no opencode agent, and an agent of unknown harness was
+  // offered as one that worked "through this harness".
+  it('matches a harness named with its version, and says so only for the same harness', async () => {
+    await workedHere('oc', 'opencode');
+    later();
+
+    const { out } = await otea('whoami', '--harness', 'Open Code 2.0');
+    expect(out).toContain('Reuse your name: oc');
+    expect(out).toContain('worked here before through this harness');
+
+    await cliAt(repo.dir, { OTEA_AGENT: 'pa' })('list');
+    later();
+    offersLater();
+    const told = await otea('whoami', '--harness', 'codex');
+    expect(told.out).toContain('Reuse your name: pa');
+    expect(told.out).not.toContain('through this harness');
+    expect(told.out).toContain('its harness is not known');
+  });
+
   it('says who you are when you gave a name', async () => {
     const { out } = await cliAt(repo.dir, { OTEA_AGENT: 'ana' })('whoami');
 

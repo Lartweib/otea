@@ -91,6 +91,7 @@ import {
   hearAgent,
   LISTEN_BEAT_MS,
   listAgents,
+  type NameAdvice,
   nameFor,
   offerName,
   seeAgent,
@@ -1944,6 +1945,13 @@ const claim: Command = {
   },
 };
 
+// How the name whoami gives back came through: the harness the session named, another one it is
+// known by, or one nobody knows (an agent seen only on the command line).
+function throughText({ harness, sameHarness }: NameAdvice): string {
+  if (sameHarness) return 'through this harness';
+  return harness === null ? '(its harness is not known)' : `through ${harness}`;
+}
+
 // The name a session takes: the one it worked under before here (same folder, same harness, not
 // connected now), so it keeps one name across sessions; else a new one, never one connected now.
 const whoami: Command = {
@@ -1976,7 +1984,7 @@ const whoami: Command = {
         return {
           data: { ...advice, reuse: true },
           text: [
-            `Reuse your name: ${advice.name}${when}, the agent that worked here before through this harness, with no session working under it now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
+            `Reuse your name: ${advice.name}${when}, the agent that worked here before ${throughText(advice)}, with no session working under it now. Put it on every command: --as ${advice.name} (MCP tools: as).`,
             ...(advice.lately
               ? [
                   `${advice.name} acted moments ago: if another terminal still works as ${advice.name}, pick a new name instead.`,
