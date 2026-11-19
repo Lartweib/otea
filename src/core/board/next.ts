@@ -561,8 +561,10 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
     const said = input.merged?.commit ? ` (${input.merged.commit})` : '';
     // On a board with a land step, Done means an agent already merged it there.
     const land = landStepOf(def);
+    // An item that names no branch has nothing to merge, whatever the board protects (P5-R2-6).
+    const named = branch && String(input.fields[guardedBranch(def)?.id ?? ''] ?? '').trim() !== '';
     const merge =
-      position.closed !== DONE || !branch
+      position.closed !== DONE || !branch || !named
         ? ''
         : input.merged
           ? ` Its branch ${branch.value} was merged${said}.`

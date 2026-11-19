@@ -184,7 +184,8 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
       }
       const who = agentOf(item, feed);
       return {
-        act: t('toca.act.done'),
+        // Done with its branch not merged yet reads apart from a merged one (P3C-R2-6).
+        act: item.merge === 'waiting' ? t('boardView.approvedUnmerged') : t('toca.act.done'),
         sub: who ? sub('toca.sub.didIt', who) : sub('toca.sub.closedByYou'),
       };
     }

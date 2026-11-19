@@ -662,6 +662,25 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
     expect(backOf(errores(), twice, 'sfix')).toEqual({ agent: null, round: 3 });
   });
 
+  // An item that left Rama empty is told nothing of merging (P5-R2-5, P4-R2-4).
+  it('says the land step merges and pushes only for an item that names its branch', () => {
+    const def = tareasDeRepo();
+    const branch = Object.values(def.parts).find((part) => part.guard);
+    if (!branch?.guard) throw new Error('no protected branch');
+    branch.guard.base = 'main';
+    def.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    const review = item('simpl__review', [created('simpl')]);
+    expect(backOf(def, { ...review, fields: { [branch.id]: 'feat/x' } }, 'sland')).toMatchObject({
+      lands: 'main',
+    });
+    expect(backOf(def, { ...review, fields: { [branch.id]: '' } }, 'sland').lands).toBeUndefined();
+    const plain = tareasDeRepo();
+    expect(backOf(plain, { ...review, fields: {} }, 'done').unmerged).toBeUndefined();
+    expect(backOf(plain, { ...review, fields: { [branch.id]: 'feat/x' } }, 'done').unmerged).toBe(
+      true,
+    );
+  });
+
   it('names the branch the last handoff into review left never pushed (P7-8)', () => {
     const handed = moved('sfix', 'sfix__review', agent('mender'), '2026-01-02T00:00:00Z');
     const tip = { branch: 'fix/1', commit: 'a', tree: 'b', pushed: false };

@@ -1,7 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import { timeText } from '../time.ts';
 import { boardText, handedText, idleText, nextText, noWayText, refusalText } from './next.ts';
-import { creatures } from './testing.ts';
+import { creatures, step, tareasDeRepo } from './testing.ts';
+
+describe('nextText of a Done item that names no branch', () => {
+  // A board with a protected branch, where this item left Rama empty (P5-R2-6): nothing to merge.
+  it('says nothing of a branch, on a board with a land step and on one without', () => {
+    const landing = tareasDeRepo();
+    landing.steps.push(step('sland', 'Integrar', { reviewer: 'none' }));
+    for (const def of [tareasDeRepo(), landing]) {
+      const text = nextText(def, {
+        id: 'TAR-1',
+        title: 'Notas',
+        round: 0,
+        fields: {},
+        evidence: {},
+        position: { closed: 'done' },
+        missing: [],
+      });
+      expect(text).toBe(`TAR-1 · ${def.item} · Done\nClosed: nothing left to do.`);
+    }
+  });
+});
 
 const def = creatures();
 

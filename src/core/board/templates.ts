@@ -751,7 +751,19 @@ const REQUESTS: Template = {
   ],
   form: [['need', true]],
   steps: [
-    { key: 'doit', name: BLANK.step, doer: 'any', reviewer: 'you', hand: [['did', 'always']] },
+    {
+      key: 'doit',
+      name: BLANK.step,
+      doer: 'any',
+      reviewer: 'you',
+      hand: [['did', 'always']],
+      // A Request has no branch: a code change done here would close as Done with nothing merged,
+      // while the gate keeps it out of the base (P8-R2-6).
+      take: w(
+        'Do what @{need} asks. A change to code that one of the project\'s boards lands (a board whose branch Otea protects) is not done here: a Request has no branch, so it would close as Done with nothing merged. Create it on that board instead (otea create --collection "<board>"), and hand this one off saying where it went.',
+        'Haz lo que pide @{need}. Un cambio de código que integra uno de los tableros del proyecto (uno cuya rama protege Otea) no se hace aquí: un Pedido no tiene rama, así que quedaría Hecho sin fusionar nada. Créalo en ese tablero (otea create --collection "<tablero>") y entrega este diciendo adónde fue.',
+      ),
+    },
   ],
   anytime: [],
   samples: {
