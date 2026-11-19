@@ -567,5 +567,28 @@ describe('check', () => {
       ).toBe(19);
       expect((await push('--branch', 'other', '--repo')).code).toBe(0);
     });
+
+    // P3C-R3-3: a commit the repo does not have leaves the check blind; it says so, and refuses.
+    it('refuses, saying it could not check, a push or merge of a commit this repo does not have', async () => {
+      const root = git('rev-parse', 'HEAD');
+      const missing = 'f'.repeat(40);
+      for (const gate of ['push', 'merge']) {
+        const checked = await otea(
+          'check',
+          '--gate',
+          gate,
+          '--branch',
+          'other',
+          '--repo',
+          '--commits',
+          `${root}..${missing}`,
+        );
+        expect(checked).toEqual({
+          code: 19,
+          out: `${gate} refused: could not check: ${missing} is not in this repository; fetch first.\n`,
+          err: '',
+        });
+      }
+    });
   });
 });
