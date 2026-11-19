@@ -204,6 +204,24 @@ describe('otea topic', () => {
     expect(none.out.trim()).toBe('No topic mentions "kubernetes".');
   });
 
+  // P4-R2-5: a follow-up became a topic of its own; it goes on the topic it follows.
+  it('adds a follow-up to the topic it follows with --to', async () => {
+    const { repo, otea } = fresh();
+    await cliAt(repo.dir)('topic', 'on');
+    await otea('topic', 'add', '¿Cuánto cuesta el envío?');
+    await otea('topic', 'answer', 'TEM-1', '--summary', 'Cinco euros.');
+
+    const followed = await otea('topic', 'add', '--to', 'TEM-1', '¿Y en moto?');
+    expect(followed.code).toBe(0);
+    expect(followed.out.trim()).toBe(
+      'Added the follow-up to TEM-1. Answer it with otea topic answer TEM-1 --summary "<short answer>" --full "<your full answer>".',
+    );
+    const listed = JSON.parse((await otea('topic', 'list', '--all', '--json')).out) as {
+      id: string;
+    }[];
+    expect(listed.map(({ id }) => id)).toEqual(['TEM-1']);
+  });
+
   it('explains its commands with otea topic --help', async () => {
     const { repo } = fresh();
     const help = await cliAt(repo.dir)('topic', '--help');
@@ -218,8 +236,18 @@ describe('otea topic', () => {
     await cliAt(repo.dir)('topic', 'on');
     const guide = (await otea('board')).out;
     expect(guide).toContain('Before you answer it, record it');
-    expect(guide).toContain('A request to do work is never a topic');
     expect(guide).toContain('otea topic list --search');
+  });
+
+  // P4-R2-6, P8-R2-12, P6-R2-5: a recall question and a check-in were recorded as new topics.
+  it('tells agents what is not a topic, and where a follow-up goes', async () => {
+    const { repo, otea } = fresh();
+    await cliAt(repo.dir)('topic', 'on');
+    const guide = (await otea('board')).out;
+    expect(guide).toContain(
+      'Not a topic: a request to do work, small talk or a check-in ("are you there?"), or a question about something said before',
+    );
+    expect(guide).toContain('A follow-up to a topic goes on it: otea topic add --to <id>');
   });
 
   it('reminds an agent that otea wait wakes to record side questions while topics are on', async () => {

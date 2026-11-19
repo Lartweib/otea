@@ -207,18 +207,43 @@ function setState(ctx: Context, id: string, state: StoredState, at: string): voi
 export type AddTopicInput = {
   question: string;
   title?: string;
+  // The topic this question follows up on: it goes there, not on a new topic.
+  to?: string;
   actor: Actor;
   session?: string;
   resume?: string;
 };
 
+// A follow-up goes on the topic it follows: a new question, the turn of the agent that recorded it
+// (it answers in its chat). A closed topic opens again; one turned into a task keeps going there.
+function followUp(ctx: Context, input: AddTopicInput, question: string, at: string): Topic {
+  const row = requireRow(ctx, input.to ?? '');
+  if (row.state === 'task')
+    refuse('invalid_transition', `${row.id} became ${row.task}: keep it going there`);
+  return transaction(ctx.db, () => {
+    addTurn(ctx, row.id, { kind: 'question', text: question, by: input.actor }, at);
+    if (input.actor.kind === 'agent')
+      ctx.db.prepare('UPDATE topics SET agent = ? WHERE id = ?').run(input.actor.name, row.id);
+    if (input.session || input.resume)
+      ctx.db
+        .prepare(
+          'UPDATE topics SET session = coalesce(?, session), resume = coalesce(?, resume) WHERE id = ?',
+        )
+        .run(input.session ?? null, input.resume ?? null, row.id);
+    setState(ctx, row.id, 'open', at);
+    return toTopic(ctx, requireRow(ctx, row.id), at);
+  });
+}
+
 // Opens a topic with the person's question, the agent's turn to answer. An agent records the
-// question the person asked it in its chat; the person may open one too.
+// question the person asked it in its chat; the person may open one too. With `to`, the question
+// follows up on that topic instead.
 export function addTopic(ctx: Context, input: AddTopicInput, now = systemClock): Topic {
   const question = input.question.trim();
   if (question === '') refuse('invalid_fields', 'A topic needs the question it is about');
-  const title = input.title?.trim() || titleOf(question);
   const at = now();
+  if (input.to !== undefined) return followUp(ctx, input, question, at);
+  const title = input.title?.trim() || titleOf(question);
   return transaction(ctx.db, () => {
     const seq =
       ((ctx.db.prepare('SELECT max(seq) AS seq FROM topics').get() as { seq: number | null }).seq ??

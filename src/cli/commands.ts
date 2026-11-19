@@ -2985,12 +2985,13 @@ const topicOff: Command = {
 const topicAdd: Command = {
   name: 'topic add',
   summary:
-    'Record a question the person asked you off the work at hand, not a request to do work, before you answer it (--title, short; --session and --resume when known); then answer it with topic answer',
+    'Record a question the person asked you off the work at hand, not a request to do work, before you answer it (--title, short; --session and --resume when known; --to <id>, a follow-up to that topic); then answer it with topic answer',
   args: ['question'],
-  options: { title: {}, session: {}, resume: {} },
+  options: { title: {}, to: { placeholder: 'id' }, session: {}, resume: {} },
   execute: (input) => {
     const [question = ''] = input.args;
     const title = input.option('title');
+    const to = input.option('to');
     const session = input.option('session');
     const resume = input.option('resume');
     const { actor } = input;
@@ -3000,12 +3001,14 @@ const topicAdd: Command = {
         question,
         actor,
         ...(title === undefined ? {} : { title }),
+        ...(to === undefined ? {} : { to }),
         ...(session === undefined ? {} : { session }),
         ...(resume === undefined ? {} : { resume }),
       });
+      const done = to === undefined ? `Recorded ${topic.id}` : `Added the follow-up to ${topic.id}`;
       return {
         data: topic,
-        text: `Recorded ${topic.id}. Answer it with otea topic answer ${topic.id} --summary "<short answer>" --full "<your full answer>".`,
+        text: `${done}. Answer it with otea topic answer ${topic.id} --summary "<short answer>" --full "<your full answer>".`,
       };
     });
   },
