@@ -1,5 +1,3 @@
-import { tmpdir } from 'node:os';
-import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { isClosed, positionOf } from '../core/board/engine.ts';
 import { readDefinition } from '../core/board/schema.ts';
@@ -15,10 +13,11 @@ import type { Context } from './context.ts';
 
 export const DRAFT_FILENAME = 'board.json';
 
-// Where the agent keeps the draft of the Pedido `id` while it works on it, quoted for any shell:
-// the temp folder, so no board.json is left in the repo.
-export function draftPath(id: string): string {
-  return `"${join(tmpdir(), `otea-${id}-${DRAFT_FILENAME}`)}"`;
+// How the agent hands in the draft of the Pedido `id`: on stdin (--file -), so no board.json is
+// left in the repo, nor written outside the project, where a harness asks the person's leave for
+// every command that touches it (P8-R2-14, P1-R3-10).
+export function handInCommand(id: string, agent = '<your name>'): string {
+  return `otea board draft ${id} --file - --as ${agent}`;
 }
 
 // The Pedido's title: the board it asks for, by the name the board has now.
@@ -40,10 +39,9 @@ export const BOARD_JSON_SCHEMA = fileURLToPath(
 // agent (`agent`, the one drafting it), so it works as printed (P3C-R3-14).
 export function handInText(id: string, agent = '<your name>'): string {
   return [
-    `How to hand it in: start from the draft with otea board draft ${id} --as ${agent} > ${draftPath(id)}`,
-    '(in the temp folder, so nothing is left in the repo),',
-    'change it (keep the ids of what is there; give what you add new ids), then run',
-    `otea board draft ${id} --file ${draftPath(id)} --as ${agent}. It says what is wrong until the board is right.`,
+    `How to hand it in: start from the draft it prints with otea board draft ${id} --as ${agent},`,
+    'change it (keep the ids of what is there; give what you add new ids), then hand it in on stdin, so no file is left in the repo nor written outside it:',
+    `${handInCommand(id, agent)}, with the JSON piped in (a here-document of your shell). It says what is wrong until the board is right.`,
     `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
     'Who does each step is its doer (any agent, a named agent or the person), never its text: write its instructions to whoever does it, and call the person "the person" (in Spanish, "la persona").',
     'Branches follow how the person works. For code, ask the person whether anything may reach the remote before they see it. When they work straight on main and want nothing pushed before they see it ("do not push anything I have not seen"), start from the mainline template (Code on main): each item\'s branch is main and only the step after their approval pushes it, so the gate refuses a push of main until they approve, wherever the repo has Otea\'s git hook, which Publicar offers to install (tell the person: without it, git lets a push through); never draft code on todos, which has no gate. When they work straight on main and pushes need not wait, take the guard off the branch part (or the part itself).',

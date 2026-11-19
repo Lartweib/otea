@@ -31,8 +31,8 @@ import type { Project } from './project.ts';
 import { memoryContext, projectOf } from './testing.ts';
 import { undoMove } from './undo.ts';
 
-// Where the agent is told to keep its board.json: the temp folder, out of the repo.
-const draftFile = (id: string) => `"${join(tmpdir(), `otea-${id}-board.json`)}"`;
+// How the agent hands its board.json in: on stdin, so no file is written outside the project nor
+// left in the repo (P8-R2-14, P1-R3-10).
 
 const kiln = { kind: 'agent' as const, name: 'kiln' };
 const you = { kind: 'human' as const, name: 'human' };
@@ -109,9 +109,12 @@ describe('an agent drafting a board', () => {
 
     const text = itemNextText(ctx, pedido, 'kiln') ?? '';
     const take = text.slice(text.indexOf('When you take it'), text.indexOf('Handoff'));
-    // The file goes to the temp folder, so none is left in the repo (P8-R2-14).
-    expect(take).toContain(`otea board draft ${item} --as kiln > ${draftFile(item)}`);
-    expect(take).toContain(`otea board draft ${item} --file ${draftFile(item)} --as kiln`);
+    // On stdin: no file in the repo, and none outside it (P8-R2-14, P1-R3-10).
+    expect(take).toContain(
+      `start from the draft it prints with otea board draft ${item} --as kiln,`,
+    );
+    expect(take).toContain(`otea board draft ${item} --file - --as kiln, with the JSON piped in`);
+    expect(take).not.toContain(`otea-${item}-board.json`);
     expect(take).toContain(`is the JSON Schema ${BOARD_JSON_SCHEMA}.`);
     // Who does a step is its doer; its words speak to that doer (AGENTS3-6).
     expect(take).toContain(
@@ -129,9 +132,7 @@ describe('an agent drafting a board', () => {
 
     const shown = showItem(ctx, item, { actor: kiln, channel: 'cli' }, now).board?.request;
     expect(shown).toMatchObject({ board: board.id, name: 'Criaturas', arrived: false });
-    expect(shown?.instructions).toContain(
-      `otea board draft ${item} --file ${draftFile(item)} --as kiln`,
-    );
+    expect(shown?.instructions).toContain(`otea board draft ${item} --file - --as kiln`);
   });
 
   it('reads a hand-in whose step names one agent as any agent, and says so', () => {
@@ -250,7 +251,7 @@ describe('an agent drafting a board', () => {
     expect(text).not.toContain('Qué hice');
     expect(text).not.toContain('Handoff\n');
     const finish = text.slice(text.indexOf('When you finish'));
-    expect(finish).toContain(`otea board draft ${item} --file ${draftFile(item)} --as kiln`);
+    expect(finish).toContain(`otea board draft ${item} --file - --as kiln`);
     expect(text).toContain('the person tries the board and publishes it in Studio');
   });
 
