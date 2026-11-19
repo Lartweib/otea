@@ -448,6 +448,13 @@
 .cprompt-wrap .btn {
   justify-self: start;
 }
+/* Above the instruction: whom it is for. */
+.cprompt-wrap .cprompt-for,
+.dialog .cprompt-wrap .cprompt-for {
+  margin: 0 0 -4px;
+  font: 400 12.5px / 1.5 var(--sans);
+  color: var(--ink-3);
+}
 .connect .cpaste {
   margin-top: 14px;
 }

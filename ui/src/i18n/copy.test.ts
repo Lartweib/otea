@@ -75,18 +75,15 @@ describe('the copy says one thing one way', () => {
   it('says what Otea writes into the repos without a forced turn of phrase', () => {
     setLanguage('es');
     expect(t('settings.gate')).toBe('control');
-    const files = {
-      agents: 'AGENTS.md',
-      mcp: '.mcp.json',
-      claude: '.claude/settings.local.json',
-    };
+    // Otea writes no harness config any more (P4-R2-8, P7-R2-6).
+    const files = { agents: 'AGENTS.md', hook: 'pre-push' };
     expect(t('settings.reposNote', files)).toBe(
-      'Otea solo escribe en tus repositorios AGENTS.md, el .mcp.json de los agentes y, donde el control es estricto, sus hooks: .claude/settings.local.json y el pre-push de git.',
+      'Otea solo escribe en tus repositorios AGENTS.md, cuando un agente ejecuta otea connect, y el hook pre-push de git, si haces estricto el control. No escribe la configuración de ningún agente.',
     );
     expect(t('settings.notChecked')).toBe('sin comprobar hasta que vuelva a aparecer');
     setLanguage('en');
     expect(t('settings.reposNote', files)).toBe(
-      "Otea writes only AGENTS.md, the agents' .mcp.json and, where the gate is hard, its hooks (.claude/settings.local.json and git's pre-push) into your repos.",
+      "Otea writes only AGENTS.md, when an agent runs otea connect, and git's pre-push hook, if you make the gate hard, into your repos. It writes no agent's config.",
     );
   });
 });

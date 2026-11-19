@@ -241,7 +241,7 @@ export const surfaces = {
   'settings.evidence': 'evidencia',
   'settings.repos': 'repositorios',
   'settings.reposNote':
-    'Otea solo escribe en tus repositorios {agents}, el {mcp} de los agentes y, donde el control es estricto, sus hooks: {claude} y el pre-push de git.',
+    'Otea solo escribe en tus repositorios {agents}, cuando un agente ejecuta otea connect, y el hook {hook} de git, si haces estricto el control. No escribe la configuración de ningún agente.',
   'settings.copy': 'copiar',
   'settings.copied': 'copiado',
   'settings.copyCommand': 'Copiar el comando',
@@ -271,6 +271,7 @@ export const surfaces = {
     'Para sumar un agente más, pega esto en su chat. Se conecta con un nombre propio y trabaja los tableros junto a los demás, sin tomar lo que otro ya tiene.',
   'connect.firstBody':
     'Pega esto en el chat de tu agente. Se conecta con un nombre propio, lee los tableros y trabaja lo que les toca a los agentes.',
+  'connect.forAgent': 'Esto es para tu agente: no hace falta que entiendas sus términos.',
   'connect.copyPrompt': 'Copiar la instrucción',
   'connect.copiedPrompt': 'Copiada',
   'connect.appears':

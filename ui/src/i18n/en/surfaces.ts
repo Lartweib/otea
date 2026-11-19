@@ -237,7 +237,7 @@ export const surfaces = {
   'settings.evidence': 'evidence',
   'settings.repos': 'repos',
   'settings.reposNote':
-    "Otea writes only {agents}, the agents' {mcp} and, where the gate is hard, its hooks ({claude} and git's pre-push) into your repos.",
+    "Otea writes only {agents}, when an agent runs otea connect, and git's {hook} hook, if you make the gate hard, into your repos. It writes no agent's config.",
   'settings.copy': 'copy',
   'settings.copied': 'copied',
   'settings.copyCommand': 'Copy the command',
@@ -268,6 +268,7 @@ export const surfaces = {
     'To add one more agent, paste this into its chat. It connects with a name of its own and works the boards alongside the others, never taking what another one holds.',
   'connect.firstBody':
     "Paste this into your agent's chat. It connects under a name of its own, reads the boards and works what is the agents' to do.",
+  'connect.forAgent': "This is for your agent: you don't need to follow its terms.",
   'connect.copyPrompt': 'Copy the instruction',
   'connect.copiedPrompt': 'Copied',
   'connect.appears':

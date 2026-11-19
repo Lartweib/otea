@@ -334,8 +334,7 @@ function Storage({ settings }: { settings: Settings }) {
         <span className="t-small">
           {tx('settings.reposNote', {
             agents: <code className="pj-code">AGENTS.md</code>,
-            mcp: <code className="pj-code">.mcp.json</code>,
-            claude: <code className="pj-code">.claude/settings.local.json</code>,
+            hook: <code className="pj-code">pre-push</code>,
           })}
         </span>
       </dd>
