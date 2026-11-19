@@ -188,6 +188,18 @@ describe('handedFields: what a step handed off that is not a file', () => {
     ]);
     expect(handedFields(def, null, { fdesc: 'Lenta' })).toEqual([]);
   });
+
+  it('marks a field the board shows as options (P7-R2-5)', () => {
+    const def = creatures();
+    const animate = def.steps.find((s) => s.id === 'sanimate');
+    const desc = def.parts.fdesc;
+    if (!animate || desc?.kind !== 'long') throw new Error('sanimate');
+    desc.show = 'options';
+    animate.hand = [{ ref: 'fdesc', req: 'always', fresh: false }];
+    expect(handedFields(def, 'sanimate', { fdesc: '### A · Una' })).toEqual([
+      { ref: 'fdesc', name: 'Descripción', value: '### A · Una', long: true, options: true },
+    ]);
+  });
 });
 
 describe('requestLine: the folded request, one line of its prose (IDEA2-2, DR2-22)', () => {
