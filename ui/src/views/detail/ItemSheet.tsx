@@ -427,9 +427,12 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     app.note(item.id, text, on).then(
       () => {
         toast({
+          // To the agent by its name, or «al agente» while none has taken the step yet.
           msg: reviewing
             ? t('notes.review.saved', { title: item.title })
-            : t('notes.sent', { agent: who, title: item.title }),
+            : noteTo
+              ? t('notes.sent', { agent: noteTo, title: item.title })
+              : t('notes.sentAny', { title: item.title }),
           id: item.id,
         });
         requestAnimationFrame(() => root.current && clearOfToast(root.current));

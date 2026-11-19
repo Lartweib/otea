@@ -815,6 +815,7 @@ export const detail = {
     other: '{count} notes while it worked',
   },
   'notes.sent': 'You left {agent} a note on “{title}”.',
+  'notes.sentAny': 'You left the agent a note on “{title}”.',
   'notes.failed': 'The note was not sent. Try again.',
   'notes.h.left': 'You left it a note',
   'notes.h.on': 'on {file}',
