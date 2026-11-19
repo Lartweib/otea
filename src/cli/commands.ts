@@ -220,6 +220,7 @@ import {
   checkoutRoot,
   commitsOver,
   currentBranch,
+  hasCommit,
   inMainCheckout,
   mergeTake,
   pushState,
@@ -3118,6 +3119,13 @@ const check: Command = {
       const named = input.option('branch');
       const commits = input.option('commits');
       const sent = commits === undefined ? undefined : commitsOption(commits);
+      // A commit the repo does not have leaves the check blind to what it brings in (P3C-R3-3):
+      // refused, never allowed with a note. All zeros is a deleted branch, which brings in nothing.
+      if (sent && !/^0+$/.test(sent.to) && !hasCommit(cwd, sent.to)) {
+        const text = `${gate} refused: could not check: ${sent.to} is not in this repository; fetch first.`;
+        const data: GateCheck = { gate, allowed: false, items: [], refusal: text };
+        return { data, text, failure: 'gate_refused' };
+      }
       result = withProject(cwd, (project) => {
         // The branch is asked of git only when the check needs it.
         const branch = () => named || currentBranch(cwd);

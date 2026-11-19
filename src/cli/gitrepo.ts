@@ -70,6 +70,11 @@ function commitOf(cwd: string, ref: string): string | undefined {
   }
 }
 
+// Whether the repo at cwd has the commit a ref names (false outside a repo).
+export function hasCommit(cwd: string, ref: string): boolean {
+  return commitOf(cwd, ref) !== undefined;
+}
+
 // What a push of `to` onto `from` brings in: the branches whose tips are in `to` and not yet in
 // `from` (every one in `to` when `from` names no commit, none when `to` names none: a delete),
 // local ones and the remote's alike, a remote one by its name on the remote (origin/feat/x is
