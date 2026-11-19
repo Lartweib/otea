@@ -92,6 +92,8 @@ export type NextInput = {
   sentBack?: SentBack;
   // The approval that started this round, when the reviewer said something with it (P6-11).
   approved?: SentBack;
+  // The commit of the protected branch the person approved, as its handoff recorded it (short id).
+  approvedTip?: string;
   // The agent holding the item's live lease, and until when.
   holder?: { name: string; expiresAt: string };
   // The agent the person left a stuck item for (Reasignar), until an agent claims or moves it.
@@ -379,11 +381,21 @@ function branchLines(
   const base = guardedBranch(def)?.guard.base;
   const land = landStepOf(def);
   const landing = gateAt(def, position, 'merge').why === 'landing';
+  // A forge merges the branch as its remote has it, which a clone without Otea's hook can push to
+  // after the approval: the merge check, right before the merge, holds it to the approved tip
+  // (P3C-R3-1).
+  const at = input.approvedTip ? ` at ${input.approvedTip}` : '';
+  const named = String(input.fields[guardedBranch(def)?.id ?? ''] ?? '').trim();
   const into = !base
     ? []
     : landing
       ? [
-          `  ${base} is protected too: merge ${branch.value} into it now, in ${step.name}; the person approved ${input.id}.`,
+          `  ${base} is protected too: merge ${branch.value} into it now, in ${step.name}; the person approved ${input.id}${at}.`,
+          ...(named === '' || named === base
+            ? []
+            : [
+                `  Right before any merge, a forge's too (a script, a CLI or the PR's button), run otea check --gate merge --branch ${branch.value}; if it refuses, merge nothing and ask the person: otea ask ${input.id} "<question>".`,
+              ]),
         ]
       : land
         ? [

@@ -114,6 +114,7 @@ import {
 } from './items.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { priorityOf } from './priority.ts';
+import { approvedTipOf } from './tips.ts';
 
 // What agents meet on a published board: the facts the step engine reads of an item, `next` (the
 // item to take and its text) and the three moves an agent makes on a board (handoff, approve and
@@ -754,6 +755,10 @@ function textFor(
   const parent = parentOf(ctx, item.id);
   const implemented = implementedBy(ctx, item.id);
   const order = priorityOf(ctx.db).get(item.id);
+  // What the person approved of its branch, for the land step to name (P3C-R3-1).
+  const guard = guardedBranch(def);
+  const named = guard ? String(item.fields[guard.id] ?? '').trim() : '';
+  const tip = named === '' ? undefined : approvedTipOf(ctx, item.id, named);
   // A Pedido whose board draft is still to hand in (withHandIn gave its step the instructions).
   const handIn =
     def === live
@@ -776,6 +781,7 @@ function textFor(
     ...(me === undefined ? {} : { me }),
     ...(on.sentBack === undefined ? {} : { sentBack: on.sentBack }),
     ...(on.approved === undefined ? {} : { approved: on.approved }),
+    ...(tip && !tip.unchanged ? { approvedTip: tip.commit.slice(0, 7) } : {}),
     ...(on.facts.did === undefined ? {} : { did: on.facts.did }),
     ...(lease ? { holder: { name: lease.holder, expiresAt: lease.expiresAt } } : {}),
     ...(left === undefined ? {} : { leftFor: left }),
