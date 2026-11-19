@@ -6,7 +6,7 @@ import { answerQuestion } from '../app/questions.ts';
 import { creatures } from '../core/board/testing.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { COMMANDS } from './commands.ts';
-import { type Cli, cliAt, declareProfiles, type TempRepo, tempGitRepo } from './testing.ts';
+import { type Cli, declareProfiles, seedOnce, type TempRepo } from './testing.ts';
 
 // What wait ends with for claude once it woke.
 const AGAIN =
@@ -32,12 +32,11 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
     }
   };
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init');
-    declareProfiles(repo.dir, 'claude');
-    const project = openProject(repo.dir);
+  // Seeded once and copied for each test: seeding through the CLI before every one of them took a
+  // loaded Windows runner past the hook's 30s.
+  const seeded = seedOnce(async (seed, dir) => {
+    declareProfiles(dir, 'claude');
+    const project = openProject(dir);
     try {
       const record = createBoard(project, { name: 'Criaturas', lang: 'es' });
       saveDraft(project, record.id, { definition: creatures(), baseVersion: null });
@@ -45,7 +44,7 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
     } finally {
       project.db.close();
     }
-    await otea(
+    await seed(
       'create',
       '--collection',
       'Criaturas',
@@ -54,7 +53,11 @@ describe('an agent asks the person, on the CLI and over MCP', () => {
       '--field',
       'fdesc=Lenta',
     );
-    await otea('claim', 'CRI-1');
+    await seed('claim', 'CRI-1');
+  });
+
+  beforeEach(() => {
+    ({ repo, otea } = seeded.fresh());
   });
 
   afterEach(() => repo.remove());

@@ -2,7 +2,7 @@ import { execFileSync } from 'node:child_process';
 import { writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
-import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
 import { approveItem, liveBoardOf } from '../app/next.ts';
 import { openProject } from '../app/project.ts';
 import { publishAs } from '../app/testing.ts';
@@ -12,69 +12,95 @@ import { instantiate, requireTemplate } from '../core/board/templates.ts';
 import { createMcpServer } from '../mcp/server.ts';
 import { selectEvents, updateItemState } from '../store/queries.ts';
 import { COMMANDS } from './commands.ts';
-import { type Cli, cliAt, declareProfiles, tempGitRepo } from './testing.ts';
+import {
+  type Cli,
+  cliAt,
+  declareProfiles,
+  SEED_TIMEOUT_MS,
+  type SeededRepo,
+  seededLocalRepo,
+  type TempRepo,
+  tempGitRepo,
+} from './testing.ts';
 
 // Before the branch freezes in review, the handoff checks the branch Rama names (P1-R2-2,
 // P3C-R2-2, P7-8): it must be in this checkout, and on a step that pushes it, the remote must hold
 // every commit of it; one never pushed is handed off with a warning the person sees too.
 describe('a handoff of a branch', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let seeded: SeededRepo;
+  let repo: TempRepo;
   let otea: Cli;
-  const git = (...args: string[]) =>
-    execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
-      cwd: repo.dir,
-      stdio: 'pipe',
-      encoding: 'utf8',
-    }).trim();
-  const change = (file: string, text: string) => {
-    writeFileSync(join(repo.dir, file), text);
-    git('add', file);
-    git('commit', '-q', '-m', file);
+  const gitAt =
+    (dir: string) =>
+    (...args: string[]) =>
+      execFileSync('git', ['-c', 'user.name=t', '-c', 'user.email=t@t', ...args], {
+        cwd: dir,
+        stdio: 'pipe',
+        encoding: 'utf8',
+      }).trim();
+  const changeAt = (dir: string) => (file: string, text: string) => {
+    writeFileSync(join(dir, file), text);
+    gitAt(dir)('add', file);
+    gitAt(dir)('commit', '-q', '-m', file);
   };
+  const git = (...args: string[]) => gitAt(repo.dir)(...args);
+  const change = (file: string, text: string) => changeAt(repo.dir)(file, text);
   const BRANCH = 'cambio/1-regar';
   const handoff = () => otea('handoff', 'CAM-1', '--note', 'regar');
 
-  beforeEach(async () => {
-    repo = tempGitRepo();
+  // CAM-1 claimed in Hacerlo on BRANCH, its diff attached, not handed off yet: seeded once, each
+  // test gets its own copy. Seeding it before every test took a loaded Windows runner past 30s.
+  beforeAll(async () => {
+    seeded = await seededLocalRepo(async (dir) => {
+      const otea = cliAt(dir, { OTEA_AGENT: 'quill' });
+      const person = cliAt(dir);
+      const git = gitAt(dir);
+      const change = changeAt(dir);
+      await person('init', '--local', '--template', 'none');
+      await person('board', 'add', 'Cambios', '--template', 'changes');
+      declareProfiles(dir, 'quill');
+      await otea(
+        'create',
+        '--collection',
+        'Cambios',
+        '--title',
+        'Regar',
+        '--field',
+        'Qué quiero=x',
+        '--field',
+        `Rama=${BRANCH}`,
+      );
+      change('a.txt', 'root\n');
+      git('branch', '-M', 'main');
+      git('update-ref', 'refs/remotes/origin/main', 'main');
+      git('checkout', '-q', '-b', BRANCH);
+      change('b.txt', 'regar\n');
+      const project = openProject(dir);
+      try {
+        const doit = liveBoardOf(project, 'Cambios')?.def.steps.find(
+          ({ name }) => name === 'Hacerlo',
+        );
+        if (!doit) throw new Error('no Hacerlo');
+        updateItemState(
+          project.db,
+          'CAM-1',
+          stateOf({ step: doit.id, phase: 'doing' }),
+          '2026-11-19T10:00:00Z',
+        );
+      } finally {
+        project.db.close();
+      }
+      writeFileSync(join(dir, 'regar.diff'), 'diff --git a/b.txt b/b.txt\n+regar\n');
+      expect((await otea('claim', 'CAM-1')).code).toBe(0);
+      expect((await otea('attach', 'CAM-1', 'regar.diff')).code).toBe(0);
+    });
+  }, SEED_TIMEOUT_MS);
+
+  afterAll(() => seeded.remove());
+
+  beforeEach(() => {
+    repo = seeded.fresh();
     otea = cliAt(repo.dir, { OTEA_AGENT: 'quill' });
-    const person = cliAt(repo.dir);
-    await person('init', '--template', 'none');
-    await person('board', 'add', 'Cambios', '--template', 'changes');
-    declareProfiles(repo.dir, 'quill');
-    await otea(
-      'create',
-      '--collection',
-      'Cambios',
-      '--title',
-      'Regar',
-      '--field',
-      'Qué quiero=x',
-      '--field',
-      `Rama=${BRANCH}`,
-    );
-    change('a.txt', 'root\n');
-    git('branch', '-M', 'main');
-    git('update-ref', 'refs/remotes/origin/main', 'main');
-    git('checkout', '-q', '-b', BRANCH);
-    change('b.txt', 'regar\n');
-    const project = openProject(repo.dir);
-    try {
-      const doit = liveBoardOf(project, 'Cambios')?.def.steps.find(
-        ({ name }) => name === 'Hacerlo',
-      );
-      if (!doit) throw new Error('no Hacerlo');
-      updateItemState(
-        project.db,
-        'CAM-1',
-        stateOf({ step: doit.id, phase: 'doing' }),
-        '2026-11-19T10:00:00Z',
-      );
-    } finally {
-      project.db.close();
-    }
-    writeFileSync(join(repo.dir, 'regar.diff'), 'diff --git a/b.txt b/b.txt\n+regar\n');
-    expect((await otea('claim', 'CAM-1')).code).toBe(0);
-    expect((await otea('attach', 'CAM-1', 'regar.diff')).code).toBe(0);
   });
 
   afterEach(() => repo.remove());

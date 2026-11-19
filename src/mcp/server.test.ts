@@ -5,7 +5,14 @@ import { liveBoardOf } from '../app/next.ts';
 import { listAgents } from '../app/presence.ts';
 import { openProject } from '../app/project.ts';
 import { COMMANDS } from '../cli/commands.ts';
-import { type Cli, cliAt, declareProfiles, presetCollection, tempGitRepo } from '../cli/testing.ts';
+import {
+  type Cli,
+  cliAt,
+  declareProfiles,
+  presetCollection,
+  seedOnce,
+  type TempRepo,
+} from '../cli/testing.ts';
 import type { Actor } from '../core/item.ts';
 import {
   AGENT_COMMANDS,
@@ -31,7 +38,7 @@ async function connect(cwd: string, name?: string, pin?: string): Promise<Client
 }
 
 describe('mcp server', () => {
-  let repo: ReturnType<typeof tempGitRepo>;
+  let repo: TempRepo;
   let otea: Cli;
   let client: Client;
 
@@ -46,14 +53,17 @@ describe('mcp server', () => {
     return JSON.parse(reply.content[0]?.text ?? '');
   };
 
+  // Seeded once and copied for each test: seeding through the CLI before every one of them cost a
+  // loaded Windows runner seconds a test, 43 times.
+  const seeded = seedOnce(async (seed, dir) => {
+    declareProfiles(dir, 'claude');
+    presetCollection(dir, 'tasks');
+    await seed('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
+    await seed('create', '--collection', 'tasks', '--title', 'Vague');
+  });
+
   beforeEach(async () => {
-    repo = tempGitRepo();
-    otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-    await otea('init', '--local');
-    declareProfiles(repo.dir, 'claude');
-    presetCollection(repo.dir, 'tasks');
-    await otea('create', '--collection', 'tasks', '--title', 'Docs', '--description', 'For v1');
-    await otea('create', '--collection', 'tasks', '--title', 'Vague');
+    ({ repo, otea } = seeded.fresh());
     client = await connect(repo.dir, 'claude');
   });
 
