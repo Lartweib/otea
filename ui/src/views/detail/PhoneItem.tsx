@@ -623,6 +623,10 @@ export function PhoneItem(p: PhoneItemProps) {
   const sendback = plan.quiet.find((c) => c.kind === 'sendback' && !c.blocked);
   const primary = plan.primary && !plan.primary.blocked ? plan.primary : null;
   const picking = p.mode === 'pick' ? p.pick : undefined;
+  // The other ways on, under Aprobar and Devolver as on the desk: a move to another step, such as
+  // «Mover a Hecho». A Decisión at Diseñar could not be closed from the phone (P7-R2-3). Discarding
+  // stays on the desk, as the phone's review always had it.
+  const moreMoves = dock ? plan.quiet.filter((c) => c.kind === 'move' && !c.blocked) : [];
   const [pickOpen, setPickOpen] = useState(false);
   const pickBtn = useRef<HTMLButtonElement>(null);
   // Opened from Triage to pick: the sheet opens as soon as the pick is known.
@@ -943,6 +947,20 @@ export function PhoneItem(p: PhoneItemProps) {
               </button>
             ) : null}
           </div>
+          {moreMoves.length > 0 ? (
+            <p className="p-ways">
+              {moreMoves.map((c) => (
+                <Button
+                  key={c.move.to}
+                  variant="text"
+                  data-move={c.move.to}
+                  onClick={() => choose(c)}
+                >
+                  {c.label}
+                </Button>
+              ))}
+            </p>
+          ) : null}
           {(primary || picking) && unseen.unopened > 0 && !refused ? (
             <p className="hint unseen">
               {t('phone.r.unopened', { n: unseen.unopened, total: unseen.total })}
