@@ -3,6 +3,7 @@ import {
   approve,
   handoff,
   handoffCheck,
+  initialPosition,
   mayReview,
   mayTake,
   positionOf,
@@ -15,7 +16,7 @@ import {
   waysOf,
 } from './engine.ts';
 import type { BoardDefinition } from './model.ts';
-import { creatures } from './testing.ts';
+import { creatures, step } from './testing.ts';
 
 const def = creatures();
 const at = (minutes: number) => new Date(Date.UTC(2026, 10, 12, 10, minutes)).toISOString();
@@ -46,6 +47,53 @@ describe('ways', () => {
   it('lists the default way first, then the alternatives, never twice', () => {
     expect(waysOf(def, 'sconcept')).toEqual(['sanimate', 'done']);
     expect(waysOf(def, 'spolish')).toEqual(['done']);
+  });
+});
+
+// P4-R3-1: a step can lead elsewhere than its next step while the item holds a value: a to-do the
+// person does («Lo hago yo»: sí) leads from their own step to Hecho, and never to an agent's step.
+describe('a lead', () => {
+  const led: BoardDefinition = {
+    ...creatures(),
+    parts: {
+      fmine: { id: 'fmine', name: 'Lo hago yo', kind: 'yesno', hint: '', options: [] },
+      fdid: { id: 'fdid', name: 'Lo que hice', kind: 'long', hint: '', options: [] },
+    },
+    steps: [
+      step('sown', 'Lo haces tú', {
+        doer: 'you',
+        reviewer: 'none',
+        hand: [{ ref: 'fdid', req: 'when', when: { part: 'fmine', value: 'yes' }, fresh: false }],
+        ways: ['done'],
+        lead: { to: 'done', when: { part: 'fmine', value: 'yes' } },
+        skipWhenReady: true,
+      }),
+      step('sdo', 'Hacerlo', { ways: ['sown'] }),
+    ],
+  };
+  const own = { step: 'sown', phase: 'doing' as const };
+  const mine = { fields: { fmine: 'yes', fdid: 'Fotos sacadas' }, evidence: [] };
+  const theirs = { fields: { fmine: 'no' }, evidence: [] };
+
+  it('leads to its target while the value holds, and leaves out the next step', () => {
+    expect(waysOf(led, 'sown', mine)).toEqual(['done']);
+    expect(waysOf(led, 'sown', theirs)).toEqual(['sdo', 'done']);
+    // Without the item, every way the step may take.
+    expect(waysOf(led, 'sown')).toEqual(['sdo', 'done']);
+  });
+
+  it('hands off along the lead and refuses the next step while it holds', () => {
+    expect(handoff(led, own, mine, { by: you })).toEqual({ ok: true, to: { closed: 'done' } });
+    expect(handoff(led, own, mine, { by: you, way: 'sdo' })).toMatchObject({ code: 'bad_way' });
+    expect(handoff(led, own, theirs, { by: you })).toEqual({
+      ok: true,
+      to: { step: 'sdo', phase: 'doing' },
+    });
+  });
+
+  it('never skips a step whose lead holds for a new item', () => {
+    expect(initialPosition(led, mine).position).toEqual(own);
+    expect(initialPosition(led, theirs).position).toEqual({ step: 'sdo', phase: 'doing' });
   });
 });
 

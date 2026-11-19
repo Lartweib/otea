@@ -138,6 +138,13 @@ export type Note = { req: 'no' | 'always'; hint: string };
 // `skipWhenReady` (first step only, nobody reviews it): an item created with everything its Entrega
 // asks for starts at the next step. `doerMayDrop`: an agent doing it may drop the item, saying why.
 export const SAME = 'same';
+
+// `lead`: while the item's `when` part holds its value, the step's default way is `to` (a later
+// step or DONE) instead of the next step, and the next step is a way only when `ways` lists it.
+// Pendientes' «Lo haces tú» leads to Hecho for a to-do the person does («Lo hago yo»: sí), so its
+// primary closes it and no agent is ever handed it.
+export type Lead = { to: Target; when: When };
+
 export type Step = {
   id: string;
   name: string;
@@ -151,6 +158,7 @@ export type Step = {
   waits: Wait[];
   skipWhenReady: boolean;
   doerMayDrop: boolean;
+  lead?: Lead;
 };
 
 // A step's settings that every new step starts with.

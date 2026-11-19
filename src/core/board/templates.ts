@@ -71,6 +71,8 @@ type TemplateStep = {
   waits?: readonly Wait[];
   skip?: boolean;
   drop?: boolean;
+  // The step's lead (model.ts Lead): the way (a step key or DONE) it takes while a part holds a value.
+  lead?: readonly [to: string, when: TemplateWhen];
 };
 
 // `hidden`: one board of a set, or a preset's reading; never listed on its own. `retired`: a board
@@ -500,6 +502,17 @@ export function instantiate(
     waits: [...(step.waits ?? [])],
     skipWhenReady: step.skip === true,
     doerMayDrop: step.drop === true,
+    ...(step.lead
+      ? {
+          lead: {
+            to: step.lead[0] === DONE ? DONE : ref(step.lead[0]),
+            when: {
+              part: ref(step.lead[1][0]),
+              value: storedValue(step.lead[1][0], step.lead[1][1]),
+            },
+          },
+        }
+      : {}),
   }));
   const layout: Record<string, Zone> = Object.fromEntries(
     Object.values(parts).map((p) => [p.id, defaultZone(p.kind)]),

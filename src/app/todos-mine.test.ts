@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { addBoard } from './boards.ts';
-import { createItem, getItem, updateItem } from './items.ts';
+import { createItem, getItem, moveItem, showItem, updateItem } from './items.ts';
 import { handoffItem, liveBoardOf, nextFor } from './next.ts';
 import { memoryContext } from './testing.ts';
 
@@ -55,6 +55,27 @@ describe('a to-do the person does themselves', () => {
     updateItem(ctx, { id: photos.id, fields: did, actor: you }, now);
     close();
     expect(getItem(ctx, photos.id).turn).toBe('none');
+  });
+
+  // P4-R3-1: the person's own to-do leads to Hecho; passing it to Hacerlo looped through an agent
+  // back to their own review.
+  it('offers the person only Hecho, and never hands their own to-do to an agent', () => {
+    const { ctx, ref, step, make } = todos();
+    const photos = make('Sacar las fotos', { [ref('Lo hago yo')]: 'yes' });
+    const desk = { actor: you, channel: 'ui' as const };
+    const offered = () =>
+      showItem(ctx, photos.id, desk, now)
+        .transitions.map(({ to }) => to)
+        .filter((to) => !to.startsWith('dropped'));
+    expect(offered()).toEqual(['done']);
+    const did = { [ref('Lo que hice')]: 'Fotos en la carpeta compartida' };
+    updateItem(ctx, { id: photos.id, fields: did, actor: you }, now);
+    const pass = () => moveItem(ctx, { id: photos.id, to: step('Hacerlo'), ...desk }, now);
+    expect(pass).toThrow(expect.objectContaining({ code: 'invalid_transition' }));
+    expect(getItem(ctx, photos.id).state).toBe(step('Lo haces tú'));
+    // Once it is no longer theirs, it may go to an agent again.
+    updateItem(ctx, { id: photos.id, fields: { [ref('Lo hago yo')]: 'no' }, actor: you }, now);
+    expect(offered()).toEqual([step('Hacerlo'), 'done']);
   });
 
   it('goes back to the person when the agent finds it is theirs, with a reason', () => {

@@ -6,6 +6,7 @@ import {
   backWaysOf,
   type GateAction,
   gateAt,
+  type ItemFacts,
   isClosed,
   isLandStep,
   type Linked,
@@ -848,9 +849,11 @@ export function noWayText(
   stepId: string,
   way: string,
   reviewing = false,
+  // The item's facts: the ways it may take now (a lead that holds leaves the next step out).
+  facts?: Pick<ItemFacts, 'fields'>,
 ): string {
   const name = targetName(def, stepId);
-  const on = waysOf(def, stepId).map((target) => targetName(def, target));
+  const on = waysOf(def, stepId, facts).map((target) => targetName(def, target));
   const back = reviewing ? [] : backWaysOf(def, stepId).map((target) => targetName(def, target));
   const choice = back.length === 1 ? (back[0] ?? '') : `<${back.join('|')}>`;
   const backText =

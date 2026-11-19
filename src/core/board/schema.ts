@@ -213,6 +213,26 @@ const step = z
     doerMayDrop: flag('Whether an agent doing it may drop the item, saying why', false).default(
       false,
     ),
+    lead: z
+      .strictObject({
+        to: idOf('Where it leads instead of the next step: a later step id or done', 'done'),
+        when: z
+          .strictObject({
+            part: idOf('The choice, multi, level or yesno part (id) it reads', 'fmine'),
+            value: text(
+              'The value that makes it lead there: a choice id, a level, yes or no',
+              'yes',
+            ),
+          })
+          .meta(about('Which part and value make it lead there', { part: 'fmine', value: 'yes' })),
+      })
+      .meta(
+        about(
+          'While a part holds a value, the way the step takes instead of the next step; the next step is then a way only if ways lists it',
+          { to: 'done', when: { part: 'fmine', value: 'yes' } },
+        ),
+      )
+      .optional(),
   })
   .meta(about('A step of the board, in order'));
 

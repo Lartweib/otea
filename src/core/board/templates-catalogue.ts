@@ -652,8 +652,8 @@ const TODOS: Template = {
   ],
   steps: [
     // The person's own to-dos: an item made with «Lo hago yo» starts here, and is never offered to
-    // an agent; every other skips it and starts at Hacerlo. From here the person closes it, or
-    // passes it on to an agent (Hacerlo).
+    // an agent; every other skips it and starts at Hacerlo. While «Lo hago yo» is sí the person
+    // closes it from here (it leads to Hecho only); once it is no, they may pass it on to Hacerlo.
     {
       key: 'tself',
       name: w('You do it', 'Lo haces tú'),
@@ -662,6 +662,7 @@ const TODOS: Template = {
       hand: [['tresult', 'when', false, ['tmine', 'yes']]],
       ways: [DONE],
       skip: true,
+      lead: [DONE, ['tmine', 'yes']],
     },
     {
       key: 'tdo',
@@ -675,8 +676,8 @@ const TODOS: Template = {
       ways: ['tself'],
       note: w('what you did and what is still open', 'qué hiciste y qué quedó abierto'),
       take: w(
-        'Read @{twant}. If something is unclear, ask with otea ask, one question at a time and in plain words; do not guess. Do only what it asks. If it is something only the person can do (take photos, make a call, go somewhere), do not ask: take it back to @{tself} with otea handoff <id> --way "@{tself}" --reason "<why it is theirs>". If @{tmine} is yes, the person already did it: hand it off as it is. Estimate @{teffort} if it is empty: the person weighs the to-dos on the Matrix.',
-        'Lee @{twant}. Si algo no está claro, pregunta con otea ask, una pregunta por vez y en palabras simples; no adivines. Haz solo lo que pide. Si es algo que solo puede hacer la persona (sacar fotos, hacer una llamada, ir a algún lado), no preguntes: regrésalo a @{tself} con otea handoff <id> --way "@{tself}" --reason "<por qué es suyo>". Si @{tmine} es sí, la persona ya lo hizo: entrégalo tal como está. Estima @{teffort} si está vacío: la persona pesa los pendientes en la Matriz.',
+        'Read @{twant}. If something is unclear, ask with otea ask, one question at a time and in plain words; do not guess. Do only what it asks. If it is something only the person can do (take photos, make a call, go somewhere), do not ask: make it theirs with otea update <id> --field "@{tmine}=yes", then take it back to @{tself} with otea handoff <id> --way "@{tself}" --reason "<why it is theirs>". If @{tmine} is yes, the person already did it: hand it off as it is. Estimate @{teffort} if it is empty: the person weighs the to-dos on the Matrix.',
+        'Lee @{twant}. Si algo no está claro, pregunta con otea ask, una pregunta por vez y en palabras simples; no adivines. Haz solo lo que pide. Si es algo que solo puede hacer la persona (sacar fotos, hacer una llamada, ir a algún lado), no preguntes: hazlo suyo con otea update <id> --field "@{tmine}=yes" y regrésalo a @{tself} con otea handoff <id> --way "@{tself}" --reason "<por qué es suyo>". Si @{tmine} es sí, la persona ya lo hizo: entrégalo tal como está. Estima @{teffort} si está vacío: la persona pesa los pendientes en la Matriz.',
       ),
       before: w(
         'Write in @{tresult} what you did, in plain words, and add what the person needs to check it: @{timages} of how it looks, the @{tfiles} it opens, @{tlinks}. Meet each point of @{tdone}.',

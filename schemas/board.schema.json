@@ -431,6 +431,54 @@
             "type": "boolean",
             "description": "Whether an agent doing it may drop the item, saying why",
             "examples": [false]
+          },
+          "lead": {
+            "type": "object",
+            "properties": {
+              "to": {
+                "type": "string",
+                "pattern": "^[a-z][a-z0-9_-]*$",
+                "description": "Where it leads instead of the next step: a later step id or done",
+                "examples": ["done"]
+              },
+              "when": {
+                "type": "object",
+                "properties": {
+                  "part": {
+                    "type": "string",
+                    "pattern": "^[a-z][a-z0-9_-]*$",
+                    "description": "The choice, multi, level or yesno part (id) it reads",
+                    "examples": ["fmine"]
+                  },
+                  "value": {
+                    "type": "string",
+                    "description": "The value that makes it lead there: a choice id, a level, yes or no",
+                    "examples": ["yes"]
+                  }
+                },
+                "required": ["part", "value"],
+                "additionalProperties": false,
+                "description": "Which part and value make it lead there",
+                "examples": [
+                  {
+                    "part": "fmine",
+                    "value": "yes"
+                  }
+                ]
+              }
+            },
+            "required": ["to", "when"],
+            "additionalProperties": false,
+            "description": "While a part holds a value, the way the step takes instead of the next step; the next step is then a way only if ways lists it",
+            "examples": [
+              {
+                "to": "done",
+                "when": {
+                  "part": "fmine",
+                  "value": "yes"
+                }
+              }
+            ]
           }
         },
         "required": ["id", "name", "doer", "reviewer", "hand", "ways", "back", "instructions"],

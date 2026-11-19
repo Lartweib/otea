@@ -331,6 +331,31 @@ function roundWorkers(
   return [...out];
 }
 
+// The moves a board item offers as the engine reads the item: a way on that a lead that holds
+// leaves out is no move, and the ways it keeps come in the engine's order (the lead first), so the
+// page's primary takes the lead (P4-R3-1). The rest of the moves stay as the workflow lists them.
+export function boardMoves<M extends { to: string }>(
+  ctx: Context,
+  item: ItemRecord,
+  moves: readonly M[],
+): M[] {
+  const board = liveBoardOf(ctx, item.collection);
+  const position = positionOf(item.state);
+  if (!board || isClosed(position)) return [...moves];
+  const step = stepById(board.def, position.step);
+  if (!step?.lead) return [...moves];
+  const all = waysOf(board.def, step.id);
+  const kept = waysOf(board.def, step.id, { fields: item.fields });
+  const on = moves.filter(({ to }) => all.includes(to));
+  const ordered = kept.flatMap((way) => on.filter(({ to }) => to === way));
+  let next = 0;
+  return moves.flatMap((move) => {
+    if (!all.includes(move.to)) return [move];
+    const taken = ordered[next++];
+    return taken === undefined ? [] : [taken];
+  });
+}
+
 // The item as the engine reads it: its fields (title included), its evidence by part and when, the
 // rounds of each step, read from its moves, its parts and what blocks it, the note of each round
 // handed off, and the send-back its current round started with.
@@ -1142,17 +1167,24 @@ function wayOf(
 }
 
 // A way the step does not have, refused with the ways it has (on, and back while it is done).
-function refuseWay(def: BoardDefinition, id: string, position: Position, way: string): never {
+function refuseWay(
+  def: BoardDefinition,
+  id: string,
+  position: Position,
+  way: string,
+  facts?: ItemFacts,
+): never {
   if (isClosed(position))
     throw new OteaError('invalid_transition', `${id} is closed`, { kind: 'no_way', item: id });
   const reviewing = position.phase !== 'doing';
   const name = (target: Target) => targetName(def, target);
-  throw new OteaError('invalid_transition', noWayText(def, id, position.step, way, reviewing), {
+  const text = noWayText(def, id, position.step, way, reviewing, facts);
+  throw new OteaError('invalid_transition', text, {
     kind: 'no_way',
     item: id,
     way,
     step: name(position.step),
-    ways: waysOf(def, position.step).map(name),
+    ways: waysOf(def, position.step, facts).map(name),
     back: reviewing ? [] : backWaysOf(def, position.step).map(name),
   });
 }
@@ -1169,6 +1201,7 @@ function refuse(
   result: Exclude<MoveResult, { ok: true }>,
   // The way the mover asked for, as it named it.
   tried?: string,
+  facts?: ItemFacts,
 ): never {
   if (result.code === 'missing') refuseHandoff(item.id, result.missing);
   if (result.code === 'reason_required')
@@ -1177,7 +1210,7 @@ function refuse(
       item: item.id,
     });
   if (result.code === 'bad_way')
-    refuseWay(def, item.id, positionOf(item.state), tried ?? 'that way');
+    refuseWay(def, item.id, positionOf(item.state), tried ?? 'that way', facts);
   if (result.code === 'not_yours') {
     const position = positionOf(item.state);
     const step = isClosed(position) ? undefined : stepById(def, position.step);
@@ -1354,7 +1387,7 @@ export function handoffItem(
       ...(way === undefined ? {} : { way }),
       ...(input.reason === undefined ? {} : { reason: input.reason }),
     });
-    if (!result.ok) refuse(board.def, item, result, input.way);
+    if (!result.ok) refuse(board.def, item, result, input.way, facts);
     const moved = land(ctx, item, board, result.to, { ...input, ...(note ? { note } : {}) }, at);
     if (result.back && !isClosed(result.to)) {
       const round = itemOnBoard(ctx, requireItem(ctx.db, item.id), board.def).round;
@@ -1564,7 +1597,7 @@ function assertAgentMove(
         ...(words.reason === undefined ? {} : { reason: words.reason }),
       },
     );
-    if (!result.ok) refuse(board.def, item, result, stateName(board.def, to));
+    if (!result.ok) refuse(board.def, item, result, stateName(board.def, to), on.facts);
     if (stateOf(result.to) === to) return;
     const step = stepById(board.def, position.step);
     const into = result.to;
@@ -1629,6 +1662,10 @@ export function assertMoveHandsOff(
       ? target.closed === DONE
       : stepIndex(board.def, target.step) > stepIndex(board.def, step.id));
   if (!intoReview && !along) return note;
+  // A way the item may not take now: a lead that holds leaves the next step out (P4-R3-1).
+  const way = isClosed(target) ? DONE : target.step;
+  if (along && !waysOf(board.def, step.id, on.facts).includes(way))
+    refuseWay(board.def, item.id, from, stateName(board.def, to), on.facts);
   // The person's own notes wait for the agent's answer, never for the person.
   const { unanswered: _notes, ...theirs } = on.facts;
   const facts = note === undefined ? theirs : { ...theirs, note };

@@ -68,7 +68,7 @@ describe('parseDefinition', () => {
       const def = creatures();
       const [first] = def.steps as [Step];
       expect(problemsOf({ ...def, steps: [{ ...first, owner: 'kiln' }] })).toEqual([
-        'step 1 "Concepto": a key a board does not know: "owner" (it takes id, name, doer, reviewer, hand, ways, back, instructions, note, waits, skipWhenReady, doerMayDrop) [steps.0]',
+        'step 1 "Concepto": a key a board does not know: "owner" (it takes id, name, doer, reviewer, hand, ways, back, instructions, note, waits, skipWhenReady, doerMayDrop, lead) [steps.0]',
       ]);
     });
 
