@@ -286,6 +286,7 @@ export const detail = {
   'notes.pick.quote': 'the line picked',
   'notes.pick.node': 'node “{node}”',
   'notes.pick.hintLine': 'Click a line to anchor the note to it.',
+  'evidence.noteLine': 'Click a line to leave a note on it in the reader.',
   'notes.pick.hintLineTouch': 'Tap a line to anchor the note to it.',
   'notes.pick.hintNode': 'Click a diagram node to anchor the note to it.',
   'notes.pick.hintNodeTouch': 'Tap a diagram node to anchor the note to it.',

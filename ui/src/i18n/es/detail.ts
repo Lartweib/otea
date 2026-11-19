@@ -285,6 +285,7 @@ export const detail = {
   'notes.pick.quote': 'la línea elegida',
   'notes.pick.node': 'nodo «{node}»',
   'notes.pick.hintLine': 'Haz clic en una línea para anclar la nota.',
+  'evidence.noteLine': 'Haz clic en una línea para dejarle una nota en el lector.',
   'notes.pick.hintLineTouch': 'Toca una línea para anclar la nota.',
   'notes.pick.hintNode': 'Haz clic en un nodo del diagrama para anclar la nota.',
   'notes.pick.hintNodeTouch': 'Toca un nodo del diagrama para anclar la nota.',

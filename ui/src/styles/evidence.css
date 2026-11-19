@@ -1246,6 +1246,15 @@
   }
 }
 
+/* The diff on the item's page while it is reviewed: a click on a line opens the reader on it,
+   picked for a note (P3C-R3-7). */
+.ev-notable[data-picking="true"] .ev-line:not([data-kind="hunk"]) {
+  cursor: pointer;
+}
+.ev-notable[data-picking="true"] .ev-line:not([data-kind="hunk"]):hover {
+  box-shadow: inset 0 0 0 1px color-mix(in oklch, var(--you) 45%, transparent);
+}
+
 /* A note from inside the reader: a click picks a line or a node, lit until the note is sent. */
 .ev-reader-view[data-picking="true"] .ev-line,
 .ev-reader-view[data-picking="true"] .dg-node {
