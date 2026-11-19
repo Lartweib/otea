@@ -234,6 +234,7 @@ function TocaRow({
           who,
           app.feed.filter((e) => e.itemId === it.id),
           app.agents,
+          sec === 'cerrados' && it.doer === who ? it.doerProfile : null,
         )
       : null;
   return (
