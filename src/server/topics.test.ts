@@ -130,8 +130,9 @@ describe('topics over the API', () => {
 
   it('suggests a topic for an item and lets the person confirm or dismiss it', async () => {
     setTopicsOn(project, true);
-    addTopic(project, { question: 'uno', actor: kiln });
-    addTopic(project, { question: 'dos', actor: kiln });
+    addTopic(project, { question: '¿Es lenta la tortuga?', actor: kiln });
+    addTopic(project, { question: '¿Cuántas tortugas hay?', actor: kiln });
+    addTopic(project, { question: '¿Qué licencia usamos?', actor: kiln });
     createItem(project, {
       collection: 'Criaturas',
       title: 'Tortuga',
@@ -143,7 +144,7 @@ describe('topics over the API', () => {
     const before = (await (await call('/items/CRI-1/topics')).json()) as {
       suggested: { id: string }[];
     };
-    expect(before.suggested.map(({ id }) => id)).toEqual(['TEM-1', 'TEM-2']);
+    expect(before.suggested.map(({ id }) => id).sort()).toEqual(['TEM-1', 'TEM-2']);
 
     await call('/items/CRI-1/topics/TEM-1/confirm', { method: 'POST' });
     await call('/items/CRI-1/topics/TEM-2/dismiss', { method: 'POST' });

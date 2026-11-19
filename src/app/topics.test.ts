@@ -32,7 +32,7 @@ const later = (ms: number) => {
   clock += ms;
 };
 
-function seedItem(id: string, by: Actor = quill, at = now()): void {
+function seedItem(id: string, by: Actor = quill, at = now(), title = 'una tarea'): void {
   ctx.db.exec(
     `INSERT OR IGNORE INTO collections (name, prefix, next_seq) VALUES ('Tareas', 'TAR', 1)`,
   );
@@ -40,9 +40,9 @@ function seedItem(id: string, by: Actor = quill, at = now()): void {
     .prepare(
       `INSERT INTO items (id, collection, seq, title, state, created_at, updated_at,
         created_by_kind, created_by_name)
-       VALUES (?, 'Tareas', ?, 'una tarea', 'open', ?, ?, ?, ?)`,
+       VALUES (?, 'Tareas', ?, ?, 'open', ?, ?, ?, ?)`,
     )
-    .run(id, Number(id.split('-')[1]), at, at, by.kind, by.name);
+    .run(id, Number(id.split('-')[1]), title, at, at, by.kind, by.name);
 }
 
 beforeEach(() => {
@@ -244,7 +244,7 @@ describe('topics and items', () => {
   });
 
   it('is suggested for a task the same agent made soon after, until linked or dismissed', () => {
-    addTopic(ctx, { question: 'q', actor: quill }, now);
+    addTopic(ctx, { question: '¿Cómo partimos una tarea grande?', actor: quill }, now);
     later(60_000);
     seedItem('TAR-1');
     seedItem('TAR-2', { kind: 'agent', name: 'brush' });
@@ -258,9 +258,28 @@ describe('topics and items', () => {
   });
 
   it('suggests a topic of the same session even from another agent name', () => {
-    addTopic(ctx, { question: 'q', actor: quill, session: 's-1' }, now);
+    addTopic(ctx, { question: '¿Qué tarea sigue?', actor: quill, session: 's-1' }, now);
     seedItem('TAR-1', { kind: 'agent', name: 'brush' });
     expect(topicSuggestions(ctx, 'TAR-1', now, 's-1').map(({ id }) => id)).toEqual(['TEM-1']);
+  });
+
+  // P3C-R2-3, P4-R2-7: «Puede venir de» listed every earlier topic of the session, related or not.
+  it('suggests only topics that share a word with the item, the closest three', () => {
+    addTopic(ctx, { question: '¿Qué precio ponemos al lemon pie?', actor: quill }, now);
+    addTopic(ctx, { question: '¿Cuánto cobramos los envíos en moto?', actor: quill }, now);
+    later(60_000);
+    for (const n of [3, 4, 5, 6]) {
+      addTopic(ctx, { question: `¿Precios de la tarta ${n}?`, actor: quill }, now);
+      later(60_000);
+    }
+    addTopic(ctx, { question: '¿Qué licencia usamos?', actor: quill }, now);
+    seedItem('TAR-1', quill, now(), 'Precio del lemon pie');
+
+    expect(topicSuggestions(ctx, 'TAR-1', now).map(({ id }) => id)).toEqual([
+      'TEM-1',
+      'TEM-6',
+      'TEM-5',
+    ]);
   });
 });
 
