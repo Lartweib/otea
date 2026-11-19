@@ -220,11 +220,15 @@ function notABoard(start: string, problems: readonly string[]): string {
   ].join('\n');
 }
 
+const BOM = String.fromCharCode(0xfeff);
+const withoutBom = (text: string) => (text.startsWith(BOM) ? text.slice(1) : text);
+
 // The agent's board.json read as a board, or what is wrong with it; `start`: where to start from.
 function readDraftFile(text: string, start: string) {
   let raw: unknown;
   try {
-    raw = JSON.parse(text);
+    // PowerShell 5 writes utf8 with a BOM, which JSON.parse refuses.
+    raw = JSON.parse(withoutBom(text));
   } catch {
     throw new OteaError('invalid_board', `${DRAFT_FILENAME} is not JSON`);
   }
@@ -282,7 +286,7 @@ export function submitAgentDraft(
   const evidence = transaction(project.db, () => {
     const item = requireItem(project.db, input.id);
     const at = now();
-    const file = { filename: DRAFT_FILENAME, bytes: Buffer.from(input.text, 'utf8') };
+    const file = { filename: DRAFT_FILENAME, bytes: Buffer.from(withoutBom(input.text), 'utf8') };
     // The Pedido's page has no module for it: it is kept under files, found by its name.
     const placed = { ...placeFile(project, item, file, input.actor, at), module: DRAFT_MODULE };
     const recorded = recordEvidence(project, item.id, placed, input, at);

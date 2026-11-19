@@ -46,4 +46,17 @@ describe('--description on a board', () => {
       }),
     );
   });
+
+  // Not every board has a description field (Cambios has none): the help says so (P1-12).
+  it.each(['create', 'update'])(
+    'says in %s --help that --description needs such a field',
+    async (name) => {
+      const { out } = await otea(name, '--help');
+
+      expect(out).toContain(
+        "--description fills the board's description field, where it has one (Descripción on Errores); a board without one refuses it",
+      );
+      expect(out).toContain('--field-file');
+    },
+  );
 });

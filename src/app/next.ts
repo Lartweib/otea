@@ -101,7 +101,7 @@ import {
 } from '../store/queries.ts';
 import { collectionNamed } from './collections.ts';
 import type { Context } from './context.ts';
-import { DRAFT_FILENAME, type DraftRequest, draftRequestOf } from './draft-request.ts';
+import { type DraftRequest, draftPath, draftRequestOf } from './draft-request.ts';
 import {
   getItem,
   type Item,
@@ -711,7 +711,7 @@ function textFor(
       ? undefined
       : {
           after: 'Done, once the person tries the board and publishes it in Studio',
-          command: `otea board draft ${item.id} --file ${DRAFT_FILENAME}`,
+          command: `otea board draft ${item.id} --file ${draftPath(item.id)}`,
         };
   return nextText(def, {
     id: item.id,

@@ -1,3 +1,5 @@
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { readDefinition } from '../core/board/schema.ts';
 import type { Lang } from '../core/board/templates.ts';
@@ -10,6 +12,12 @@ import type { Context } from './context.ts';
 // the step's instructions, which the agent reads in next and show and the page shows apart.
 
 export const DRAFT_FILENAME = 'board.json';
+
+// Where the agent keeps the draft of the Pedido `id` while it works on it, quoted for any shell:
+// the temp folder, so no board.json is left in the repo.
+export function draftPath(id: string): string {
+  return `"${join(tmpdir(), `otea-${id}-${DRAFT_FILENAME}`)}"`;
+}
 
 // The Pedido's title: the board it asks for, by the name the board has now.
 const TITLE: Readonly<Record<Lang, (name: string) => string>> = {
@@ -29,9 +37,10 @@ export const BOARD_JSON_SCHEMA = fileURLToPath(
 // How the agent hands its draft in on the Pedido `id`: agents read English.
 export function handInText(id: string): string {
   return [
-    `How to hand it in: start from the draft with otea board draft ${id} > ${DRAFT_FILENAME},`,
+    `How to hand it in: start from the draft with otea board draft ${id} > ${draftPath(id)}`,
+    '(in the temp folder, so nothing is left in the repo),',
     'change it (keep the ids of what is there; give what you add new ids), then run',
-    `otea board draft ${id} --file ${DRAFT_FILENAME}. It says what is wrong until the board is right.`,
+    `otea board draft ${id} --file ${draftPath(id)}. It says what is wrong until the board is right.`,
     `To check it before: its shape, each key with an example, is the JSON Schema ${BOARD_JSON_SCHEMA}.`,
     'Who does each step is its doer (any agent, a named agent or the person), never its text: write its instructions to whoever does it, and call the person "the person" (in Spanish, "la persona").',
     'Branches follow how the person works. For code, ask the person whether anything may reach the remote before they see it. When they work straight on main and want nothing pushed before they see it ("do not push anything I have not seen"), start from the mainline template (Code on main): each item\'s branch is main and only the step after their approval pushes it, so the gate refuses a push of main until they approve; never draft code on todos, which has no gate. When they work straight on main and pushes need not wait, take the guard off the branch part (or the part itself).',

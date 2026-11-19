@@ -793,7 +793,25 @@ const collectionIconCommand: Command = {
   },
 };
 
-function fieldsFrom({ option, options }: Input): FieldValues {
+// A value from a file (--field-file key=path, or key=- for stdin), as an editor or a shell leaves
+// it: without a BOM (PowerShell 5's utf8) and without the line break that ends the file.
+async function fieldFileValue(input: Input, path: string): Promise<string> {
+  let text: string;
+  if (path === '-') {
+    text = await input.stdin();
+  } else {
+    const file = resolve(input.cwd, path);
+    try {
+      text = readFileSync(file, 'utf8');
+    } catch {
+      throw new OteaError('file_not_found', `No file at ${file}`);
+    }
+  }
+  return text.replace(/^\uFEFF/, '').replace(/\r?\n$/, '');
+}
+
+async function fieldsFrom(input: Input): Promise<FieldValues> {
+  const { option, options } = input;
   const fields: FieldValues = {};
   const set = (key: string, value: string) => {
     if (key === 'title') throw new UsageError('Use --title for the title');
@@ -802,20 +820,45 @@ function fieldsFrom({ option, options }: Input): FieldValues {
   };
   const description = option('description');
   if (description !== undefined) set('description', description);
-  for (const pair of options('field')) set(...fieldPair(pair));
+  for (const pair of options('field')) set(...fieldPair(pair, FILE_HINT));
+  for (const pair of options('field-file')) {
+    const [key, path] = fieldPair(pair, '', 'field-file', '<file>');
+    set(key, await fieldFileValue(input, path));
+  }
   return fields;
 }
 
-function fieldPair(pair: string): [string, string] {
+// What a field's usage error adds where --field-file is taken.
+const FILE_HINT =
+  '; a long or multi-line value from a file: --field-file "<key>=<file>" (or <key>=- to read stdin)';
+
+// key=value, or a usage error with an example, then `hint` (<key> in it named as the field given).
+function fieldPair(pair: string, hint = '', option = 'field', value = '<value>'): [string, string] {
   const separator = pair.indexOf('=');
-  if (separator < 1) throw new UsageError(`--field expects key=value, got "${pair}"`);
+  if (separator < 1) {
+    const key = pair || '<name>';
+    const more = hint.replaceAll('<key>', key);
+    throw new UsageError(
+      `--${option} expects key=value, got "${pair}": such as --${option} "${key}=${value}"${more}`,
+    );
+  }
   return [pair.slice(0, separator), pair.slice(separator + 1)];
 }
+
+// Long values over the CLI: the MCP tools take them as they are, so they have no --field-file.
+const FIELD_FILE = { multiple: true, placeholder: 'key=file' } as const;
+
+// What create and update --help add on the fields they take.
+const FIELD_DETAILS = [
+  `--description fills the board's description field, where it has one (Descripción on Errores); a board without one refuses it: give its fields by name with --field "<name>=<value>" (otea board <name> says what each takes).`,
+  '--field-file "<name>=<file>" takes a long or multi-line value from a file, or from stdin with <name>=-.',
+].join('\n');
 
 const create: Command = {
   name: 'create',
   summary:
     'Create an item and say where it starts: on a board whose first step is skipped for an item that has everything it asks, at the next step; an item of a board that is always part of another needs --parent',
+  details: FIELD_DETAILS,
   args: [],
   options: {
     collection: { required: true },
@@ -823,16 +866,17 @@ const create: Command = {
     title: { required: true },
     description: {},
     field: { multiple: true, placeholder: 'key=value' },
+    'field-file': FIELD_FILE,
     parent: { placeholder: 'id' },
     from: { placeholder: 'topic' },
   },
-  execute: (input) => {
+  execute: async (input) => {
     const collection = input.required('collection');
     const type = input.option('type');
     const title = input.required('title');
     const parent = input.option('parent');
     const from = input.option('from');
-    const fields = fieldsFrom(input);
+    const fields = await fieldsFrom(input);
     const { actor, channel } = input;
     return withAgent(input, (project) => {
       // The topic the item comes from, checked before anything is made.
@@ -866,7 +910,7 @@ function listFilter({ option, options, flag, reader }: Input): ListItemsFilter {
   if (type !== undefined) filter.type = type;
   if (turn !== undefined) filter.turn = turn as Turn;
   if (flag('unclaimed')) filter.availableTo = reader.name;
-  for (const [key, value] of options('field').map(fieldPair)) {
+  for (const [key, value] of options('field').map((pair) => fieldPair(pair))) {
     filter.fields ??= {};
     if (key in filter.fields) throw new UsageError(`Field "${key}" given twice`);
     filter.fields[key] = value;
@@ -2185,18 +2229,22 @@ const update: Command = {
   name: 'update',
   summary:
     'Change fields of an open item; a blank value clears a field that is not create-required',
+  details: FIELD_DETAILS,
   args: ['id'],
   options: {
     title: {},
     description: {},
     field: { multiple: true, placeholder: 'key=value' },
+    'field-file': FIELD_FILE,
   },
-  execute: (input) => {
+  execute: async (input) => {
     const [id = ''] = input.args;
     const title = input.option('title');
-    const fields = fieldsFrom(input);
+    const fields = await fieldsFrom(input);
     if (title === undefined && Object.keys(fields).length === 0) {
-      throw new UsageError('Nothing to update; pass --title, --description or --field');
+      throw new UsageError(
+        'Nothing to update; pass --title, --description, --field or --field-file',
+      );
     }
     const { actor } = input;
     const changes = { id, fields, actor, ...(title === undefined ? {} : { title }) };
