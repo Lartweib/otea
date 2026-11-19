@@ -89,7 +89,27 @@ describe('agent identity on the CLI', () => {
     expect(agents()).toEqual(['claude']);
   });
 
-  it.each(['Claude', 'claude_b', 'you', 'agent', 'x'.repeat(25)])(
+  // P2S-R2-3: a name first seen on a command that failed showed as a connected agent «sin
+  // perfil», and whoami then handed it out.
+  it('never records a name first seen on a command that fails', async () => {
+    const probe = cliAt(repo.dir, { OTEA_AGENT: 'a2-probe' });
+    const failed = await probe('board', 'draft', 'X', '--file', 'nope.json');
+
+    expect(failed.code).not.toBe(0);
+    expect(agents()).toEqual(['claude']);
+    expect((await probe('list')).code).toBe(0);
+    expect(agents()).toContain('a2-probe');
+  });
+
+  // P1-R2-4: <name>-<role> runs long, and MCP took a name the CLI refused.
+  it('takes a subagent name of up to 40 characters', async () => {
+    const name = 'probe-nico-integrar-cam1-2-and-some-more';
+    expect(name).toHaveLength(40);
+
+    expect((await cliAt(repo.dir, { OTEA_AGENT: name })('list')).code).toBe(0);
+  });
+
+  it.each(['Claude', 'claude_b', 'you', 'agent', 'x'.repeat(41)])(
     'refuses %s as an agent name on claim as connect does, with exit 6',
     async (name) => {
       const claim = await errorOf(unnamed, 'claim', 'TASKS-1', '--as', name);

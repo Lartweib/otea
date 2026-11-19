@@ -96,6 +96,46 @@ describe('mcp', () => {
     }
   });
 
+  // P1-R2-4, P2S-R2-3: a name the CLI refuses, or one whose first call failed, showed on the desk
+  // as an agent «sin perfil».
+  it('notes no agent for a call under an invalid name, nor for a first call that fails', async () => {
+    const client = new Client({ name: 'claude-code', version: '2.1.0' });
+    await client.connect(
+      new StdioClientTransport({
+        command: process.execPath,
+        args: ARGS,
+        cwd: repo.dir,
+        env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+        stderr: 'pipe',
+      }),
+    );
+    const names = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db).map(({ name }) => name);
+      } finally {
+        project.db.close();
+      }
+    };
+    try {
+      const long = await client.callTool({ name: 'list', arguments: { as: 'x'.repeat(41) } });
+      const failed = await client.callTool({
+        name: 'show',
+        arguments: { id: 'NOPE-1', as: 'probe' },
+      });
+      expect(long.isError).toBe(true);
+      expect(failed.isError).toBe(true);
+      expect(names()).not.toContain('x'.repeat(41));
+      expect(names()).not.toContain('probe');
+
+      const read = await client.callTool({ name: 'list', arguments: { as: 'probe' } });
+      expect(read.isError).toBeFalsy();
+      await until(() => names().includes('probe'));
+    } finally {
+      await client.close();
+    }
+  });
+
   it('refuses a second open session the name another session works under', async () => {
     const open = async (wrap: string[] = []) => {
       const client = new Client({ name: 'claude-code', version: '2.1.0' });

@@ -330,7 +330,7 @@ describe('setup for agents', () => {
       '-claude',
       'claude-',
       'claude--b',
-      'a-very-long-agent-name-indeed',
+      'a-very-long-agent-name-indeed-beyond-forty',
       'you',
       'human',
     ])('refuses %j with invalid_agent_name', async (name) => {

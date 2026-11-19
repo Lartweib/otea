@@ -62,6 +62,8 @@ export type McpContext = {
   heard?(agent: string): void;
   // An agent calls again: refused once another session took its name (claimName).
   still?(agent: string): void;
+  // An agent's first call on this server failed: the server forgets it, unless it is known.
+  failed?(agent: string): void;
 };
 
 type Values = Record<string, unknown>;
@@ -134,6 +136,8 @@ function inputFor(
     return typeof value === 'string' || typeof value === 'number' ? String(value) : undefined;
   };
   const agent = typeof values.as === 'string' && values.as !== '' ? values.as : context.agent;
+  // A name the CLI refuses is refused before the server hears it, so it never shows as an agent.
+  if (agent !== undefined) assertAgentName(agent);
   assertPinnedName(context.agent, agent);
   // The first call of each agent on this server starts its session here.
   const newSession = agent !== undefined && !seen.has(agent);
@@ -204,14 +208,19 @@ async function callCommand(
   commands: readonly Command[],
 ): Promise<CallToolResult> {
   const records: unknown[] = [];
+  let input: Input | undefined;
   try {
     const given = command.name === 'wait' ? waitValues(values) : values;
-    const output = await command.execute(
-      inputFor(command, given, context, signal, records, harness, seen),
-    );
+    input = inputFor(command, given, context, signal, records, harness, seen);
+    const output = await command.execute(input);
     const data = output === undefined ? records : inMcpWords(output.data, commands);
     return reply(JSON.stringify(data), false);
   } catch (error) {
+    // A first call that failed starts no session: the next call is its first again (P2S-R2-3).
+    if (input?.newSession && input.agent !== undefined) {
+      seen.delete(input.agent);
+      context.failed?.(input.agent);
+    }
     const { error: data } = errorData(error);
     const message =
       typeof data.message === 'string' ? mcpWords(data.message, commands) : data.message;
