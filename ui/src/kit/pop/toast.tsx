@@ -55,6 +55,19 @@ export function toast(o: ToastOptions): void {
 // starts past it, so it shows only what is sent from then on.
 export const seenAtMount = (): number => latest?.seq ?? 0;
 
+// An item page opened: a toast about another item (or none) goes. Its Deshacer undoes a move
+// made on the page just left, and on the phone it sat over the next item's Aprobar: a tap meant
+// for it undid the move before (P7-R2-1).
+let away = 0;
+export function itemOpened(id: string): void {
+  if (!latest || latest.id === id || away === latest.seq) return;
+  away = latest.seq;
+  for (const fn of listeners) fn();
+}
+
+// The toast last sent away by an opening, by its seq.
+export const sentAway = (): number => away;
+
 const subscribe = (fn: () => void) => {
   listeners.add(fn);
   return () => listeners.delete(fn);
@@ -235,6 +248,12 @@ export function ToastHost() {
   }, [msgs]);
 
   useEffect(() => () => clearTimeout(dwell.current.timer), []);
+
+  const gone = useSyncExternalStore(subscribe, sentAway, () => 0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: when an opening sends one away only
+  useEffect(() => {
+    if (gone && gone === seen.current) close();
+  }, [gone]);
 
   if (!mounted) return null;
   const surface = (

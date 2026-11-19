@@ -160,3 +160,11 @@ describe('the paired page', () => {
     expect(rules(sheet('pairing.css'), '.lan-fall')).toMatch(/overflow-wrap:\s*anywhere/);
   });
 });
+
+describe('a toast on an item page with moves at its foot', () => {
+  it('sits under the top, off the docked Aprobar and Devolver (P7-R2-1)', () => {
+    const r = rules(phone, 'body:has(.p-dock) .toast');
+    expect(r).toMatch(/top:\s*calc\(56px \+ 8px \+ env\(safe-area-inset-top, 0px\)\)/);
+    expect(r).toMatch(/bottom:\s*auto/);
+  });
+});
