@@ -433,6 +433,11 @@ export const MIGRATIONS = [
     at TEXT NOT NULL
   );
   `,
+  // The process of the MCP server that loaded last for each harness: MCP is at hand (the desk says
+  // «MCP sin usar», not «sin conectar») only while it runs, never on a load an ended session left.
+  `
+  ALTER TABLE mcp_loads ADD COLUMN session INTEGER;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

@@ -2917,7 +2917,7 @@ const mcp: Command = {
       client = harness;
       if (!harness) return;
       try {
-        withProject(cwd, (project) => mcpLoaded(project.db, harness));
+        withProject(cwd, (project) => mcpLoaded(project.db, harness, systemClock, process.pid));
       } catch {
         // No project yet: every tool call will say so.
       }

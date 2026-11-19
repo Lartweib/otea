@@ -50,14 +50,14 @@ describe('migrate', () => {
         'mcp_loads',
       ]),
     );
-    expect(userVersion(db)).toBe(34);
+    expect(userVersion(db)).toBe(35);
   });
 
   it('is idempotent', () => {
     migrate(db);
     migrate(db);
 
-    expect(userVersion(db)).toBe(34);
+    expect(userVersion(db)).toBe(35);
   });
 
   describe('from version 1', () => {
