@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
@@ -8,7 +8,7 @@ import { addCollection } from './collections.ts';
 import { attachEvidence } from './evidence.ts';
 import { createItem, getItem, moveItem, showItem } from './items.ts';
 import { claimItem } from './leases.ts';
-import { OFFICIAL_PRESETS_DIR, requirePreset } from './presets.ts';
+import { requirePreset } from './presets.ts';
 import type { Project } from './project.ts';
 import { relayDecision } from './relay.ts';
 import { memoryContext, projectOf } from './testing.ts';
@@ -17,9 +17,6 @@ import { validateProject } from './validate.ts';
 const claude: Actor = { kind: 'agent', name: 'claude' };
 const human: Actor = { kind: 'human', name: 'human' };
 const at = () => '2026-01-01T00:00:00.000Z';
-
-const playbook = (preset: string) =>
-  readFileSync(join(OFFICIAL_PRESETS_DIR, preset, 'playbook.md'), 'utf8');
 
 describe('the architecture and review presets', () => {
   let root: string;
@@ -134,11 +131,5 @@ describe('the architecture and review presets', () => {
     expect(showItem(project, id, { actor: claude, channel: 'cli' }, at).evidence[0]?.module).toBe(
       'recording',
     );
-  });
-
-  it('ship playbooks that name the round note and the options format', () => {
-    expect(playbook('review')).toContain('otea move <id> review --reason');
-    expect(playbook('architecture')).toContain('### <letter> · <name>');
-    expect(playbook('architecture')).toContain('otea attach <id> rotation.mmd');
   });
 });

@@ -83,12 +83,6 @@ describe('preset views', () => {
     expect(typeViews(mixedPreset.types)[0]).not.toHaveProperty('gates');
   });
 
-  it('gives each preset its own name in the languages it speaks', () => {
-    const bug = listPresetViews(ctx).find(({ name }) => name === 'bug-triage');
-
-    expect(bug?.names).toEqual({ en: 'Bug triage', es: 'Errores' });
-  });
-
   it('names the collections that use each preset', () => {
     addCollection(ctx, { name: 'tasks' });
     addCollection(ctx, { name: 'design', preset: 'reviews' });

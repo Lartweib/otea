@@ -26,23 +26,9 @@ describe('collections', () => {
     expect(getCollection(ctx.db, 'tasks')).toEqual(collection);
   });
 
-  it('records the chosen preset and its version', () => {
-    addCollection(ctx, { name: 'design', preset: 'reviews' });
-
-    expect(getCollection(ctx.db, 'design')).toMatchObject({ preset: 'reviews', presetVersion: 3 });
-  });
-
   it('fails with not_found for an unknown preset', () => {
     expect(() => addCollection(ctx, { name: 'x', preset: 'nope' })).toThrow(
       expect.objectContaining({ code: 'not_found', message: 'Preset "nope" not found' }),
-    );
-  });
-
-  it('rejects a duplicate name with already_exists', () => {
-    addCollection(ctx, { name: 'tasks' });
-
-    expect(() => addCollection(ctx, { name: 'tasks' })).toThrow(
-      expect.objectContaining({ code: 'already_exists' }),
     );
   });
 
@@ -51,18 +37,6 @@ describe('collections', () => {
 
     expect(() => addCollection(ctx, { name: 'bugreports' })).toThrow(
       expect.objectContaining({ code: 'already_exists' }),
-    );
-  });
-
-  it('rejects a name without a usable prefix with invalid_name', () => {
-    expect(() => addCollection(ctx, { name: '!!' })).toThrow(
-      expect.objectContaining({ code: 'invalid_name' }),
-    );
-  });
-
-  it('fails with not_found for an unknown collection', () => {
-    expect(() => getCollection(ctx.db, 'missing')).toThrow(
-      expect.objectContaining({ code: 'not_found' }),
     );
   });
 

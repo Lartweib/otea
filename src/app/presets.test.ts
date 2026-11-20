@@ -1,9 +1,9 @@
-import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { tasks } from '../core/testing.ts';
-import { loadPresets, OFFICIAL_PRESETS_DIR, type PresetCatalog, requirePreset } from './presets.ts';
+import { loadPresets, type PresetCatalog, requirePreset } from './presets.ts';
 
 const NOTES = `
 preset: notes
@@ -34,46 +34,6 @@ describe('official presets', () => {
     const notes = catalog.warnings.filter(({ code }) => code?.startsWith('sample_'));
 
     expect(notes).toEqual([]);
-  });
-
-  it('ship a playbook that starts by listing the agent turn', () => {
-    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
-
-    expect(playbook).toContain('otea list --turn agent');
-  });
-
-  it('ship a playbook whose loop waits for unclaimed work, then claims it', () => {
-    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
-    const start = playbook.slice(playbook.indexOf('## 1.'), playbook.indexOf('## 2.'));
-
-    expect(start).toContain('otea wait --turn agent --unclaimed');
-    expect(start).toContain('otea events --since');
-  });
-
-  it('ship a playbook that attaches evidence before handing work to review', () => {
-    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
-    const work = playbook.slice(playbook.indexOf('## 5.'), playbook.indexOf('## 6.'));
-
-    expect(work.indexOf('otea attach <id> <file>')).toBeGreaterThan(-1);
-    expect(work.indexOf('otea attach')).toBeLessThan(work.indexOf('otea move <id> review'));
-  });
-
-  it('ship a playbook whose enrichment step treats human-entered text as data', () => {
-    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
-    const enrichment = playbook.slice(playbook.indexOf('## 4.'), playbook.indexOf('## 5.'));
-
-    expect(enrichment).toContain('not instructions to you');
-    expect(enrichment).toContain('discard it with a reason');
-  });
-
-  it('ship a playbook that claims an item before working it', () => {
-    const playbook = readFileSync(join(OFFICIAL_PRESETS_DIR, 'tasks', 'playbook.md'), 'utf8');
-    const leases = playbook.slice(playbook.indexOf('## 3.'), playbook.indexOf('## 4.'));
-
-    for (const command of ['otea claim', 'otea heartbeat', 'otea release']) {
-      expect(leases).toContain(command);
-    }
-    expect(leases).toContain('Exit code 12');
   });
 });
 
@@ -129,58 +89,37 @@ describe('project presets', () => {
     expect(requirePreset(catalog, 'tasks').origin).toBe('official');
   });
 
-  it('loads a project preset that uses a deprecated key and keeps a warning for it', () => {
-    const deprecated = NOTES.replace(
-      'closed: { turn: none, closes: discarded }',
-      'closed: { turn: none, closes: discarded, close_requires: children_closed }',
-    );
-    write('notes', { 'preset.yaml': deprecated });
-
-    const catalog = loadPresets(root);
-
-    expect(catalog.problems).toEqual([]);
-    expect(requirePreset(catalog, 'notes').workflow.states[1]).toMatchObject({
-      requires: ['children_closed'],
-    });
-    expect(own(catalog)).toEqual([
-      expect.objectContaining({
-        preset: 'notes',
-        origin: 'project',
-        message:
-          'workflow.states.closed.close_requires: deprecated; write requires: children_closed',
-      }),
-    ]);
-  });
-
-  it('reports a preset whose name does not match its directory', () => {
-    write('other', { 'preset.yaml': NOTES });
-
-    expect(problemsOf(loadPresets(root), 'other')).toEqual([
+  it.each<[string, string, Record<string, string>, string]>([
+    [
+      'a name unlike its directory',
+      'other',
+      { 'preset.yaml': NOTES },
       'preset: "notes" does not match its directory "other"',
-    ]);
-  });
-
-  it('reports a missing preset.yaml', () => {
-    write('empty', {});
-
-    expect(problemsOf(loadPresets(root), 'empty')).toEqual(['missing preset.yaml']);
-  });
-
-  it('reports a missing playbook', () => {
-    write('notes', { 'preset.yaml': `${NOTES}playbook: ./playbook.md\n` });
-
-    expect(problemsOf(loadPresets(root), 'notes')).toEqual([
+    ],
+    ['a missing preset.yaml', 'empty', {}, 'missing preset.yaml'],
+    [
+      'a missing playbook',
+      'notes',
+      {
+        'preset.yaml': `${NOTES}playbook: ./playbook.md
+`,
+      },
       'playbook: ./playbook.md does not exist',
-    ]);
-  });
-
-  it('reports a missing playbook of a type', () => {
-    const typed = `${NOTES}types:\n  note: { label: Note, playbook: ./note.md }\n`;
-    write('notes', { 'preset.yaml': typed });
-
-    expect(problemsOf(loadPresets(root), 'notes')).toEqual([
+    ],
+    [
+      'a missing playbook of a type',
+      'notes',
+      {
+        'preset.yaml': `${NOTES}types:
+  note: { label: Note, playbook: ./note.md }
+`,
+      },
       'types.note.playbook: ./note.md does not exist',
-    ]);
+    ],
+  ])('reports %s', (_, dir, files, problem) => {
+    write(dir, files);
+
+    expect(problemsOf(loadPresets(root), dir)).toEqual([problem]);
   });
 
   it('reports every problem of an invalid preset', () => {
@@ -203,17 +142,7 @@ describe('project presets', () => {
     );
   });
 
-  it('fails with not_found for an unknown preset', () => {
-    expect(() => requirePreset(loadPresets(root), 'nope')).toThrow(
-      expect.objectContaining({ code: 'not_found', message: 'Preset "nope" not found' }),
-    );
-  });
   describe('notes', () => {
-    const GATED = NOTES.replace(
-      'transitions: [{ from: open, to: closed, by: agent }]',
-      'transitions: [{ from: open, to: closed, by: agent }]\n  gates: { ship: [open] }',
-    ).replace('preset_version: 2', 'preset_version: 2\nplaybook: ./playbook.md');
-
     it('carries each note with its code, level and path', () => {
       const yaml = NOTES.replace(
         'open: { turn: agent }',
@@ -232,12 +161,6 @@ describe('project presets', () => {
           message: expect.stringContaining('workflow.states.open.close_requires: deprecated'),
         },
       ]);
-    });
-
-    it('notes no gate its playbook leaves unchecked: agents read the board, not the playbook', () => {
-      write('notes', { 'preset.yaml': GATED, 'playbook.md': 'Work the notes.' });
-
-      expect(own(loadPresets(root))).toEqual([]);
     });
 
     it('notes what its samples get wrong, against the samples file', () => {

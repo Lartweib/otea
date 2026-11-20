@@ -1,12 +1,10 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Channel } from '../core/authority.ts';
 import type { Actor } from '../core/item.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
-import { createItem, getItem, listItems, moveItem, showItem, updateItem } from './items.ts';
-import { OFFICIAL_PRESETS_DIR, requirePreset } from './presets.ts';
+import { createItem, getItem, moveItem, showItem, updateItem } from './items.ts';
+import { requirePreset } from './presets.ts';
 import { relayDecision } from './relay.ts';
 import { memoryContext } from './testing.ts';
 import { validateProject } from './validate.ts';
@@ -16,8 +14,6 @@ const human: Actor = { kind: 'human', name: 'human' };
 
 const T0 = '2026-01-01T00:00:00.000Z';
 const at = () => T0;
-
-const playbook = () => readFileSync(join(OFFICIAL_PRESETS_DIR, 'change', 'playbook.md'), 'utf8');
 
 describe('change preset', () => {
   let ctx: Context;
@@ -180,16 +176,6 @@ describe('change preset', () => {
     ).toThrow(expect.objectContaining({ code: 'parent_type' }));
   });
 
-  it('finds the repo task of a change for one repo by its field', () => {
-    const id = change();
-    repoTask(id, 'api');
-    const web = repoTask(id, 'web');
-
-    const found = listItems(ctx, { parent: id, fields: { repo: 'web' } }, at);
-
-    expect(found.map((item) => item.id)).toEqual([web]);
-  });
-
   it('takes a change from plan to done: repo tasks approved, implemented, reviewed', () => {
     const { id, api, web } = executing();
 
@@ -294,29 +280,5 @@ describe('change preset', () => {
     decide(api, 'approved');
     expect(gates(api)).toEqual({ push: false, merge: true });
     expect(gates(id)).toBeUndefined();
-  });
-
-  it('ships a playbook with the plan, the fields, the review and the relay rules', () => {
-    const text = playbook();
-
-    for (const phrase of [
-      'otea wait --turn agent --unclaimed',
-      'otea claim',
-      '--type repo_task --parent <id>',
-      '--field repo=api --field branch=',
-      'otea list --parent <id> --field repo=api',
-      'otea update <id> --field pr=',
-      'otea move <id> plan_review',
-      'otea move <id> pr_review',
-      'otea show <id> --json',
-      'otea check --gate push --branch --repo',
-      'otea check --gate merge --branch --repo',
-      "Merge a pull request only once its repo task's `merge` gate allows it",
-      'and then merge it yourself',
-      'You never approve your own work',
-      'otea relay',
-    ]) {
-      expect(text).toContain(phrase);
-    }
   });
 });

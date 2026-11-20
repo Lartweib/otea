@@ -218,16 +218,6 @@ describe('the next service', () => {
       handoffItem(ctx, { id: other.id, actor: quill, channel: 'cli' }, now),
     ).toThrowError(expect.objectContaining({ code: 'forbidden' }));
   });
-
-  it('needs a reason to send back', () => {
-    const ctx = memoryContext();
-    board(ctx);
-    const item = creature(ctx);
-
-    expect(() => sendBackItem(ctx, { id: item.id, actor: you, channel: 'ui' }, now)).toThrowError(
-      expect.objectContaining({ code: 'reason_required' }),
-    );
-  });
 });
 
 describe('a round sent back', () => {

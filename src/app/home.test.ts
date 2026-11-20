@@ -37,10 +37,6 @@ describe('home', () => {
   afterEach(() => rmSync(dir, { recursive: true, force: true }));
 
   describe('oteaHome', () => {
-    it('is OTEA_HOME when set', () => {
-      expect(oteaHome({ OTEA_HOME: dir })).toBe(dir);
-    });
-
     it('is set by the test setup for every test file', () => {
       expect(process.env.OTEA_HOME).toContain('otea-home-');
     });

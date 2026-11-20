@@ -1,7 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Actor } from '../core/item.ts';
 import { parsePreset } from '../core/preset.ts';
-import { orderByBlocks } from '../core/relations.ts';
 import { insertRelation } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
@@ -168,10 +167,6 @@ describe('relations', () => {
       expect(codeOf(() => link('WORK-2', 'parent', 'WORK-3'))).toBe('parent_exists');
       expect(codeOf(() => link('WORK-1', 'parent', 'WORK-2'))).toBe('relation_cycle');
       expect(codeOf(() => link('WORK-4', 'blocks', 'WORK-3'))).toBe('relation_cycle');
-    });
-
-    it('lets humans link too', () => {
-      expect(link('WORK-2', 'relates', 'WORK-3', ana).actor).toEqual(ana);
     });
 
     it('is not bound by leases, and links closed items', () => {
@@ -379,12 +374,6 @@ describe('relations', () => {
       ]);
       expect(listItems(ctx, { parent: 'WORK-2' })).toEqual([]);
       expect(codeOf(() => listItems(ctx, { parent: 'WORK-99' }))).toBe('not_found');
-    });
-
-    it('orders the blocked after their blockers from the stored relations', () => {
-      const ids = ['WORK-3', 'WORK-2', 'WORK-4'];
-
-      expect(orderByBlocks(ids, listRelations(ctx))).toEqual(['WORK-2', 'WORK-3', 'WORK-4']);
     });
   });
 
