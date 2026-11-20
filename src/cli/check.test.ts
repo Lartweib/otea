@@ -308,6 +308,11 @@ describe('check', () => {
     } finally {
       project.db.close();
     }
+    // Nothing of it may be pushed yet, and show says so, in its Branch lines and its gates (P5-R3-2).
+    const shown = (await otea('show', none)).out;
+    expect(shown).not.toMatch(/may push|push allowed/);
+    expect(shown).toContain('Rama is empty: push nothing until it is set');
+    expect(shown).toContain('Gates: push blocked');
     writeFileSync(join(repo.dir, 'out.log'), 'ok\n');
     await otea('move', none, 'implementing__review');
 

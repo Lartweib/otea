@@ -3,7 +3,7 @@ import { cambios, step, tareasDeRepo } from '../core/board/testing.ts';
 import { updateItemState } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import { checkGate } from './gates.ts';
-import { createItem, updateItem } from './items.ts';
+import { createItem, showItem, updateItem } from './items.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -103,6 +103,20 @@ describe('gates on a board', () => {
     ).toMatchObject({
       fbranch: 'feat/y',
     });
+  });
+
+  // P5-R3-2: show read «Gates: push allowed» on an item whose Rama was empty, though no push of it
+  // could be its own.
+  it('blocks the push in show while the item leaves its protected branch empty', () => {
+    const { ctx, id } = repoTask();
+    const claude = { actor: { kind: 'agent' as const, name: 'claude' }, channel: 'cli' as const };
+    updateItemState(ctx.db, id, 'simpl', now());
+    expect(showItem(ctx, id, claude, now).gates).toEqual({ push: true, merge: false });
+    // Left empty, as on a board where Rama is optional or asked only on a condition.
+    ctx.db
+      .prepare("UPDATE items SET fields = json_set(fields, '$.fbranch', '') WHERE id = ?")
+      .run(id);
+    expect(showItem(ctx, id, claude, now).gates).toEqual({ push: false, merge: false });
   });
 
   describe('with the base branch protected', () => {
