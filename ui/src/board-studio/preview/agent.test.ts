@@ -108,6 +108,21 @@ describe('agentView: the new capabilities', () => {
     ]);
   });
 
+  // P5-R3-2: a branch field no form, step or anytime places is no field of the board: the preview
+  // shows no branch and no push, as the published board gates none.
+  it('shows no branch and no git answers once the branch field is placed nowhere', () => {
+    const def = errores();
+    for (const one of def.steps) one.hand = one.hand.filter(({ ref }) => ref !== 'fbranch');
+    def.form = def.form.filter(({ ref }) => ref !== 'fbranch');
+    def.anytime = def.anytime.filter((ref) => ref !== 'fbranch');
+    const view = agentView(def, 'sfix', 'doing');
+    if (view.kind !== 'text') throw new Error(view.kind);
+    expect(view.text).not.toMatch(/^Branch$/m);
+    expect(view.answers.flatMap(({ runs }) => runs.map(({ command }) => command))).not.toContain(
+      'git push, while Arreglar is being done',
+    );
+  });
+
   it('shows the skip at creation on a first step that skips', () => {
     const view = agentView(errores(), 'sfill', 'doing');
     if (view.kind !== 'text') throw new Error(view.kind);
