@@ -58,18 +58,18 @@ describe('pairing', () => {
 });
 
 describe('the .local name and its IP fallback', () => {
-  const urls = ['http://lartweib.local:4485', 'http://192.168.1.156:4485'];
+  const urls = ['http://devbox.local:4485', 'http://192.0.2.10:4485'];
 
   it('tells a .local name from an address', () => {
-    expect(isLocalName(hostnameOf('lartweib.local:4485'))).toBe(true);
-    expect(isLocalName(hostnameOf('192.168.1.156:4485'))).toBe(false);
+    expect(isLocalName(hostnameOf('devbox.local:4485'))).toBe(true);
+    expect(isLocalName(hostnameOf('192.0.2.10:4485'))).toBe(false);
   });
 
   it('points the same pairing link at the first IP', () => {
-    expect(ipFallback(urls, 'http://lartweib.local:4485/pair#code=7Q4M-2K9X')).toBe(
-      'http://192.168.1.156:4485/pair#code=7Q4M-2K9X',
+    expect(ipFallback(urls, 'http://devbox.local:4485/pair#code=7Q4M-2K9X')).toBe(
+      'http://192.0.2.10:4485/pair#code=7Q4M-2K9X',
     );
-    expect(ipFallback(['http://lartweib.local:4485'], 'http://lartweib.local:4485/pair')).toBe(
+    expect(ipFallback(['http://devbox.local:4485'], 'http://devbox.local:4485/pair')).toBe(
       undefined,
     );
   });
@@ -89,23 +89,23 @@ describe('the pair dialog says how long the code lasts (DR2-16)', () => {
 describe('the addresses the pairing code can point at', () => {
   it('tags each in the list: most likely, Tailscale, another network, not on Android', () => {
     setLanguage('es');
-    expect(addressLabel('192.168.1.156:4400', 0)).toBe('192.168.1.156:4400 · probable');
-    expect(addressLabel('100.105.244.72:4400', 1)).toBe('100.105.244.72:4400 · Tailscale');
+    expect(addressLabel('192.0.2.10:4400', 0)).toBe('192.0.2.10:4400 · probable');
+    expect(addressLabel('100.101.102.103:4400', 1)).toBe('100.101.102.103:4400 · Tailscale');
     expect(addressLabel('192.168.56.1:4400', 2)).toBe('192.168.56.1:4400 · otra red');
-    expect(addressLabel('lartweib.local:4400', 4)).toBe('lartweib.local:4400 · no en Android');
+    expect(addressLabel('devbox.local:4400', 4)).toBe('devbox.local:4400 · no en Android');
     setLanguage('en');
-    expect(addressLabel('192.168.1.156:4400', 0)).toBe('192.168.1.156:4400 · likely');
-    expect(addressLabel('lartweib.local:4400', 4)).toBe('lartweib.local:4400 · not on Android');
+    expect(addressLabel('192.0.2.10:4400', 0)).toBe('192.0.2.10:4400 · likely');
+    expect(addressLabel('devbox.local:4400', 4)).toBe('devbox.local:4400 · not on Android');
   });
 
   it('says in full why to pick the one chosen, or not', () => {
     setLanguage('es');
-    expect(addressHint('lartweib.local:4400', 4)).toBe(
+    expect(addressHint('devbox.local:4400', 4)).toBe(
       'el nombre del equipo: Android no lo abre, elige una dirección',
     );
-    expect(addressHint('192.168.1.156:4400', 0)).toBe('la más probable para llegar al teléfono');
+    expect(addressHint('192.0.2.10:4400', 0)).toBe('la más probable para llegar al teléfono');
     setLanguage('en');
-    expect(addressHint('100.105.244.72:4400', 1)).toBe('Tailscale: only devices on your tailnet');
+    expect(addressHint('100.101.102.103:4400', 1)).toBe('Tailscale: only devices on your tailnet');
   });
 
   it('names Tailscale only within its range', () => {

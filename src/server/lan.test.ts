@@ -51,17 +51,17 @@ describe('addresses', () => {
 describe('which address to show first', () => {
   it('puts Wi-Fi before wired before virtual adapters', () => {
     const ranked = [
-      ['vEthernet (WSL)', '172.20.96.1'],
+      ['vEthernet (WSL)', '172.24.0.1'],
       ['Ethernet 2', '192.168.56.1'],
       ['Ethernet', '10.0.0.7'],
-      ['Wi-Fi', '192.168.1.156'],
+      ['Wi-Fi', '192.168.1.24'],
     ].sort(([n1 = '', a1 = ''], [n2 = '', a2 = '']) => rankAddress(n1, a1) - rankAddress(n2, a2));
 
     expect(ranked.map(([, address]) => address)).toEqual([
-      '192.168.1.156',
+      '192.168.1.24',
       '10.0.0.7',
       '192.168.56.1',
-      '172.20.96.1',
+      '172.24.0.1',
     ]);
   });
 });
@@ -165,8 +165,8 @@ describe('attempt limiter', () => {
 
 describe('the .local name', () => {
   it('is the hostname as one DNS label', () => {
-    expect(localNameOf('Lartweib')).toBe('lartweib.local');
-    expect(localNameOf('Federicos-MacBook.local')).toBe('federicos-macbook.local');
+    expect(localNameOf('Devbox')).toBe('devbox.local');
+    expect(localNameOf('Studio-MacBook.local')).toBe('studio-macbook.local');
     expect(localNameOf('host.example.com')).toBeUndefined();
     expect(localNameOf('-bad')).toBeUndefined();
   });
