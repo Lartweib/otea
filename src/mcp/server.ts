@@ -64,6 +64,8 @@ export type McpContext = {
   still?(agent: string): void;
   // An agent's first call on this server failed: the server forgets it, unless it is known.
   failed?(agent: string): void;
+  // A tool call begins; what it returns is called as the call ends.
+  calling?(command: string): () => void;
 };
 
 type Values = Record<string, unknown>;
@@ -210,6 +212,7 @@ async function callCommand(
 ): Promise<CallToolResult> {
   const records: unknown[] = [];
   let input: Input | undefined;
+  const done = context.calling?.(command.name);
   try {
     const given = command.name === 'wait' ? waitValues(values) : values;
     input = inputFor(command, given, context, signal, records, harness, seen);
@@ -226,6 +229,8 @@ async function callCommand(
     const message =
       typeof data.message === 'string' ? mcpWords(data.message, commands) : data.message;
     return reply(JSON.stringify({ error: { ...data, message } }), true);
+  } finally {
+    done?.();
   }
 }
 

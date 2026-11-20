@@ -17,11 +17,13 @@ import {
   listAgents,
   mcpLoaded,
   nameFor,
+  noteCall,
   offerName,
   ownerGone,
   presenceSignature,
   quietVoices,
   seeAgent,
+  startProcess,
   waitBeat,
 } from './presence.ts';
 import { declareProfile } from './profile.ts';
@@ -638,6 +640,61 @@ describe('agent presence', () => {
       expect(() => claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), 10, true)).toThrow(
         'Another session works as claude right now',
       );
+    });
+
+    // P8-R3-1: a harness that starts its server through a shell of its own (OpenCode's `cmd /c`)
+    // gives each server another parent, and reloading its config leaves the old server running.
+    describe('a new server of the same harness, under another launcher', () => {
+      const OPENCODE = { name: 'opencode', version: '2.3.2' };
+      const T0_40S = '2026-01-01T00:00:40.000Z';
+
+      beforeEach(() => {
+        startProcess(ctx.db, 101, at(T0));
+        hearAgent(ctx.db, { ...mcp, harness: OPENCODE, session: 101, launcher: 9 }, at(T0));
+        noteCall(ctx.db, 101, at(T0));
+        startProcess(ctx.db, 202, at(T0_20S));
+      });
+
+      it('takes the name once the old server served no call since the new one started', () => {
+        expect(() =>
+          claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), 10, true, 'opencode'),
+        ).not.toThrow();
+        hearAgent(ctx.db, { ...mcp, harness: OPENCODE, session: 202, launcher: 10 }, at(T1));
+        expect(() =>
+          claimName(ctx.db, 'claude', 101, alive([101, 202]), at(T1), 9, false, 'opencode'),
+        ).toThrow('Another session works as claude right now');
+      });
+
+      it('refuses it while the old server served a call since the new one started', () => {
+        noteCall(ctx.db, 101, at(T0_40S));
+
+        expect(() =>
+          claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), 10, true, 'opencode'),
+        ).toThrow('Another session works as claude right now');
+      });
+
+      it('refuses it while the old server holds a call open, such as a wait', () => {
+        startProcess(ctx.db, 303, at(T0));
+        hearAgent(ctx.db, { ...mcp, harness: OPENCODE, session: 303, launcher: 9 }, at(T0));
+        noteCall(ctx.db, 303, at(T0), 1);
+
+        expect(() =>
+          claimName(ctx.db, 'claude', 202, alive([202, 303]), at(T1), 10, true, 'opencode'),
+        ).toThrow('Another session works as claude right now');
+        noteCall(ctx.db, 303, at(T0_20S), -1);
+        expect(() =>
+          claimName(ctx.db, 'claude', 202, alive([202, 303]), at(T1), 10, true, 'opencode'),
+        ).toThrow('Another session works as claude right now');
+      });
+
+      it('refuses it to a server of another harness, or on a call that is not its first', () => {
+        expect(() =>
+          claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), 10, true, 'claude-code'),
+        ).toThrow('Another session works as claude right now');
+        expect(() =>
+          claimName(ctx.db, 'claude', 202, alive([101, 202]), at(T1), 10, false, 'opencode'),
+        ).toThrow('Another session works as claude right now');
+      });
     });
 
     // P3C-R3-12: the session that ended left its server's process id, now another process's.

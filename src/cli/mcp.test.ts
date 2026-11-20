@@ -252,6 +252,54 @@ describe('mcp', () => {
     }
   });
 
+  // P8-R3-1: OpenCode starts its server through `cmd /c`, a parent of its own each time, and
+  // reloading its config leaves the old server open: the new one took «claude-2», and the desk
+  // counted two agents for one chat.
+  it('gives the name to a new server of the same harness under another parent once the old one went quiet', async () => {
+    const open = async (wrap: string[] = []) => {
+      const client = new Client({ name: 'opencode', version: '2.3.2' });
+      await client.connect(
+        new StdioClientTransport({
+          command: process.execPath,
+          args: [...wrap, ...ARGS],
+          cwd: repo.dir,
+          env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
+          stderr: 'pipe',
+        }),
+      );
+      return client;
+    };
+    const agents = () => {
+      const project = openProject(repo.dir);
+      try {
+        return listAgents(project.db).filter(({ live }) => live);
+      } finally {
+        project.db.close();
+      }
+    };
+    const old = await open(UNDER_ANOTHER_HARNESS);
+    await old.callTool({ name: 'list', arguments: { as: 'claude' } });
+    await until(() => agents().some(({ name, listening }) => name === 'claude' && listening));
+    const reloaded = await open(UNDER_ANOTHER_HARNESS);
+    try {
+      const mine = await reloaded.callTool({
+        name: 'claim',
+        arguments: { id: 'TASKS-1', as: 'claude' },
+      });
+      expect(mine.isError).toBeFalsy();
+      expect(agents().map(({ name }) => name)).toEqual(['claude']);
+
+      const refused = await old.callTool({ name: 'list', arguments: { as: 'claude' } });
+      expect(refused.isError).toBe(true);
+      expect(JSON.parse((refused.content as { text: string }[])[0]?.text ?? '')).toMatchObject({
+        error: { code: 'name_in_use' },
+      });
+    } finally {
+      await old.close();
+      await reloaded.close();
+    }
+  });
+
   it('stops counting its agent as listening once the client closes the session', async () => {
     const client = new Client({ name: 'claude-code', version: '2.1.0' });
     const transport = new StdioClientTransport({

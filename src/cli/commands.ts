@@ -101,10 +101,12 @@ import {
   mcpLoaded,
   type NameAdvice,
   nameFor,
+  noteCall,
   offerName,
   quietVoices,
   renewLeases,
   seeAgent,
+  startProcess,
   waitBeat,
 } from '../app/presence.ts';
 import { priorityOf } from '../app/priority.ts';
@@ -3083,7 +3085,16 @@ function heardBy(
 ) {
   try {
     withProject(cwd, (project) => {
-      claimName(project.db, agent, process.pid, undefined, undefined, process.ppid, fresh);
+      claimName(
+        project.db,
+        agent,
+        process.pid,
+        undefined,
+        undefined,
+        process.ppid,
+        fresh,
+        harness?.name,
+      );
       const at = hearAgent(project.db, {
         agent,
         channel: 'mcp',
@@ -3105,10 +3116,19 @@ function heardBy(
 
 // The first call of an agent on this server: refused while another open session works under its
 // name, so two sessions never share one.
-function claimedBy(cwd: string, agent: string, fresh: boolean): void {
+function claimedBy(cwd: string, agent: string, fresh: boolean, client?: Harness): void {
   try {
     withProject(cwd, (project) =>
-      claimName(project.db, agent, process.pid, undefined, undefined, process.ppid, fresh),
+      claimName(
+        project.db,
+        agent,
+        process.pid,
+        undefined,
+        undefined,
+        process.ppid,
+        fresh,
+        client?.name,
+      ),
     );
   } catch (error) {
     if (error instanceof OteaError && error.code === 'name_in_use') throw error;
@@ -3163,7 +3183,7 @@ const mcp: Command = {
     const heard = (name: string) => {
       const fresh = !used.has(name);
       used.add(name);
-      claimedBy(cwd, name, fresh);
+      claimedBy(cwd, name, fresh, client);
       if (!knownAgent(cwd, name)) newcomers.add(name);
       heardBy(cwd, name, client, warn, false, fresh, note(name));
       voices.add(name);
@@ -3171,7 +3191,7 @@ const mcp: Command = {
       own ??= name;
     };
     const still = (name: string) => {
-      claimedBy(cwd, name, false);
+      claimedBy(cwd, name, false, client);
       calls.set(name, Date.now());
       voices.add(name);
     };
@@ -3188,16 +3208,34 @@ const mcp: Command = {
     // The server says it runs as it starts and on every beat, whether or not an agent calls through
     // it, so the desk and whoami never take a process that got its id after it ended for it
     // (P3C-R3-12); closing, it says it ended.
-    const runs = (ended = false) => {
+    const runs = (state: 'start' | 'beat' | 'end' = 'beat') => {
       try {
-        withProject(cwd, (project) =>
-          ended ? endProcess(project.db, process.pid) : beatProcess(project.db, process.pid),
-        );
+        withProject(cwd, (project) => {
+          if (state === 'start') startProcess(project.db, process.pid);
+          else if (state === 'end') endProcess(project.db, process.pid);
+          else beatProcess(project.db, process.pid);
+        });
       } catch {
         // No project yet: nobody watches this server.
       }
     };
-    runs();
+    runs('start');
+    // Each tool call it serves is noted, a wait as open until it ends: a newer server of the same
+    // harness takes its agent's name only once this one went quiet (claimName, P8-R3-1).
+    const calling = (command: string) => {
+      const long = command === 'wait';
+      const note = (open: number) => {
+        try {
+          withProject(cwd, (project) => noteCall(project.db, process.pid, systemClock, open));
+        } catch {
+          // No project yet: nobody takes a name here.
+        }
+      };
+      note(long ? 1 : 0);
+      return () => {
+        if (long) note(-1);
+      };
+    };
     const beat = setInterval(() => {
       runs();
       const quiet = quietVoices(calls, own, Date.now()).filter((name) => voices.has(name));
@@ -3235,6 +3273,7 @@ const mcp: Command = {
           heard,
           still,
           failed,
+          calling,
         }),
         signal,
       );
@@ -3242,7 +3281,7 @@ const mcp: Command = {
       clearInterval(beat);
       // The client closed the session: its agents no longer listen through this server.
       endListeningAll(cwd, lastHeard);
-      runs(true);
+      runs('end');
     }
     return undefined;
   },
