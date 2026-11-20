@@ -712,6 +712,14 @@ describe('backOf: where a way back lands, in the rounds of the engine', () => {
       landStep: 'Integrar',
     });
     expect(backOf(def, { ...review, fields: { [branch.id]: '' } }, 'sland').lands).toBeUndefined();
+    // P5-R3-14: whether the land step pushes, for the approve hint to say so.
+    expect(
+      backOf(def, { ...review, fields: { [branch.id]: 'feat/x' } }, 'sland').pushes,
+    ).toBeUndefined();
+    branch.guard.push = [...branch.guard.push, 'sland'];
+    expect(backOf(def, { ...review, fields: { [branch.id]: 'feat/x' } }, 'sland').pushes).toBe(
+      true,
+    );
     // Its branch the base itself (a main-only board): pushed, never merged (P2S-R3-2).
     expect(backOf(def, { ...review, fields: { [branch.id]: 'main' } }, 'sland')).toMatchObject({
       lands: 'main',

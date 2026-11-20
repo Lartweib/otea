@@ -632,6 +632,8 @@ export function backOf(
   landStep?: string;
   // The branch is the base itself: the land step pushes it, nothing is merged (P2S-R3-2).
   own?: true;
+  // The land step pushes it to the remote (P5-R3-14).
+  pushes?: true;
   unmerged?: true;
   unpushed?: string;
   unchanged?: true;
@@ -661,8 +663,18 @@ export function backOf(
     branch && String(item.fields?.[branch.id] ?? '').trim() === branch.guard.base
       ? { own: true as const }
       : {};
+  // The land step pushes the branch to the remote, as its guard lets it (P5-R3-14).
+  const pushes = land && branch?.guard.push.includes(land.id) ? { pushes: true as const } : {};
   return branch && land?.id === target.step
-    ? { agent, round, lands: branch.guard.base ?? '', landStep: land.name, ...own, ...warn }
+    ? {
+        agent,
+        round,
+        lands: branch.guard.base ?? '',
+        landStep: land.name,
+        ...own,
+        ...pushes,
+        ...warn,
+      }
     : { agent, round, ...warn };
 }
 

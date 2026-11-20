@@ -106,6 +106,7 @@ export function moveSaysOf(
           lands?: string;
           landStep?: string;
           own?: true;
+          pushes?: true;
           unmerged?: true;
           unpushed?: string;
           unchanged?: true;
@@ -145,11 +146,18 @@ export function moveSaysOf(
     if (lands?.lands !== undefined && kind === 'approve' && lands.unchanged)
       tail = t('sheet.says.unchanged');
     else if (lands?.lands && lands.own) tail = t('sheet.says.landsOwn', { base: lands.lands });
-    else if (lands?.lands !== undefined)
-      tail = lands.lands
-        ? t('sheet.says.lands', { base: lands.lands, step: lands.landStep ?? '' })
-        : t('sheet.says.landsAny', { step: lands.landStep ?? '' });
-    else tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
+    else if (lands?.lands !== undefined) {
+      // A land step that pushes says so: approving lets the agent push (P5-R3-14).
+      const step = lands.landStep ?? '';
+      if (lands.pushes)
+        tail = lands.lands
+          ? t('sheet.says.landsPush', { base: lands.lands, step })
+          : t('sheet.says.landsAnyPush', { step });
+      else
+        tail = lands.lands
+          ? t('sheet.says.lands', { base: lands.lands, step })
+          : t('sheet.says.landsAny', { step });
+    } else tail = who ? t('sheet.says.agent', { agent: who }) : t('sheet.says.anAgent');
   } else tail = t('sheet.says.yours');
   // What the person approves was never pushed (P7-8): said before they approve it.
   const unpushed = kind === 'approve' ? o.back?.(move.to).unpushed : undefined;

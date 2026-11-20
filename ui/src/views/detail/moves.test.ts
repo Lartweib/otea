@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { setLanguage } from '../../i18n/i18n.ts';
 import type { Move } from '../../types.ts';
 import { type MoveChoice, moveSaysOf, otherMoves, planMoves } from './moves.ts';
 
@@ -159,6 +160,26 @@ describe('what an approve leads to, said before it acts', () => {
     expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: any }).tail).toBe(
       'an agent then lands it, as the Integrar step says',
     );
+  });
+
+  // P5-R3-14: approving lets the agent push to the remote, and the hint never said so.
+  it('says the land step pushes it to the remote when that step pushes', () => {
+    const p = planMoves([land], { own: false, word });
+    const lands = () => ({
+      agent: null,
+      round: 1,
+      lands: 'main',
+      landStep: 'Integrar',
+      pushes: true as const,
+    });
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
+      'an agent then lands it in main and pushes it to the remote, as the Integrar step says',
+    );
+    setLanguage('es');
+    expect(moveSaysOf(must(p.primary), { agent: null, round: 1, word, back: lands }).tail).toBe(
+      'luego un agente la integra en main y la sube al remoto, como dice el paso Integrar',
+    );
+    setLanguage('en');
   });
 
   it('says an approve that closes as Done merged nothing yet, on a board with no land step (P6-12)', () => {
