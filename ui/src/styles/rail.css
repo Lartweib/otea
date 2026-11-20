@@ -125,6 +125,10 @@
 .nav > .nrow.on {
   color: var(--ink);
 }
+/* a row of another kind in the same list (Temas under Te toca and Atasco): a small gap, no heading */
+.nav > .nrow.apart {
+  margin-top: 6px;
+}
 /* the pill under the row in view already says it: no hover wash on top of it */
 .nav > .nrow.on:hover {
   background: transparent;
