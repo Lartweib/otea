@@ -7,11 +7,13 @@ import {
   useState,
 } from 'react';
 import { pickAt } from '../../../src/core/board/choices.ts';
+import { isClosed, positionOf } from '../../../src/core/board/engine.ts';
 import type { BoardDefinition } from '../../../src/core/board/model.ts';
 import { waitsOf } from '../actions.ts';
 import { evidenceFileUrl, fetchItem } from '../api.ts';
 import { typeOfItem, useApp } from '../app/context.tsx';
 import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
+import { blindPartsOf, sideWord } from '../evidence.ts';
 import { listOf, t, tx } from '../i18n/i18n.ts';
 import { useEscape } from '../kit/escape.ts';
 import { Button, Count, StepPill } from '../kit/index.ts';
@@ -60,7 +62,9 @@ import { useStudioBoard } from '../views/board/studio-board.tsx';
 import type { ItemBoardBlock } from '../views/detail/board-item.ts';
 import { toastOf } from '../views/detail/frame.ts';
 import { draftWaitsOf } from '../views/detail/moves.ts';
+import { threadOf } from '../views/detail/notes.ts';
 import { askPick } from '../views/detail/pick-intent.ts';
+import { BlindPick, type ReaderNote } from './evidence/EvidenceViewer.tsx';
 import { NoteText } from './NoteText.tsx';
 import {
   arriveUnder,
@@ -109,29 +113,62 @@ function useViews(ids: readonly string[], version: number): ReadonlyMap<string, 
   return views;
 }
 
+const NO_BLIND: ReadonlySet<string> = new Set();
+
 // Images side by side, before then after, each captioned under a caps kicker (mock:2576-2611):
-// the round's newest (cardFigures).
-function Figures({ shown }: { shown: readonly Evidence[] }) {
+// the round's newest (cardFigures). A compare judged blind names its sides A and B, never before
+// and after, with «Me quedo con A/B» while you review, as the item's page does (P5-R3-10).
+export function Figures({
+  shown,
+  blind,
+  note,
+}: {
+  shown: readonly Evidence[];
+  blind: ReadonlySet<string>;
+  note?: ReaderNote | undefined;
+}) {
   if (shown.length === 0) return null;
+  const [a, b] = shown;
+  const blindPair =
+    a?.role === 'before' && b?.role === 'after' && sideWord(a, blind) === 'A' ? [a, b] : null;
   return (
-    <div className="figs">
-      {shown.map((e) => (
-        <figure key={e.id}>
-          <img
-            src={evidenceFileUrl(e.id)}
-            alt={e.caption ?? e.filename}
-            loading="lazy"
-            draggable={false}
-          />
-          <figcaption>
-            {e.role === 'single' ? null : (
-              <b className="fk">{t(e.role === 'before' ? 'evidence.before' : 'evidence.after')}</b>
-            )}
-            {e.caption ?? e.filename}
-          </figcaption>
-        </figure>
-      ))}
-    </div>
+    <>
+      <div className="figs">
+        {shown.map((e) => {
+          const side = sideWord(e, blind);
+          return (
+            <figure key={e.id}>
+              <img
+                src={evidenceFileUrl(e.id)}
+                alt={e.caption ?? e.filename}
+                loading="lazy"
+                draggable={false}
+              />
+              <figcaption>
+                {side === null ? null : <b className="fk">{side}</b>}
+                {e.caption ?? e.filename}
+              </figcaption>
+            </figure>
+          );
+        })}
+      </div>
+      {note && blindPair ? (
+        <div className="ev-blind-pick">
+          {(['A', 'B'] as const).map((side, at) => {
+            const file = blindPair[at];
+            return file ? (
+              <BlindPick
+                key={side}
+                ids={blindPair.map(({ id }) => id)}
+                shown={file}
+                side={side}
+                note={note}
+              />
+            ) : null;
+          })}
+        </div>
+      ) : null}
+    </>
   );
 }
 
@@ -274,6 +311,8 @@ type RoundShown = {
   gate: Gate | undefined;
   picks?: string[] | undefined;
   pending: boolean;
+  // The compare parts of its type judged blind, by module id: their sides are A and B.
+  blind?: ReadonlySet<string>;
 };
 
 type CardProps = {
@@ -289,6 +328,8 @@ type CardProps = {
   // to: one of the other moves (plan.more), made by its button, never by a swipe.
   onDecide: (kind: TriKind, reason?: string, from?: From, to?: string) => void;
   onOpen: () => void;
+  // While you review it: a comment of the review on a file, as a blind pick leaves one.
+  note?: ReaderNote | undefined;
 };
 
 function standfirst({ agent, round }: ReturnType<typeof cardWords>): ReactNode {
@@ -339,6 +380,7 @@ export function TriCard({
   register,
   onDecide,
   onOpen,
+  note,
 }: CardProps) {
   const [notes, setNotes] = useState(false);
   // The other move the notes go with, when one asks for a reason; else they go with Devolver.
@@ -497,7 +539,7 @@ export function TriCard({
       <p className="sf">{standfirst(words)}</p>
       {words.say ? <NoteText className="say" text={words.say} /> : null}
       <Delivered round={round} />
-      <Figures shown={round.figures} />
+      <Figures shown={round.figures} blind={round.blind ?? NO_BLIND} note={note} />
       <div className="tc-acts">
         <Button
           variant="primary"
@@ -817,8 +859,28 @@ export function Triage() {
       gate: held ? { to: held.to, note: approvalWaitWords(held.missing) } : undefined,
       picks: def ? pickAt(def, view)?.forward : undefined,
       pending,
+      blind: blindPartsOf(type),
     };
   }
+
+  // A comment of the review on one of the round's files, the way the item's page leaves one: what a
+  // blind pick sends, and the picks already left on them, still open while the round is reviewed.
+  const reviewNote = (id: string, view: ItemView | undefined): ReaderNote | undefined => {
+    const at = view ? positionOf(view.state) : null;
+    if (!view || !at || isClosed(at) || at.phase !== 'review' || !app.session.canWrite)
+      return undefined;
+    const block = (view as ItemView & { board?: ItemBoardBlock }).board;
+    const failed = () => {
+      toast({ msg: t('notes.failed'), id });
+      return false;
+    };
+    return {
+      onSend: (text, on) => app.note(id, text, on).then(() => true, failed),
+      left: threadOf(block, view.events),
+      pending: (n) => n.review !== undefined && n.step === at.step,
+      onWithdraw: (n) => app.withdrawNote(id, n).then(() => true, failed),
+    };
+  };
 
   const wordOf = (id: string) => (state: string) => {
     const it = known.current.get(id);
@@ -925,6 +987,7 @@ export function Triage() {
         }}
         onDecide={decide}
         onOpen={() => app.openItem(id)}
+        note={reviewNote(id, shown.view)}
       />
     );
   };
