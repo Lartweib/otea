@@ -1,8 +1,14 @@
 import { OteaError } from '../core/errors.ts';
 import type { Actor } from '../core/item.ts';
-import { type Searched, searchWords, tellingWords, wordsHeld } from '../core/search-words.ts';
+import {
+  commonWords,
+  type Searched,
+  searchWords,
+  tellingWords,
+  wordsHeld,
+} from '../core/search-words.ts';
 import { transaction } from '../store/database.ts';
-import type { ItemRecord } from '../store/queries.ts';
+import { type ItemRecord, selectItems } from '../store/queries.ts';
 import type { Context } from './context.ts';
 import { requireItem, systemClock } from './items.ts';
 
@@ -471,8 +477,11 @@ function itemWords(item: ItemRecord): string {
 // Open topics the item may have come from, for the person to confirm: one the same agent opened
 // shortly before it made the item, or one of the same session, that shares a telling word with
 // the item in what the topic itself says (its title, questions and the answers' summaries, never a
-// full answer's long text). The topics that share the most words come first, then the latest;
-// three at most; none rather than noise (P4-R2-7). Never one already linked or dismissed for it.
+// full answer's long text). A telling word is no stop word, no word any work request says (error,
+// arreglar, archivo) and no word common among the project's items (core/search-words.ts,
+// commonWords): one such word alone tied an unrelated topic to an item (P6-R3-7). The topics that
+// share the most words come first, then the latest; three at most; none rather than noise
+// (P4-R2-7). Never one already linked or dismissed for it.
 export function topicSuggestions(
   ctx: Context,
   item: string,
@@ -480,7 +489,8 @@ export function topicSuggestions(
   session?: string,
 ): Topic[] {
   const record = requireItem(ctx.db, item);
-  const searched = tellingWords(itemWords(record));
+  const common = commonWords(selectItems(ctx.db, {}).map(itemWords));
+  const searched = tellingWords(itemWords(record)).filter(([word]) => !common.has(word ?? ''));
   const madeAt = Date.parse(record.createdAt);
   const at = now();
   const rows = ctx.db
