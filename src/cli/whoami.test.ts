@@ -114,6 +114,34 @@ describe('otea whoami', () => {
     expect(second.working).toContain('ana');
   });
 
+  // P7-R3-11: claude-haiku's session ended with a lease on an item; the next day whoami skipped
+  // its name as busy and handed the session another one (with the command line as its harness),
+  // so what landed then was recorded under the wrong agent.
+  it('gives back the name of an ended session that still holds an item, with what it holds', async () => {
+    await workedHere('claude-haiku', 'claude-code');
+    const haiku = cliAt(repo.dir, { OTEA_AGENT: 'claude-haiku' });
+    await haiku('create', '--collection', 'tasks', '--title', 'Rachas', '--description', 'x');
+    expect((await haiku('claim', 'TASKS-1')).code).toBe(0);
+    const project = openProject(repo.dir);
+    try {
+      const past = new Date(Date.now() - 16 * 60_000).toISOString();
+      project.db.prepare('UPDATE agents SET last_seen = ?, acted_at = ?').run(past, past);
+    } finally {
+      project.db.close();
+    }
+
+    const { out } = await otea('whoami');
+
+    expect(out).toMatch(/^Reuse your name: claude-haiku \(last seen /);
+    expect(out).toContain(
+      'claude-haiku holds TASKS-1 from its last session: carry it on (otea next) or let go of it (otea release TASKS-1).',
+    );
+    expect(out).not.toContain('acted moments ago');
+    // Declared again without --harness, its profile keeps the harness it had.
+    const declared = await haiku('profile', '--model', 'claude-haiku-5-5', '--effort', 'unknown');
+    expect(declared.out).toContain('on claude-code');
+  });
+
   // A session that closed a moment ago comes back under its name, told another may still be at it.
   it('gives back the name of an agent that acted moments ago, saying another terminal may have it', async () => {
     await workedHere('ana', 'claude-code');

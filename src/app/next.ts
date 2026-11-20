@@ -123,7 +123,7 @@ import {
 } from './items.ts';
 import { type LandsFirst, landsFirst, landsFirstLine, landsFirstText } from './land-order.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
-import { sessionEnded, sessionRuns } from './presence.ts';
+import { sessionAlive, sessionRuns } from './presence.ts';
 import { priorityOf } from './priority.ts';
 import { liftSetAside, retakeOf, retakeText, SET_ASIDE_LIFTED, setAsideOf } from './set-aside.ts';
 import { approvedTipOf } from './tips.ts';
@@ -936,8 +936,8 @@ function textFor(
 
 // The agent whose question the person answered in this round, while it has done nothing on the
 // item since: the item stays its own, though its lease ran out while the person thought, so the
-// answer reaches the agent that asked it, never another one. Once its session ended, nobody would
-// read it there: the item is any agent's again (P3C-R3-11).
+// answer reaches the agent that asked it, never another one. Once its session is no longer alive,
+// nobody would read it there: the item is any agent's again (P3C-R3-11, P7-R3-11).
 export function answeredFor(
   ctx: Context,
   item: ItemRecord,
@@ -954,7 +954,7 @@ export function answeredFor(
       ((event.actor.kind === 'agent' && event.actor.name === answered.by) ||
         (event.actor.kind === 'human' && event.type === 'released')),
   );
-  if (done || sessionEnded(ctx.db, answered.by, () => now)) return undefined;
+  if (done || !sessionAlive(ctx.db, answered.by, () => now)) return undefined;
   return answered.by;
 }
 

@@ -8,7 +8,7 @@ import type { Context } from './context.ts';
 import { createItem, getItem, listItems, showItem } from './items.ts';
 import { claimItem, releaseItem } from './leases.ts';
 import { handoffItem, itemNextText, nextFor } from './next.ts';
-import { endProcess, waitBeat } from './presence.ts';
+import { endProcess, endWaiter, waitBeat } from './presence.ts';
 import { answerQuestion, answerWaiting, askQuestion, noteChatAnswer } from './questions.ts';
 import { restartItem } from './restart.ts';
 import { memoryContext } from './testing.ts';
@@ -65,6 +65,10 @@ function attach(ctx: Context, id: string) {
 
 const ask = (ctx: Context, id: string, text = '¿Caparazón liso o con musgo?') =>
   askQuestion(ctx, { id, text, actor: kiln, channel: 'cli' }, now);
+
+// kiln waits in otea wait (this test's process stands for it): its session is alive.
+const waits = (ctx: Context) =>
+  waitBeat(ctx.db, { agent: 'kiln', channel: 'cli', waiter: process.pid }, now).run();
 
 describe('an agent asks the person', () => {
   it('hands the turn to the person and moves nothing: step, round and lease stay', () => {
@@ -148,7 +152,7 @@ describe('an agent asks the person', () => {
 });
 
 describe('the person answers', () => {
-  it('gives the answer back to the agent that asked, though its lease ran out meanwhile', () => {
+  it('gives the answer back to the agent that asked, waiting, though its lease ran out meanwhile', () => {
     const ctx = memoryContext();
     const item = working(ctx);
     ask(ctx, item.id);
@@ -156,6 +160,7 @@ describe('the person answers', () => {
     expect(refusal(() => claimItem(ctx, { id: item.id, actor: scout }, now)).message).toBe(
       `${item.id} waits for the person to answer kiln's question; claim only what is yours (otea next)`,
     );
+    waits(ctx);
 
     answerQuestion(ctx, { id: item.id, text: 'Con musgo', actor: you, channel: 'ui' }, now);
 
@@ -164,12 +169,13 @@ describe('the person answers', () => {
     expect(nextFor(ctx, 'kiln', {}, now).item).toBe(item.id);
   });
 
-  it('keeps the item for the agent that asked while it has not read the answer, though its lease ran out', () => {
+  it('keeps the item for the agent that asked, waiting, while it has not read the answer, though its lease ran out', () => {
     const ctx = memoryContext();
     const item = working(ctx);
     ask(ctx, item.id);
     answerQuestion(ctx, { id: item.id, text: 'Con musgo', actor: you, channel: 'ui' }, now);
     tick += 20 * 60;
+    waits(ctx);
 
     expect(nextFor(ctx, 'scout', {}, now).item).toBeNull();
     expect(refusal(() => claimItem(ctx, { id: item.id, actor: scout }, now)).message).toBe(
@@ -263,10 +269,25 @@ describe('the person answers', () => {
   // kiln was doing it, and scout's claim was refused until the person freed it (Liberar). An item
   // whose question waits for the person can no longer be set aside (P7-R3-1): kiln lets go of it.
   describe('once the session of the agent that asked ended', () => {
-    // kiln waits in otea wait (this test's process stands for it), until its session ends.
-    const waits = (ctx: Context) =>
-      waitBeat(ctx.db, { agent: 'kiln', channel: 'cli', waiter: process.pid }, now).run();
     const ends = (ctx: Context) => endProcess(ctx.db, process.pid);
+
+    // P7-R3-11: kiln worked at the command line, and its last wait ended on its own (it found
+    // work), so nothing of it was left running; 16 minutes after its session ended, the person's
+    // answer claimed the item for it: the desk said kiln was doing it, and the next day's session
+    // was handed another name.
+    it('claims nothing for an agent quiet past the listening window, with nothing of it running', () => {
+      const ctx = memoryContext();
+      const item = working(ctx);
+      waits(ctx);
+      ask(ctx, item.id);
+      endWaiter(ctx.db, 'kiln', process.pid);
+      tick += 16 * 60;
+
+      answerQuestion(ctx, { id: item.id, text: 'Con musgo', actor: you, channel: 'ui' }, now);
+
+      expect(getItem(ctx, item.id, now).lease).toBeNull();
+      expect(nextFor(ctx, 'scout', {}, now).item).toBe(item.id);
+    });
 
     it('noted from the chat by another agent, claims the item for nobody: that agent takes it', () => {
       const ctx = memoryContext();

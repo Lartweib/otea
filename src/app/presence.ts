@@ -334,6 +334,22 @@ export function sessionRuns(
   return !listenersEnded(processes, runningProcesses(db, now, alive));
 }
 
+// Whether the agent's session is alive now (P7-R3-11): a process it listens through (its MCP
+// server, its wait) still runs and beats, or it made an otea call within LISTEN_WINDOW_MS (a
+// command-line agent between its commands). An agent heard through nothing that runs, quiet past
+// that, has no session Otea can see: an answer is not claimed for it, and whoami hands its name
+// back with what it holds, though its lease runs on and still keeps the item from other agents.
+export function sessionAlive(
+  db: DatabaseSync,
+  agent: string,
+  now: Clock = systemClock,
+  alive: (pid: number) => boolean = processAlive,
+): boolean {
+  if (sessionRuns(db, agent, now, alive)) return true;
+  const acted = findAgent(db, agent)?.actedAt;
+  return !!acted && Date.parse(now()) - Date.parse(acted) <= LISTEN_WINDOW_MS;
+}
+
 // Any otea call of an agent keeps what it holds (P1-R3-6): each live lease of it with less than half
 // of a default lease left is extended to a default lease from now, never shortened, so a busy agent
 // writes it rarely. A lease that already ran out stays as it is: the agent claims it again.
@@ -636,6 +652,8 @@ export type NameAdvice = {
   suggested: string | null;
   harness: string | null;
   sameHarness: boolean;
+  // What the name to reuse still holds from its last session: the session reusing it carries it on.
+  holding: string[];
 };
 
 // A harness as one key, however it is written: "Claude Code" is claude-code, and "Open Code 2.0"
@@ -695,8 +713,11 @@ export function nameFor(
   // lease is then the returning session's to carry on, and its last acts no other terminal's.
   const listeners = selectListenerProcesses(db);
   const ended = (agent: AgentPresence) => listenersEnded(listeners.get(agent.name), alive);
-  const busy = (agent: AgentPresence) =>
-    listens(agent) || (agent.holding.length > 0 && !ended(agent)) || handed.has(agent.name);
+  // A lease keeps a name busy only while its session is alive: one heard through nothing that
+  // runs, quiet past the listening window, left it to whoever comes back under it (P7-R3-11).
+  const holds = (agent: AgentPresence) =>
+    agent.holding.length > 0 && !ended(agent) && sessionAlive(db, agent.name, now, processes);
+  const busy = (agent: AgentPresence) => listens(agent) || holds(agent) || handed.has(agent.name);
   const earlier = agents
     .filter((agent) => agent.connectedAt !== null && agent.folder !== null)
     .filter((agent) => sameFolder(agent.folder ?? '', folder))
@@ -711,7 +732,9 @@ export function nameFor(
   const known = first ? (first.profile?.harness ?? first.harness) : null;
   return {
     name: first?.name ?? null,
-    lately: first?.live === true && !ended(first),
+    // Live on a lease alone, quiet with nothing running, it acted no moment ago.
+    lately: first?.live === true && !ended(first) && sessionAlive(db, first.name, now, processes),
+    holding: first?.holding ?? [],
     others: fits.slice(1).map(({ name }) => name),
     working: working.filter((name) => name !== first?.name),
     suggested: taken ? freeName(db, taken.name, handed) : null,

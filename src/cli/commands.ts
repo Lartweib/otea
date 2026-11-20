@@ -2209,6 +2209,13 @@ function openDraftLines(project: Project, name: string | null): string[] {
   });
 }
 
+// The items a name handed back still holds from its last session.
+function heldLine(name: string, ids: readonly string[]): string {
+  const one = ids.length === 1;
+  const release = one ? `otea release ${ids[0]}` : 'otea release <id>';
+  return `${name} holds ${ids.join(', ')} from its last session: carry ${one ? 'it' : 'them'} on (otea next) or let go of ${one ? 'it' : 'them'} (${release}).`;
+}
+
 // What whoami tells the session about its name.
 function nameTold(
   project: Project,
@@ -2241,6 +2248,8 @@ function nameTold(
               `${advice.name} acted moments ago: keep the name unless you know another terminal of yours works as ${advice.name} now; then take a new name of your own. Decide it yourself: never ask the person which name to use.`,
             ]
           : []),
+        // What its last session left held is this one's to carry on (P7-R3-11).
+        ...(advice.holding.length > 0 ? [heldLine(advice.name, advice.holding)] : []),
         ...(others.length > 0
           ? [`Others that worked here and are not connected now: ${others.join(', ')}.`]
           : []),

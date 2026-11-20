@@ -28,7 +28,7 @@ import type { Context } from './context.ts';
 import { requireItem, requireWritableItem, systemClock } from './items.ts';
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
-import { sessionEnded } from './presence.ts';
+import { sessionAlive } from './presence.ts';
 import { RELAYED_HUMAN } from './relay.ts';
 import { liftSetAside, SET_ASIDE_LIFTED } from './set-aside.ts';
 
@@ -187,11 +187,12 @@ function recordAnswer(
     const cause = 'answer' as const;
     liftSetAside(ctx.db, { id: item.id, actor: input.actor, at: now(), cause }, extra);
     // The answer goes back to the agent that asked: its lease, run out while the person thought,
-    // is taken again for it, unless another agent holds the item now, or its session ended: then
-    // the item waits for whichever agent claims it (P3C-R3-11).
+    // is taken again for it, unless another agent holds the item now, or its session is no longer
+    // alive (P7-R3-11): then the item waits for whichever agent claims it (P3C-R3-11).
     const at = now();
     const lease = activeLease(item.lease, at);
-    const gone = sessionEnded(ctx.db, open.by, () => at);
+    // The agent that asked, noting the answer from its own chat, is at work this moment.
+    const gone = extra.via !== open.by && !sessionAlive(ctx.db, open.by, () => at);
     if (!lease && !gone) takeItem(ctx.db, item, { kind: 'agent', name: open.by }, at);
     return { question: answered, gone };
   });
