@@ -91,7 +91,7 @@ describe('an answer typed and not sent', () => {
     const again = open();
     expect(box(again)?.value).toBe('Sí, el río también');
 
-    await press(buttonNamed(again, 'Enviar'));
+    await press(buttonNamed(again, 'Enviar respuesta'));
     expect(answered).toEqual(['Sí, el río también']);
     page?.unmount();
     expect(box(open())?.value).toBe('');
