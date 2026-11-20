@@ -161,3 +161,26 @@ describe('a toast on an item page with moves at its foot', () => {
     expect(r).not.toMatch(/top:\s*calc\(56px \+ 8px/);
   });
 });
+
+// P5-R3-7: in the reader, the note box and the moves took 45% of a 412 x 784 phone, so a picture
+// compared showed as a strip. Untouched, the note box folds to one line; touched, it opens.
+describe('the phone reader’s note box, untouched', () => {
+  const idle = '.p-read .ev-reader-note[data-idle]:not(:focus-within)';
+
+  it('is one line: what it is on, and its button, wait for a tap', () => {
+    expect(rules(phoneCss, `${idle} .ev-reader-on`)).toMatch(/display:\s*none/);
+    expect(rules(phoneCss, `${idle} .btn`)).toMatch(/display:\s*none/);
+    expect(rules(phoneCss, `${idle} textarea`)).toMatch(/height:\s*44px/);
+    expect(rules(phoneCss, `${idle}`)).toMatch(/grid-template-columns:\s*minmax\(0, 1fr\)/);
+  });
+
+  it('leaves the pictures compared the room of what a comment does, and the sheet its height', () => {
+    expect(rules(phoneCss, '.p-read .ev-reader:has(.ev-compare) .ev-reader-notice')).toMatch(
+      /display:\s*none/,
+    );
+    // The reader is a note sheet too (p-sb), whose own max-height comes later in the file.
+    expect(rules(phoneCss, '.nsheet.p-sb.p-read')).toMatch(
+      /max-height:\s*calc\(94dvh - var\(--kb, 0px\)\)/,
+    );
+  });
+});

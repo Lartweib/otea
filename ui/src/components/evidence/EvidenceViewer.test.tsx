@@ -200,6 +200,24 @@ describe('EvidenceReader', () => {
     );
     expect(desk).not.toContain('ev-reader-foot');
   });
+
+  // P5-R3-7: on a 412 x 784 phone the note box and the moves took 45% of the sheet, and a picture
+  // compared showed as a strip. Untouched, the note box is one line (phone.css folds it).
+  it('marks the phone’s note box idle while nothing is typed or picked', () => {
+    const note = { onSend: async () => true };
+    const idle = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={1} onAt={() => {}} phone note={note} />,
+    );
+    expect(idle).toMatch(/class="ev-reader-note" data-idle="true"/);
+    const begun = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={1} onAt={() => {}} phone note={note} draft="Mirá" />,
+    );
+    expect(begun).not.toContain('data-idle');
+    const desk = renderToStaticMarkup(
+      <EvidenceReader evidence={files} at={1} onAt={() => {}} note={note} />,
+    );
+    expect(desk).not.toContain('data-idle');
+  });
 });
 
 describe('a diff', () => {
