@@ -1808,3 +1808,45 @@
 .p-read .ev-reader-note .btn {
   min-height: 44px;
 }
+
+/* ───────── install Otea on the home screen: the first open in a phone's browser ───────── */
+/* Under the top bar, clear of the tab bar and of the language note at the screen's foot. */
+.install-banner {
+  display: none;
+}
+@media (max-width: 720px) {
+  .install-banner {
+    position: fixed;
+    top: calc(env(safe-area-inset-top, 0px) + 64px);
+    left: max(12px, env(safe-area-inset-left, 0px));
+    right: max(12px, env(safe-area-inset-right, 0px));
+    z-index: 34;
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+    padding: 12px 14px 12px;
+    border: 1px solid var(--rule);
+    border-radius: 12px;
+    background: var(--sheet);
+    box-shadow: 0 14px 34px -18px var(--shadow);
+  }
+  .install-banner h2 {
+    font: 500 15px / 1.35 var(--sans);
+    color: var(--ink);
+  }
+  .install-banner p {
+    font: 400 13.5px / 1.45 var(--sans);
+    color: var(--ink-2);
+    overflow-wrap: anywhere;
+  }
+  .install-banner .install-note {
+    font-size: 12.5px;
+    color: var(--ink-3);
+  }
+  .install-acts {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-top: 4px;
+  }
+}

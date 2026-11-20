@@ -53,15 +53,27 @@ function storage(): Store | undefined {
   }
 }
 
-// Android offers its own install prompt: kept for Preferencias' line instead of Chrome's banner.
+// Android offers its own install prompt: kept for Otea's banner and Preferencias' line instead of
+// Chrome's own, and told to whoever waits for it (it fires a while after the page opens).
 type InstallPrompt = Event & { prompt(): Promise<unknown> };
 let installPrompt: InstallPrompt | null = null;
+const promptListeners = new Set<() => void>();
 
 export const canPromptInstall = (): boolean => installPrompt !== null;
 
+export function onInstallPrompt(listener: () => void): () => void {
+  promptListeners.add(listener);
+  return () => promptListeners.delete(listener);
+}
+
+function keepInstallPrompt(event: InstallPrompt | null): void {
+  installPrompt = event;
+  for (const listener of promptListeners) listener();
+}
+
 export function promptInstall(): void {
   const event = installPrompt;
-  installPrompt = null;
+  keepInstallPrompt(null);
   void event?.prompt().catch(() => undefined);
 }
 
@@ -95,7 +107,7 @@ export async function startShell(
   if (!offlineCapable(here())) return undefined;
   window.addEventListener('beforeinstallprompt', (event) => {
     event.preventDefault();
-    installPrompt = event as InstallPrompt;
+    keepInstallPrompt(event as InstallPrompt);
   });
   const sw = navigator.serviceWorker;
   let registration: ServiceWorkerRegistration;

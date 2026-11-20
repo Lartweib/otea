@@ -53,6 +53,13 @@ When this computer's `<hostname>.local` resolves (mDNS) to one of those addresse
 
 After pairing, the phone suggests adding Otea to its home screen (a web app manifest and icons, served before pairing too; no service worker, which browsers refuse on plain HTTP). Each project's page offers its own shortcut, named after the project and opening it, so several projects never make several icons all called Otea. On iOS the home-screen app keeps its own storage, apart from Safari: it opens on the pairing screen and pairs once more, by typing a new code. On Android over plain HTTP, Chrome adds a shortcut rather than installing the app.
 
+The first time Otea opens in a phone's browser, a small banner offers **Install Otea on your home screen**. It never shows inside the installed app, which it recognizes by `display-mode: standalone` or Safari's `navigator.standalone`.
+
+- **Chrome on HTTPS** (the Tailscale name) hands Otea its own install prompt (`beforeinstallprompt`), and the banner's **Install** button opens it.
+- **Where that prompt never fires**, the banner gives this browser's steps instead. That covers plain HTTP on the local network (the prompt needs a secure page), Safari on iPhone (Share › Add to Home Screen) and other browsers.
+- **On iPhone**, it also says notifications reach Otea only from the Home Screen, so add it before turning them on.
+- **Once dismissed**, the banner stays gone on that browser. **Preferences › App** offers it again.
+
 ### Tailscale
 
 **Settings › Phone › From anywhere, with Tailscale** walks you through it. Otea reads each step on this computer (with `tailscale status --json` and `tailscale serve status --json`, which change nothing) and marks it done or to do. **Check again** reads them again.
