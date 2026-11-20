@@ -88,10 +88,22 @@ export function unheardWords(busy: readonly string[]): { text: string; calm: boo
   return { text: t('listen.busy', { count: busy.length, agent: busy[0] ?? '' }), calm: true };
 }
 
-// The same, as a sentence for the item's header.
-export function unheardLead(busy: readonly string[]): string {
+// The same, as a sentence for the header of item `id`. «Busy with another item» only when each of
+// them holds an item other than this one; one holding none (between two items, or claiming this
+// one) is only at work (P6-R3-5).
+export function unheardLead(
+  busy: readonly string[],
+  agents: readonly Agent[] | null | undefined,
+  id: string,
+): string {
   if (busy.length === 0) return t('listen.lead');
-  return t('listen.busyLead', { count: busy.length, agent: busy[0] ?? '' });
+  const elsewhere = busy.every((name) =>
+    agents?.find((a) => a.name === name)?.holding.some((held) => held !== id),
+  );
+  return t(elsewhere ? 'listen.busyLead' : 'listen.activeLead', {
+    count: busy.length,
+    agent: busy[0] ?? '',
+  });
 }
 
 // Whether an item waits for an agent that nobody will bring: on the agent turn, no agent waiting,
