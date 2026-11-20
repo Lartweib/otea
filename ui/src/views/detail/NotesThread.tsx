@@ -1,6 +1,6 @@
 import { useId, useState } from 'react';
 import { moment, type NoteAnchor } from '../../../../src/core/board/notes.ts';
-import { pickOfAnchor, pickWords, READ_AT } from '../../components/evidence/reader-pick.ts';
+import { notePick, pickWords, READ_AT } from '../../components/evidence/reader-pick.ts';
 import { seekVideo } from '../../components/evidence/video-moment.ts';
 import { NoteText } from '../../components/NoteText.tsx';
 import { useFileUrl } from '../../evidence-files.ts';
@@ -84,7 +84,7 @@ function Cite({ anchor, evidence }: { anchor: NoteAnchor; evidence: Evidence | u
   const { seconds } = anchor;
   const time = seconds === undefined ? null : moment(seconds);
   // A line, a diagram node or a spot of an image the note is on, in a few words.
-  const inside = pickOfAnchor(anchor);
+  const inside = notePick(anchor, evidence);
   const where = inside ? pickWords(inside) : null;
   const at =
     seconds === undefined

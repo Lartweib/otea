@@ -604,7 +604,11 @@ export function EvidenceReader({
                 const root = view.current;
                 const phrase = root ? selectedPhrase(root) : null;
                 const hit = phrase ? { pick: phrase } : pickAt(e.target);
-                if (hit) setPick({ id: shown.id, pick: hit.pick });
+                if (!hit) return;
+                setPick({ id: shown.id, pick: hit.pick });
+                // What you type next is the note, as after a zone drawn on an image (P5-R3-4):
+                // the focus stayed on the page and the typing was lost. The phone waits for a tap.
+                if (!phone) noteArea.current?.focus({ preventScroll: true });
               }
             : undefined
         }

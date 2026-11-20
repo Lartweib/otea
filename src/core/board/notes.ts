@@ -27,6 +27,8 @@ export type NoteAnchor = {
   seconds?: number;
   line?: number;
   quote?: string;
+  // The quote is a whole paragraph of a document, not a phrase of it (P5-R2-8).
+  whole?: true;
   node?: string;
   // In a PDF, the page (from 1) the point or zone is on (P5-6).
   page?: number;
@@ -80,6 +82,7 @@ function anchorOf(value: unknown): NoteAnchor | undefined {
     ...(typeof raw.seconds === 'number' ? { seconds: raw.seconds } : {}),
     ...(typeof raw.line === 'number' ? { line: raw.line } : {}),
     ...(typeof raw.quote === 'string' ? { quote: raw.quote } : {}),
+    ...(raw.whole === true ? { whole: true as const } : {}),
     ...(typeof raw.node === 'string' ? { node: raw.node } : {}),
     ...(typeof raw.page === 'number' ? { page: raw.page } : {}),
     ...(typeof raw.x === 'number' ? { x: raw.x } : {}),

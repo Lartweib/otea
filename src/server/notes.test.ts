@@ -137,6 +137,20 @@ describe('notes from the person over the API', () => {
     expect(notes.find(({ text }) => text === 'Esta línea')).toMatchObject({
       anchor: { evidence, line: 3, quote: 'x = 1', node: 'A' },
     });
+
+    // A whole paragraph of a document stays one, so every list names it so (P5-R2-8).
+    const onParagraph = await call('/items/CRI-1/notes', {
+      method: 'POST',
+      body: {
+        text: 'Este párrafo',
+        anchor: { evidence, quote: 'Nunca estires el logo.', whole: true },
+      },
+    });
+    expect(onParagraph.status).toBe(201);
+    const kept = ((await onParagraph.json()) as { notes: { text: string }[] }).notes;
+    expect(kept.find(({ text }) => text === 'Este párrafo')).toMatchObject({
+      anchor: { evidence, quote: 'Nunca estires el logo.', whole: true },
+    });
   });
 
   it('changes and takes back a review comment while the review is open', async () => {

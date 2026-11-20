@@ -65,10 +65,13 @@ describe('pickWords and pickAnchor', () => {
     expect(pickWords({ quote: 'Never stretch the logo.', phrase: true, whole: true })).toBe(
       'the paragraph “Never stretch the logo.”',
     );
+    // A paragraph stays one once the note is saved, so every list names it so (P5-R2-8).
     expect(pickAnchor(4, { quote: 'x', phrase: true, whole: true })).toEqual({
       evidence: 4,
       quote: 'x',
+      whole: true,
     });
+    expect(pickOfAnchor({ quote: 'x', whole: true })).toEqual({ quote: 'x', whole: true });
     expect(pickWords({ page: 2, x: 1, y: 2, w: 3, h: 4 })).toBe('a zone of page 2');
     expect(pickWords({ page: 1, x: 1, y: 2 })).toBe('a point of page 1');
     setLanguage('es');

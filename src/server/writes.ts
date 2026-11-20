@@ -381,6 +381,8 @@ const NoteBody = z.object({
       seconds: z.number().min(0).optional(),
       line: z.number().int().positive().optional(),
       quote: z.string().optional(),
+      // The quote is a whole paragraph of a document, not a phrase of it (P5-R2-8).
+      whole: z.boolean().optional(),
       node: z.string().optional(),
       page: z.number().int().positive().optional(),
       x: z.number().optional(),
@@ -396,6 +398,7 @@ export type NoteAnchorRequest = {
   seconds?: number;
   line?: number;
   quote?: string;
+  whole?: boolean;
   node?: string;
   page?: number;
   x?: number;
@@ -424,11 +427,11 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
     throw new RejectedRequest(
       400,
       'invalid_body',
-      'Expected {"text": string, "anchor"?: {"evidence": number, "seconds"?: number, "line"?: number, "quote"?: string, "node"?: string, "x"?: number, "y"?: number, "w"?: number, "h"?: number}}',
+      'Expected {"text": string, "anchor"?: {"evidence": number, "seconds"?: number, "line"?: number, "quote"?: string, "whole"?: boolean, "node"?: string, "x"?: number, "y"?: number, "w"?: number, "h"?: number}}',
     );
   const { text, anchor } = parsed.data;
   if (anchor === undefined) return { text };
-  const { evidence, seconds, line, quote, node, page, x, y, w, h } = anchor;
+  const { evidence, seconds, line, quote, whole, node, page, x, y, w, h } = anchor;
   return {
     text,
     anchor: {
@@ -436,6 +439,7 @@ export async function noteRequest(c: Context): Promise<NoteRequest> {
       ...(seconds === undefined ? {} : { seconds }),
       ...(line === undefined ? {} : { line }),
       ...(quote === undefined ? {} : { quote }),
+      ...(whole === true ? { whole } : {}),
       ...(node === undefined ? {} : { node }),
       ...(page === undefined ? {} : { page }),
       ...(x === undefined ? {} : { x }),

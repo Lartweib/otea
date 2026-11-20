@@ -17,7 +17,7 @@ export type ReaderPick = {
   // The quote is a phrase of a document, not a line (P5-6); never sent.
   phrase?: true;
   // The phrase is a whole paragraph, clicked rather than selected: said so, never «la frase»
-  // (P5-R2-8); never sent.
+  // (P5-R2-8). Sent with the note, so every list of notes names it so once it is saved.
   whole?: true;
   x?: number;
   y?: number;
@@ -103,7 +103,7 @@ export function pickAnchor(
   evidence: number,
   pick: ReaderPick | null,
 ): { evidence: number } & ReaderPick {
-  const { phrase: _phrase, whole: _whole, ...sent } = pick ?? {};
+  const { phrase: _phrase, ...sent } = pick ?? {};
   return { evidence, ...sent };
 }
 
@@ -156,11 +156,22 @@ export function selectedPhrase(root: HTMLElement): ReaderPick | null {
 // is on the file whole (or a moment of a recording, which the player seeks).
 export function pickOfAnchor(anchor: ReaderPick): ReaderPick | null {
   const pick: ReaderPick = {};
-  for (const key of ['line', 'quote', 'node', 'page', 'x', 'y', 'w', 'h'] as const) {
+  for (const key of ['line', 'quote', 'whole', 'node', 'page', 'x', 'y', 'w', 'h'] as const) {
     const value = anchor[key];
     if (value !== undefined) Object.assign(pick, { [key]: value });
   }
   return Object.keys(pick).length ? pick : null;
+}
+
+// What a saved note is on, to name it in a list of notes: as pickOfAnchor reads it, a quote of a
+// document read as its phrase or paragraph, never as «la línea elegida» (P5-R2-8).
+export function notePick(
+  anchor: ReaderPick,
+  evidence: Pick<Evidence, 'kind' | 'filename' | 'contentType'> | undefined,
+): ReaderPick | null {
+  const pick = pickOfAnchor(anchor);
+  if (!pick || pick.quote === undefined || pick.line !== undefined) return pick;
+  return evidence && pickableOn(evidence) === 'phrase' ? { ...pick, phrase: true } : pick;
 }
 
 const tenth = (n: number) => Math.round(Math.min(100, Math.max(0, n)) * 10) / 10;

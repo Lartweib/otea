@@ -171,3 +171,22 @@ describe('the destructive button', () => {
     expect(buttons.filter((b) => b.endsWith('btn danger'))).toHaveLength(1);
   });
 });
+
+// P5-R3-5: the reader is a dialog, and a dialog's own lead paragraph (grey italic serif) set every
+// paragraph of a Markdown document read in it; the item page and the PDF show them upright.
+describe('a Markdown document read in a dialog', () => {
+  const modules = css['modules.css'] as string;
+  const lead = body('pops.css', '.dialog p');
+
+  it('keeps the dialog’s lead paragraph italic, its own words', () => {
+    expect(lead).toContain('italic');
+  });
+
+  it('reads its paragraphs as the page does: no italic, no lead colour', () => {
+    const reset = rules(modules).find(([selector]) =>
+      selector.split(',').some((one) => one.trim() === '.dialog .md p'),
+    );
+    expect(reset?.[1]).toMatch(/font: inherit;/);
+    expect(reset?.[1]).toMatch(/color: inherit;/);
+  });
+});
