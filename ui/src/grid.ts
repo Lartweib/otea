@@ -135,8 +135,8 @@ export function chosenColumns(
   );
 }
 
-// Filter works on a column with a fixed set of values or on free text; group on the same, given by
-// sections.ts. Id, title, who and age only sort.
+// Filter works on a column with a fixed set of values or on free text. Id, title, who and age only
+// sort.
 export function filterable(column: GridColumn): boolean {
   return column.values !== undefined || column.kind === 'text';
 }
