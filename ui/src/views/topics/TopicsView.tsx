@@ -100,24 +100,35 @@ function Row({ topic, open }: { topic: FoundTopic; open: boolean }) {
   );
 }
 
-function List({
+// A search with no hit in this project offers every project (`onEverywhere`): what was concluded
+// is often kept in another one (P6-R3-8).
+export function TopicList({
   topics,
   open,
   search,
   wide,
+  onEverywhere,
 }: {
   topics: readonly FoundTopic[];
   open: FoundTopic | undefined;
   search: string;
   wide: boolean;
+  onEverywhere?: (() => void) | undefined;
 }) {
   if (topics.length === 0)
     return (
-      <p className="pane-message">
-        {search === ''
-          ? t('topics.empty')
-          : t(wide ? 'topics.search.noneAnywhere' : 'topics.search.none', { words: search })}
-      </p>
+      <>
+        <p className="pane-message">
+          {search === ''
+            ? t('topics.empty')
+            : t(wide ? 'topics.search.noneAnywhere' : 'topics.search.none', { words: search })}
+        </p>
+        {search !== '' && !wide && onEverywhere ? (
+          <Button variant="quiet" onClick={onEverywhere}>
+            {t('topics.search.tryEverywhere')}
+          </Button>
+        ) : null}
+      </>
     );
   return (
     <nav className="tp-list" aria-label={t('topics.list')}>
@@ -542,7 +553,13 @@ export function TopicsView({ topic: openId }: { topic: string | undefined }) {
                   {t('topics.search.everywhere')}
                 </label>
               )}
-              <List topics={view?.topics ?? []} open={open} search={search} wide={wide} />
+              <TopicList
+                topics={view?.topics ?? []}
+                open={open}
+                search={search}
+                wide={wide}
+                onEverywhere={() => setEverywhere(true)}
+              />
               {search === '' ? null : <ItemHits items={view?.items ?? []} />}
               {search === '' ? (
                 <label className="tp-all">
