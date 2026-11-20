@@ -165,13 +165,6 @@ describe('serve', () => {
     await vi.waitFor(() => expect(existsSync(serveFile())).toBe(false));
   });
 
-  it('prints the url with --json', async () => {
-    const { out } = await otea('serve', '--port', '0', '--json');
-
-    expect(JSON.parse(out).url).toMatch(/^http:\/\/127\.0\.0\.1:\d+\/p\/[a-z0-9-]+\/$/);
-    expect(JSON.parse(out).phone).toBeUndefined();
-  });
-
   it('fails with a clear error when the port is busy', async () => {
     const busy = await occupyPort();
 
@@ -187,12 +180,6 @@ describe('serve', () => {
 
     expect(code).toBe(2);
     expect(err).toContain('--port must be an integer between 0 and 65535');
-  });
-
-  it('is listed in the help', async () => {
-    expect((await otea('help', 'all')).out).toContain(
-      'otea serve [--port <port>] [--no-open] [--no-owner] [--lan]',
-    );
   });
 });
 

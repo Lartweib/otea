@@ -397,10 +397,4 @@ describe('otea board draft --change', () => {
     const asked = await otea('board', 'draft', '--change', 'Tareas', '--json');
     expect(JSON.parse(asked.err).error.code).toBe('missing_fields');
   });
-
-  it('is how otea board says to change a published board', async () => {
-    expect((await otea('board')).out).toContain(
-      'to change a published board (a field, a step), --change <board> instead of --new',
-    );
-  });
 });

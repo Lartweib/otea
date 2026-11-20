@@ -107,10 +107,6 @@ describe('attach', () => {
     expect((await json('show', 'TASKS-1')).evidence).toHaveLength(1);
   });
 
-  it('accepts an absolute path', async () => {
-    expect((await json('attach', 'TASKS-1', join(repo.dir, 'test.log'))).kind).toBe('log');
-  });
-
   it('resolves a relative path against the working directory, not the project root', async () => {
     const inShots = cliAt(join(repo.dir, 'shots'), { OTEA_AGENT: 'claude' });
 

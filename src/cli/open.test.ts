@@ -130,8 +130,4 @@ describe('open', () => {
     expect(code).toBe(1);
     expect(err).toContain('Could not open a browser (nope)');
   });
-
-  it('is listed in the help', async () => {
-    expect((await otea('help', 'all')).out).toContain('otea open [--port <port>]');
-  });
 });

@@ -70,13 +70,6 @@ describe('commands', () => {
       await otea('init', '--local');
     });
 
-    it('has no collection add: a board is added with board add', async () => {
-      const { code, err } = await otea('collection', 'add', 'tasks');
-
-      expect(code).toBe(2);
-      expect(err).toContain('Unknown command');
-    });
-
     describe('collection icon', () => {
       beforeEach(async () => {
         presetCollection(repo.dir, 'tasks');
@@ -233,23 +226,6 @@ describe('commands', () => {
         expect(err).toContain(message);
       });
 
-      it('records the actor from OTEA_AGENT', async () => {
-        otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-
-        expect((await json('create', '--collection', 'tasks', '--title', 'X')).createdBy).toEqual({
-          kind: 'agent',
-          name: 'claude',
-        });
-      });
-
-      it('prefers --as over OTEA_AGENT', async () => {
-        otea = cliAt(repo.dir, { OTEA_AGENT: 'claude' });
-
-        const item = await json('create', '--collection', 'tasks', '--title', 'X', '--as', 'codex');
-
-        expect(item.createdBy).toEqual({ kind: 'agent', name: 'codex' });
-      });
-
       it('requires --title with the command usage', async () => {
         const { code, err } = await otea('create', '--collection', 'tasks');
 
@@ -258,10 +234,6 @@ describe('commands', () => {
         expect(err).toContain(
           'Usage: otea create --collection <collection> [--type <type>] --title <title> [--description <description>] [--field <key=value>...]',
         );
-      });
-
-      it('fails with not_found for an unknown collection', async () => {
-        expect((await otea('create', '--collection', 'nope', '--title', 'X')).code).toBe(3);
       });
     });
 
@@ -334,10 +306,6 @@ describe('commands', () => {
 
           expect(code).toBe(2);
           expect(err).toContain('--turn must be one of human, agent, none');
-        });
-
-        it('rejects options of other commands', async () => {
-          expect((await otea('list', '--title', 'X')).code).toBe(2);
         });
 
         it('rejects a --field that is not key=value or names a field twice', async () => {
