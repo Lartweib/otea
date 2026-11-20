@@ -55,7 +55,7 @@ export const shell = {
   'shell.performance': 'See performance',
   'shell.performanceLine': 'how many handoffs come back, per model',
   'shell.connectedRule':
-    'connected: it holds a lease, its MCP server is open, or it used Otea moments ago; it listens only while otea wait runs',
+    'connected: its Otea MCP server is open, or it used Otea in the last two and a half minutes; a lease alone does not count. It listens only while otea wait runs',
   'shell.selfDeclared': 'each agent declares its own profile: Otea keeps it, never checks it.',
 
   // Preferences: what belongs to this browser

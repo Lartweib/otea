@@ -6,7 +6,7 @@ import type { Agent } from '../presence.ts';
 import type { ProjectOverview } from '../types.ts';
 import { AgentsMenuBody, ProjectMenuBody, Topbar } from './Topbar.tsx';
 import { renderIn, testApp } from './test-app.ts';
-import { agentCounts, agentRows, projectRows } from './topbar-model.ts';
+import { agentCounts, agentRows, pillSummary, projectRows } from './topbar-model.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -233,6 +233,35 @@ describe('the agents menu', () => {
     );
   };
 
+  // P5-R3-12: the header said «Sin agentes» while an agent held a lease, and the menu's own rule
+  // said a lease connects one. Both follow the server's rule (#477): a listener heard, or an otea
+  // call within 150 s; a lease alone connects no agent.
+  it('states the rule the header counts by: a lease alone connects no agent', () => {
+    const html = menu();
+    expect(html).toContain(
+      'conectado: su servidor MCP de Otea está abierto o usó Otea en los últimos dos minutos y medio; una reserva sola no cuenta. Escucha solo mientras otea wait corre',
+    );
+    const holder = agent('Mender', { holding: ['ERR-231'], live: false, lastSeen: ago(4) });
+    const rows = agentRows([holder], items, NOW);
+    expect(pillSummary('live', rows)).toEqual({ kind: 'none' });
+    setLanguage('en');
+    expect(
+      renderIn(
+        testApp(),
+        createElement(AgentsMenuBody, {
+          project: 'Hollowmere',
+          rows,
+          counts: agentCounts(rows),
+          now: NOW,
+          onOpen: () => undefined,
+          onActivity: () => undefined,
+          onConnect: () => undefined,
+          onPerformance: () => undefined,
+        }),
+      ),
+    ).toContain('a lease alone does not count');
+  });
+
   it('heads with the project and what they do, one gone quiet in warn', () => {
     expect(menu()).toContain(
       '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span class="sum"><b>1 trabajando</b> · 1 escuchando · <span class="warn-t">1 callado</span></span></div>',
@@ -323,7 +352,7 @@ describe('the agents menu', () => {
       '<b>Conectar un agente</b><small>una instrucción para pegar en su chat</small>',
     );
     expect(html).toContain(
-      'conectado: tiene una reserva, su servidor MCP está abierto o usó Otea hace un momento; escucha solo mientras otea wait corre',
+      'conectado: su servidor MCP de Otea está abierto o usó Otea en los últimos dos minutos y medio',
     );
   });
 });
