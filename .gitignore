@@ -21,3 +21,18 @@ desktop/stage/
 Thumbs.db
 .vscode/
 .idea/
+
+# AI tooling and local agent config
+.claude/
+.impeccable/
+.codegraph/
+openspec/
+.mcp.json
+
+# Local databases
+*.db
+
+# Signing certificates and keys
+*.p12
+*.pfx
+*.pem
