@@ -21,14 +21,25 @@ export type MovePlan = { primary: MoveChoice | null; quiet: MoveChoice[]; close:
 
 const cap = (s: string) => (s ? s[0]?.toLocaleUpperCase() + s.slice(1) : s);
 
+// Whether the board an agent drafts on this Pedido still waits as a draft (its board block's
+// request): publishing it in Studio closes the Pedido.
+export function draftWaitsOf(board: { request?: { published?: true } } | undefined): boolean {
+  return board?.request !== undefined && !board.request.published;
+}
+
+// While that draft waits, closing the Pedido as done is offered nowhere: not on its page, not in
+// Triage, which offers the page's moves.
+export function heldForDraft(move: Move, draftWaits: boolean | undefined): boolean {
+  return draftWaits === true && move.closes === 'done';
+}
+
 export function planMoves(
   moves: readonly Move[],
   o: {
     own: boolean;
     word: (state: string) => string;
     waits?: Waits;
-    // A board an agent drafts on this Pedido waits as a draft: publishing it in Studio closes the
-    // Pedido, so closing it as done is not offered here.
+    // The board an agent drafts on this Pedido waits as a draft (draftWaitsOf).
     draftWaits?: boolean;
   },
 ): MovePlan {
@@ -36,7 +47,7 @@ export function planMoves(
   const backs = moves.filter((m) => m.reasonRequired && m.turn === 'agent' && !m.closes).length;
   const plan: MovePlan = { primary: null, quiet: [], close: [] };
   moves.forEach((move, i) => {
-    if (o.draftWaits && move.closes === 'done') return;
+    if (heldForDraft(move, o.draftWaits)) return;
     const blocked = moveBlock(move, o.waits);
     const extra = blocked ? { blocked } : {};
     if (move.closes === 'discarded') {

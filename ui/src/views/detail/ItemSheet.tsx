@@ -67,7 +67,7 @@ import { pressInView, toastOf } from './frame.ts';
 import { History } from './History.tsx';
 import { historyOf } from './history.ts';
 import { useMergedOutside } from './merged-outside.ts';
-import { type MoveChoice, planMoves } from './moves.ts';
+import { draftWaitsOf, type MoveChoice, planMoves } from './moves.ts';
 import { NotesForm } from './NotesForm.tsx';
 import { AnchorPicker, clearOfToast, NotesSection, RoundNotesLine } from './NotesThread.tsx';
 import { draftKeyOf } from './note-draft.ts';
@@ -177,7 +177,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     own: facts.own,
     word,
     waits: waitsOf(item),
-    draftWaits: !!block?.request && !block.request.published,
+    draftWaits: draftWaitsOf(block),
   });
   const nameOf = (r: RelatedItem) => {
     const types = app.collectionOf(r.collection)?.types ?? [];

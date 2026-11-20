@@ -59,6 +59,7 @@ import type { Evidence, Item, ItemView, Move } from '../types.ts';
 import { useStudioBoard } from '../views/board/studio-board.tsx';
 import type { ItemBoardBlock } from '../views/detail/board-item.ts';
 import { toastOf } from '../views/detail/frame.ts';
+import { draftWaitsOf } from '../views/detail/moves.ts';
 import { askPick } from '../views/detail/pick-intent.ts';
 import { NoteText } from './NoteText.tsx';
 import {
@@ -316,10 +317,14 @@ function Stamp({ side, move, word }: { side: Direction; move: Move; word: string
 
 // The card's moves once its view is read and, on a board, the board too: an approval the board
 // would refuse is never offered, it is shown held with why. A decision's approval is never made
-// here: it opens the item, where the person picks one of its options as they approve.
+// here: it opens the item, where the person picks one of its options as they approve. A Pedido
+// whose drafted board waits is closed by publishing it, never here, as on its page.
 function planOf(view: ItemView | undefined, round: RoundShown): TriagePlan | undefined {
   if (!view || round.pending) return undefined;
-  return triagePlan(view.transitions, waitsOf(view), round.gate, round.picks);
+  const block = (view as ItemView & { board?: ItemBoardBlock }).board;
+  return triagePlan(view.transitions, waitsOf(view), round.gate, round.picks, {
+    draftWaits: draftWaitsOf(block),
+  });
 }
 
 export function TriCard({

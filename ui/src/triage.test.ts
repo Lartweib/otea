@@ -154,6 +154,31 @@ describe('triagePlan', () => {
     expect(plan).toEqual({ pick: design, back: refine });
   });
 
+  // A Pedido an agent drafts a board on closes when the person publishes that board in Studio. While
+  // the draft waits, its page offers no close as done, and Triage offered one (P7, backlog).
+  it('offers no close as done while the board a Pedido drafts waits, as its page', () => {
+    const close: Move = {
+      to: 'done',
+      by: 'human',
+      reasonRequired: false,
+      turn: 'none',
+      closes: 'done',
+    };
+    const again: Move = { to: 'sdo__doing', by: 'human', reasonRequired: true, turn: 'agent' };
+    const plan = triagePlan([close, again], undefined, undefined, undefined, { draftWaits: true });
+    expect(plan).toEqual({ back: again });
+    const page = planMoves([close, again], { own: false, word: (s) => s, draftWaits: true });
+    expect(page.primary).toBeNull();
+    expect(otherMoves(page)).toEqual([]);
+    // Another way on stays, as on the page; the close leaves the other moves too.
+    const next: Move = { to: 'snext__doing', by: 'human', reasonRequired: false, turn: 'agent' };
+    expect(
+      triagePlan([next, close, again], undefined, undefined, undefined, { draftWaits: true }),
+    ).toEqual({ forward: next, back: again });
+    // Once published, or with no draft, it closes as before.
+    expect(triagePlan([close, again])).toEqual({ forward: close, back: again });
+  });
+
   it('has no forward when no move is primary', () => {
     expect(triagePlan([backWithReason, discard])).toEqual({ back: backWithReason });
   });
