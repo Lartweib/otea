@@ -130,6 +130,8 @@ export const detail = {
   'evidence.diffEmpty': 'Todavía no hay diff',
   'evidence.diagram': 'Diagrama',
   'evidence.diagramEmpty': 'Todavía no hay diagrama',
+  'evidence.file': 'Archivos',
+  'evidence.fileEmpty': 'Todavía no hay archivos',
 
   'diagram.aria': { one: 'Diagrama de {count} nodo', other: 'Diagrama de {count} nodos' },
   'diagram.version': 'v{version}',

@@ -5,7 +5,15 @@ import type { Evidence, LayoutEntry, LayoutSlot, TypeView } from './types.ts';
 // what a module placed only there holds goes to the plain list with the other leftovers.
 const DRAWN: readonly LayoutSlot[] = ['evidence', 'body', 'side'];
 
-const EVIDENCE_MODULES: readonly string[] = ['images', 'recording', 'diff', 'log', 'diagram'];
+// files: a board's file part (Documentos), drawn as a section like the others (P5-R3-9).
+const EVIDENCE_MODULES: readonly string[] = [
+  'images',
+  'recording',
+  'diff',
+  'log',
+  'diagram',
+  'files',
+];
 
 export function isEvidenceModule(entry: LayoutEntry): boolean {
   return EVIDENCE_MODULES.includes(entry.module) && entry.id !== undefined;
@@ -114,6 +122,7 @@ function wording(entry: LayoutEntry): Wording {
   if (module === 'recording') return say('evidence.recording', 'evidence.recordingEmpty');
   if (module === 'diff') return say('evidence.diff', 'evidence.diffEmpty');
   if (module === 'diagram') return say('evidence.diagram', 'evidence.diagramEmpty');
+  if (module === 'files') return say('evidence.file', 'evidence.fileEmpty');
   return say('evidence.log', 'evidence.logEmpty');
 }
 

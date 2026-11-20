@@ -4,6 +4,7 @@ import {
   comparePair,
   emptyText,
   evidenceOf,
+  isEvidenceModule,
   latestFirst,
   leftovers,
   logView,
@@ -81,6 +82,18 @@ describe('evidence by module', () => {
     expect(leftovers(undefined, all)).toEqual(all);
   });
 
+  // P5-R3-9: a board's «Documentos» (a file part) had no section on the item's page; its files
+  // showed only in the reader and the CLI.
+  it('draws a files module where the layout places it, its files out of the plain list', () => {
+    const docs: LayoutEntry = { module: 'files', id: 'edocs', label: 'Documentos' };
+    const guide = evidence('guia.md', { module: 'edocs', kind: 'file' });
+    const withDocs = { ...bug, layout: { ...bug.layout, body: [docs] } };
+
+    expect(isEvidenceModule(docs)).toBe(true);
+    expect(evidenceOf([guide, loose], docs)).toEqual([guide]);
+    expect(leftovers(withDocs, [guide, loose])).toEqual([loose]);
+  });
+
   it('orders a module newest first', () => {
     expect(latestFirst([before, run]).map(({ id }) => id)).toEqual([run.id, before.id]);
   });
@@ -133,6 +146,8 @@ describe('module titles and empty states', () => {
     expect(emptyText({ module: 'images', variant: 'gallery' })).toBe('No screenshots yet');
     expect(emptyText({ module: 'diff' })).toBe('No diff yet');
     expect(emptyText({ module: 'recording' })).toBe('No recording yet');
+    expect(moduleTitle({ module: 'files' })).toBe('Files');
+    expect(emptyText({ module: 'files' })).toBe('No files yet');
   });
 });
 

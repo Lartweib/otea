@@ -73,6 +73,13 @@ export function useFeed(version: number): FeedEvent[] {
   return useMemo(() => withoutUndone(feed.events), [feed.events]);
 }
 
+// When the boards are read again: on this window's Studio writes and on every change of the
+// project, so a board published elsewhere (another window, the phone) draws its new fields by their
+// names (P5-R3-9). Both counts only grow, so their sum changes whenever either does.
+export function boardsKey(studioWrites: number, version: number): number {
+  return studioWrites + version;
+}
+
 export function useAppData(): LoadedData {
   const { connection, version, presence } = useLive();
   const beat = useBeat(30_000);
@@ -80,8 +87,9 @@ export function useAppData(): LoadedData {
   const items = useRemote(fetchItems, version, connection);
   const session = useRemote(fetchSession, 0, connection);
   const [studioWrites, setStudioWrites] = useState(0);
-  const collections = useRemote(fetchCollections, studioWrites, connection);
-  const presets = useRemote(fetchPresets, studioWrites, connection);
+  const boards = boardsKey(studioWrites, version);
+  const collections = useRemote(fetchCollections, boards, connection);
+  const presets = useRemote(fetchPresets, boards, connection);
   const project = useRemote(fetchProject, 0, connection);
   // Other projects are not on this server's stream: read again as this one changes, and on the beat.
   const projects = useRemote(fetchProjects, version * 1000 + beat, connection);
