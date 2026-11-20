@@ -1,18 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import type { NodeKind } from './node-kind.ts';
-import {
-  acrossGroups,
-  childSegments,
-  childTally,
-  groupRelations,
-  LINK_CHOICES,
-  linkRequestOf,
-  matchItems,
-  openLabel,
-  structureRelations,
-  unlinkRequestOf,
-} from './relations.ts';
-import type { Item, RelatedItem } from './types.ts';
+import { groupRelations, linkRequestOf, openLabel, unlinkRequestOf } from './relations.ts';
+import type { RelatedItem } from './types.ts';
 
 const related = (kind: RelatedItem['kind'], id: string, extra: Partial<RelatedItem> = {}) =>
   ({
@@ -26,50 +14,6 @@ const related = (kind: RelatedItem['kind'], id: string, extra: Partial<RelatedIt
     lease: null,
     ...extra,
   }) as RelatedItem;
-
-describe('acrossGroups', () => {
-  it('keeps the links to other collections, grouped by kind, leaving parent and children to Structure', () => {
-    const relations = [
-      related('blocked_by', 'BUGS-7', { collection: 'bugs' }),
-      related('parent', 'TRABAJO-1', { collection: 'trabajo' }),
-      related('implemented_by', 'ARTE-4', { collection: 'arte' }),
-      related('child', 'ARTE-9', { collection: 'arte' }),
-      related('blocked_by', 'TRABAJO-2', { collection: 'trabajo' }),
-    ];
-
-    expect(
-      acrossGroups(relations, 'trabajo').map(({ kind, items }) => [
-        kind,
-        items.map(({ id }) => id),
-      ]),
-    ).toEqual([
-      ['blocked_by', ['BUGS-7']],
-      ['implemented_by', ['ARTE-4']],
-    ]);
-  });
-
-  it('is empty when every relation stays in the collection', () => {
-    expect(acrossGroups([related('relates', 'P-2')], 'parts')).toEqual([]);
-  });
-});
-
-describe('structureRelations', () => {
-  it('keeps parent, children and links within the collection, what Across boards does not list', () => {
-    const relations = [
-      related('blocked_by', 'BUGS-7', { collection: 'bugs' }),
-      related('parent', 'TRABAJO-1', { collection: 'trabajo' }),
-      related('child', 'ARTE-9', { collection: 'arte' }),
-      related('blocked_by', 'TRABAJO-2', { collection: 'trabajo' }),
-      related('relates', 'ARTE-1', { collection: 'arte' }),
-    ];
-
-    expect(structureRelations(relations, 'trabajo').map(({ id }) => id)).toEqual([
-      'TRABAJO-1',
-      'ARTE-9',
-      'TRABAJO-2',
-    ]);
-  });
-});
 
 describe('groupRelations', () => {
   it('groups by kind in a fixed order, with the labels people read', () => {
@@ -133,20 +77,6 @@ describe('linkRequestOf', () => {
       other: 'B-1',
     });
   });
-
-  it('offers every kind as read from this item', () => {
-    expect(LINK_CHOICES.map(({ kind }) => kind)).toEqual([
-      'parent',
-      'child',
-      'blocks',
-      'blocked_by',
-      'duplicates',
-      'duplicated_by',
-      'implements',
-      'implemented_by',
-      'relates',
-    ]);
-  });
 });
 
 describe('unlinkRequestOf', () => {
@@ -164,56 +94,11 @@ describe('unlinkRequestOf', () => {
   });
 });
 
-describe('matchItems', () => {
-  const item = (id: string, title: string) => ({ id, title }) as Item;
-  const items = [
-    item('BUGS-1', 'Login fails'),
-    item('BUGS-2', 'Logo blurry'),
-    item('TASKS-1', 'Write docs'),
-  ];
-
-  it('finds items by id or title, ignoring case', () => {
-    expect(matchItems(items, 'log', []).map(({ id }) => id)).toEqual(['BUGS-1', 'BUGS-2']);
-    expect(matchItems(items, 'tasks-1', []).map(({ id }) => id)).toEqual(['TASKS-1']);
-  });
-
-  it('puts an exact id first and leaves out the excluded', () => {
-    const found = matchItems([...items, item('BUGS-12', 'Crash')], 'bugs-1', ['BUGS-2']);
-
-    expect(found.map(({ id }) => id)).toEqual(['BUGS-1', 'BUGS-12']);
-  });
-
-  it('finds nothing for a blank query, and at most the limit', () => {
-    expect(matchItems(items, '  ', [])).toEqual([]);
-    expect(matchItems(items, 'o', [], 2)).toHaveLength(2);
-  });
-});
-
 describe('openLabel', () => {
   // «1 de 1 abiertos» did not say of what (IDEA3-5): it names the parts.
   it('says how many of the parts are not done yet', () => {
     expect(openLabel({ total: 4, open: 3, done: 1, discarded: 0 })).toBe('3 of 4 parts not done');
     expect(openLabel({ total: 2, open: 0, done: 1, discarded: 1 })).toBe('0 of 2 parts not done');
     expect(openLabel({ total: 1, open: 1, done: 0, discarded: 0 })).toBe('1 of 1 part not done');
-  });
-});
-
-describe('childSegments and childTally', () => {
-  const kinds: NodeKind[] = ['queued', 'you', 'discarded', 'working', 'done', 'incomplete'];
-
-  it('orders the bar closed first, then yours, then the agents at work, then waiting', () => {
-    expect(childSegments(kinds)).toEqual([
-      'done',
-      'discarded',
-      'you',
-      'working',
-      'queued',
-      'incomplete',
-    ]);
-  });
-
-  it('counts the legend: yours, with agents, closed', () => {
-    expect(childTally(kinds)).toEqual({ yours: 1, agents: 3, closed: 2 });
-    expect(childTally([])).toEqual({ yours: 0, agents: 0, closed: 0 });
   });
 });

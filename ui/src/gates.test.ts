@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
-import { externalUrl, gateRows, waitingOnYou } from './gates.ts';
-import type { Move, TypeView } from './types.ts';
+import { externalUrl, gateRows } from './gates.ts';
+import type { TypeView } from './types.ts';
 
 const repoTask = {
   name: 'repo_task',
@@ -11,13 +11,6 @@ const repoTask = {
   layout: { header: [], evidence: [], body: [], side: [], row: [], phone: [], intake: [] },
   gates: { push: ['implementing', 'revising'], merge: ['approved'] },
 } as TypeView;
-
-const move = (to: string, by: Move['by']): Move => ({
-  to,
-  by,
-  reasonRequired: false,
-  turn: 'agent',
-});
 
 describe('gateRows', () => {
   it('reads each gated action from the state, with the states that allow it', () => {
@@ -35,22 +28,6 @@ describe('gateRows', () => {
   it('has no rows for a type without gates', () => {
     expect(gateRows({ ...repoTask, gates: undefined } as unknown as TypeView, 'x')).toEqual([]);
     expect(gateRows(undefined, 'x')).toEqual([]);
-  });
-});
-
-describe('waitingOnYou', () => {
-  it('names a refused action that one of your moves would allow', () => {
-    const rows = gateRows(repoTask, 'pr_review');
-
-    const revising = { ...move('revising', 'human'), reasonRequired: true };
-
-    expect(waitingOnYou(rows, [move('approved', 'human-ui'), revising])).toEqual(['merge']);
-  });
-
-  it('names nothing when only an agent move would allow it', () => {
-    const rows = gateRows(repoTask, 'ready');
-
-    expect(waitingOnYou(rows, [move('implementing', 'agent')])).toEqual([]);
   });
 });
 

@@ -3,9 +3,7 @@ import {
   actorLabel,
   ageLabel,
   describeEvent,
-  eventActorLabel,
   formatTime,
-  leaseLabel,
   momentLabel,
   momentParts,
   relayOf,
@@ -32,30 +30,6 @@ beforeAll(() => {
 describe('format', () => {
   it('labels an actor with its kind and name', () => {
     expect(actorLabel({ kind: 'human', name: 'ana' })).toBe('ana (human)');
-  });
-
-  it('labels a decision made in the ui apart from agent work', () => {
-    const ui = {
-      ...event('transitioned', { channel: 'ui' }),
-      actor: { kind: 'human', name: 'human' },
-    };
-
-    expect(eventActorLabel(ui as ItemEvent)).toBe('human (ui)');
-    expect(eventActorLabel(event('transitioned', { channel: 'cli' }))).toBe('claude (agent)');
-    expect(eventActorLabel(event('transitioned', { channel: 'mcp' }))).toBe('claude (agent)');
-    expect(eventActorLabel(event('created', { state: 'todo' }))).toBe('claude (agent)');
-  });
-
-  it('labels a relayed decision as the human, relayed by the agent, never as the ui', () => {
-    const relayed = {
-      ...event('transitioned', { channel: 'cli', via: 'claude-a', quote: 'Drop it' }),
-      actor: { kind: 'human', name: 'human' },
-    } as ItemEvent;
-
-    expect(eventActorLabel(relayed)).toBe('human, relayed by claude-a');
-    expect(eventActorLabel({ ...relayed, data: { ...relayed.data, channel: 'ui' } })).toBe(
-      'human, relayed by claude-a',
-    );
   });
 
   it('reads the relay of an event: who relayed it and what the human said', () => {
@@ -143,12 +117,6 @@ describe('format', () => {
     expect(formatTime('2026-03-04T23:30:00.000Z', 'America/Argentina/Buenos_Aires')).toBe(
       '2026-03-04 20:30',
     );
-  });
-
-  it('labels a lease with its holder and the time it expires in the given zone', () => {
-    const lease = { holder: 'claude', expiresAt: '2026-03-04T14:32:00.000Z' };
-
-    expect(leaseLabel(lease, 'UTC')).toBe('held by claude until 14:32');
   });
 
   it('returns invalid timestamps unchanged', () => {

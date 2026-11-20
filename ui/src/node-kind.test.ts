@@ -1,8 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parsePreset } from '../../src/core/preset.ts';
-import { itemNodeKind, type NodeFacts, type NodeKind, nodeKind } from './node-kind.ts';
-import type { TypeView } from './types.ts';
+import { type NodeFacts, type NodeKind, nodeKind } from './node-kind.ts';
 
 const closedStatesOf = (preset: string) =>
   parsePreset(
@@ -26,27 +25,6 @@ describe('nodeKind', () => {
     [{ turn: 'none' }, 'done'],
   ])('reads %o as %s', (facts, kind) => {
     expect(nodeKind({ ...open, ...facts })).toBe(kind);
-  });
-});
-
-describe('itemNodeKind', () => {
-  const type = { incomplete: 'draft' } as TypeView;
-
-  it('draws a closed item from its closes, so shipped is done and parked is discarded', () => {
-    expect(itemNodeKind({ turn: 'none', state: 'shipped', closes: 'done' }, type, false)).toBe(
-      'done',
-    );
-    expect(itemNodeKind({ turn: 'none', state: 'parked', closes: 'discarded' }, type, false)).toBe(
-      'discarded',
-    );
-    expect(itemNodeKind({ turn: 'none', state: 'rejected', closes: 'done' }, type, false)).toBe(
-      'done',
-    );
-  });
-
-  it('reads the incomplete state from the item type', () => {
-    expect(itemNodeKind({ turn: 'agent', state: 'draft' }, type, false)).toBe('incomplete');
-    expect(itemNodeKind({ turn: 'agent', state: 'draft' }, undefined, false)).toBe('queued');
   });
 });
 

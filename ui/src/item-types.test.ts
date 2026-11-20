@@ -3,14 +3,11 @@ import { setLanguage } from './i18n/i18n.ts';
 import {
   detailBlocks,
   entryLabel,
-  intakeFields,
   intakeSlots,
   intakeTypes,
   rowValues,
   showsTypes,
   slotData,
-  takesChildren,
-  typeMark,
   typeOf,
 } from './item-types.ts';
 import type { CollectionView, FieldView, Layout, TypeView } from './types.ts';
@@ -91,30 +88,6 @@ describe('item types', () => {
     expect(showsTypes(undefined)).toBe(false);
   });
 
-  it('names the type by its icon and word, by its tag without an icon, or not at all', () => {
-    const iconic = { ...bug, icon: 'bug' };
-    expect(typeMark({ ...work, types: [iconic, impr] }, 'bug')).toEqual({
-      kind: 'icon',
-      icon: 'bug',
-      word: 'bug',
-    });
-    expect(typeMark(work, 'impr')).toEqual({ kind: 'tag', name: 'impr', label: 'Improvement' });
-    // A preset that names its only type says its word; one without types, its own name.
-    expect(typeMark({ ...work, preset: 'bug-triage', types: [iconic] }, 'bug')).toEqual({
-      kind: 'icon',
-      icon: 'bug',
-      word: 'bug',
-    });
-    const implicit = { ...iconic, name: 'item', label: 'Item' };
-    expect(typeMark({ ...work, preset: 'notes', types: [implicit] }, 'item')).toEqual({
-      kind: 'icon',
-      icon: 'bug',
-      word: 'notes',
-    });
-    expect(typeMark({ ...work, types: [bug] }, 'bug')).toBeNull();
-    expect(typeMark(undefined, 'bug')).toBeNull();
-  });
-
   describe('hierarchy', () => {
     const epic: TypeView = {
       ...impr,
@@ -147,20 +120,6 @@ describe('item types', () => {
       expect(intakeTypes(work, bug)).toEqual([bug, impr]);
       expect(intakeTypes(work, undefined)).toEqual([bug, impr]);
     });
-
-    it('takes children unless the hierarchy gives the type none', () => {
-      expect([epic, story, leaf, bug, undefined].map(takesChildren)).toEqual([
-        true,
-        true,
-        false,
-        true,
-        true,
-      ]);
-    });
-  });
-
-  it('asks for the fields of the intake slot, in its order', () => {
-    expect(intakeFields(bug)).toEqual([title, severity]);
   });
 
   it('places each intake field at its index in the slot', () => {

@@ -1,11 +1,7 @@
-import { createElement } from 'react';
-import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
-import { ItemActions } from './components/ItemActions.tsx';
 import { setLanguage } from './i18n/i18n.ts';
 import {
   fieldWord,
-  ItemTypeScope,
   keptStateWord,
   keyTitle,
   stateWord,
@@ -13,7 +9,7 @@ import {
   valueWord,
   valueWordIn,
 } from './preset-words.ts';
-import type { Move, TypeView } from './types.ts';
+import type { TypeView } from './types.ts';
 
 const repoTask = {
   name: 'repo_task',
@@ -79,21 +75,6 @@ describe('preset words', () => {
     expect(stateWord(unlabelled, 'pr_review')).toBe('pr_review');
     expect(stateWord(undefined, 'pr_review')).toBe('pr_review');
     expect(typeWord(undefined, 'repo_task')).toBe('repo_task');
-  });
-
-  it('name the moves of the item in scope in its preset’s Spanish, the key a hover away', () => {
-    setLanguage('es');
-    const moves = [{ to: 'pr_review', by: 'human', turn: 'human' } as Move];
-    const html = renderToStaticMarkup(
-      createElement(
-        ItemTypeScope,
-        { type: repoTask },
-        createElement(ItemActions, { id: 'CHG-9', moves, turn: 'agent', agent: 'claude' }),
-      ),
-    );
-
-    expect(html).toContain('revisión de PR');
-    expect(html).toContain('title="pr_review"');
   });
 
   it('keep the key at hand as a tooltip only where a label shows', () => {

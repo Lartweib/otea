@@ -1,5 +1,5 @@
 import { language, t } from './i18n/i18n.ts';
-import type { Actor, ItemEvent, Lease } from './types.ts';
+import type { Actor, ItemEvent } from './types.ts';
 
 const SAID = {
   parent: 'said.parent',
@@ -26,13 +26,6 @@ export type Relay = { via: string; quote: string | null };
 export function relayOf({ data }: ItemEvent): Relay | null {
   if (typeof data.via !== 'string') return null;
   return { via: data.via, quote: typeof data.quote === 'string' ? data.quote : null };
-}
-
-export function eventActorLabel(event: ItemEvent): string {
-  const { actor, data } = event;
-  const relay = relayOf(event);
-  if (relay) return t('event.relayedBy', { actor: actor.name, via: relay.via });
-  return data.channel === 'ui' ? `${actor.name} (ui)` : actorLabel(actor);
 }
 
 // How a line names a field and its values: the preset's words for the language on screen, or the
@@ -105,10 +98,6 @@ function describeUpdate(changes: unknown, words: FieldWords, you: boolean): stri
     }),
   );
   return t(you ? 'event.updatedYou' : 'event.updated', { changes: parts.join(', ') });
-}
-
-export function leaseLabel({ holder, expiresAt }: Lease, timeZone?: string): string {
-  return t('lease.heldUntil', { holder, time: formatTime(expiresAt, timeZone).slice(-5) });
 }
 
 export function formatTime(iso: string, timeZone?: string): string {

@@ -261,9 +261,6 @@ export type HeldLease = {
   renewedAt?: string;
 };
 
-// An agent the feed saw that holds nothing now, and the last thing it did.
-export type IdleAgent = { name: string; last: FeedLine };
-
 const DEFAULT_TTL_MS = 15 * MINUTE;
 
 export function heldLeases(
@@ -333,31 +330,10 @@ export function leaseLeft(
   return { main: spanText(minutes), sub: left < SOON_MS ? 'soon' : 'left', warn: false };
 }
 
-export function idleAgents(lines: readonly FeedLine[], held: readonly HeldLease[]): IdleAgent[] {
-  const busy = new Set(held.map((lease) => lease.holder));
-  const seen = new Map<string, FeedLine>();
-  for (const line of lines) {
-    if (line.agent && !busy.has(line.agent) && !seen.has(line.agent)) seen.set(line.agent, line);
-  }
-  return [...seen]
-    .map(([name, last]) => ({ name, last }))
-    .sort((a, b) => a.name.localeCompare(b.name));
-}
-
 // The share of the lease still left, for its dial: 1 just claimed or renewed, 0 once it runs out.
 export function leftShare(lease: Pick<HeldLease, 'expiresAt' | 'ttlMs'>, now: number): number {
   const left = Date.parse(lease.expiresAt) - now;
   return Math.max(0, Math.min(1, left / lease.ttlMs));
-}
-
-// The time left as the dial says it, to the second: 6:12, 0:48; 1:02:10 past an hour.
-export function clockLeft(expiresAt: string, now: number): string {
-  const seconds = Math.max(0, Math.ceil((Date.parse(expiresAt) - now) / 1000));
-  const pad = (value: number) => String(value).padStart(2, '0');
-  const hours = Math.floor(seconds / 3600);
-  const minutes = Math.floor((seconds % 3600) / 60);
-  const rest = `${pad(seconds % 60)}`;
-  return hours > 0 ? `${hours}:${pad(minutes)}:${rest}` : `${minutes}:${rest}`;
 }
 
 // New events after the cursor join the feed; it keeps the newest FEED_SIZE.
