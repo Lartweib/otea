@@ -20,6 +20,7 @@ import {
   WAIT_BLOCKERS,
   WAIT_PARTS,
   waysOf,
+  whenHolds,
 } from './engine.ts';
 import { mentionText } from './mentions.ts';
 import { type Lang, LEVEL_SAID, TITLE_NAME, YES_NO_SAID } from './template-words.ts';
@@ -355,19 +356,55 @@ function partsLines(def: BoardDefinition, input: NextInput): string[] {
 }
 
 // The protected branch of the item, by its value, and the repository it is in when the board says.
+// `name` is the field's name; `named`, whether the item fills it. `unasked`, on an item that leaves
+// it empty, is the condition under which the board asks for it, when the item does not meet it (a
+// piece not in the repository): that item has no branch at all.
+type ItemBranch = {
+  value: string;
+  name: string;
+  named: boolean;
+  repo?: string;
+  push: string[];
+  unasked?: string;
+};
+
 function branchOf(
   def: BoardDefinition,
   fields: Readonly<Record<string, unknown>>,
-): { value: string; repo?: string; push: string[] } | undefined {
+): ItemBranch | undefined {
   const branch = guardedBranch(def);
   if (!branch) return undefined;
   const value = String(fields[branch.id] ?? '').trim();
   const repo = branch.guard.repo ? String(fields[branch.guard.repo] ?? '').trim() : '';
+  const unasked = value === '' ? unaskedWhen(def, branch.id, fields) : undefined;
   return {
-    value: value || `the branch (${branch.name} is empty)`,
+    value,
+    name: branch.name,
+    named: value !== '',
     ...(repo ? { repo } : {}),
     push: branch.guard.push.flatMap((id) => stepById(def, id)?.name ?? []),
+    ...(unasked === undefined ? {} : { unasked }),
   };
+}
+
+// When the board asks for a part only on conditions the item does not meet (every step that hands
+// it asks for it "required only when…", and none of them holds): the first condition, in words.
+// Undefined when the item takes the part: it is on the form or open at any time, a step asks for it
+// always or leaves it optional, or a condition holds.
+function unaskedWhen(
+  def: BoardDefinition,
+  ref: string,
+  fields: Readonly<Record<string, unknown>>,
+): string | undefined {
+  if (def.form.some((entry) => entry.ref === ref) || def.anytime.includes(ref)) return undefined;
+  const hands = def.steps.flatMap(({ hand }) => hand.filter((entry) => entry.ref === ref));
+  const [first] = hands;
+  if (!first?.when) return undefined;
+  for (const hand of hands) {
+    if (hand.req !== 'when' || !hand.when) return undefined;
+    if (whenHolds(def, { fields }, hand.when.part, hand.when.value)) return undefined;
+  }
+  return whenWords(def, first.when);
 }
 
 function branchLines(
@@ -378,6 +415,8 @@ function branchLines(
 ): string[] {
   const branch = branchOf(def, input.fields);
   if (!branch) return [];
+  // An item whose branch is empty has nothing to push or merge yet (P5-R3-2): never «you may push».
+  if (!branch.named) return emptyBranchLines(input.id, step, position, def, branch);
   const base = guardedBranch(def)?.guard.base;
   const land = landStepOf(def);
   const landing = gateAt(def, position, 'merge').why === 'landing';
@@ -407,11 +446,32 @@ function branchLines(
   return [...pushLines(def, step, position, branch), ...into];
 }
 
+// What is true of the push on an item that leaves its branch empty: with no branch the board asks
+// of it, nothing is pushed at all; else nothing until it is set, then only that branch, while a step
+// that pushes it is being done.
+function emptyBranchLines(
+  id: string,
+  step: Step,
+  position: Position,
+  def: BoardDefinition,
+  branch: ItemBranch,
+): string[] {
+  if (branch.unasked !== undefined)
+    return [
+      `  No branch: ${id} takes a ${branch.name} only when ${branch.unasked}, so push nothing for it.`,
+    ];
+  if (gateAt(def, position, 'push').why !== 'doing')
+    return [`  ${branch.name} is empty: push nothing.`];
+  return [
+    `  ${branch.name} is empty: push nothing until it is set (otea update ${id} --field "${branch.name}=<branch>"); then push only that branch, while you do ${step.name}.`,
+  ];
+}
+
 function pushLines(
   def: BoardDefinition,
   step: Step,
   position: Position,
-  branch: { value: string; repo?: string; push: string[] },
+  branch: ItemBranch,
 ): string[] {
   const where = `${branch.value}${branch.repo ? ` in ${branch.repo}` : ''}`;
   const land = landStepOf(def);
@@ -465,9 +525,14 @@ function noteFlag(step: Step, input: NextInput): string {
 
 function whenText(def: BoardDefinition, hand: Hand): string {
   if (!hand.when) return 'required sometimes';
-  const read = partOf(def, hand.when.part);
-  const value = read?.options.find(({ id }) => id === hand.when?.value)?.name ?? hand.when.value;
-  return `required when ${read?.name ?? '…'} is ${value}`;
+  return `required when ${whenWords(def, hand.when)}`;
+}
+
+// A "required only when…" as a sentence says it: «En el repositorio is yes».
+function whenWords(def: BoardDefinition, when: NonNullable<Hand['when']>): string {
+  const read = partOf(def, when.part);
+  const value = read?.options.find(({ id }) => id === when.value)?.name ?? when.value;
+  return `${read?.name ?? '…'} is ${value}`;
 }
 
 function handLines(def: BoardDefinition, step: Step, input: NextInput): string[] {

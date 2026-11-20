@@ -138,15 +138,71 @@ describe('nextText, the later settings', () => {
     );
   });
 
-  it('says the branch is not set yet, rather than naming the field as if it were one', () => {
-    const empty = nextText(errores(), {
-      ...base,
-      fields: { ...base.fields, fbranch: '' },
-      position: { step: 'sfix', phase: 'doing' },
-      me: 'mender',
+  // P5-R3-2: «the branch (Rama is empty): you may push while you do Crear» led an agent to push a
+  // branch no item named. With Rama empty there is nothing it may push yet.
+  it('says to push nothing while the branch is empty, and how to set it, never that it may push', () => {
+    const def = errores();
+    const at = (position: { step: string; phase: 'doing' | 'review' }) =>
+      nextText(def, {
+        ...base,
+        fields: { ...base.fields, fbranch: '' },
+        position,
+        me: 'mender',
+      });
+    expect(lines(at({ step: 'sfix', phase: 'doing' }), 'Branch')).toEqual([
+      'Branch',
+      '  Rama is empty: push nothing until it is set (otea update BUG-4 --field "Rama=<branch>"); then push only that branch, while you do Arreglar.',
+    ]);
+    expect(lines(at({ step: 'sfill', phase: 'doing' }), 'Branch')).toEqual([
+      'Branch',
+      '  Rama is empty: push nothing.',
+    ]);
+    const guard = def.parts.fbranch?.guard;
+    if (guard) guard.base = 'main';
+    for (const phase of ['doing', 'review'] as const) {
+      const text = at({ step: 'sfix', phase });
+      expect(text).not.toMatch(/may push/i);
+      expect(text).not.toContain('main is protected too');
+    }
+  });
+
+  // A branch the board asks for only on a condition (Diseño visual: Rama only when «En el
+  // repositorio» is yes): an item that does not meet it has no branch at all.
+  it('says an item asked for a branch only on a condition it does not meet pushes nothing', () => {
+    const def = errores();
+    def.parts.frepo = {
+      id: 'frepo',
+      name: 'En el repositorio',
+      kind: 'yesno',
+      hint: '',
+      options: [],
+    };
+    def.anytime = def.anytime.filter((ref) => ref !== 'fbranch');
+    const fix = def.steps.find(({ id }) => id === 'sfix');
+    fix?.hand.push({
+      ref: 'fbranch',
+      req: 'when',
+      when: { part: 'frepo', value: 'yes' },
+      fresh: false,
     });
-    expect(lines(empty, 'Branch')[1]).toBe(
-      '  the branch (Rama is empty) in api: you may push while you do Arreglar. While it is reviewed it is frozen; it can be merged only once it is Done.',
+    const guard = def.parts.fbranch?.guard;
+    if (guard) {
+      guard.base = 'main';
+      delete guard.repo;
+    }
+    const at = (frepo: string) =>
+      nextText(def, {
+        ...base,
+        fields: { ...base.fields, fbranch: '', frepo },
+        position: { step: 'sfix', phase: 'doing' },
+        me: 'mender',
+      });
+    expect(lines(at('no'), 'Branch')).toEqual([
+      'Branch',
+      '  No branch: BUG-4 takes a Rama only when En el repositorio is yes, so push nothing for it.',
+    ]);
+    expect(lines(at('yes'), 'Branch')[1]).toBe(
+      '  Rama is empty: push nothing until it is set (otea update BUG-4 --field "Rama=<branch>"); then push only that branch, while you do Arreglar.',
     );
   });
 

@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { authorizeMove, type Channel, type Move, type Performer } from '../core/authority.ts';
+import { guardedBranch } from '../core/board/model.ts';
 import { openQuestion } from '../core/board/questions.ts';
 import { OteaError } from '../core/errors.ts';
 import { assertCanLeave, type FieldValues, intake, revise } from '../core/fields.ts';
@@ -306,7 +307,8 @@ export function showItem(
   const item = getItem(ctx, id, () => at);
   const type = typeOfItem(ctx, item);
   const children = childrenOf(ctx, item.id, at);
-  const { gates, ...offered } = itemMoves(type, item.state, item.fields, performer);
+  const { gates: stateGates, ...offered } = itemMoves(type, item.state, item.fields, performer);
+  const gates = withBranchGates(ctx, item, stateGates);
   const moves = {
     ...offered,
     transitions: boardMoves(ctx, item, offered.transitions),
@@ -334,6 +336,20 @@ export function showItem(
     ...(gates === undefined ? {} : { gates }),
     ...(board === undefined ? {} : { board }),
   };
+}
+
+// The gates a board item's state allows, as its branch makes them true: an item that leaves its
+// protected branch empty has no branch of its own to push, whatever its step allows (P5-R3-2).
+function withBranchGates(
+  ctx: Context,
+  item: ItemRecord,
+  gates: Record<string, boolean> | undefined,
+): Record<string, boolean> | undefined {
+  if (gates?.push !== true) return gates;
+  const board = liveBoardOf(ctx, item.collection);
+  const branch = board ? guardedBranch(board.def) : undefined;
+  if (!branch || String(item.fields[branch.id] ?? '').trim() !== '') return gates;
+  return { ...gates, push: false };
 }
 
 export type UpdateItemInput = { id: string; title?: string; fields?: FieldValues; actor: Actor };
