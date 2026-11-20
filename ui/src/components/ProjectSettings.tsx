@@ -34,6 +34,18 @@ function Section({ name, sub, id, children }: SectionProps) {
 }
 
 function Gate({ repo }: { repo: RepoSettings }) {
+  // An older Otea wrote the hook: it lets a push through when Otea cannot check it.
+  if (repo.hookOutdated) {
+    return (
+      <span className="pj-gate">
+        <span className="pj-gate-mark" data-hook="outdated">
+          {t('settings.hookOutdated')}
+        </span>
+        <span className="t-cap">{t('settings.hookOutdatedText')}</span>
+        <code className="pj-code">otea hook install --git</code>
+      </span>
+    );
+  }
   if (repo.gate === 'hard') {
     return (
       <span className="pj-gate">

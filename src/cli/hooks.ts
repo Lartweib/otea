@@ -23,6 +23,12 @@ export type HookChange = {
 // The first lines of the pre-push hook Otea writes; a hook without them is someone else's.
 const MARK = '# otea-hook: pre-push';
 
+// The version of the hook Otea writes now, on the line after MARK. A hook with MARK and another
+// version (or none: the ones before #495, which let a push through when Otea could not check it)
+// is outdated: Otea says so, and rewrites it only on otea hook install --git. Bump it whenever the
+// hook's lines change what a push does.
+const VERSION = '# otea-hook-version: 2';
+
 // How a hook runs this Otea, as `otea connect` does for the MCP server.
 const oteaCommand = shellLine;
 
@@ -61,6 +67,7 @@ function preHook(otea: Launcher): string {
   const header = [
     '#!/bin/sh',
     MARK,
+    VERSION,
     '# Written by otea hook install --git; otea hook remove --git removes it.',
   ];
   return `${[...header, gitCheckLines(otea), 'exit 0'].join('\n')}\n`;
@@ -107,33 +114,51 @@ function gitHookNote(path: string): string {
 }
 
 // The pre-push hook of the repo at cwd: Otea's (or one of its own that runs Otea's check, as the
-// lines hook install prints), another one, or none (none outside a repo too).
-type GitHookKind = 'otea' | 'foreign' | 'none';
+// lines hook install prints), one an older Otea wrote, another one, or none (none outside a repo
+// too).
+type GitHookKind = 'otea' | 'outdated' | 'foreign' | 'none';
 
 function gitHookKind(cwd: string): GitHookKind {
   try {
     const path = gitHookFile(cwd);
     if (!existsSync(path)) return 'none';
     const content = readFileSync(path, 'utf8');
-    return content.includes(MARK) || content.includes('check --gate push') ? 'otea' : 'foreign';
+    if (content.includes(MARK)) return content.includes(VERSION) ? 'otea' : 'outdated';
+    return content.includes('check --gate push') ? 'otea' : 'foreign';
   } catch {
     return 'none';
   }
 }
 
-// Whether the repo at cwd has Otea's pre-push hook, which makes its gates hard; false outside a repo.
+// Whether the repo at cwd has Otea's pre-push hook, which makes its gates hard; false outside a
+// repo. An outdated one still refuses what the gates refuse.
 export function hasOteaGitHook(cwd: string): boolean {
-  return gitHookKind(cwd) === 'otea';
+  const kind = gitHookKind(cwd);
+  return kind === 'otea' || kind === 'outdated';
+}
+
+// Whether the repo at cwd has a pre-push hook an older Otea wrote; false outside a repo.
+export function hasOutdatedGitHook(cwd: string): boolean {
+  return gitHookKind(cwd) === 'outdated';
+}
+
+// What Otea says of the repo at cwd when an older Otea wrote its pre-push hook, with the command
+// that updates it; nothing otherwise.
+export function outdatedGitHookLine(cwd: string): string | undefined {
+  if (!hasOutdatedGitHook(cwd)) return undefined;
+  return `${gitHookFile(cwd)} is a pre-push hook an older Otea wrote, which lets a push through when Otea cannot check it: run otea hook install --git in ${repoRoot(cwd)} to update it`;
 }
 
 // Where the repo a repo task names is checked out in the project's folders, and which of those
 // checkouts have Otea's pre-push hook: a push from one without it is never checked. `foreign`: the
 // checkouts with a pre-push hook of their own, which install leaves alone: Otea's check goes in it.
+// `outdated`: the checkouts whose hook an older Otea wrote, which hook install updates.
 export type GitHookStatus = {
   repo: string;
   installed: string[];
   missing: string[];
   foreign?: string[];
+  outdated?: string[];
 };
 
 export function gitHookOf(project: Project, item: Item): GitHookStatus | undefined {
@@ -142,11 +167,13 @@ export function gitHookOf(project: Project, item: Item): GitHookStatus | undefin
   const kinds = checkoutsOf(project, repo).map((path) => ({ path, kind: gitHookKind(path) }));
   const of = (kind: GitHookKind) => kinds.filter((c) => c.kind === kind).map(({ path }) => path);
   const foreign = of('foreign');
+  const outdated = of('outdated');
   return {
     repo,
     installed: of('otea'),
     missing: of('none'),
     ...(foreign.length > 0 ? { foreign } : {}),
+    ...(outdated.length > 0 ? { outdated } : {}),
   };
 }
 

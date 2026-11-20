@@ -198,6 +198,17 @@ describe('the projects api', () => {
       expect(again.installed).toEqual([]);
     });
 
+    // A hook an older Otea wrote lets a push through when Otea cannot run: the desk says so, and
+    // leaves it for otea hook install --git.
+    it('says a repo has a pre-push hook an older Otea wrote', async () => {
+      const old = '#!/bin/sh\n# otea-hook: pre-push\nexit 0\n';
+      writeFileSync(join(here.root, '.git', 'hooks', 'pre-push'), old);
+
+      const settings = await get<ProjectSettings>('/api/project/settings');
+      expect(settings.paths[0]?.repos[0]).toMatchObject({ gate: 'hard', hookOutdated: true });
+      expect(readFileSync(join(here.root, '.git', 'hooks', 'pre-push'), 'utf8')).toBe(old);
+    });
+
     it("leaves a repo's own pre-push hook alone and says how to add Otea's check to it", async () => {
       server.close();
       server = createServer(machineProjects(env, memoryMachine()), {

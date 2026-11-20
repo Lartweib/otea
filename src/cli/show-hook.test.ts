@@ -87,6 +87,20 @@ describe('show of a repo task', () => {
     });
   });
 
+  it('says a hook an older Otea wrote is outdated, with the command that updates it', async () => {
+    repo.write('.git/hooks/pre-push', '#!/bin/sh\n# otea-hook: pre-push\nexit 0\n');
+
+    expect((await otea('show', task)).out).toContain(
+      `Git hook: outdated in ${repo.dir} (it lets a push through when Otea cannot check it): run otea hook install --git there`,
+    );
+    expect((await json('show', task)).gitHook).toEqual({
+      repo: basename(repo.dir),
+      installed: [],
+      missing: [],
+      outdated: [repo.dir],
+    });
+  });
+
   it('says when no checkout of the repo is known to the project', async () => {
     const { id } = await json(
       'create',

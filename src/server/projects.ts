@@ -20,7 +20,7 @@ import { addPathToProject, databasePath, type Env, type Project } from '../app/p
 import { identityAt, listRepos, type Repo, readReposAtFolder, reposInside } from '../app/repos.ts';
 import { listTopics } from '../app/topics.ts';
 import { CommandFailure } from '../cli/command.ts';
-import { hasOteaGitHook, installGitHook } from '../cli/hooks.ts';
+import { hasOteaGitHook, hasOutdatedGitHook, installGitHook } from '../cli/hooks.ts';
 import { OteaError } from '../core/errors.ts';
 import { stateLabel } from '../core/workflow.ts';
 import type { Storage } from '../store/registry.ts';
@@ -125,12 +125,15 @@ export type GateKind = 'hard' | 'soft';
 // A repo of the project: a linked repo, or one inside a linked folder. Its name is what a repo
 // task's `repo` field holds: the name the project gives it (app/repos.ts), or its folder's name
 // while the project does not know it. `remote`: it has an origin, so its pushes leave the machine.
+// `hookOutdated`: an older Otea wrote its pre-push hook, which lets a push through when Otea cannot
+// check it; otea hook install --git updates it.
 export type RepoSettings = {
   name: string;
   folder: string;
   gate: GateKind;
   items: number;
   remote: boolean;
+  hookOutdated?: true;
 };
 
 export type PathSettings = OverviewPath & { repos: RepoSettings[] };
@@ -176,6 +179,7 @@ function repoOf(path: string, parent: string, { itemRepos, known }: RepoNames): 
     gate: hasOteaGitHook(path) ? 'hard' : 'soft',
     items: itemRepos.filter((repo) => repo === name).length,
     remote: identity?.startsWith('remote:') ?? false,
+    ...(hasOutdatedGitHook(path) ? { hookOutdated: true as const } : {}),
   };
 }
 
