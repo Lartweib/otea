@@ -7,7 +7,6 @@ import {
   edgeKeyWidth,
   filterable,
   filterChoices,
-  filterItems,
   fitColumns,
   gridColumns,
   gridTemplate,
@@ -16,7 +15,6 @@ import {
   normalText,
   resizable,
   shownColumns,
-  snapWidth,
   sortItems,
   textValues,
   type Widths,
@@ -338,11 +336,6 @@ describe('column widths', () => {
     expect(edgeKeyWidth('ArrowRight', false, 110, limits, 'end')).toBe(126);
   });
 
-  it('snaps to the automatic width within 6px', () => {
-    expect(snapWidth(114, 110)).toBe(110);
-    expect(snapWidth(117, 110)).toBe(117);
-  });
-
   it('limits a drag to the column minimum and to what leaves the title 240, at most 480', () => {
     expect(widthLimits(column('state'), 110, 408)).toEqual({ min: 64, max: 278 });
     expect(widthLimits(column('severity'), 112, 900)).toEqual({ min: 52, max: 480 });
@@ -428,21 +421,6 @@ describe('filtering', () => {
   ];
   const columns = gridColumns(bugs);
 
-  it('keeps the items that hold one of the chosen values of every filtered column', () => {
-    expect(ids(filterItems(items, {}, columns))).toEqual(['BUGS-1', 'BUGS-2', 'BUGS-3', 'BUGS-4']);
-    expect(ids(filterItems(items, { category: ['crash', 'physics'] }, columns))).toEqual([
-      'BUGS-1',
-      'BUGS-2',
-      'BUGS-3',
-    ]);
-    expect(ids(filterItems(items, { category: ['crash'], severity: ['high'] }, columns))).toEqual([
-      'BUGS-1',
-    ]);
-    expect(ids(filterItems(items, { state: ['fixing'], category: [] }, columns))).toEqual([
-      'BUGS-4',
-    ]);
-  });
-
   it('offers each value with how many items the other filters leave, dropping the empty ones', () => {
     const choices = (key: string, filters: Record<string, string[]>) =>
       filterChoices(items, column(key), filters, columns).map(({ value, count, on }) => ({
@@ -485,11 +463,6 @@ describe('free text values', () => {
   it('takes the values from the items, A to Z, the empty one last', () => {
     expect(textValues(items, 'area')).toEqual(['farm', 'forest biome', 'ui', '']);
     expect(textValues(items.slice(0, 2), 'area')).toEqual(['farm']);
-  });
-
-  it('filters on those values, whatever the spelling', () => {
-    expect(ids(filterItems(items, { area: ['farm'] }, columns))).toEqual(['BUGS-1', 'BUGS-2']);
-    expect(ids(filterItems(items, { area: [''] }, columns))).toEqual(['BUGS-5', 'BUGS-6']);
   });
 
   it('offers each value with its count, the empty one as No <field>', () => {

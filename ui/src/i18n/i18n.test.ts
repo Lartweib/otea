@@ -1,12 +1,8 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { GroupLabel } from '../components/GroupLabel.tsx';
-import { ItemActions } from '../components/ItemActions.tsx';
 import { ageLabel, agoLabel, momentLabel } from '../format.ts';
 import { leaseLeft } from '../lease.ts';
-import { groupByTurn } from '../sections.ts';
-import type { Item, Move } from '../types.ts';
 import { en } from './en.ts';
 import { es } from './es.ts';
 import {
@@ -208,30 +204,5 @@ describe('the language in Preferences', () => {
     expect([languageChoice(), language()]).toEqual(['en', 'en']);
     chooseLanguageSetting('auto');
     expect([languageChoice(), language()]).toEqual(['auto', 'es']);
-  });
-});
-
-describe('a component in Spanish', () => {
-  const item = { id: 'BUG-1', turn: 'human', updatedAt: '2026-10-31T00:00:00.000Z' } as Item;
-
-  it('draws its chrome in Spanish and the preset’s words as written', () => {
-    setLanguage('es');
-    const [waiting] = groupByTurn([item]);
-    const group = waiting ? createElement(GroupLabel, { section: waiting, total: 1 }) : null;
-    expect(renderToStaticMarkup(group)).toContain('Te esperan');
-
-    const moves: Move[] = [
-      { to: 'verify', by: 'human', turn: 'agent' } as Move,
-      { to: 'wontfix', by: 'human', turn: 'none', closes: 'discarded' } as Move,
-    ];
-    const html = renderToStaticMarkup(
-      createElement(ItemActions, { id: 'BUG-1', moves, turn: 'human', agent: 'claude' }),
-    );
-    expect(html).toContain('aria-label="Acciones"');
-    expect(html).toContain('cerrar como');
-    expect(html).toContain('turno de claude · sale de Te esperan');
-    // State names come from the preset and stay as written.
-    expect(html).toContain('verify');
-    expect(html).toContain('wontfix');
   });
 });

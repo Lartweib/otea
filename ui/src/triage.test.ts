@@ -27,7 +27,6 @@ import {
   roundEvidence,
   roundOf,
   stampShift,
-  swipeAction,
   swipeThreshold,
   throwFade,
   throwTo,
@@ -134,8 +133,6 @@ describe('triagePlan', () => {
     // The same as the item page's «Mover a …», never a rule of its own.
     const page = otherMoves(planMoves(moves, { own: false, word: (s) => s })).map((c) => c.move);
     expect(triaged.more).toEqual(page);
-    expect(swipeAction('right', triaged)).toEqual({ kind: 'move', to: 'splanit__doing' });
-    expect(swipeAction('left', triaged)).toEqual({ kind: 'explain', to: 'sdesign__doing' });
   });
 
   it('offers no other move that discards, that a swipe already makes, or that waits', () => {
@@ -194,35 +191,6 @@ describe('triagePlan', () => {
     const refine: Move = { to: 'refine', by: 'human', reasonRequired: true, turn: 'agent' };
     const plan = triagePlan([design, refine], undefined, undefined, ['design']);
     expect(plan).toEqual({ pick: design, back: refine });
-    expect(swipeAction('right', plan)).toEqual({ kind: 'none' });
-    expect(swipeAction('left', plan)).toEqual({ kind: 'explain', to: 'refine' });
-  });
-});
-
-describe('swipeAction', () => {
-  it('performs the primary move on a right swipe', () => {
-    expect(swipeAction('right', { forward: done, back })).toEqual({ kind: 'move', to: 'done' });
-  });
-
-  it('performs the send-back move on a left swipe when it needs no reason', () => {
-    expect(swipeAction('left', { forward: done, back })).toEqual({ kind: 'move', to: 'todo' });
-  });
-
-  it('asks for the reason instead of moving when the send-back move requires one', () => {
-    expect(swipeAction('left', { forward: done, back: backWithReason })).toEqual({
-      kind: 'explain',
-      to: 'todo',
-    });
-  });
-
-  it('never performs a move that requires a reason, whichever the direction', () => {
-    const forward = { ...done, reasonRequired: true };
-    expect(swipeAction('right', { forward })).toEqual({ kind: 'explain', to: 'done' });
-  });
-
-  it('does nothing in a direction with no move', () => {
-    expect(swipeAction('right', { back })).toEqual({ kind: 'none' });
-    expect(swipeAction('left', { forward: done })).toEqual({ kind: 'none' });
   });
 });
 

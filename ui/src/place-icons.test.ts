@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { collectionIcon, iconBadges, monogramOf } from './place-icons.ts';
-import type { CollectionView, TypeView } from './types.ts';
-
-const type = (name: string, icon?: string) =>
-  ({ name, ...(icon === undefined ? {} : { icon }) }) as TypeView;
-const collection = (name: string, types: TypeView[], icon: string | null) =>
-  ({ name, types, icon }) as CollectionView;
+import { iconBadges, monogramOf } from './place-icons.ts';
 
 describe('monogramOf', () => {
   it('takes the initials of a name of two words', () => {
@@ -17,20 +11,6 @@ describe('monogramOf', () => {
     expect(monogramOf('supervisor')).toBe('Su');
     expect(monogramOf('otea')).toBe('Ot');
     expect(monogramOf('x')).toBe('X');
-  });
-});
-
-describe('collectionIcon', () => {
-  it('draws the icon the server resolved', () => {
-    expect(collectionIcon(collection('bugs', [type('bug', 'flag')], 'bug'))).toBe('bug');
-  });
-
-  it('draws nothing (the monogram) when the server resolved none', () => {
-    expect(collectionIcon(collection('notes', [type('note', 'note')], null))).toBeUndefined();
-  });
-
-  it('draws nothing for a collection it does not know', () => {
-    expect(collectionIcon(undefined)).toBeUndefined();
   });
 });
 

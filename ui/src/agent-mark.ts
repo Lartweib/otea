@@ -1,6 +1,3 @@
-import { relayOf } from './format.ts';
-import type { ItemEvent } from './types.ts';
-
 // An agent's mark: its initials on a chip tinted with one of a few quiet hues, the same hue for the
 // same name everywhere (the list's who, the handoff line, History, Details).
 export const AGENT_HUES = 5;
@@ -72,11 +69,4 @@ export function knowAgents(names: readonly string[]): void {
 
 export function markOf(name: string): Mark {
   return known.get(name) ?? { initials: initialsOf(name), hue: agentHue(name) };
-}
-
-// The agent an event names: the one that acted, or the one that relayed your words; never you.
-export function eventAgent(event: ItemEvent): string | null {
-  const relay = relayOf(event);
-  if (relay) return relay.via;
-  return event.actor.kind === 'agent' ? event.actor.name : null;
 }

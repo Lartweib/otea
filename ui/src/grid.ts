@@ -258,10 +258,6 @@ export function widthLimits(
 export const autoWidth = (column: GridColumn, room: number) =>
   columnWidth(column, gridTier(room) >= 3);
 
-// A dragged edge within 6px of the column's automatic width takes it.
-export const snapWidth = (width: number, auto: number) =>
-  Math.abs(width - auto) <= 6 ? auto : width;
-
 // The edge facing the title: a column after it is resized from its left edge (start), so the left
 // arrow widens it; one before it from its right edge (end).
 export type EdgeSide = 'start' | 'end';
@@ -516,16 +512,6 @@ function passes(item: Item, filters: Filters, text: ReadonlySet<string>, skip?: 
     ([key, chosen]) =>
       key === skip || chosen.length === 0 || chosen.includes(heldValue(item, key, text)),
   );
-}
-
-// columns: every column the collection offers, to know which filters read free text.
-export function filterItems(
-  items: readonly Item[],
-  filters: Filters,
-  columns: readonly GridColumn[],
-): Item[] {
-  const text = textKeys(columns);
-  return items.filter((item) => passes(item, filters, text));
 }
 
 export type FilterChoice = { value: string; label: string; count: number; on: boolean };

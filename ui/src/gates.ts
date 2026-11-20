@@ -1,4 +1,4 @@
-import type { Move, TypeView } from './types.ts';
+import type { TypeView } from './types.ts';
 
 // What `otea check` lets through for an item now, one row per gated action of its type: whether its
 // state allows the action, and the states that do. The UI reads gates; it never runs them.
@@ -16,18 +16,6 @@ export function gateRows(
     allowed: verdicts?.[action] ?? states.includes(state),
     states,
   }));
-}
-
-// The gated actions that wait on you: refused now, and allowed in a state one of your moves leads
-// to by approving (in pr_review, merge waits for your approval). Sending work back with a reason, or
-// throwing it away, approves nothing: push is allowed again after revising, but it waits on no one.
-export function waitingOnYou(rows: readonly GateRow[], moves: readonly Move[]): string[] {
-  const yours = moves
-    .filter(({ by, reasonRequired }) => by !== 'agent' && !reasonRequired)
-    .map(({ to }) => to);
-  return rows
-    .filter(({ allowed, states }) => !allowed && states.some((state) => yours.includes(state)))
-    .map(({ action }) => action);
 }
 
 // A pull request as the forge links it: a URL opens it; a bare number (#482) is shown as written.

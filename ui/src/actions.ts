@@ -1,24 +1,9 @@
 import { relayOf } from './format.ts';
 import { t } from './i18n/i18n.ts';
 import type { ButtonVariant } from './kit/Button.tsx';
-import type { ChildrenSummary, ItemEvent, Move, RelatedItem, Turn } from './types.ts';
-
-export type ActionState =
-  | { step: 'choosing'; error?: string }
-  | { step: 'explaining'; to: string; reason: string; error?: string }
-  | { step: 'posting'; to: string; reason: string };
-
-export type ActionEvent =
-  | { type: 'explain'; to: string }
-  | { type: 'type'; reason: string }
-  | { type: 'cancel' }
-  | { type: 'submit'; to: string; reason: string }
-  | { type: 'failed'; message: string }
-  | { type: 'succeeded' };
+import type { ChildrenSummary, ItemEvent, Move, RelatedItem } from './types.ts';
 
 export type Tone = 'approve' | 'caution' | 'neutral';
-
-export const IDLE: ActionState = { step: 'choosing' };
 
 export function moveTone({ by, reasonRequired }: Move): Tone {
   if (reasonRequired) return 'caution';
@@ -75,24 +60,6 @@ export function moveVariants(moves: readonly Move[], waits?: Waits): ButtonVaria
   });
 }
 
-// The phone's bar of moves holds one row: up to two moves stay on it; past two, only the lead one
-// does (the primary, else the first open move that can be made, else the first open move, else the
-// first) and the rest wait under "more", in the bar's order: open moves, then the closing ones.
-// Indices into moves.
-export function barMoves(moves: readonly Move[], waits?: Waits): { bar: number[]; more: number[] } {
-  const all = moves.map((_, index) => index);
-  if (moves.length <= 2) return { bar: all, more: [] };
-  const variants = moveVariants(moves, waits);
-  const open = all.filter((index) => variants[index] !== 'quiet');
-  const lead =
-    all.find((index) => variants[index] === 'primary') ??
-    open.find((index) => moveBlock(moves[index] as Move, waits) === undefined) ??
-    open[0] ??
-    0;
-  const rest = [...open, ...all.filter((index) => variants[index] === 'quiet')];
-  return { bar: [lead], more: rest.filter((index) => index !== lead) };
-}
-
 // The agent a move would hand the item to: the last one that acted on it (or relayed your words).
 export function turnAgent(events: readonly ItemEvent[]): string | undefined {
   for (const event of [...events].reverse()) {
@@ -101,48 +68,4 @@ export function turnAgent(events: readonly ItemEvent[]): string | undefined {
     if (event.actor.kind === 'agent') return event.actor.name;
   }
   return undefined;
-}
-
-// What a move does, as the line under the moves says it: whose turn it becomes (and whether the
-// item leaves or joins Waiting for you), or that it closes the item; and that it asks a reason.
-export function moveSays(move: Move, item: { turn: Turn; agent?: string | undefined }): string {
-  const parts: string[] = [];
-  if (move.closes || move.turn === 'none') {
-    parts.push(move.closes ? t('move.closesAs', { as: move.closes }) : t('move.closes'));
-  } else if (move.turn === 'agent') {
-    parts.push(item.agent ? t('turn.agent', { agent: item.agent }) : t('turn.anAgent'));
-    if (item.turn === 'human') parts.push(t('move.leaves'));
-  } else {
-    parts.push(t('turn.yours'));
-    if (item.turn !== 'human') parts.push(t('move.comes'));
-  }
-  if (move.reasonRequired) parts.push(t('move.asksReason'));
-  return parts.join(' · ');
-}
-
-export function reduceAction(state: ActionState, event: ActionEvent): ActionState {
-  switch (event.type) {
-    case 'explain':
-      return { step: 'explaining', to: event.to, reason: '' };
-    case 'type':
-      return state.step === 'explaining' ? { ...state, reason: event.reason } : state;
-    case 'cancel':
-      return IDLE;
-    case 'submit':
-      return { step: 'posting', to: event.to, reason: event.reason };
-    case 'failed':
-      if (state.step !== 'posting') return state;
-      if (state.reason === '') return { step: 'choosing', error: event.message };
-      return { step: 'explaining', to: state.to, reason: state.reason, error: event.message };
-    case 'succeeded':
-      return IDLE;
-  }
-}
-
-export function canConfirm(state: ActionState): boolean {
-  return state.step === 'explaining' && state.reason.trim() !== '';
-}
-
-export function isBusy(state: ActionState): boolean {
-  return state.step === 'posting';
 }

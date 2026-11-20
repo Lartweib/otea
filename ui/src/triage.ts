@@ -38,11 +38,6 @@ export type TriagePlan = {
   blocked?: Array<{ move: Move; note: string }>;
 };
 
-export type SwipeAction =
-  | { kind: 'move'; to: string }
-  | { kind: 'explain'; to: string }
-  | { kind: 'none' };
-
 // gate: what a board refuses before it is tried, the approvals (by where they lead) and why.
 export type Gate = { to: readonly string[]; note: string };
 
@@ -85,13 +80,6 @@ export function triagePlan(
     ...(more.length > 0 ? { more } : {}),
     ...(blocked.length > 0 ? { blocked } : {}),
   };
-}
-
-// A move that requires a reason is never performed by a gesture: it opens the reason form.
-export function swipeAction(direction: Direction, plan: TriagePlan): SwipeAction {
-  const move = direction === 'right' ? plan.forward : plan.back;
-  if (!move) return { kind: 'none' };
-  return { kind: move.reasonRequired ? 'explain' : 'move', to: move.to };
 }
 
 // How far a pointer travels before it counts as a drag or a scroll.

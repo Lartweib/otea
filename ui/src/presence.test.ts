@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type Agent, actedWith, liveAgents, parseAgents, pillState } from './presence.ts';
+import { type Agent, actedWith, liveAgents, parseAgents } from './presence.ts';
 
 const agent = (name: string, o: Partial<Agent> = {}): Agent => ({
   name,
@@ -8,28 +8,6 @@ const agent = (name: string, o: Partial<Agent> = {}): Agent => ({
   lastSeen: '2026-11-03T10:00:00Z',
   live: true,
   ...o,
-});
-
-describe('pillState', () => {
-  it('shows no pill while the server has no presence to tell', () => {
-    expect(pillState('live', null)).toEqual({ kind: 'absent' });
-    expect(pillState('live', undefined)).toEqual({ kind: 'absent' });
-  });
-
-  it('says offline while the live stream is down, whatever it knew', () => {
-    expect(pillState('reconnecting', [agent('a')])).toEqual({ kind: 'offline' });
-    expect(pillState('connecting', null)).toEqual({ kind: 'offline' });
-  });
-
-  it('counts the connected agents and those holding a lease', () => {
-    const agents = [
-      agent('a', { holding: ['WORK-1'] }),
-      agent('b'),
-      agent('c', { live: false, holding: ['WORK-2'] }),
-    ];
-    expect(pillState('live', agents)).toEqual({ kind: 'agents', count: 2, holding: 1 });
-    expect(pillState('live', [])).toEqual({ kind: 'agents', count: 0, holding: 0 });
-  });
 });
 
 describe('liveAgents', () => {

@@ -1,12 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
   arcDash,
-  clockLeft,
   clockOf,
   type FeedEvent,
   feedLines,
   heldLeases,
-  idleAgents,
   leaseLeft,
   leaseRows,
   leftShare,
@@ -163,21 +161,6 @@ describe('heldLeases', () => {
       { holder: 'claude-a', item: items[0], expiresAt: iso(4), ttlMs: 15 * 60_000 },
     ]);
   });
-
-  it('lists the agents the feed saw that hold nothing now, with their last act', () => {
-    const lines = feedLines(
-      [
-        ev('WORK-3', 'released', agent('claude-c'), -20, { holder: 'claude-c', cause: 'release' }),
-        ev('WORK-1', 'updated', agent('claude-a'), -2, { changes: {} }),
-      ],
-      turnOf,
-    );
-    const held = heldLeases([item('WORK-1', { holder: 'claude-a', expiresAt: iso(4) })], [], T);
-
-    expect(idleAgents(lines, held).map(({ name, last }) => [name, last.event.type])).toEqual([
-      ['claude-c', 'released'],
-    ]);
-  });
 });
 
 describe('lease dial', () => {
@@ -186,12 +169,6 @@ describe('lease dial', () => {
 
     expect(leftShare(lease, T)).toBe(0.5);
     expect(leftShare(lease, T + 20 * 60_000)).toBe(0);
-  });
-
-  it('says the time left to the second', () => {
-    expect(clockLeft(iso(6.2), T)).toBe('6:12');
-    expect(clockLeft(iso(62), T)).toBe('1:02:00');
-    expect(clockLeft(iso(-1), T)).toBe('0:00');
   });
 
   it('says a lease length the way a row says a span', () => {

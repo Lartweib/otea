@@ -1,5 +1,3 @@
-import type { CollectionView } from './types.ts';
-
 // Every project and every collection shows an icon, so the folded sidebar never has a gap: a
 // collection draws the icon the server resolved for it, a project without one draws a monogram.
 
@@ -10,11 +8,6 @@ export function monogramOf(name: string): string {
   const [first = '', second] = words;
   if (second !== undefined) return (first.charAt(0) + second.charAt(0)).toUpperCase();
   return first.charAt(0).toUpperCase() + first.charAt(1).toLowerCase();
-}
-
-// The icon a collection shows: the one the server resolved, none (its monogram) for null.
-export function collectionIcon(collection: CollectionView | undefined): string | undefined {
-  return collection?.icon ?? undefined;
 }
 
 // When two collections share an icon, the second (and any later one) carries one small letter: the
