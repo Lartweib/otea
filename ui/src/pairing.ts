@@ -56,7 +56,7 @@ export function hostOf(url: string): string {
   return url.replace(/^https?:\/\//, '');
 }
 
-// The host without its port: "lartweib.local" from "lartweib.local:4485".
+// The host without its port: "devbox.local" from "devbox.local:4485".
 export function hostnameOf(host: string): string {
   return host.replace(/:\d+$/, '');
 }
