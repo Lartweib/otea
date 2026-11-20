@@ -195,6 +195,75 @@ describe('agent presence', () => {
 
         expect(listAgents(ctx.db, at(T0_20S), alive([]))[0]).toMatchObject({ live: true });
       });
+
+      it('says its session ended once every listener it was heard through is gone', () => {
+        hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
+        seeAgent(ctx.db, { agent: 'cli', channel: 'cli', call: true }, at(T0));
+
+        const agents = (pids: number[]) => listAgents(ctx.db, at(T0_20S), alive(pids));
+        expect(agents([101]).find((a) => a.name === 'claude')?.sessionEnded).toBe(false);
+        expect(agents([]).find((a) => a.name === 'claude')?.sessionEnded).toBe(true);
+        // Heard through none: nothing tells.
+        expect(agents([]).find((a) => a.name === 'cli')?.sessionEnded).toBe(false);
+      });
+    });
+
+    // P7-R3-10: after /exit the desk said «1 trabajando» for 15 minutes, the lease's lifetime: a
+    // command-line agent whose last wait had found its work is heard through no listener, and its
+    // lease alone kept it connected. P7-R2-9: between two items it holds nothing, and «Nadie está
+    // escuchando» flapped red though it called Otea moments before.
+    describe('an agent connected only while its session is heard', () => {
+      it('notes when it last ran a command, never a listener beat', () => {
+        hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T0));
+        expect(listAgents(ctx.db, at(T0), running)[0]?.actedAt).toBeNull();
+
+        seeAgent(ctx.db, { agent: 'claude', channel: 'cli', call: true }, at(T1));
+        expect(listAgents(ctx.db, at(T1), running)[0]?.actedAt).toBe(T1);
+      });
+
+      it('no longer counts a holder connected once it was not heard for a listening window', () => {
+        seeAgent(ctx.db, { agent: 'claude', channel: 'cli', call: true }, at(T0));
+        claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T0));
+
+        expect(listAgents(ctx.db, at(T2))[0]).toMatchObject({ live: true, holding: ['TASKS-1'] });
+        expect(listAgents(ctx.db, at(T5))[0]).toMatchObject({
+          live: false,
+          holding: ['TASKS-1'],
+          sessionEnded: false,
+        });
+      });
+
+      it('no longer counts a holder connected once its last wait found its work and it went quiet', () => {
+        claimItem(ctx, { id: 'TASKS-1', actor: claude }, at(T0));
+        waitBeat(ctx.db, { agent: 'claude', channel: 'cli', waiter: 500 }, at(T0)).run();
+        endWaiter(ctx.db, 'claude', 500);
+
+        expect(listAgents(ctx.db, at(T5), () => false)[0]).toMatchObject({ live: false });
+      });
+
+      it('keeps a holder connected while a listener of it is heard, however long since its call', () => {
+        seeAgent(ctx.db, { agent: 'claude', channel: 'cli', call: true }, at(T0));
+        claimItem(ctx, { id: 'TASKS-1', actor: claude, ttlMs: 60 * 60_000 }, at(T0));
+        hearAgent(ctx.db, { agent: 'claude', channel: 'mcp', session: 101 }, at(T5));
+
+        expect(listAgents(ctx.db, at(T5_1S), running)[0]).toMatchObject({
+          live: true,
+          actedAt: T0,
+        });
+      });
+
+      it('counts an agent that called Otea within the listening window as connected, holding nothing', () => {
+        waitBeat(ctx.db, { agent: 'claude', channel: 'cli', waiter: 500 }, at(T0)).run();
+        endWaiter(ctx.db, 'claude', 500);
+        seeAgent(ctx.db, { agent: 'claude', channel: 'cli', call: true }, at(T2));
+
+        // Its wait's beat is long past, its last call 100 seconds ago.
+        const later = listAgents(ctx.db, at('2026-01-01T00:03:40.000Z'), () => false)[0];
+        expect(later).toMatchObject({ live: true, listening: false });
+        expect(listAgents(ctx.db, at('2026-01-01T00:04:31.000Z'), () => false)[0]).toMatchObject({
+          live: false,
+        });
+      });
     });
 
     it('stops counting an agent listening once its listener ends, unless another heard it since', () => {
@@ -229,6 +298,8 @@ describe('agent presence', () => {
           mcpMissing: false,
           mcp: null,
           folder: null,
+          actedAt: null,
+          sessionEnded: false,
         },
       ]);
       expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ live: false, listening: false });
@@ -409,7 +480,8 @@ describe('agent presence', () => {
       expect(listAgents(ctx.db, at(T2_31S))[0]).toMatchObject({ waiting: false });
     });
 
-    it('lists the items an agent holds a live lease on, and keeps it live while it holds them', () => {
+    // P7-R3-10: the lease alone no longer keeps it connected, as it did for the lease's lifetime.
+    it('lists the items an agent holds a live lease on, though it went quiet on them', () => {
       seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
       claimItem(ctx, { id: 'TASKS-2', actor: claude, ttlMs: 60 * 60_000 }, at(T0));
       claimItem(ctx, { id: 'TASKS-1', actor: claude, ttlMs: 60 * 60_000 }, at(T0));
@@ -420,7 +492,7 @@ describe('agent presence', () => {
           harness: 'claude-code',
           holding: ['TASKS-1', 'TASKS-2'],
           lastSeen: T0,
-          live: true,
+          live: false,
         }),
       ]);
     });
@@ -439,6 +511,12 @@ describe('agent presence', () => {
       seeAgent(ctx.db, { agent: 'holder', channel: 'cli' }, at(T0));
       const holder: Actor = { kind: 'agent', name: 'holder' };
       claimItem(ctx, { id: 'TASKS-1', actor: holder, ttlMs: 60 * 60_000 }, at(T0));
+      // At work on it: it called a minute ago (a lease alone keeps no agent connected, P7-R3-10).
+      seeAgent(
+        ctx.db,
+        { agent: 'holder', channel: 'cli', call: true },
+        at('2026-01-01T00:29:00.000Z'),
+      );
       hearAgent(ctx.db, { agent: 'recent', channel: 'cli' }, at(T30));
       seeAgent(ctx.db, { agent: 'gone', channel: 'cli' }, at(T1));
 
