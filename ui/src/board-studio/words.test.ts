@@ -116,5 +116,16 @@ describe('the later settings, in words', () => {
     expect(problemText(cycle)).toBe(
       'Cambios se divide en Tareas de repo y Tareas de repo en Cambios: un ítem acabaría siendo parte de sí mismo.',
     );
+    const skipped = errores();
+    skipped.form = [{ ref: 'fsteps', required: true }];
+    const [always] = problemsOf(skipped, {});
+    if (!always) throw new Error('fixture');
+    expect(problemText(always)).toBe(
+      'Todo ítem nuevo se salta Completar: el formulario ya pide todo lo que entrega, así que nunca se hace. Haz opcional uno de esos campos o quita «Empezar directamente en…».',
+    );
+    setLanguage('en');
+    expect(problemText(always)).toBe(
+      'Every new item skips Completar: the form already asks for everything it hands, so it never runs. Make one of those fields optional or turn off “Start directly at…”.',
+    );
   });
 });

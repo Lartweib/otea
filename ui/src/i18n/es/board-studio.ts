@@ -28,6 +28,8 @@ export const boardStudio = {
   'bs.problem.wait_no_split': '{step} espera a sus partes, pero {board} no se divide en nada.',
   'bs.problem.skip_invalid':
     '«Empieza directamente en…» solo vale en el primer paso, y solo si nadie lo revisa. Quítalo de {step}.',
+  'bs.problem.step_always_skipped':
+    'Todo ítem nuevo se salta {step}: el formulario ya pide todo lo que entrega, así que nunca se hace. Haz opcional uno de esos campos o quita «Empezar directamente en…».',
   'bs.problem.split_cycle':
     '{board} se divide en {other} y {other} en {board}: un ítem acabaría siendo parte de sí mismo.',
   'bs.problem.split_unknown':

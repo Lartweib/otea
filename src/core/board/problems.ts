@@ -40,6 +40,7 @@ export type ProblemCode =
   | 'agent_closes'
   | 'wait_no_split'
   | 'skip_invalid'
+  | 'step_always_skipped'
   | 'split_cycle'
   | 'split_unknown'
   | 'guard_no_push'
@@ -242,6 +243,8 @@ function laterProblems(
       add('error', 'wait_no_split', at, { step: step.name, board: def.name });
     if (step.skipWhenReady && (index > 0 || step.reviewer !== 'none'))
       add('error', 'skip_invalid', at, { step: step.name });
+    else if (index === 0 && alwaysSkipped(def, step))
+      add('warning', 'step_always_skipped', at, { step: step.name });
   });
   const split = def.split;
   if (split && split.board !== SAME && context.boards && context.id !== undefined) {
@@ -269,6 +272,21 @@ function laterProblems(
   }
   // A board with motives whose agent may drop is not a problem: the drop asks for the motive.
   return out;
+}
+
+// Whether every new item skips the first step (P8-R3-2): it starts items past it when they come with
+// all it hands, and the form requires every one of those, so it never runs. Only what the form
+// surely fills counts: a field always asked for, never evidence, a checklist (each point must be
+// ticked) or a field required only when another holds; a lead may keep an item at the step.
+function alwaysSkipped(def: BoardDefinition, step: BoardDefinition['steps'][number]): boolean {
+  if (!step.skipWhenReady || step.reviewer !== 'none' || step.lead) return false;
+  const required = new Set(def.form.filter((entry) => entry.required).map(({ ref }) => ref));
+  return step.hand.every((hand) => {
+    const part = partOf(def, hand.ref);
+    if (!part || isEvidence(part) || part.kind === 'check') return false;
+    if (hand.req === 'no') return true;
+    return hand.req === 'always' && (hand.ref === TITLE || required.has(hand.ref));
+  });
 }
 
 // A git branch name as a person types one: no spaces or the characters git refuses, no "..", not
