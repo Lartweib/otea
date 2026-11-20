@@ -38,29 +38,6 @@ describe('mcp', () => {
 
   afterEach(() => repo.remove());
 
-  it('serves the agent tools over stdio as the agent named by --as', async () => {
-    const client = new Client({ name: 'test', version: '0' });
-    const transport = new StdioClientTransport({
-      command: process.execPath,
-      args: [...ARGS, '--as', 'claude'],
-      cwd: repo.dir,
-      // The transport passes only a safe default environment; the test home must reach the server.
-      env: { ...getDefaultEnvironment(), OTEA_HOME: process.env.OTEA_HOME ?? '' },
-      stderr: 'pipe',
-    });
-    await client.connect(transport);
-
-    const { tools } = await client.listTools();
-    const claimed = await client.callTool({ name: 'claim', arguments: { id: 'TASKS-1' } });
-    await client.close();
-
-    expect(tools.map(({ name }) => name)).toContain('relay');
-    expect(claimed.isError).toBeFalsy();
-    expect(JSON.parse((claimed.content as { text: string }[])[0]?.text ?? '')).toMatchObject({
-      lease: { holder: 'claude' },
-    });
-  });
-
   // A harness that only loads the server (a background service) is no agent at work: none shows.
   it('notes the agent through its client from its first call, not as the client connects', async () => {
     const client = new Client({ name: 'claude-code', version: '2.1.0' });

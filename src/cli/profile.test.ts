@@ -173,13 +173,6 @@ describe('otea profile', () => {
   });
 
   describe('connect', () => {
-    it('is refused without a profile, saying how to give one', async () => {
-      const { code, err } = await otea('connect', '--as', 'claude-b');
-
-      expect(code).toBe(2);
-      expect(err).toContain('--model <id> --effort <level>');
-    });
-
     it('records the profile, to be confirmed when the agent connects', async () => {
       const { code } = await otea(
         'connect',

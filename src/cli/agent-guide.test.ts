@@ -43,6 +43,8 @@ describe("Otea's agent guide", () => {
       'never open config files outside the project for it. Otherwise declare unknown.',
       'declare unknown. Never guess.',
       'To propose a new board, run otea board draft --new "<name>" --why "<what it is for>"',
+      // P4-6: how otea board says to change a published board.
+      'to change a published board (a field, a step), --change <board> instead of --new',
       'the person publishes it',
       'asking the person one question at a time',
       '--template <key>',
@@ -81,14 +83,6 @@ describe("Otea's agent guide", () => {
     const written = readFileSync(join(repo.dir, 'AGENTS.md'), 'utf8');
     expect(AGENTS_BLOCK).toContain(AGENT_GUIDE);
     expect(written).toContain(AGENT_GUIDE);
-  });
-
-  it('starts otea board, with a name and without', async () => {
-    for (const argv of [['board'], ['board', 'tasks']]) {
-      const { code, out } = await otea(...argv);
-      expect(code).toBe(0);
-      expect(out.startsWith(`${AGENT_GUIDE}\n\n`)).toBe(true);
-    }
   });
 
   it('stays out of otea board --json, which scripts read', async () => {

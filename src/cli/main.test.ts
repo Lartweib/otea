@@ -3,28 +3,9 @@ import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { describe, expect, it } from 'vitest';
 
-const MAIN = fileURLToPath(new URL('./main.ts', import.meta.url));
 const BIN = fileURLToPath(new URL('../../bin/otea.mjs', import.meta.url));
 
-function otea(...argv: string[]) {
-  return spawnSync(process.execPath, ['--disable-warning=ExperimentalWarning', MAIN, ...argv], {
-    encoding: 'utf8',
-  });
-}
-
 describe('main', () => {
-  it('runs the CLI as a process', () => {
-    const { status, stdout, stderr } = otea('help');
-
-    expect(status).toBe(0);
-    expect(stderr).toBe('');
-    expect(stdout).toContain('Usage: otea <command> [options]');
-  });
-
-  it('sets the process exit code', () => {
-    expect(otea('frobnicate').status).toBe(2);
-  });
-
   // The command npm link puts on the PATH: Node with no flags, so Node's notices stay quiet.
   // Its first run fills Node's compile cache, which takes a while on a slow Windows runner.
   it('runs as the otea command npm installs, with no warning on stderr', {

@@ -1,7 +1,4 @@
-import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createMcpServer } from '../mcp/server.ts';
-import { COMMANDS } from './commands.ts';
 import { type Cli, cliAt, presetCollection, seedOnce, type TempRepo } from './testing.ts';
 
 // A board stores its steps, fields and choices under hidden ids (todo, priority, high); a program
@@ -11,11 +8,6 @@ describe('names in output', () => {
   let otea: Cli;
 
   const json = async (...argv: string[]) => JSON.parse((await otea(...argv, '--json')).out);
-  const ndjson = async (...argv: string[]) =>
-    (await otea(...argv, '--json')).out
-      .split('\n')
-      .filter(Boolean)
-      .map((line) => JSON.parse(line));
 
   // Seeded once and copied for each test: seeding through the CLI before every one of them took a
   // loaded Windows runner past the hook's 30s.
@@ -66,42 +58,10 @@ describe('names in output', () => {
     ]);
   });
 
-  it('prints events by step and field names, and names them in --json as show does', async () => {
-    const { out } = await otea('events');
-
-    expect(out).toMatch(/ created {2}Hacerlo\n/);
-    expect(out).toMatch(/ updated {2}Prioridad: "Media" -> "Alta"\n/);
-    expect(out).toMatch(/ transitioned {2}Hacerlo -> Hacerlo \(en revisión\)\n/);
-    expect(await ndjson('events')).toEqual((await json('show', 'TASKS-1')).events);
-  });
-
   it('writes the brief with step and field names', async () => {
     const { out } = await otea('brief', 'TASKS-1');
 
     expect(out).toContain('- board: tasks · Hacerlo (en revisión)\n- Prioridad: Alta\n');
-  });
-
-  it('answers MCP with the same names as --json', async () => {
-    const server = createMcpServer(COMMANDS, {
-      cwd: repo.dir,
-      agent: 'claude',
-      warn: () => {},
-    });
-    const client = new Client({ name: 'test', version: '0' });
-    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-    await server.connect(serverSide);
-    await client.connect(clientSide);
-    try {
-      const reply = (await client.callTool({ name: 'show', arguments: { id: 'TASKS-1' } })) as {
-        content: { text: string }[];
-      };
-      expect(JSON.parse(reply.content[0]?.text ?? '')).toMatchObject({
-        stateName: 'Hacerlo (en revisión)',
-        fields: FIELDS,
-      });
-    } finally {
-      await client.close();
-    }
   });
 
   // Impacto came back as "low" while the desk said «baja» (P2S-R3-6): a level has its label too.

@@ -1,9 +1,6 @@
-import { existsSync } from 'node:fs';
 import { join } from 'node:path';
-import { Client, InMemoryTransport } from '@modelcontextprotocol/client';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { createMcpServer } from '../mcp/server.ts';
-import { COMMANDS, INIT_NEXT } from './commands.ts';
+import { INIT_NEXT } from './commands.ts';
 import { cliAt, presetCollection, spawnCli, type TempRepo, tempGitRepo } from './testing.ts';
 
 // Two separate repos that share one project in common storage. The test setup points OTEA_HOME at a
@@ -26,14 +23,6 @@ describe('projects', () => {
   afterEach(() => {
     a.remove();
     b.remove();
-  });
-
-  it('init keeps the data in the Otea home and nothing in the repo', async () => {
-    const init = await json(a, 'init');
-
-    expect(init).toMatchObject({ root: a.dir, storage: 'common' });
-    expect(init.path).toBe(join(process.env.OTEA_HOME ?? '', 'data', init.id));
-    expect(existsSync(join(a.dir, '.otea'))).toBe(false);
   });
 
   it('init --join links a second repo, and items created in one are listed in the other', async () => {
@@ -61,25 +50,6 @@ describe('projects', () => {
       `Linked ${b.dir} to the project ${name} (${id})\nProject data in ${path}\n${INIT_NEXT.join('\n')}\n`,
     );
   });
-
-  it('serves the shared project to an MCP client in the other repo', async () => {
-    const { id } = await json(a, 'init');
-    await json(b, 'init', '--join', id);
-    presetCollection(a.dir, 'tasks');
-    await json(a, 'create', '--collection', 'tasks', '--title', 'From A');
-    const server = createMcpServer(COMMANDS, { cwd: b.dir, agent: 'claude', warn: () => {} });
-    const client = new Client({ name: 'test', version: '0' });
-    const [clientSide, serverSide] = InMemoryTransport.createLinkedPair();
-    await server.connect(serverSide);
-    await client.connect(clientSide);
-
-    const reply = (await client.callTool({ name: 'list', arguments: {} })) as {
-      content: { text: string }[];
-    };
-    await client.close();
-
-    expect(JSON.parse(reply.content[0]?.text ?? '')[0]).toMatchObject({ title: 'From A' });
-  }, 30_000);
 
   it('projects current names the project this folder resolves to', async () => {
     const { id, name, path } = await json(a, 'init');

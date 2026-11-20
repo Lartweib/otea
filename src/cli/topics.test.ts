@@ -300,27 +300,23 @@ describe('otea topic', () => {
     expect((await cliAt(repo.dir)('help', 'topic')).out).toBe(help.out);
   });
 
-  it('tells agents to record a side question before answering it, and to look in the topics for the past', async () => {
+  it('tells agents to record a side question before answering it, to look in the topics for the past, what is not a topic and where a follow-up goes', async () => {
     const { repo, otea } = fresh();
     await cliAt(repo.dir)('topic', 'on');
     const guide = (await otea('board')).out;
-    expect(guide).toContain('Before you answer it, record it');
-    // P3C-R2-10: the saved answer is the one given in the chat, as it was said.
-    expect(guide).toContain('--full "<your answer as you gave it>"');
-    expect(guide).toContain('otea topic list --search');
-  });
-
-  // P4-R2-6, P8-R2-12, P6-R2-5: a recall question and a check-in were recorded as new topics.
-  it('tells agents what is not a topic, and where a follow-up goes', async () => {
-    const { repo, otea } = fresh();
-    await cliAt(repo.dir)('topic', 'on');
-    const guide = (await otea('board')).out;
-    expect(guide).toContain(
+    for (const line of [
+      'Before you answer it, record it',
+      // P3C-R2-10: the saved answer is the one given in the chat, as it was said.
+      '--full "<your answer as you gave it>"',
+      'otea topic list --search',
+      // P4-R2-6, P8-R2-12, P6-R2-5: a recall question and a check-in were recorded as new topics.
       'Not a topic: a request to do work, small talk or a check-in ("are you there?"), or a question about something said before',
-    );
-    expect(guide).toContain('A follow-up to a topic goes on it: otea topic add --to <id>');
-    // P6-R2-4: what was concluded about one project is often asked in another.
-    expect(guide).toContain('if nothing turns up, search every project with --all-projects');
+      'A follow-up to a topic goes on it: otea topic add --to <id>',
+      // P6-R2-4: what was concluded about one project is often asked in another.
+      'if nothing turns up, search every project with --all-projects',
+    ]) {
+      expect(guide).toContain(line);
+    }
   });
 
   it('reminds an agent that otea wait wakes to record side questions while topics are on', async () => {

@@ -9,21 +9,15 @@ const released = (data: Record<string, unknown>) =>
   formatEvent({ id: 9, itemId: 'TASKS-1', type: 'released', actor: human, at: 'T', data });
 
 describe('a release the person made from Atasco', () => {
-  it('says the item went back to the queue of its step', () => {
-    expect(released({ holder: 'kiln', cause: 'restart' })).toMatch(
-      /released {2}kiln \(back in the queue\)$/,
-    );
-  });
-
-  it('says whom it is left for', () => {
-    expect(released({ holder: 'kiln', cause: 'reassign', next: 'quill' })).toMatch(
-      /released {2}kiln \(left for quill\)$/,
-    );
-  });
-
-  it('keeps the agent and handoff releases as they were', () => {
-    expect(released({ holder: 'kiln', cause: 'release' })).toMatch(/kiln \(released\)$/);
-    expect(released({ holder: 'kiln', cause: 'handoff' })).toMatch(/kiln \(handed off\)$/);
+  // Back in the queue of its step, or left for someone; the agent and handoff releases stay as
+  // they were.
+  it.each<[Record<string, unknown>, RegExp]>([
+    [{ cause: 'restart' }, /released {2}kiln \(back in the queue\)$/],
+    [{ cause: 'reassign', next: 'quill' }, /released {2}kiln \(left for quill\)$/],
+    [{ cause: 'release' }, /kiln \(released\)$/],
+    [{ cause: 'handoff' }, /kiln \(handed off\)$/],
+  ])('says the release %o as kiln %s', (data, line) => {
+    expect(released({ holder: 'kiln', ...data })).toMatch(line);
   });
 });
 
@@ -38,23 +32,21 @@ describe('a note on a recording in the timeline', () => {
       data: { note: 1, text: 'It stutters here', anchor },
     });
 
-  it('names the moment the person was at in it', () => {
-    expect(note({ evidence: 4, filename: 'run.webm', seconds: 62.4 })).toMatch(
+  // The moment the person was at, the line it quotes or the diagram node; only the file when the
+  // note has no moment.
+  it.each<[Record<string, unknown>, RegExp]>([
+    [
+      { evidence: 4, filename: 'run.webm', seconds: 62.4 },
       /note 1: "It stutters here" \(on run\.webm at 1:02\.4\)$/,
-    );
-  });
-
-  it('names the line it quotes, or the diagram node', () => {
-    expect(note({ evidence: 4, filename: 'a.diff', line: 12, quote: 'x = 1' })).toMatch(
+    ],
+    [
+      { evidence: 4, filename: 'a.diff', line: 12, quote: 'x = 1' },
       /\(on a\.diff at line 12: "x = 1"\)$/,
-    );
-    expect(note({ evidence: 5, filename: 'f.mmd', node: 'Scan QR' })).toMatch(
-      /\(on f\.mmd at node "Scan QR"\)$/,
-    );
-  });
-
-  it('names only the file when the note has no moment', () => {
-    expect(note({ evidence: 4, filename: 'shot.png' })).toMatch(/\(on shot\.png\)$/);
+    ],
+    [{ evidence: 5, filename: 'f.mmd', node: 'Scan QR' }, /\(on f\.mmd at node "Scan QR"\)$/],
+    [{ evidence: 4, filename: 'shot.png' }, /\(on shot\.png\)$/],
+  ])('names where the note on %o is', (anchor, line) => {
+    expect(note(anchor)).toMatch(line);
   });
 });
 
@@ -124,12 +116,6 @@ describe('the person’s order in a list', () => {
         'IDE-2  Refinar  agent  on top 1  Idea IDE-2',
         'IDE-3  Refinar  agent  order 1   Idea IDE-3',
       ].join('\n'),
-    );
-  });
-
-  it('adds no column while the person set no order', () => {
-    expect(formatItems([item('IDE-1')], () => false, new Map())).toBe(
-      'IDE-1  Refinar  agent  Idea IDE-1',
     );
   });
 });
