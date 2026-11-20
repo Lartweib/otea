@@ -14,6 +14,8 @@ export type TailscaleStatus = {
   https: boolean;
   // The login link while the backend waits for one.
   authUrl: string | null;
+  // Whether a phone (Android or iOS) is on the same tailnet: its app is installed and signed in.
+  phoneOnTailnet: boolean;
 };
 
 // One route `tailscale serve` runs: the HTTPS port and path it answers, and where it forwards.
@@ -30,7 +32,7 @@ export type TailscaleCli = {
   serveStatus(): Promise<ServeRoute[]>;
   // `tailscale up`: the person logs in once, in the browser it opens.
   up(): Promise<void>;
-  // `tailscale serve --bg --https=443 http://127.0.0.1:<port>`.
+  // serveCommand(port): the one change Otea makes, and only once the person confirms it.
   serve(port: number): Promise<void>;
 };
 
@@ -58,12 +60,31 @@ export function installHint(platform: Platform): InstallHint {
   };
 }
 
-export const DNS_SETTINGS_URL = 'https://login.tailscale.com/admin/dns';
+// Where MagicDNS and HTTPS Certificates are turned on (tailscale.com/kb/1153/enabling-https).
+export const DNS_SETTINGS_URL = 'https://console.tailscale.com/admin/dns';
+
+// The Tailscale app's store pages, as tailscale.com/download/android and /download/ios link them.
+export const PHONE_STORES = {
+  android: 'https://play.google.com/store/apps/details?id=com.tailscale.ipn',
+  ios: 'https://apps.apple.com/us/app/tailscale/id1470499037',
+} as const;
+
+// What Otea runs on this computer for Tailscale, shown to the person word for word first:
+// `tailscale serve` answers https://<machine>.<tailnet>.ts.net with an automatic certificate and
+// forwards it to Otea, for the tailnet only (serve, never funnel), and keeps it across restarts
+// (--bg). SERVE_UNDO stops it again (tailscale.com/kb/1242/tailscale-serve).
+export const serveCommand = (port: number): string =>
+  `tailscale serve --bg --https=443 http://127.0.0.1:${port}`;
+
+export const SERVE_UNDO = 'tailscale serve --https=443 off';
 
 const record = (value: unknown): Record<string, unknown> =>
   typeof value === 'object' && value !== null ? (value as Record<string, unknown>) : {};
 
 const trimDot = (name: string) => name.replace(/\.$/, '').toLowerCase();
+
+// The systems a peer names when it is a phone or a tablet.
+const PHONE_SYSTEMS = new Set(['android', 'iOS']);
 
 // `tailscale status --json`, the parts Otea reads.
 export function parseStatus(json: unknown): TailscaleStatus {
@@ -73,12 +94,14 @@ export function parseStatus(json: unknown): TailscaleStatus {
   const dns =
     typeof self.DNSName === 'string' && self.DNSName !== '' ? trimDot(self.DNSName) : null;
   const certs = Array.isArray(status.CertDomains) ? status.CertDomains : [];
+  const peers = Object.values(record(status.Peer)).map(record);
   return {
     backend: typeof status.BackendState === 'string' ? status.BackendState : 'NoState',
     dnsName: dns,
     magicDns: tailnet.MagicDNSEnabled === true,
     https: certs.some((domain) => typeof domain === 'string' && domain !== ''),
     authUrl: typeof status.AuthURL === 'string' && status.AuthURL !== '' ? status.AuthURL : null,
+    phoneOnTailnet: peers.some(({ OS }) => typeof OS === 'string' && PHONE_SYSTEMS.has(OS)),
   };
 }
 
@@ -133,9 +156,14 @@ export function checkTailscale(
   return orFailed(() => check(cli, port, platform));
 }
 
-async function check(cli: TailscaleCli, port: number, platform: Platform): Promise<TailscaleCheck> {
+async function check(
+  cli: TailscaleCli,
+  port: number,
+  platform: Platform,
+  read: () => Promise<TailscaleStatus> = () => cli.status(),
+): Promise<TailscaleCheck> {
   if (cli.locate() === undefined) return { state: 'missing', install: installHint(platform) };
-  const status = await cli.status();
+  const status = await read();
   if (status.backend !== 'Running') return { state: 'logged_out', authUrl: status.authUrl };
   if (!status.magicDns || status.dnsName === null) {
     return { state: 'no_magic_dns', settings: DNS_SETTINGS_URL };
@@ -147,6 +175,70 @@ async function check(cli: TailscaleCli, port: number, platform: Platform): Promi
   );
   if (root && !forwardsTo(root, port)) return { state: 'taken', host, target: root.target };
   return { state: 'ready', host, url: `https://${host}`, serving: root !== undefined };
+}
+
+// The guided path to Tailscale (Configuración · Teléfono), step by step, each read from this
+// computer: done or still to do. Nothing here changes Tailscale.
+export const GUIDE_STEPS = ['phone', 'pc', 'signIn', 'https', 'serve', 'pair'] as const;
+
+export type GuideStep = (typeof GUIDE_STEPS)[number];
+
+export type TailscaleGuide = {
+  done: Record<GuideStep, boolean>;
+  // This computer is logged in (the phone may not be yet).
+  signedIn: boolean;
+  check: TailscaleCheck;
+  host: string | null;
+  command: string;
+  undo: string;
+  install: InstallHint;
+  stores: typeof PHONE_STORES;
+  settings: string;
+};
+
+export type GuideOptions = {
+  platform?: Platform;
+  // A paired device turned notifications on: only possible over HTTPS, the last step.
+  pushOn: boolean;
+};
+
+export async function readGuide(
+  cli: TailscaleCli,
+  port: number,
+  options: GuideOptions,
+): Promise<TailscaleGuide> {
+  const platform = options.platform ?? process.platform;
+  const installed = cli.locate() !== undefined;
+  let status: TailscaleStatus | null = null;
+  const found = await orFailed(() =>
+    check(cli, port, platform, async () => {
+      status = await cli.status();
+      return status;
+    }),
+  );
+  const read = status as TailscaleStatus | null;
+  const signedIn = read?.backend === 'Running';
+  const phone = read?.phoneOnTailnet === true;
+  const https = signedIn && read?.magicDns === true && read.https && read.dnsName !== null;
+  const serve = found.state === 'ready' && found.serving;
+  return {
+    done: {
+      phone,
+      pc: installed,
+      signIn: signedIn && phone,
+      https,
+      serve,
+      pair: serve && options.pushOn,
+    },
+    signedIn,
+    check: found,
+    host: signedIn ? (read?.dnsName ?? null) : null,
+    command: serveCommand(port),
+    undo: SERVE_UNDO,
+    install: installHint(platform),
+    stores: PHONE_STORES,
+    settings: DNS_SETTINGS_URL,
+  };
 }
 
 export type SetUpOptions = {

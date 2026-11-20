@@ -23,6 +23,7 @@ export function fakeTailscale(state: Partial<TailscaleStatus> = {}): FakeTailsca
       magicDns: true,
       https: true,
       authUrl: null,
+      phoneOnTailnet: false,
       ...state,
     },
     routes: [],

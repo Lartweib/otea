@@ -52,6 +52,8 @@ describe('the catalogs', () => {
     'nav.studio',
     'phone.nav',
     'phone.transport.tailscale',
+    'phone.guide.android',
+    'phone.guide.ios',
     'catalog.kicker',
     'bs.home.title',
     'bs.editor.kicker.studio',

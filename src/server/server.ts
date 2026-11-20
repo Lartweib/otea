@@ -26,9 +26,11 @@ import type { Launcher } from '../app/launcher.ts';
 import { memoryMachine } from '../app/machine.ts';
 import { boardRoundOf, liveBoards, rowFactsOf } from '../app/next.ts';
 import { editNote, leaveNote, notesSummary, notesView, withdrawNote } from '../app/notes.ts';
+import { listTargets } from '../app/notify-targets.ts';
 import { markOpened, openedFiles } from '../app/opened.ts';
 import { performanceOf } from '../app/performance.ts';
 import {
+  adoptTailscale,
   choosePhoneTransport,
   fetchProbe,
   isTransport,
@@ -47,7 +49,7 @@ import { answerQuestion } from '../app/questions.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { reassignItem, restartItem, resumeItem, undoRelease } from '../app/restart.ts';
 import { setAsideOf } from '../app/set-aside.ts';
-import { NO_TAILSCALE, type TailscaleCli } from '../app/tailscale.ts';
+import { NO_TAILSCALE, readGuide, serveCommand, type TailscaleCli } from '../app/tailscale.ts';
 import {
   closeTopic,
   convertTopic,
@@ -100,6 +102,7 @@ import {
   pair,
   pairingView,
   peekPairing,
+  qrCode,
   revoke,
 } from './pairing.ts';
 import {
@@ -294,6 +297,7 @@ type Doors = {
 };
 
 const TransportBody = z.object({ transport: z.string() });
+const ServeBody = z.object({ command: z.string() });
 const TopicsSwitchBody = z.object({ on: z.boolean() });
 const TopicNoteBody = z.object({ text: z.string() });
 const TopicConvertBody = z.object({ item: z.string().min(1) });
@@ -373,13 +377,36 @@ function machineApi(doors: Doors): Hono<OteaEnv> {
           throw new RejectedRequest(409, 'transport_unavailable', RELAY_UNAVAILABLE);
         }
         const check =
-          transport === 'tailscale'
-            ? await switchToTailscale(machine, doors.tailscale, port())
-            : null;
+          transport === 'tailscale' ? await adoptTailscale(machine, doors.tailscale, port()) : null;
         if (transport === 'lan') choosePhoneTransport(machine, { transport, tailscaleHost: null });
         if (phone.chosen()) phone.codes.issue();
         const status = await phoneView(doors);
         return c.json({ ...status, ...(check ? { tailscale: check } : {}) });
+      })
+      // The guided path to Tailscale: each step read from this computer, done or still to do,
+      // with the command Otea would run and the store pages as QR codes. It changes nothing.
+      .get('/phone/tailscale', async (c) => {
+        assertCanManageDevices(c, auth);
+        const pushOn = listTargets(machine).some(({ device }) => device !== null);
+        const guide = await readGuide(doors.tailscale, port(), { pushOn });
+        const store = (url: string) => ({ url, qr: qrCode(url) });
+        return c.json({
+          ...guide,
+          stores: { android: store(guide.stores.android), ios: store(guide.stores.ios) },
+        });
+      })
+      // The one change Otea makes to Tailscale: the command the guide shows, word for word, run
+      // only once the person confirmed it there; anything else is refused.
+      .post('/phone/tailscale/serve', async (c) => {
+        assertConfigurable(c, auth);
+        const parsed = ServeBody.safeParse(await c.req.json().catch(() => undefined));
+        const command = serveCommand(port());
+        if (!parsed.success || parsed.data.command !== command) {
+          throw new RejectedRequest(400, 'invalid_body', `Expected {"command": "${command}"}`);
+        }
+        const check = await switchToTailscale(machine, doors.tailscale, port());
+        if (phone.chosen()) phone.codes.issue();
+        return c.json({ ...(await phoneView(doors)), tailscale: check });
       })
       .post('/devices/:id/revoke', (c) => {
         assertCanManageDevices(c, auth);

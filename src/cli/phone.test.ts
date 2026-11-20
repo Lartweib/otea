@@ -86,7 +86,7 @@ describe('otea phone', () => {
 
       expect(code).toBe(20);
       expect(err).toContain('HTTPS');
-      expect(err).toContain('https://login.tailscale.com/admin/dns');
+      expect(err).toContain('https://console.tailscale.com/admin/dns');
     });
   });
 

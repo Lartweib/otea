@@ -18,6 +18,18 @@ cd ~/code/web && otea open       # the same, without trying to start anything
 
 ## A phone: on the same network, or through Tailscale
 
+### Choose how you reach Otea
+
+**Settings › Phone** sets three options side by side and marks the one in use, read from the current state. You can switch at any time.
+
+| Option | Needs | Gives you | You lose |
+| --- | --- | --- | --- |
+| **Only on this computer** (the default: the local network stays closed) | Nothing to install. | The fastest: Otea in this computer's browser, nothing open to the network. | The phone, notifications, and use away from this computer. |
+| **From your phone, at home** (the local network, plain HTTP) | The phone on the same Wi‑Fi. Nothing else to install. | Quick and basic: Otea on the phone at home, paired with a code. | Use away from home, and notifications: the local network has no HTTPS, and browsers give push (a service worker) only to secure (HTTPS) pages. |
+| **From anywhere, with Tailscale** (HTTPS on your tailnet) | Tailscale on the phone and on this computer, and the guided steps below. Tailscale's Personal plan is free for non-commercial use. | The most robust option: Otea away from home, over HTTPS, with notifications. | A few minutes to set it up, and a Tailscale account. |
+
+Picking the first two opens or closes the local network right away; that is Otea's own setting. Picking Tailscale only opens its guided steps: nothing changes until they are done.
+
 `otea serve` answers this computer only (127.0.0.1). A phone reaches it through a **phone transport**, set once for the computer (not per project); the transports are interchangeable, and whichever carries the phone, it pairs once with a code shown on this computer, gets its own device token, and only paired devices get in:
 
 - **Local network** (the default): **Open to the local network** in Settings › Phone (or `otea phone lan --open`, from any folder) makes the running `otea serve` also listen on this computer's network addresses, plain HTTP, same Wi-Fi only, without a restart. The choice is kept, so every `otea serve` after (the desktop app's too) starts open; **Close to the network** (or `otea phone lan --close`) stops listening there, and paired phones stay paired but cannot reach Otea off this computer until it opens again. `otea serve --lan` opens it for that run only.
@@ -43,7 +55,16 @@ After pairing, the phone suggests adding Otea to its home screen (a web app mani
 
 ### Tailscale
 
-`otea phone tailscale` (or **Settings › Phone › Tailscale** in the UI) takes these steps on this computer, and stops at the first one that is missing, saying what to do:
+**Settings › Phone › From anywhere, with Tailscale** walks you through it. Otea reads each step on this computer (with `tailscale status --json` and `tailscale serve status --json`, which change nothing) and marks it done or to do. **Check again** reads them again.
+
+1. **Install Tailscale on the phone.** Scan the QR code for your store with the phone's camera: [Google Play](https://play.google.com/store/apps/details?id=com.tailscale.ipn) or the [App Store](https://apps.apple.com/us/app/tailscale/id1470499037). Done once a phone (Android or iOS) shows up on your tailnet.
+2. **Install Tailscale on this computer.** The download for its system ([Windows](https://tailscale.com/download/windows), [macOS](https://tailscale.com/download/mac), [Linux](https://tailscale.com/download/linux)), or the install command. Otea never installs anything.
+3. **Sign in with the same account on both.** Both join your tailnet. Done when this computer is logged in and a phone is on the same tailnet; if this computer is not logged in, run `tailscale up`.
+4. **Turn on HTTPS.** In the admin console's [DNS page](https://console.tailscale.com/admin/dns), turn on MagicDNS if it is off (new tailnets have it on), then under **HTTPS Certificates** choose **Enable HTTPS**. The certificate is public: your machine's name is listed in the Certificate Transparency logs.
+5. **Serve Otea over HTTPS.** The step shows the exact command for this computer and port, for example `tailscale serve --bg --https=443 http://127.0.0.1:4400`. It makes Tailscale answer `https://<machine>.<tailnet>.ts.net` with its own certificate and pass the request on to Otea. Only your tailnet sees it (`serve`, never `funnel`), and `--bg` keeps it on after a restart. To undo it, run `tailscale serve --https=443 off`. Copy the command and run it yourself, or press **Run this command**. Otea then asks you to confirm that exact command, and runs it once. This is the only change Otea ever makes to Tailscale. Once it forwards to Otea, Otea uses Tailscale for the phone.
+6. **Pair the phone, then turn on notifications.** **Pair a phone** shows a QR code that opens `https://<machine>.<tailnet>.ts.net/pair`. Scan it, then turn on **Preferences › Notifications** on the phone. On iPhone, add Otea to the Home Screen first: Safari allows notifications only for a web app on the Home Screen. Done once a paired device has notifications on.
+
+`otea phone tailscale` does the same from the terminal: running it is your confirmation. It stops at the first step that is missing and says what to do:
 
 1. Finds the `tailscale` CLI: on `PATH`, then where the installers put it (`C:\Program Files\Tailscale\tailscale.exe` on Windows, the app or Homebrew on macOS, `/usr/bin` and friends on Linux). When it is missing, it prints how to install it (`winget install --id tailscale.tailscale`, `brew install --cask tailscale`, or Tailscale's install script, and the download page); **Otea never installs anything.**
 2. Checks that Tailscale is logged in. When it is not, it says to run `tailscale up` and log in once in the browser; `otea phone tailscale --login` runs `tailscale up` for you.

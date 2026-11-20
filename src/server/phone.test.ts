@@ -219,10 +219,42 @@ describe('phone transports on the server', () => {
       expect(probed).toEqual([`https://${TAILNET_HOST}`]);
     });
 
-    it('sets Tailscale up and points tailscale serve at this port', async () => {
+    it('never runs tailscale serve on its own when Tailscale is chosen', async () => {
       const response = await desk('/p/memory-aaaaaa/api/phone', {
         method: 'POST',
         body: { transport: 'tailscale' },
+      });
+
+      expect(response.status).toBe(200);
+      expect(await response.json()).toMatchObject({
+        transport: 'lan',
+        tailscale: { state: 'ready', serving: false },
+      });
+      expect(cli.calls).not.toContain('serve 4400');
+      expect(phoneSettings(server.machine).transport).toBe('lan');
+    });
+
+    it('takes Tailscale once tailscale serve already forwards to Otea', async () => {
+      cli.routes = [{ host: TAILNET_HOST, port: 443, path: '/', target: 'http://127.0.0.1:4400' }];
+
+      const response = await desk('/p/memory-aaaaaa/api/phone', {
+        method: 'POST',
+        body: { transport: 'tailscale' },
+      });
+
+      expect(await response.json()).toMatchObject({
+        transport: 'tailscale',
+        url: `https://${TAILNET_HOST}`,
+        tailscale: { state: 'ready', serving: true },
+      });
+      expect(cli.calls).not.toContain('serve 4400');
+      expect(server.phone.codes.current()).toBeDefined();
+    });
+
+    it('runs the one command it showed, once the person confirms it', async () => {
+      const response = await desk('/p/memory-aaaaaa/api/phone/tailscale/serve', {
+        method: 'POST',
+        body: { command: 'tailscale serve --bg --https=443 http://127.0.0.1:4400' },
       });
 
       expect(response.status).toBe(200);
@@ -231,8 +263,98 @@ describe('phone transports on the server', () => {
         url: `https://${TAILNET_HOST}`,
         tailscale: { state: 'ready', serving: true },
       });
-      expect(cli.calls).toContain('serve 4400');
-      expect(server.phone.codes.current()).toBeDefined();
+      expect(cli.calls.filter((call) => /^serve \d/.test(call))).toEqual(['serve 4400']);
+      expect(cli.calls).not.toContain('up');
+    });
+
+    it('refuses to run anything but the command it shows', async () => {
+      for (const command of [
+        'tailscale serve --bg --https=443 http://127.0.0.1:3000',
+        'tailscale funnel 4400',
+        '',
+      ]) {
+        const response = await desk('/p/memory-aaaaaa/api/phone/tailscale/serve', {
+          method: 'POST',
+          body: { command },
+        });
+        expect(response.status).toBe(400);
+      }
+      const bare = await desk('/p/memory-aaaaaa/api/phone/tailscale/serve', {
+        method: 'POST',
+        body: {},
+      });
+      expect(bare.status).toBe(400);
+      expect(cli.calls.filter((call) => /^serve \d/.test(call))).toEqual([]);
+    });
+
+    it('runs nothing while a step before it is missing', async () => {
+      cli.state = { ...cli.state, https: false };
+
+      const response = await desk('/p/memory-aaaaaa/api/phone/tailscale/serve', {
+        method: 'POST',
+        body: { command: 'tailscale serve --bg --https=443 http://127.0.0.1:4400' },
+      });
+
+      expect(await response.json()).toMatchObject({
+        transport: 'lan',
+        tailscale: { state: 'no_https' },
+      });
+      expect(cli.calls.filter((call) => /^serve \d/.test(call))).toEqual([]);
+    });
+
+    it('lets only this computer’s signed-in browser run it', async () => {
+      const body = { command: 'tailscale serve --bg --https=443 http://127.0.0.1:4400' };
+      const signedOut = await desk('/p/memory-aaaaaa/api/phone/tailscale/serve', {
+        method: 'POST',
+        body,
+        cookie: '',
+      });
+      expect(signedOut.status).toBe(401);
+      const { cookie } = await pairOverTailscale();
+      const phone = await viaTailscale('/api/phone/tailscale/serve', {
+        method: 'POST',
+        body,
+        cookie,
+      });
+      expect(phone.status).toBe(403);
+      const forged = await desk('/p/memory-aaaaaa/api/phone/tailscale/serve', {
+        method: 'POST',
+        body,
+        origin: 'https://evil.example',
+      });
+      expect(forged.status).toBe(403);
+      expect(cli.calls.filter((call) => /^serve \d/.test(call))).toEqual([]);
+    });
+
+    it('reads the guided steps without changing anything', async () => {
+      cli.state = { ...cli.state, phoneOnTailnet: true };
+
+      const response = await desk('/p/memory-aaaaaa/api/phone/tailscale');
+
+      expect(response.status).toBe(200);
+      const guide = (await response.json()) as {
+        done: Record<string, boolean>;
+        command: string;
+        undo: string;
+        stores: Record<string, { url: string; qr: { size: number; cells: boolean[][] } }>;
+      };
+      expect(guide.done).toEqual({
+        phone: true,
+        pc: true,
+        signIn: true,
+        https: true,
+        serve: false,
+        pair: false,
+      });
+      expect(guide.command).toBe('tailscale serve --bg --https=443 http://127.0.0.1:4400');
+      expect(guide.undo).toBe('tailscale serve --https=443 off');
+      expect(guide.stores.android?.url).toBe(
+        'https://play.google.com/store/apps/details?id=com.tailscale.ipn',
+      );
+      expect(guide.stores.ios?.qr.size).toBeGreaterThan(20);
+      expect(cli.calls).toEqual(['status', 'serve status']);
+      const signedOut = await desk('/p/memory-aaaaaa/api/phone/tailscale', { cookie: '' });
+      expect(signedOut.status).toBe(403);
     });
 
     it('says what is missing and stays on the local network', async () => {

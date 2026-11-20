@@ -196,6 +196,24 @@ export type TailscaleCheck =
   | { state: 'ready'; host: string; url: string; serving: boolean }
   | { state: 'failed'; message: string };
 
+// The guided path to Tailscale (src/app/tailscale.ts readGuide), each step read on this computer.
+export type GuideStep = 'phone' | 'pc' | 'signIn' | 'https' | 'serve' | 'pair';
+
+export type StoreLink = { url: string; qr: { size: number; cells: boolean[][] } };
+
+export type TailscaleGuide = {
+  done: Record<GuideStep, boolean>;
+  signedIn: boolean;
+  check: TailscaleCheck;
+  host: string | null;
+  // The one command Otea runs for Tailscale, once the person confirms it, and how to undo it.
+  command: string;
+  undo: string;
+  install: { commands: string[]; link: string };
+  stores: { android: StoreLink; ios: StoreLink };
+  settings: string;
+};
+
 // The phone transport in use, the URL a phone opens on it and whether Otea answered there.
 export type PhoneStatus = {
   transport: TransportKind;

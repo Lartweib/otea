@@ -134,7 +134,24 @@ export async function phoneStatus(db: DatabaseSync, sources: StatusSources): Pro
   };
 }
 
-// Sets Tailscale up for Otea on this port and, once it is ready, makes it the phone transport.
+// Configuración's Tailscale option: makes it the phone transport once tailscale serve already
+// forwards to Otea, and otherwise only says what is missing. It never changes Tailscale.
+export async function adoptTailscale(
+  db: DatabaseSync,
+  cli: TailscaleCli,
+  port: number,
+  platform?: Platform,
+): Promise<TailscaleCheck> {
+  const check = await checkTailscale(cli, port, platform);
+  if (check.state === 'ready' && check.serving) {
+    choosePhoneTransport(db, { transport: 'tailscale', tailscaleHost: check.host });
+  }
+  return check;
+}
+
+// Sets Tailscale up for Otea on this port and, once it is ready, makes it the phone transport:
+// `otea phone tailscale`, which the person runs, and the guide's button, once they confirm the
+// command it shows.
 export async function switchToTailscale(
   db: DatabaseSync,
   cli: TailscaleCli,
