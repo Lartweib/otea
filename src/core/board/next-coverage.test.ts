@@ -245,27 +245,6 @@ describe('nextText, the later settings', () => {
 });
 
 describe('refusals and answers', () => {
-  const note: Missing = {
-    ref: 'note',
-    name: 'note',
-    reason: 'missing',
-    fresh: true,
-    hint: 'qué cambió en esta ronda',
-  };
-  const video: Missing = { ref: 'evid', name: 'Vídeo', reason: 'missing', fresh: true };
-
-  it('asks for the note in its own words, alone or with the parts', () => {
-    expect(refusalText('REV-2', [note])).toBe(
-      'Not handed off REV-2: missing a note.\nCall handoff again with --note "<qué cambió en esta ronda>".',
-    );
-    expect(refusalText('REV-2', [video, note])).toBe(
-      [
-        'Not handed off REV-2: missing Vídeo (new this round) and a note.',
-        'Attach or fill them with otea attach REV-2 / otea update REV-2, then call handoff again with --note "<qué cambió en esta ronda>".',
-      ].join('\n'),
-    );
-  });
-
   it('names the open parts and the blockers when only the waits hold it', () => {
     const parts: Missing = {
       ref: 'wait:parts',

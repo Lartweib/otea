@@ -121,16 +121,17 @@ describe('assertCanLeave', () => {
     );
   });
 
-  it('allows leaving incomplete once the fields are filled', () => {
-    expect(() => assertCanLeave(preset, 'incomplete', 'todo', { description: 'D' })).not.toThrow();
-  });
-
-  it('allows closing an incomplete item', () => {
-    expect(() => assertCanLeave(preset, 'incomplete', 'discarded', {})).not.toThrow();
-  });
-
-  it('ignores moves that do not leave incomplete', () => {
-    expect(() => assertCanLeave(preset, 'todo', 'in_progress', {})).not.toThrow();
+  it.each([
+    [
+      'allows leaving incomplete once the fields are filled',
+      'incomplete',
+      'todo',
+      { description: 'D' },
+    ],
+    ['allows closing an incomplete item', 'incomplete', 'discarded', {}],
+    ['ignores moves that do not leave incomplete', 'todo', 'in_progress', {}],
+  ])('%s', (_, from, to, fields) => {
+    expect(() => assertCanLeave(preset, from, to, fields)).not.toThrow();
   });
 });
 

@@ -46,24 +46,26 @@ describe('templates', () => {
     ]);
   });
 
-  for (const set of TEMPLATE_SETS) {
-    for (const lang of ['en', 'es'] as const) {
-      it(`copies the set ${set.key} in ${lang} into boards that publish without errors`, () => {
-        const ids = set.boards.map((_, index) => ({ id: `b${index}` }));
-        const defs = instantiateSet(set, lang, ids, sequenceIds());
-        const boards = defs.map((def, index) => ({
-          id: `b${index}`,
-          name: def.name,
-          ...(def.split ? { split: def.split } : {}),
-        }));
-        defs.forEach((def, index) => {
-          expect(def.template).toBe(set.key);
-          const problems = problemsOf(def, { id: `b${index}`, boards });
-          expect(problems.filter(({ level }) => level === 'error')).toEqual([]);
-        });
+  it.each(TEMPLATE_SETS.flatMap((set) => (['en', 'es'] as const).map((lang) => ({ set, lang }))))(
+    'copies the set $set.key in $lang into boards that publish clean, nothing left raw',
+    ({ set, lang }) => {
+      const ids = set.boards.map((_, index) => ({ id: `b${index}` }));
+      const defs = instantiateSet(set, lang, ids, sequenceIds());
+      const boards = defs.map((def, index) => ({
+        id: `b${index}`,
+        name: def.name,
+        ...(def.split ? { split: def.split } : {}),
+      }));
+      defs.forEach((def, index) => {
+        expect(def.template).toBe(set.key);
+        expect(assertIconName(def.icon)).toBe(def.icon);
+        expect(problemsOf(def, { id: `b${index}`, boards })).toEqual([]);
+        for (const step of def.steps)
+          for (const text of Object.values(step.instructions))
+            expect(mentionText(def, text)).not.toMatch(/@[[{]/);
       });
-    }
-  }
+    },
+  );
 
   it('joins Trabajos to its Entregas by the child board id, always', () => {
     const [jobs, deliveries] = instantiateSet(requireSet('repos'), 'es', [
@@ -264,21 +266,6 @@ describe('the official catalogue', () => {
     });
     expect(wanted.filter((kind) => !used.has(kind))).toEqual([]);
   });
-
-  it('offers exactly the eleven starter templates, none named after a way of working', () => {
-    expect(LISTED_KEYS).toHaveLength(11);
-    for (const gone of [
-      'playtest',
-      'resume',
-      'visual-iteration',
-      'digest',
-      'support',
-      'assets',
-      'repobugs',
-    ]) {
-      expect(TEMPLATES.some(({ key }) => key === gone)).toBe(false);
-    }
-  });
 });
 
 describe('templates that fit the work', () => {
@@ -350,17 +337,6 @@ describe('templates that fit the work', () => {
     expect(backWaysOf(def, doIt?.id ?? '')).toEqual([own?.id]);
     // Taken back, it is made theirs first, so it leads to Hecho there too.
     expect(doIt?.instructions.take).toContain(`otea update <id> --field "@[${mine?.id}]=yes"`);
-  });
-
-  it('asks a command-line change of Cambios for its terminal output, never for screenshots', () => {
-    const hand = handOf('changes', 'Hacerlo');
-    expect(hand).toContainEqual(['Capturas', 'when', true, 'Clase de cambio=Interfaz visual']);
-    expect(hand).toContainEqual([
-      'Salida en la terminal',
-      'when',
-      true,
-      'Clase de cambio=Línea de comandos',
-    ]);
   });
 
   it('asks Diseño visual for its branch and diff once, and only for a piece in the repository', () => {

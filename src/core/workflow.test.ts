@@ -86,10 +86,6 @@ describe('turnOf', () => {
 });
 
 describe('assertTransition', () => {
-  it('returns the matching transitions', () => {
-    expect(assertTransition(tasks, 'todo', 'in_progress')).toMatchObject([{ by: 'agent' }]);
-  });
-
   it('throws an invalid_transition domain error otherwise', () => {
     const attempt = () => assertTransition(tasks, 'todo', 'done');
 

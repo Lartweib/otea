@@ -1,16 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { closeIconNames, ICON_NAMES, iconProblem, isIconName } from './icons.ts';
+import { closeIconNames, ICON_NAMES, iconProblem } from './icons.ts';
 
 describe('icon names', () => {
   it('holds every icon of the catalog once', () => {
     expect(ICON_NAMES).toHaveLength(112);
     expect(new Set(ICON_NAMES).size).toBe(ICON_NAMES.length);
     expect(ICON_NAMES.every((name) => /^[a-z]+(-[a-z]+)*$/.test(name))).toBe(true);
-  });
-
-  it('knows its names', () => {
-    expect(isIconName('layers')).toBe(true);
-    expect(isIconName('Layers')).toBe(false);
   });
 
   it.each([

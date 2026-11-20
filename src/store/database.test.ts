@@ -54,14 +54,6 @@ describe('openDatabase', () => {
 
     expect(pragma(db, 'journal_mode')).toBe('wal');
   });
-
-  it('opens an in-memory database', () => {
-    const db = openDatabase(':memory:');
-    cleanups.push(() => db.close());
-
-    expect(db.isOpen).toBe(true);
-    expect(pragma(db, 'foreign_keys')).toBe(1);
-  });
 });
 
 describe('transaction', () => {

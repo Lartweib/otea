@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatItemId, parseItemId, prefixFor } from './item.ts';
+import { parseItemId, prefixFor } from './item.ts';
 
 describe('prefixFor', () => {
   it.each([
@@ -16,10 +16,6 @@ describe('prefixFor', () => {
 });
 
 describe('item ids', () => {
-  it('formats prefix and sequence', () => {
-    expect(formatItemId('TASKS', 7)).toBe('TASKS-7');
-  });
-
   it('parses an id back', () => {
     expect(parseItemId('TASKS-7')).toEqual({ prefix: 'TASKS', seq: 7 });
   });

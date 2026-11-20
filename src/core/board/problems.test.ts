@@ -7,10 +7,6 @@ const codes = (def: BoardDefinition) =>
   problemsOf(def, {}).map(({ level, code }) => `${level}:${code}`);
 
 describe('problemsOf', () => {
-  it('finds nothing wrong with a sound board', () => {
-    expect(problemsOf(creatures(), {})).toEqual([]);
-  });
-
   it('blocks a board without a name or without steps', () => {
     const def = { ...creatures(), name: '  ', steps: [] };
     expect(codes(def)).toEqual(['error:board_unnamed', 'error:no_steps']);

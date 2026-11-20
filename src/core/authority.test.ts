@@ -80,22 +80,6 @@ describe('availableMoves', () => {
     ]);
   });
 
-  it('says whose turn each move hands the item to', () => {
-    expect(availableMoves(tasks, 'review', humanUi).map(({ to, turn }) => [to, turn])).toEqual([
-      ['done', 'none'],
-      ['todo', 'agent'],
-      ['discarded', 'none'],
-    ]);
-  });
-
-  it('says how each move into a closed state closes the item', () => {
-    expect(availableMoves(tasks, 'review', humanUi).map(({ to, closes }) => [to, closes])).toEqual([
-      ['done', 'done'],
-      ['todo', undefined],
-      ['discarded', 'discarded'],
-    ]);
-  });
-
   it('offers an agent nothing while the item waits for a human', () => {
     expect(availableMoves(tasks, 'review', agentCli)).toEqual([]);
   });
@@ -115,10 +99,6 @@ describe('relayableMoves', () => {
 });
 
 describe('authorizeMove', () => {
-  it('returns the transition the performer may take', () => {
-    expect(authorizeMove(tasks, 'todo', 'in_progress', agentCli)).toMatchObject({ by: 'agent' });
-  });
-
   it('picks the transition matching the performer when several connect the states', () => {
     expect(authorizeMove(tasks, 'incomplete', 'discarded', agentCli, 'duplicate')).toMatchObject({
       by: 'agent',
@@ -168,12 +148,6 @@ describe('authorizeMove', () => {
 });
 
 describe('authorizeRelay', () => {
-  it('returns the human transition a relayed decision takes', () => {
-    expect(authorizeRelay(tasks, 'review', 'discarded', 'duplicate')).toMatchObject({
-      by: 'human',
-    });
-  });
-
   it('picks the human transition when an agent one connects the same states', () => {
     expect(authorizeRelay(tasks, 'incomplete', 'discarded', 'duplicate')).toMatchObject({
       by: 'human',

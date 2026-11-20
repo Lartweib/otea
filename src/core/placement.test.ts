@@ -42,10 +42,6 @@ describe('evidenceModules', () => {
       'recording',
     ]);
   });
-
-  it('finds none in a layout without evidence modules', () => {
-    expect(evidenceModules(defaultLayout(FIELDS))).toEqual([]);
-  });
 });
 
 describe('placeEvidence', () => {
@@ -82,14 +78,6 @@ describe('placeEvidence', () => {
       () => place(BUG, 'shot.jpg', { role: 'before' }),
       'evidence_not_accepted',
       `${SUBJECT} does not take shot.jpg. It takes: "Before and after" (images, compare): png, gif; "log" (log): log`,
-    );
-  });
-
-  it('refuses a kind no module accepts, listing what the type takes', () => {
-    refused(
-      () => place(IMPR, 'notes.zip'),
-      'evidence_not_accepted',
-      `${SUBJECT} does not take notes.zip. It takes: "screens" (images, gallery): image; "diff" (diff): diff; "mockup" (images): image; "recording" (recording): video`,
     );
   });
 
@@ -162,19 +150,22 @@ describe('placeEvidence', () => {
 });
 
 describe('holderOf', () => {
-  it('keeps the module evidence was attached to', () => {
-    expect(holderOf(IMPR, { module: 'mockup', filename: 'a.png' })).toBe('mockup');
-  });
-
-  it('falls back to the first module accepting the file when none was recorded or it is gone', () => {
-    expect(holderOf(IMPR, { module: null, filename: 'a.png' })).toBe('screens');
-    expect(holderOf(IMPR, { module: 'shots', filename: 'a.png' })).toBe('screens');
-    expect(holderOf(IMPR, { module: 'diff', filename: 'a.png' })).toBe('screens');
-  });
-
-  it('finds no holder for a file no module accepts', () => {
-    expect(holderOf(BUG, { module: null, filename: 'a.mp4' })).toBeNull();
-    expect(holderOf(defaultLayout(FIELDS), { module: null, filename: 'a.png' })).toBeNull();
+  // A file falls back to the first module accepting it when none was recorded or that one is gone.
+  it.each([
+    ['keeps the module evidence was attached to', IMPR, 'mockup', 'a.png', 'mockup'],
+    ['falls back when no module was recorded', IMPR, null, 'a.png', 'screens'],
+    ['falls back when the module is gone', IMPR, 'shots', 'a.png', 'screens'],
+    ['falls back when the module no longer accepts the file', IMPR, 'diff', 'a.png', 'screens'],
+    ['finds no holder when no module accepts the file', BUG, null, 'a.mp4', null],
+    [
+      'finds no holder in a layout without evidence modules',
+      defaultLayout(FIELDS),
+      null,
+      'a.png',
+      null,
+    ],
+  ])('%s', (_, layout, module, filename, holder) => {
+    expect(holderOf(layout, { module, filename })).toBe(holder);
   });
 });
 

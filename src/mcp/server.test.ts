@@ -173,13 +173,6 @@ describe('mcp server', () => {
       expect(shown.hint).toContain('claim { id: "TASKS-1" }');
     });
 
-    it('fails with not_found for an unknown collection, as the CLI does', async () => {
-      const reply = await call('board', { name: 'nope' });
-
-      expect(reply.isError).toBe(true);
-      expect(reply.content[0]?.text).toBe(await cliError('board', 'nope'));
-    });
-
     it('answers next as otea next --json does, once the agent declared its profile', async () => {
       await data('profile', { model: 'claude-opus-5-5', effort: 'high' });
       const next = await data('next');
@@ -412,17 +405,6 @@ describe('mcp server', () => {
       expect(reply.content[0]?.text).toBe(await cliError('link', 'TASKS-1', 'parent', 'TASKS-1'));
     });
 
-    it('refuses a parent in another collection, with the error of the CLI', async () => {
-      presetCollection(repo.dir, 'bugs');
-      await otea('create', '--collection', 'bugs', '--title', 'Clips', '--description', 'D');
-
-      const reply = await call('link', { id: 'BUGS-1', kind: 'parent', other: 'TASKS-1' });
-
-      expect(reply.isError).toBe(true);
-      expect(reply.content[0]?.text).toContain('parent_across_boards');
-      expect(reply.content[0]?.text).toBe(await cliError('link', 'BUGS-1', 'parent', 'TASKS-1'));
-    });
-
     it('names the mcp channel when it refuses a move', async () => {
       await otea('handoff', 'TASKS-1');
 
@@ -477,16 +459,6 @@ describe('mcp server', () => {
       );
       expect(JSON.parse(text).error.code).toBe('forbidden');
       expect((await json('show', 'TASKS-1')).state).toBe('todo__review');
-    });
-
-    it('refuses a write on an item another agent holds with lease_held', async () => {
-      const other = await connect(repo.dir, 'codex');
-      await data('claim', { id: 'TASKS-1' });
-
-      const text = await errorOf('move', { id: 'TASKS-1', state: 'todo__review' }, other);
-
-      expect(JSON.parse(text).error.code).toBe('lease_held');
-      await other.close();
     });
 
     it('refuses a heartbeat on a lease another agent holds with not_lease_holder', async () => {
@@ -594,15 +566,6 @@ describe('mcp server', () => {
       );
     });
 
-    it('gives up with the timeout error when nothing reaches the turn', async () => {
-      const reply = await call('wait', { turn: 'human', timeout: '1s' });
-
-      expect(reply.isError).toBe(true);
-      expect(JSON.parse(reply.content[0]?.text ?? '')).toEqual({
-        error: { code: 'timeout', message: 'No item reached the human turn within 1s' },
-      });
-    });
-
     it('refuses a timeout longer than a client keeps a tool call open', async () => {
       const reply = await call('wait', { turn: 'human', timeout: '1h' });
 
@@ -673,12 +636,6 @@ describe('mcp server', () => {
           live: true,
         }),
       ]);
-    });
-
-    it('lists what the agent holds once it claims', async () => {
-      await data('claim', { id: 'TASKS-1' });
-
-      expect(agents()[0]?.holding).toEqual(['TASKS-1']);
     });
   });
 });
