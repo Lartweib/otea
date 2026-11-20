@@ -128,6 +128,8 @@ export function problemText(problem: Problem): string {
       });
     case 'skip_invalid':
       return t('bs.problem.skip_invalid', { step: str(p.step) as string });
+    case 'step_always_skipped':
+      return t('bs.problem.step_always_skipped', { step: str(p.step) as string });
     case 'split_cycle':
       return t('bs.problem.split_cycle', {
         board: str(p.board) as string,

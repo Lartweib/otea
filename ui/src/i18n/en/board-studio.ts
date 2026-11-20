@@ -27,6 +27,8 @@ export const boardStudio = {
   'bs.problem.wait_no_split': '{step} waits for its parts, but {board} divides into nothing.',
   'bs.problem.skip_invalid':
     '“Starts straight at…” only works on the first step, and only when nobody reviews it. Take it off {step}.',
+  'bs.problem.step_always_skipped':
+    'Every new item skips {step}: the form already asks for everything it hands, so it never runs. Make one of those fields optional or turn off “Start directly at…”.',
   'bs.problem.split_cycle':
     '{board} divides into {other} and {other} into {board}: an item would end up part of itself.',
   'bs.problem.split_unknown':

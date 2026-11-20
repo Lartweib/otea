@@ -56,6 +56,39 @@ describe('problemsOf, the later settings', () => {
     ]);
   });
 
+  // P8-R3-2: on «cambios», «Cómo lo valido» required on the form is also all Aclarar hands, so
+  // every item started past Aclarar, and Studio said nothing.
+  it('warns of a first step every new item skips, the form asking for all it hands', () => {
+    const def = errores();
+    def.form = [{ ref: 'fsteps', required: true }];
+    expect(found(def)).toEqual([
+      {
+        level: 'warning',
+        code: 'step_always_skipped',
+        params: { step: 'Completar' },
+        at: { kind: 'step', id: 'sfill' },
+      },
+    ]);
+    // Optional on the form, it is filled only sometimes: the step runs for the rest.
+    def.form = [{ ref: 'fsteps', required: false }];
+    expect(found(def)).toEqual([]);
+    // A step that does not skip on creation always runs.
+    def.form = [{ ref: 'fsteps', required: true }];
+    def.steps[0] = { ...(def.steps[0] as Step), skipWhenReady: false };
+    expect(found(def)).toEqual([]);
+  });
+
+  it('warns of nothing while the step hands something the form never asks for', () => {
+    const def = errores();
+    def.form = [{ ref: 'fsteps', required: true }];
+    const first = def.steps[0] as Step;
+    def.steps[0] = {
+      ...first,
+      hand: [...first.hand, { ref: 'fcat', req: 'always', fresh: false }],
+    };
+    expect(found(def)).toEqual([]);
+  });
+
   it('blocks two boards that divide into each other', () => {
     const boards = [
       { id: 'bcam', name: 'Cambios', split: { board: 'brt', always: true } },

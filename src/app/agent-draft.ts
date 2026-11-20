@@ -214,6 +214,7 @@ export function problemWords(problem: Problem): string {
     agent_closes: `step${step} would let an agent close the item: only the person says Done (an agent may close it only in a last step every way into it comes from a step the person closes)`,
     wait_no_split: `step${step} waits for its parts, but${board} divides into nothing`,
     skip_invalid: `step${step} starts new items past it, which only a first step nobody reviews may do`,
+    step_always_skipped: `every new item skips step${step}: the form requires everything it hands, so it never runs`,
     split_cycle: `${board.trim() || 'the board'} and${other} divide into each other`,
     split_unknown: `${board.trim() || 'the board'} divides into a board that does not exist`,
     guard_no_push: `the branch${part} is protected but no step lets it be pushed`,
