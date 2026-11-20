@@ -84,6 +84,14 @@ describe('Preferencias › Avisos', () => {
     expect(html).toContain('value="08:00"');
   });
 
+  it('names each end of the quiet hours for a screen reader', () => {
+    setLanguage('es');
+    const quiet = { ...DEFAULT_PREFS, quiet: { from: '22:00', to: '08:00' } };
+    const html = render({ view: { ...view, subscribed: true, prefs: quiet } });
+    expect(html).toContain('aria-label="Horas de silencio: desde"');
+    expect(html).toContain('aria-label="Horas de silencio: hasta"');
+  });
+
   it.each([
     ['needs-https', 'over HTTPS only'],
     ['needs-home-screen', 'only once it is on the Home Screen'],

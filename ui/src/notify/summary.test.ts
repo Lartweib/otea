@@ -47,5 +47,7 @@ describe('notifySummary', () => {
   it('says when every kind is off though notifications are on', () => {
     const none = { ...DEFAULT_PREFS, turn: false, ask: false, replied: false, stuck: false };
     expect(notifySummary(none)).toBe('Notifications on, every kind off');
+    setLanguage('es');
+    expect(notifySummary(none)).toBe('Avisos activados, pero ningún tipo elegido');
   });
 });
