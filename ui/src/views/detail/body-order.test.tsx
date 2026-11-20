@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { officialType } from '../../derive/fixtures.ts';
 import type { ItemView, Layout, TypeView } from '../../types.ts';
 import { bodySections } from './Body.tsx';
 import type { Facts } from './facts.ts';
@@ -51,5 +52,29 @@ describe('the item page body', () => {
     const rounds = keys.findIndex((key) => key.startsWith('r:rounds'));
     expect(deliverable).toBeGreaterThanOrEqual(0);
     expect(rounds).toBeGreaterThan(deliverable);
+  });
+
+  // The old detail's empty boxes, gone: a long text nobody wrote is no section at all.
+  it('draws a field section only for a value that is there', () => {
+    const bug = officialType('bug-triage');
+    const keys = bodySections({
+      item: {
+        ...item,
+        type: bug.name,
+        fields: {
+          title: 'Los lobos no cruzan',
+          description: 'Se paran en el puente.',
+          steps: '',
+          expected: 'Que crucen.',
+          actual: '',
+        },
+      },
+      type: bug,
+      facts: {} as Facts,
+      canWrite: false,
+      now: 0,
+    }).map(({ key }) => key);
+
+    expect(keys.filter((key) => key.startsWith('f:'))).toEqual(['f:description', 'f:expected']);
   });
 });
