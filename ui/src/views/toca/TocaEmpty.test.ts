@@ -40,6 +40,28 @@ describe('Te toca with nothing to list yet', () => {
   });
 });
 
+// P5-R3-6: the phone said «Nada espera por ti» for half a second while it loaded, before «Una
+// cosa espera por ti».
+describe('Te toca before its first load', () => {
+  for (const phone of [true, false]) {
+    it(`says it is loading, never that nothing waits (${phone ? 'phone' : 'desk'})`, () => {
+      const html = render(
+        fake({
+          all: [],
+          collections: [errores as unknown as CollectionView],
+          items: { status: 'loading' },
+          phone,
+        }),
+      );
+      expect(html).toContain('Loading…');
+      expect(html).not.toContain('Nothing is waiting for you.');
+      expect(html).not.toContain('class="lanes');
+      // Nor a recap of the day in zeros, before the day is known.
+      expect(html).not.toMatch(/class="(p-)?recap"/);
+    });
+  }
+});
+
 describe('Te toca on the phone (mobile mock 1)', () => {
   const app = (phone: boolean) =>
     fake({
