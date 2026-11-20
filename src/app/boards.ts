@@ -1,7 +1,7 @@
 import { compileBoard } from '../core/board/compile.ts';
 import { isClosed, positionOf, stateOf } from '../core/board/engine.ts';
 import { type IdSource, newId } from '../core/board/ids.ts';
-import { type BoardDefinition, DONE, type Target } from '../core/board/model.ts';
+import { type BoardDefinition, DONE, guardedBranch, type Target } from '../core/board/model.ts';
 import {
   type Change,
   changePlan,
@@ -65,7 +65,7 @@ import {
 import type { Context } from './context.ts';
 import { draftTitle } from './draft-request.ts';
 import { type Clock, systemClock } from './items.ts';
-import { linksOf } from './next.ts';
+import { linksOf, liveBoards } from './next.ts';
 import type { LoadedPreset, PresetCatalog } from './presets.ts';
 
 // Boards with versions, as Studio makes them: a draft per board, published as a new version in one
@@ -435,6 +435,9 @@ export type PublishPlan = {
   problems: Problem[];
   // The open Pedido an agent drafted the board on: publishing offers to close it.
   request: { id: string; title: string } | null;
+  // The other live boards that protect a branch. With none, and a board that protects none, no
+  // push of the project is gated, which the dialog says when a repo has a remote.
+  guardingBoards: Array<{ id: string; name: string }>;
 };
 
 function requireDraft(ctx: Context, id: string): NonNullable<BoardRecord['draft']> {
@@ -471,6 +474,9 @@ export function publishPlan(ctx: Context, id: string): PublishPlan {
       : { moves: [], needs: [], reopened: [], waiting: [], frozen: [] },
     problems: boardProblems(ctx, id, draft),
     request: openRequest(ctx, requestItem),
+    guardingBoards: liveBoards(ctx)
+      .filter((board) => board.id !== id && guardedBranch(board.def))
+      .map((board) => ({ id: board.id, name: board.def.name })),
   };
 }
 

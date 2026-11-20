@@ -11,12 +11,14 @@ import {
   pairToast,
   publishRoles,
   setupLeftText,
+  ungatedRepos,
+  ungatedText,
 } from './publish.ts';
 
 afterEach(() => setLanguage('en'));
 
-// A project whose one folder holds these repos, each with its gate.
-const settingsWith = (repos: Array<[string, GateKind]>): ProjectSettings => ({
+// A project whose one folder holds these repos, each with its gate and whether it has a remote.
+const settingsWith = (repos: Array<[string, GateKind, boolean?]>): ProjectSettings => ({
   id: 'p1',
   name: 'regadera-bot',
   storage: 'common',
@@ -32,7 +34,13 @@ const settingsWith = (repos: Array<[string, GateKind]>): ProjectSettings => ({
       path: '/r',
       kind: 'folder',
       missing: false,
-      repos: repos.map(([name, gate]) => ({ name, folder: name, gate, items: 0 })),
+      repos: repos.map(([name, gate, remote = false]) => ({
+        name,
+        folder: name,
+        gate,
+        items: 0,
+        remote,
+      })),
     },
   ],
 });
@@ -58,6 +66,38 @@ describe('hookOffer', () => {
 
   it('offers nothing while the settings are not read', () => {
     expect(hookOffer(mainline, null)).toEqual([]);
+  });
+});
+
+// A project with a remote whose live boards protect no branch gates no push: Publicar says so in
+// one line, and still publishes.
+describe('ungatedRepos', () => {
+  const mainline = instantiate(requireTemplate('mainline'), 'es', {}, sequenceIds());
+  const todos = instantiate(requireTemplate('todos'), 'es', {}, sequenceIds());
+  const remote = settingsWith([
+    ['regadera-bot', 'hard', true],
+    ['notas', 'soft'],
+  ]);
+
+  it('names the repos with a remote when neither the board nor a live one protects a branch', () => {
+    expect(ungatedRepos([todos], [], remote)).toEqual(['regadera-bot']);
+  });
+
+  it('names none when the board, or another live board, protects a branch', () => {
+    expect(ungatedRepos([mainline], [], remote)).toEqual([]);
+    expect(ungatedRepos([todos], [{ id: 'b2', name: 'Código' }], remote)).toEqual([]);
+  });
+
+  it('names none without a remote, or while the settings are not read', () => {
+    expect(ungatedRepos([todos], [], settingsWith([['notas', 'soft']]))).toEqual([]);
+    expect(ungatedRepos([todos], [], null)).toEqual([]);
+  });
+
+  it('says it in one line', () => {
+    setLanguage('es');
+    expect(ungatedText(['regadera-bot'])).toBe(
+      'Ningún tablero publicado protege una rama, así que Otea no frena ningún push de regadera-bot al remoto.',
+    );
   });
 });
 

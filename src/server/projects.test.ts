@@ -123,6 +123,7 @@ describe('the projects api', () => {
       expect(settings.paths).toHaveLength(1);
       expect(settings.paths[0]?.kind).toBe('repo');
       expect(settings.paths[0]?.repos[0]?.gate).toBe('soft');
+      expect(settings.paths[0]?.repos[0]?.remote).toBe(false);
       expect(settings.database.bytes).toBeGreaterThan(0);
       expect(settings.collections.map(({ name }) => name)).toEqual(['Pedidos', 'tasks']);
       expect(settings.collections[1]?.name).toBe('tasks');
@@ -170,6 +171,8 @@ describe('the projects api', () => {
 
       const settings = await get<ProjectSettings>('/api/project/settings');
       expect(settings.paths[0]?.repos[0]?.name).toBe('keys');
+      // A repo with a remote: pushes leave the machine, so a board that gates none says so.
+      expect(settings.paths[0]?.repos[0]?.remote).toBe(true);
     });
 
     // A board that protects a branch keeps its word only where Otea's pre-push hook runs the

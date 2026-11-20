@@ -270,6 +270,21 @@ describe('publishBoard', () => {
   });
 });
 
+describe('publishPlan guardingBoards', () => {
+  // The other live boards that protect a branch: with none, nothing gates a push, which the
+  // dialog says when the project has a remote.
+  it('names the other live boards that protect a branch, never the board itself', () => {
+    const ctx = memoryContext();
+    published(ctx);
+    const design = createBoard(ctx, { name: 'Piezas', template: 'design', lang: 'es' }, now);
+    expect(publishPlan(ctx, design.id).guardingBoards).toEqual([]);
+    const bugs = createBoard(ctx, { name: 'Fallos', template: 'bug-reports', lang: 'es' }, now);
+    expect(publishPlan(ctx, bugs.id).guardingBoards).toEqual([]);
+    publishBoard(ctx, bugs.id, { moves: {}, by: you }, now);
+    expect(publishPlan(ctx, design.id).guardingBoards).toEqual([{ id: bugs.id, name: 'Fallos' }]);
+  });
+});
+
 describe('publish moves', () => {
   it('lets go of the lease of an item a publish moves, and records it', () => {
     const ctx = memoryContext();

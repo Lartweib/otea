@@ -124,8 +124,14 @@ export type GateKind = 'hard' | 'soft';
 
 // A repo of the project: a linked repo, or one inside a linked folder. Its name is what a repo
 // task's `repo` field holds: the name the project gives it (app/repos.ts), or its folder's name
-// while the project does not know it.
-export type RepoSettings = { name: string; folder: string; gate: GateKind; items: number };
+// while the project does not know it. `remote`: it has an origin, so its pushes leave the machine.
+export type RepoSettings = {
+  name: string;
+  folder: string;
+  gate: GateKind;
+  items: number;
+  remote: boolean;
+};
 
 export type PathSettings = OverviewPath & { repos: RepoSettings[] };
 
@@ -169,6 +175,7 @@ function repoOf(path: string, parent: string, { itemRepos, known }: RepoNames): 
     folder: relative(parent, path).replaceAll('\\', '/') || '.',
     gate: hasOteaGitHook(path) ? 'hard' : 'soft',
     items: itemRepos.filter((repo) => repo === name).length,
+    remote: identity?.startsWith('remote:') ?? false,
   };
 }
 
