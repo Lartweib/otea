@@ -4,6 +4,7 @@ import { updateItemState } from '../store/queries.ts';
 import { addCollection } from './collections.ts';
 import { checkGate } from './gates.ts';
 import { createItem, showItem, updateItem } from './items.ts';
+import { markMerged } from './merged.ts';
 import { memoryContext, publishAs } from './testing.ts';
 
 const you = { kind: 'human' as const, name: 'fede' };
@@ -170,6 +171,80 @@ describe('gates on a board', () => {
         'push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.',
       );
       expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }).allowed).toBe(false);
+    });
+
+    // P5-R3-3: a board that commits approved work straight on main, in its land step, records each
+    // commit on its item (Commit en main); git push origin main was still refused, «this push
+    // brings in none», though every commit it brought was an approved item's.
+    describe('the commits approved items record as their own', () => {
+      const LOGO = 'abc1234aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa';
+      const EXTRA = 'def5678bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb';
+      const SUBJECTS: Record<string, string> = { [LOGO]: 'Logo 2026', [EXTRA]: 'Retoques' };
+      // A push of main bringing `commits`, none of them on a branch any item names.
+      const bringing =
+        (...commits: string[]) =>
+        () => ({
+          branches: [],
+          outside: () => commits.map((commit) => ({ commit, subject: SUBJECTS[commit] ?? '' })),
+        });
+      // The repo task, its branch left empty, with its commit written in one of its fields.
+      const recorded = (state: string, value = 'Hecho en abc1234') => {
+        const made = repoTask('main');
+        made.ctx.db
+          .prepare(
+            "UPDATE items SET fields = json_set(fields, '$.fbranch', '', '$.fwhat', ?) WHERE id = ?",
+          )
+          .run(value, made.id);
+        updateItemState(made.ctx.db, made.id, state, now());
+        return made;
+      };
+
+      it('takes a push of the base whose every commit an approved or Done item records', () => {
+        const { ctx, id } = recorded('done');
+        const check = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, bringing(LOGO));
+        expect(check).toMatchObject({ allowed: true, items: [{ id, allowed: true }] });
+        expect(check.items[0]?.text).toBe(
+          `push allowed: ${id} is Done and records abc1234 as its own; main takes it.`,
+        );
+      });
+
+      it('names, for the agent and for the person, each commit no approved item records', () => {
+        const { ctx } = recorded('done');
+        const check = checkGate(
+          ctx,
+          'push',
+          { branch: 'main', repo: 'api' },
+          bringing(LOGO, EXTRA),
+        );
+        expect(check).toMatchObject({ allowed: false });
+        expect(check.refusal).toBe(
+          'push refused: main would take 1 commit that no approved item holds on its branch or records as its own: def5678 (Retoques). Tareas de repo protects main: it takes only the branches of approved items, as they were pushed, and the commits an approved or Done item records by its id. If an approved item made it, record it on that item: while it is landed, in the field its step asks for (otea update <id> --field "<field>=def5678"); once it is Done, with otea merged <id> --commit def5678. If no approved item made it, push nothing of it: ask the person, otea ask <id> "<question>".',
+        );
+        expect(check.person).toBe(
+          'Para la persona: esta subida lleva a main 1 cambio que ningún ítem aprobado reconoce como suyo: def5678 «Retoques». Otea solo deja llegar a main lo que aprobaste. Si es de un ítem que ya aprobaste, pídele a tu agente que anote ese cambio en el ítem; si el ítem espera tu revisión, revísalo en el escritorio de Otea; luego vuelve a subir. Si el cambio es tuyo, súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.',
+        );
+      });
+
+      it('takes no commit from an item still in review, nor from a dropped one', () => {
+        for (const state of ['simpl__review', 'dropped']) {
+          const { ctx } = recorded(state);
+          const check = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, bringing(LOGO));
+          expect(check.allowed, state).toBe(false);
+          expect(check.refusal, state).toContain('abc1234 (Logo 2026)');
+        }
+      });
+
+      it('takes the commit otea merged recorded on a Done item, and only a whole id prefix', () => {
+        const { ctx, id } = recorded('done', 'sin hash');
+        markMerged(ctx, { id, actor: you, channel: 'cli', commit: 'abc1234' }, now);
+        expect(
+          checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, bringing(LOGO)).allowed,
+        ).toBe(true);
+        const short = recorded('done', 'abc12').ctx;
+        expect(
+          checkGate(short, 'push', { branch: 'main', repo: 'api' }, bringing(LOGO)).allowed,
+        ).toBe(false);
+      });
     });
 
     it('refuses a push to the base that brings in an item in review, and allows it once Done', () => {

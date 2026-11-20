@@ -1198,6 +1198,37 @@ export function branchForPersonText(all: readonly BoardDefinition[]): string {
   return BRANCH_FOR_PERSON[first?.title === TITLE_NAME.es ? 'es' : 'en'];
 }
 
+// What the person reads under a refused push into a protected base that brings commits no approved
+// item holds or records (P5-R3-3), for a person who is no programmer: what happened, by the
+// commits' own words, then what to ask the agent or do in the desk, and the same way past it as
+// under the other refusals of the base. In the language of the first board that protects it.
+const COMMITS_FOR_PERSON: Readonly<
+  Record<Lang, (base: string, count: number, shown: string) => string>
+> = {
+  en: (base, count, shown) =>
+    `For the person: this push brings to ${base} ${count === 1 ? '1 change' : `${count} changes`} that no approved item claims as its own: ${shown}. Otea lets only what you approved reach ${base}. If it is the work of an item you approved, ask your agent to record that change on the item; if the item waits for your review, review it in Otea's desk; then push again. If the change is yours, push it yourself this once with git push --no-verify, which skips Otea's check. An agent never uses --no-verify.`,
+  es: (base, count, shown) =>
+    `Para la persona: esta subida lleva a ${base} ${count === 1 ? '1 cambio que ningún ítem aprobado reconoce como suyo' : `${count} cambios que ningún ítem aprobado reconoce como suyos`}: ${shown}. Otea solo deja llegar a ${base} lo que aprobaste. Si es de un ítem que ya aprobaste, pídele a tu agente que anote ese cambio en el ítem; si el ítem espera tu revisión, revísalo en el escritorio de Otea; luego vuelve a subir. Si el cambio es tuyo, súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.`,
+};
+
+export function commitsForPersonText(
+  all: readonly BoardDefinition[],
+  base: string,
+  commits: readonly { commit: string; subject: string }[],
+): string {
+  const [first] = all;
+  const lang: Lang = first?.title === TITLE_NAME.es ? 'es' : 'en';
+  const [open, close] = lang === 'es' ? ['«', '»'] : ['“', '”'];
+  const shown =
+    commits
+      .slice(0, 5)
+      .map(({ commit, subject }) =>
+        subject ? `${commit.slice(0, 7)} ${open}${subject}${close}` : commit.slice(0, 7),
+      )
+      .join(', ') + (commits.length > 5 ? ', …' : '');
+  return COMMITS_FOR_PERSON[lang](base, commits.length, shown);
+}
+
 // What the person reads under a refused push that rewrites an item's branch (P1-R3-3): the same
 // way out as for the protected base, said in the board's language; never an agent's.
 const REWRITE_FOR_PERSON: Readonly<Record<Lang, string>> = {
