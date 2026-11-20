@@ -53,6 +53,16 @@ function named(entry: EvidenceModuleEntry): string {
   return `${quoted(entry)} (${entry.module}${variant})`;
 }
 
+// A text file refused by a module that takes diffs: a diff is known by its extension alone, so a
+// diff saved as .txt reads as a log (P8-R3-5). The refusal says how to name it.
+function asDiff(entry: LayoutEntry, filename: string): string {
+  const accepted = takes(entry);
+  if (!accepted.includes('diff') || evidenceTypeOf(filename).kind !== 'log') return '';
+  const dot = filename.lastIndexOf('.');
+  const stem = dot < 0 ? filename : filename.slice(0, dot);
+  return `: a diff is known by its extension, so save it as ${stem}.diff (or .patch) and attach that`;
+}
+
 function isCompare(entry: LayoutEntry): boolean {
   return entry.module === 'images' && entry.variant === 'compare';
 }
@@ -82,7 +92,7 @@ function chosen(
     if (!moduleAccepts(found, filename)) {
       throw new OteaError(
         'evidence_not_accepted',
-        `${named(found)} takes ${takes(found).join(', ')}, not ${filename}`,
+        `${named(found)} takes ${takes(found).join(', ')}, not ${filename}${asDiff(found, filename)}`,
       );
     }
     return found;

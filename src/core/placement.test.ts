@@ -129,6 +129,15 @@ describe('placeEvidence', () => {
     );
   });
 
+  // P8-R3-5: a diff saved as .txt went to the log part, and the Diff part refused it with no way out.
+  it('tells how to name a text file for a module that takes diffs', () => {
+    refused(
+      () => place(IMPR, 'fix.txt', { module: 'diff' }),
+      'evidence_not_accepted',
+      '"diff" (diff) takes diff, not fix.txt: a diff is known by its extension, so save it as fix.diff (or .patch) and attach that',
+    );
+  });
+
   it('needs a before or an after for a compare module', () => {
     expect(place(BUG, 'a.gif', { role: 'after' })).toEqual({ module: 'images', role: 'after' });
     for (const role of [undefined, 'single']) {
