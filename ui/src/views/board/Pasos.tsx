@@ -63,6 +63,14 @@ function WhoText({
       </span>
     );
   }
+  // Set aside for later: who did, as Lista, Te toca and its page say it, never «en cola» (P7-R3-1).
+  if (item.setAside) {
+    return (
+      <span className="who" data-s={`${item.id}:who`}>
+        <i>{t('listen.setAside', { agent: item.setAside.by })}</i>
+      </span>
+    );
+  }
   if (!item.lease && !item.expiredLease) {
     const open = item.children?.open ?? 0;
     suffix =
