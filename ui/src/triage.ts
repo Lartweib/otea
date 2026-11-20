@@ -14,7 +14,7 @@ import type { FeedEvent } from './activity.ts';
 import { handedNote, type TocaContext, tocaSection } from './derive/toca.ts';
 import { clamp, sstep } from './motion/curves.ts';
 import type { Evidence, Item, ItemView, Move } from './types.ts';
-import { otherMoves, planMoves } from './views/detail/moves.ts';
+import { heldForDraft, otherMoves, planMoves } from './views/detail/moves.ts';
 
 // Triaje (SPEC §10.4, mock:3995-4036): the reviews, one card at a time. Aprobar is the primary move,
 // Devolver… sends the item back to an agent with notes, Después leaves it for the end of the pass.
@@ -47,25 +47,34 @@ export type SwipeAction =
 export type Gate = { to: readonly string[]; note: string };
 
 // picks: the states the approvals that carry a pick lead to (core pickAt), when the review asks for one.
+// draftWaits: the board an agent drafts on this Pedido waits to be published (draftWaitsOf).
 export function triagePlan(
   moves: readonly Move[],
   waits?: Waits,
   gate?: Gate,
   picks?: readonly string[],
+  o: { draftWaits?: boolean } = {},
 ): TriagePlan {
   const blocked = moves.flatMap((move) => {
     const note = gate?.to.includes(move.to) ? gate.note : moveBlock(move, waits);
     return note === undefined ? [] : [{ move, note }];
   });
   const free = moves.filter((move) => !blocked.some((entry) => entry.move === move));
-  const primary = free[moveVariants(free, waits).indexOf('primary')];
+  const top = free[moveVariants(free, waits).indexOf('primary')];
+  // As on the item page, a close the draft holds back is offered nowhere, not even as the primary.
+  const primary = top && heldForDraft(top, o.draftWaits) ? undefined : top;
   const picked = primary && picks?.includes(primary.to) ? primary : undefined;
   const forward = picked ? undefined : primary;
-  const back = free.find((move) => move !== primary && move.turn === 'agent');
+  const back = free.find((move) => move !== top && move.turn === 'agent');
   // The item page's rule, over the moves that are free here: an approval that carries the pick is
   // made on the page, with it.
   const more = otherMoves(
-    planMoves(free, { own: false, word: (state) => state, ...(waits ? { waits } : {}) }),
+    planMoves(free, {
+      own: false,
+      word: (state) => state,
+      ...(waits ? { waits } : {}),
+      ...(o.draftWaits ? { draftWaits: true } : {}),
+    }),
   )
     .map(({ move }) => move)
     .filter((move) => move !== back && !picks?.includes(move.to));
