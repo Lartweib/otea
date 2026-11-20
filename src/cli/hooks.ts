@@ -27,17 +27,30 @@ const MARK = '# otea-hook: pre-push';
 const oteaCommand = shellLine;
 
 // Checks every branch the push writes to or deletes on the remote, not the local branch it sends
-// from, which may be another; refuses only when otea check refuses (gate_refused): if Otea cannot
-// run at all, or fails, the push goes on. Tags and other refs are not branches and go unchecked.
-// --commits names what the remote has and what it gets, so a push into a base branch a board
-// protects is checked against the branches it brings in.
+// from, which may be another; refuses when otea check refuses (gate_refused). It fails closed: when
+// Otea fails or cannot run at all, the push stops too, saying so, with the person's way past it
+// (Plan 7, item 4); only a gate nothing declares (invalid_gate: the project gates no push) lets it
+// go. Tags and other refs are not branches and go unchecked. --commits names what the remote has
+// and what it gets, so a push into a base branch a board protects is checked against the branches
+// it brings in. Otea's language is unknown when it cannot run: the person's line is in both.
 function gitCheckLines(otea: Launcher): string {
+  const failed = [
+    'Otea could not check this push of $branch (exit $code), so it does not go through: make sure otea runs here (otea check --gate push --branch $branch --repo), then push again.',
+    "For the person: to push it yourself this once, git push --no-verify, which skips Otea's check. An agent never uses --no-verify.",
+    'Para la persona: para subirlo tú esta vez, git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.',
+  ];
   return [
     'while read -r local_ref local_sha remote_ref remote_sha; do',
     '  case "$remote_ref" in',
     '    refs/heads/*)',
-    `      ${oteaCommand(otea)} check --gate push --branch "\${remote_ref#refs/heads/}" --repo --commits "$remote_sha..$local_sha" < /dev/null`,
-    `      if [ $? -eq ${EXIT_CODES.gate_refused} ]; then exit 1; fi`,
+    '      branch="${remote_ref#refs/heads/}"',
+    `      ${oteaCommand(otea)} check --gate push --branch "$branch" --repo --commits "$remote_sha..$local_sha" < /dev/null`,
+    '      code=$?',
+    `      if [ $code -eq ${EXIT_CODES.gate_refused} ]; then exit 1; fi`,
+    `      if [ $code -ne 0 ] && [ $code -ne ${EXIT_CODES.invalid_gate} ]; then`,
+    ...failed.map((line) => `        echo "${line}" >&2`),
+    '        exit 1',
+    '      fi',
     '      ;;',
     '  esac',
     'done',

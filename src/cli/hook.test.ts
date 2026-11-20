@@ -103,9 +103,10 @@ describe('hook', () => {
       expect(result.out).toContain('  # otea-hook: pre-push');
       expect(hook.startsWith('#!/bin/sh\n# otea-hook: pre-push\n')).toBe(true);
       expect(hook).toContain(
-        `check --gate push --branch "\${remote_ref#refs/heads/}" --repo --commits "$remote_sha..$local_sha"`,
+        `check --gate push --branch "$branch" --repo --commits "$remote_sha..$local_sha"`,
       );
-      expect(hook).toContain('if [ $? -eq 19 ]; then exit 1; fi');
+      expect(hook).toContain('if [ $code -eq 19 ]; then exit 1; fi');
+      expect(hook).toContain('if [ $code -ne 0 ] && [ $code -ne 2 ]; then');
       if (process.platform !== 'win32') {
         expect(statSync(join(repo.dir, '.git/hooks/pre-push')).mode & 0o111).not.toBe(0);
       }
@@ -173,7 +174,7 @@ describe('hook', () => {
             "import { appendFileSync } from 'node:fs';",
             "const branch = process.argv[process.argv.indexOf('--branch') + 1];",
             `appendFileSync(${JSON.stringify(join(repo.dir, 'asked.log'))}, branch + '\\n');`,
-            "process.exit(branch === 'frozen' ? 19 : 1);",
+            'process.exit({ frozen: 19, broken: 1, nogate: 2 }[branch] ?? 0);',
           ].join('\n'),
         );
         const author = ['-c', 'user.name=t', '-c', 'user.email=t@t'];
@@ -189,6 +190,25 @@ describe('hook', () => {
         expect(push('frozen:refs/heads/open', '+HEAD:loose')).toBe(0);
 
         expect(asked()).toEqual(['frozen', 'open', 'loose']);
+      });
+
+      // Plan 7 item 4: the hook passed on anything but 19, so an Otea that failed or could not run
+      // let a gated push through. It fails closed, saying so, with the person's way past it; a
+      // gate nothing declares (2) still lets the push go.
+      it('refuses the push when Otea fails or cannot run, and says how the person gets past it', () => {
+        let said = '';
+        try {
+          git('push', '--quiet', remote.dir, 'HEAD:refs/heads/broken');
+        } catch (error) {
+          said = String((error as { stderr: string }).stderr);
+        }
+        expect(said).toContain('Otea could not check this push of broken (exit 1)');
+        expect(said).toContain('git push --no-verify');
+        expect(said).toContain('Para la persona');
+        expect(push('HEAD:refs/heads/nogate')).toBe(0);
+
+        installGitHook(repo.dir, oteaLauncher(join(repo.dir, 'missing.mjs'), { execPath: 'node' }));
+        expect(push('HEAD:refs/heads/open')).toBe(1);
       });
 
       it('checks a branch the push deletes, and leaves tags alone', () => {

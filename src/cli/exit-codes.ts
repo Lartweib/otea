@@ -15,8 +15,8 @@ export type FailureCode =
 export const EXIT_CODES: Readonly<Record<'ok' | FailureCode, number>> = {
   ok: 0,
   unexpected: 1,
-  // otea check: the gate refuses the action, the exit code hooks stop on; its own, so a hook never
-  // stops on a crash or a busy port.
+  // otea check: the gate refuses the action; its own code, so a hook tells a refusal from a crash,
+  // on which it stops too, saying Otea could not check.
   gate_refused: 19,
   usage: 2,
   not_found: 3,
