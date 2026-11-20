@@ -790,6 +790,10 @@ export const detail = {
     'le llega al agente la próxima vez que consulte Otea · no cambia paso, ronda ni reserva',
   'notes.leaveSays':
     'le llega a {agent} la próxima vez que consulte Otea · no cambia paso, ronda ni reserva',
+  'notes.leaveSaysAsideAny':
+    'le llega al agente la próxima vez que consulte Otea y lo retoma · no cambia paso, ronda ni reserva',
+  'notes.leaveSaysAside':
+    'le llega a {agent} la próxima vez que consulte Otea y lo retoma · no cambia paso, ronda ni reserva',
   'notes.quiet': '{agent} no da señales desde hace {minutes} min; puede que no la lea',
   'notes.form.title': 'Tu nota',
   'notes.form.for': 'para {agent}, sin pararlo',

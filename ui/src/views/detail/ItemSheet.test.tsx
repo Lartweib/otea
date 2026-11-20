@@ -103,6 +103,20 @@ describe('the item sheet', () => {
     expect(renderToStaticMarkup(<>{leaveSays('Mender')}</>)).toContain('le llega a <b>Mender</b>');
   });
 
+  // P5-R3-11: on an item an agent set aside, the note takes it up again (#463), while the box said
+  // it changed nothing.
+  it('says a note on an item set aside takes it up again', () => {
+    setLanguage('es');
+    expect(leaveSays(null, true)).toBe(
+      'le llega al agente la próxima vez que consulte Otea y lo retoma · no cambia paso, ronda ni reserva',
+    );
+    expect(renderToStaticMarkup(<>{leaveSays('Mender', true)}</>)).toContain(
+      'le llega a <b>Mender</b> la próxima vez que consulte Otea y lo retoma',
+    );
+    setLanguage('en');
+    expect(leaveSays(null, true)).toContain('and takes it up again');
+  });
+
   it('lets the person attach a file to an open item, and not to a closed one', () => {
     setLanguage('es');
     expect(render()).toContain('>Adjuntar<');
