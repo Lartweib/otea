@@ -23,9 +23,10 @@ import { type BoardIcon, boardEntries, foldClip, type RailKey, railKey } from '.
 import { useMedia } from './use-media.ts';
 
 // The rail (SPEC §7.2, mock:159-198, 1420-1458, 4038-4069): the head (fold, + Nuevo ítem, named so
-// it never reads as a new view, P7-14), vistas with Te toca and Atasco, the boards with yours / open, Nuevo tablero, the project's Studio and
-// settings, one selection pill that slides to the row in view, and Preferences at the foot. It
-// folds to a 60 px strip of icons: the rail clips, the labels fade, badges come up, and the main
+// it never reads as a new view, P7-14), vistas with Te toca, Atasco and Temas (what waits for you),
+// the boards with yours / open, Nuevo tablero, the project's Studio, settings and performance (set
+// up and reviewed now and then), one selection pill that slides to the row in view, and
+// Preferences at the foot. It folds to a 60 px strip of icons: the rail clips, the labels fade, badges come up, and the main
 // pane slides from where it was, so nothing reflows. Below 1024 px it is always folded.
 
 const NARROW = '(max-width: 1023px)';
@@ -46,9 +47,11 @@ type RowProps = {
   pairTip?: string;
   badge?: { n: number; warn?: boolean };
   plus?: ReactNode;
+  // A small gap above it, no heading: a row of another kind in the same list (Temas under the views).
+  apart?: boolean;
 };
 
-function Row({ k, on, icon, label, to, pair, pairTip, badge, plus }: RowProps) {
+function Row({ k, on, icon, label, to, pair, pairTip, badge, plus, apart }: RowProps) {
   const app = useApp();
   const go = () => {
     if (typeof to === 'string') window.location.hash = to;
@@ -57,7 +60,7 @@ function Row({ k, on, icon, label, to, pair, pairTip, badge, plus }: RowProps) {
   return (
     // biome-ignore lint/a11y/useSemanticElements: a row that holds its own + button
     <div
-      className={on ? 'nrow on' : 'nrow'}
+      className={['nrow', on ? 'on' : '', apart ? 'apart' : ''].filter(Boolean).join(' ')}
       role="button"
       tabIndex={0}
       aria-current={on ? 'page' : undefined}
@@ -193,6 +196,7 @@ export function Rail() {
   const boards = boardEntries(app.collections, app.all);
   // Side topics: listed while they are on or some were kept; the answered ones are yours.
   const topics = useTopics();
+  const answered = answeredTopics(topics?.topics ?? []).length;
   const foldLabel = folded ? t('nav.show') : t('nav.hide');
 
   useSelPill(navs, key);
@@ -292,6 +296,20 @@ export function Rail() {
             pair={<Count value={stuck} tone="warn" hold />}
             badge={{ n: stuck, warn: true }}
           />
+          {/* Temas wait for you to read or close them, as Te toca does; conversations, not lists
+              of items, so a small gap sets them apart (the phone's Panel lists them the same). */}
+          {topicsShown(topics) ? (
+            <Row
+              k="topics"
+              on={key === 'topics'}
+              icon={<TypeIcon name="chat-bubble" size={16} />}
+              label={t('nav.topics')}
+              to={{ view: 'topics' }}
+              pair={<Count value={answered} tone="you" hold />}
+              badge={{ n: answered }}
+              apart
+            />
+          ) : null}
         </nav>
         <div className="rail-label">{t('nav.boards')}</div>
         <nav className="nav boards">
@@ -348,16 +366,6 @@ export function Rail() {
               icon={<TypeIcon name="gear" size={16} />}
               label={t('nav.settings')}
               to={{ view: 'settings' }}
-            />
-          ) : null}
-          {topicsShown(topics) ? (
-            <Row
-              k="topics"
-              on={key === 'topics'}
-              icon={<TypeIcon name="chat-bubble" size={16} />}
-              label={t('nav.topics')}
-              to={{ view: 'topics' }}
-              pair={<Count value={answeredTopics(topics?.topics ?? []).length} tone="you" hold />}
             />
           ) : null}
           <Row
