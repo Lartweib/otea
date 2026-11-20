@@ -243,3 +243,24 @@ export function comparedFiles(
   const fileB = pair?.after ?? now[0];
   return { ...(fileA ? { a: fileA } : {}), ...(fileB ? { b: fileB } : {}) };
 }
+
+// The version of the picture `shown` in the last round before its own that has pictures among
+// `files`, paired by name as namePairs pairs two rounds (the phone's Comparar, #472): what the desk
+// gallery compares it with. `from` and `to` are the two rounds. Undefined in its first round, off a
+// review (no round known), or when no picture of that round goes with it.
+export function earlierRoundPair(
+  files: readonly Evidence[],
+  roundOf: ReadonlyMap<number, number>,
+  shown: Evidence,
+): { before: Evidence; from: number; to: number } | undefined {
+  const to = roundOf.get(shown.id);
+  if (to === undefined) return undefined;
+  const roundsBefore = files
+    .map(({ id }) => roundOf.get(id))
+    .filter((n): n is number => n !== undefined && n < to);
+  if (roundsBefore.length === 0) return undefined;
+  const from = Math.max(...roundsBefore);
+  const of = (n: number) => files.filter(({ id }) => roundOf.get(id) === n);
+  const before = namePairs(of(from), of(to)).find(({ after }) => after === shown)?.before;
+  return before ? { before, from, to } : undefined;
+}
