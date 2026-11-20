@@ -56,6 +56,8 @@ export type LeaveNoteInput = {
     seconds?: number;
     line?: number;
     quote?: string;
+    // The quote is a whole paragraph of a document, not a phrase of it (P5-R2-8).
+    whole?: boolean;
     node?: string;
     // In a PDF, the page (from 1) the point or zone is on.
     page?: number;
@@ -150,6 +152,7 @@ function anchorFor(
     ...(seconds === undefined ? {} : { seconds }),
     ...(line === undefined ? {} : { line }),
     ...(quote === undefined ? {} : { quote }),
+    ...(quote !== undefined && given.whole === true ? { whole: true as const } : {}),
     ...(node === undefined ? {} : { node }),
     ...(page === undefined ? {} : { page }),
     ...spot,

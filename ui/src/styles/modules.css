@@ -69,6 +69,13 @@
   text-decoration-thickness: 2px;
 }
 
+/* A paragraph reads as the page reads it, in a dialog too: a dialog's own lead paragraph is grey
+   italic (pops.css), and it set every paragraph of a document read in the reader (P5-R3-5). */
+.dialog .md p {
+  font: inherit;
+  color: inherit;
+}
+
 /* Inline in its sentence, in a dialog too (a dialog's own code reads as a block: pops.css). */
 .md code,
 .dialog .md code {

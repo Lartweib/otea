@@ -76,6 +76,38 @@ describe('the thread of notes', () => {
     expect(html).toMatch(/Hacerlo · ronda 2 · \d\d:\d\d · llevaba 1 de 3 entregables/);
   });
 
+  // P5-R2-8: a note on a whole paragraph of a document was listed as «la frase».
+  it('names a note on a document by what it is on: the paragraph, or the phrase', () => {
+    setLanguage('es');
+    const doc: Evidence = {
+      ...gif,
+      id: 8,
+      module: 'docs',
+      kind: 'file',
+      filename: 'manual.md',
+      contentType: 'text/markdown',
+    };
+    const on = (note: number, anchor: Partial<NonNullable<ItemNote['anchor']>>): ItemNote => ({
+      ...(notes[1] as ItemNote),
+      note,
+      text: `Nota ${note}`,
+      anchor: { evidence: 8, filename: 'manual.md', ...anchor },
+    });
+    const html = renderToStaticMarkup(
+      <Thread
+        notes={[
+          on(3, { quote: 'Nunca estires el logo.', whole: true }),
+          on(4, { quote: 'estires el logo' }),
+        ]}
+        evidence={[doc]}
+        now={NOW}
+        agent="claude-d"
+      />,
+    );
+    expect(html).toContain('el párrafo «Nunca estires el logo.»');
+    expect(html).toContain('la frase «estires el logo»');
+  });
+
   it('reads the notes and the answers as Markdown, never their raw marks', () => {
     const marked = [
       {
