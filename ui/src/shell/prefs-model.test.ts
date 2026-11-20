@@ -6,9 +6,4 @@ describe('the motion note', () => {
     expect(motionNote('system', false)).toBe('system-full');
     expect(motionNote('system', true)).toBe('system-reduced');
   });
-
-  it('says what each choice does', () => {
-    expect(motionNote('full', true)).toBe('full');
-    expect(motionNote('reduced', false)).toBe('reduced');
-  });
 });

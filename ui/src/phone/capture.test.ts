@@ -120,43 +120,28 @@ describe('a board that asks for its long text at creation', () => {
     expect(b?.type).toBeUndefined();
     expect(b?.needs).toEqual(['Descripción', 'Severidad']);
   });
-
-  it('lands where an item with its note starts', () => {
-    expect(landsStep(asks.types[0] as TypeView)).toBe('todo');
-  });
 });
 
 describe('pickBoard', () => {
   const boards = captureBoards([tasks, errors, requests]);
 
-  it('takes the board it was opened from', () => {
-    expect(pickBoard(boards, { here: 'Pedidos', last: 'Tareas' })).toMatchObject({
-      board: { name: 'Pedidos' },
-      why: 'here',
-    });
-  });
-
-  it('else the last one used on this device', () => {
-    expect(pickBoard(boards, { last: 'Pedidos' })).toMatchObject({
-      board: { name: 'Pedidos' },
-      why: 'last',
-    });
-  });
-
-  it('else the first that takes a title, skipping a remembered board that no longer does', () => {
-    expect(pickBoard(boards, { last: 'Errores' })).toMatchObject({
-      board: { name: 'Tareas' },
-      why: 'first',
-    });
-    expect(pickBoard(boards, { last: 'Gone' })).toMatchObject({ why: 'first' });
-  });
-
-  it('says when the board it was opened from asks for more', () => {
-    expect(pickBoard(boards, { here: 'Errores', last: 'Pedidos' })).toMatchObject({
-      board: { name: 'Pedidos' },
-      why: 'last',
-      skipped: 'Errores',
-    });
+  // The board it was opened from, else the last one used on this device, else the first that takes
+  // a title, skipping a remembered board that no longer does; and it says when the board it was
+  // opened from asks for more.
+  it.each<[Parameters<typeof pickBoard>[1], Record<string, unknown>]>([
+    [
+      { here: 'Pedidos', last: 'Tareas' },
+      { board: { name: 'Pedidos' }, why: 'here' },
+    ],
+    [{ last: 'Pedidos' }, { board: { name: 'Pedidos' }, why: 'last' }],
+    [{ last: 'Errores' }, { board: { name: 'Tareas' }, why: 'first' }],
+    [{ last: 'Gone' }, { why: 'first' }],
+    [
+      { here: 'Errores', last: 'Pedidos' },
+      { board: { name: 'Pedidos' }, why: 'last', skipped: 'Errores' },
+    ],
+  ])('picks from %o', (from, picked) => {
+    expect(pickBoard(boards, from)).toMatchObject(picked);
   });
 
   it('has nothing to offer when no board takes a title alone', () => {

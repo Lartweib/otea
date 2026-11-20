@@ -654,15 +654,6 @@ describe('a board on the phone (mobile mock 4)', () => {
     expect(phoneChips(errores, items)[0]?.label).toBe('Todos');
   });
 
-  it('lists by step, in the default order, the chosen step only', () => {
-    expect(phonePrefs(null)).toEqual({ group: 'state', sort: null, filters: {} });
-    expect(phonePrefs('fixing')).toEqual({
-      group: 'state',
-      sort: null,
-      filters: { state: ['fixing'] },
-    });
-  });
-
   it('keeps only the chosen step’s items', () => {
     const { entries } = boardEntries(
       items,

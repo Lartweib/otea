@@ -47,17 +47,16 @@ describe('offlineCapable', () => {
   const PHONE = 'Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X) Safari/604.1';
   const DESKTOP_APP = 'Mozilla/5.0 (Windows NT 10.0) Chrome/138.0 Electron/37.2.0 Safari/537.36';
 
-  it('works over HTTPS (Tailscale, localhost) with service workers', () => {
-    expect(offlineCapable({ secure: true, hasWorker: true, userAgent: PHONE })).toBe(true);
-  });
-
-  it('not on the local network’s plain HTTP: the app works only while the PC is on', () => {
-    expect(offlineCapable({ secure: false, hasWorker: true, userAgent: PHONE })).toBe(false);
-    expect(offlineCapable({ secure: true, hasWorker: false, userAgent: PHONE })).toBe(false);
-  });
-
-  it('never inside the desktop app, which is the PC itself', () => {
-    expect(offlineCapable({ secure: true, hasWorker: true, userAgent: DESKTOP_APP })).toBe(false);
+  // It works over HTTPS (Tailscale, localhost) with service workers; not on the local network's
+  // plain HTTP, where the app works only while the PC is on; never inside the desktop app, which
+  // is the PC itself.
+  it.each([
+    [true, true, 'phone', PHONE, true],
+    [false, true, 'phone', PHONE, false],
+    [true, false, 'phone', PHONE, false],
+    [true, true, 'desktop app', DESKTOP_APP, false],
+  ])('secure=%s worker=%s in the %s → %s', (secure, hasWorker, _, userAgent, capable) => {
+    expect(offlineCapable({ secure, hasWorker, userAgent })).toBe(capable);
   });
 });
 

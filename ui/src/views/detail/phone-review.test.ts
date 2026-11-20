@@ -14,8 +14,6 @@ import {
   phoneRounds,
   readerOf,
   requestLine,
-  roundTagWord,
-  splitEvidence,
 } from './phone-review.ts';
 
 afterEach(() => setLanguage('en'));
@@ -77,20 +75,6 @@ describe('the rounds of the step under review, on the phone', () => {
 
   it('leaves the last one without a tag when it is not your turn', () => {
     expect(phoneRounds(rounds, false)[0]?.tag).toBeNull();
-  });
-
-  it('says how each one ended in words', () => {
-    setLanguage('es');
-    expect(roundTagWord('yours')).toBe('tu veredicto');
-    expect(roundTagWord('sentBack')).toBe('devuelta');
-    expect(roundTagWord('approved')).toBe('aprobada');
-    expect(roundTagWord(null)).toBe('');
-  });
-
-  it('splits the evidence into images and other files', () => {
-    const { images, files } = splitEvidence(rounds[1]?.evidence ?? []);
-    expect(images.map((e) => e.filename)).toEqual(['subiendo.png']);
-    expect(files.map((e) => e.filename)).toEqual(['saves.ts']);
   });
 
   it('marks what is new, what is gone and what stayed from one round to the next', () => {

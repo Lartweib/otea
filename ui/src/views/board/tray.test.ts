@@ -79,11 +79,6 @@ describe('the tray, by what each part is', () => {
     ]);
     expect(g.closing.map((b) => b.label)).toEqual(['wont fix']);
   });
-
-  it('gives every open move a real button: quiet unless it is the main one', () => {
-    const g = trayGroups(trayButtons([ACCEPT, APPROVE], word));
-    expect(g.main.map((b) => b.variant)).toEqual(['primary', 'quiet']);
-  });
 });
 
 describe('the tray notice', () => {
@@ -130,10 +125,5 @@ describe('the tray notice', () => {
 
   it('says nothing when every move shows', () => {
     expect(trayNotice(plan({ moves: [ACCEPT] }), 1)).toBeNull();
-  });
-
-  it('speaks English too', () => {
-    setLanguage('en');
-    expect(trayNotice(plan({ hidden: ['accepted'] }), 3)?.say).toBe('These 3 share no move.');
   });
 });

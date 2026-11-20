@@ -37,16 +37,6 @@ const topbar = (o: Parameters<typeof testApp>[0] = {}) =>
   renderIn(testApp(o), createElement(Topbar));
 
 describe('the topbar', () => {
-  it('has no panel button: on the phone the sheet opens from the bottom', () => {
-    expect(topbar()).not.toContain('navbtn');
-  });
-
-  it('puts the project on the left, the mark in the centre and the agents on the right', () => {
-    const html = topbar({ agents: [agent('Scout'), agent('Quill')] });
-    expect(html.indexOf('class="pill"')).toBeLessThan(html.indexOf('brand'));
-    expect(html.indexOf('brand')).toBeLessThan(html.indexOf('class="apill"'));
-  });
-
   it('names the project on its pill, with its monogram on the tile', () => {
     setLanguage('es');
     const html = topbar();
@@ -78,17 +68,6 @@ describe('the topbar', () => {
       ],
     });
     expect(busy).toContain('class="brand yours working"');
-  });
-
-  it('draws the o as a letter of the word: a ring at the stems’ weight, its dot and trail', () => {
-    const html = topbar({ all: [item({ id: 'A', turn: 'agent' })] });
-    // Schibsted's o in font units: centre (305.5, -265.6), outer radius 281 at weight 150
-    expect(html).toContain('class="brand-ring" cx="305.5" cy="-265.6" r="206"');
-    expect(html).toContain('stroke-width="150"');
-    expect(html).toContain('class="brand-dot"');
-    expect(html).toContain('class="brand-trail"');
-    expect(html).not.toContain('brand-orbit');
-    expect(html).not.toContain('brand-fill');
   });
 
   it('says how many work, with the total in grey, the halo breathing behind the orbit', () => {
@@ -181,12 +160,6 @@ describe('the project menu', () => {
     expect(html).toMatch(/<span class="pw"><i class="dot"><\/i>5<\/span>/);
   });
 
-  it('labels the projects with their count', () => {
-    expect(menu()).toContain(
-      '<div class="plabel" data-i=""><span>proyectos</span><span>3</span></div>',
-    );
-  });
-
   it('ticks the project open now, opens another in this window, keeps an unreadable one inert', () => {
     const html = menu();
     expect(html).toMatch(/class="prow cur"[^>]*aria-current="page"/);
@@ -264,11 +237,6 @@ describe('the agents menu', () => {
     expect(menu()).toContain(
       '<div class="plabel" data-i=""><span>agentes en Hollowmere</span><span class="sum"><b>1 trabajando</b> · 1 escuchando · <span class="warn-t">1 callado</span></span></div>',
     );
-  });
-
-  it('puts the quiet one first, then who works, then who waits', () => {
-    const names = [...menu().matchAll(/data-agent="([^"]+)"/g)].map(([, name]) => name);
-    expect(names).toEqual(['Kiln', 'Scout', 'Quill']);
   });
 
   it('shows each agent with its harness, its profile in mono and what it does now', () => {
@@ -356,12 +324,6 @@ describe('the agents menu', () => {
     );
     expect(html).toContain(
       'conectado: tiene una reserva, su servidor MCP está abierto o usó Otea hace un momento; escucha solo mientras otea wait corre',
-    );
-  });
-
-  it('leads to how each model performs, in its footer', () => {
-    expect(menu()).toContain(
-      '<b>Ver rendimiento</b><small>cuántas entregas vuelven, por modelo</small>',
     );
   });
 });

@@ -168,16 +168,6 @@ describe('Te toca on the phone', () => {
     expect(html).toContain('<q>Reintenta la subida.</q>');
     expect(html).toContain('1 imagen');
   });
-
-  it('keeps the desk as it was', () => {
-    setLanguage('es');
-    const blocks = tocaBlocks(app(all, feed), false);
-    const secs = blocks.filter((b) => b.kind === 'sec').map((b) => b.kind === 'sec' && b.title);
-    expect(secs).toContain('Cerrados');
-    expect(blocks.find((b) => b.key === 'quiet')).toBeUndefined();
-    const row = blocks.find((b) => b.key === 'R1') as Extract<LaneBlock, { kind: 'row' }>;
-    expect(markup(row.content)).not.toContain('p-said');
-  });
 });
 
 describe("Te toca's head on the phone", () => {

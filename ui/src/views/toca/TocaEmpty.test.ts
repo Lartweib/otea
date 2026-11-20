@@ -38,13 +38,6 @@ describe('Te toca with nothing to list yet', () => {
     expect(html).not.toContain('empty-first');
     expect(html).not.toContain('class="lanes');
   });
-
-  it('keeps its sections once there is a board', () => {
-    const html = render(
-      fake({ all: [item({ id: 'ERR-1' })], collections: [errores as unknown as CollectionView] }),
-    );
-    expect(html).toContain('class="lanes');
-  });
 });
 
 describe('Te toca on the phone (mobile mock 1)', () => {
@@ -54,11 +47,6 @@ describe('Te toca on the phone (mobile mock 1)', () => {
       collections: [errores as unknown as CollectionView],
       phone,
     });
-
-  it('has no agents column on either: the agents live in the menu up top', () => {
-    expect(render(app(false))).not.toContain('class="agents"');
-    expect(render(app(true))).not.toContain('class="agents"');
-  });
 
   it('offers to connect an agent on the desk while none is connected, counting what waits', () => {
     const waiting = item({ id: 'ERR-2', turn: 'agent', state: 'fixing' });

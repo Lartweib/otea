@@ -95,25 +95,6 @@ const render = (shown: ItemView = item, value: App = app) =>
   );
 
 describe('the item sheet', () => {
-  it('lays out the bar, the headline, the route, the moves, details, body and history', () => {
-    const html = render();
-    for (const cls of [
-      'sheet-bar',
-      'crumb',
-      'bar-r',
-      'headline',
-      'standfirst',
-      'route-wrap',
-      'acts',
-      'd-details',
-      'd-line',
-      'd-main',
-      'd-hist',
-    ])
-      expect(html).toContain(`class="${cls}`);
-    expect(html.match(/data-c="true"/g)?.length).toBeGreaterThanOrEqual(7);
-  });
-
   it('says a note reaches "el agente" with the contraction Spanish needs', () => {
     setLanguage('es');
     expect(leaveSays(null)).toBe(

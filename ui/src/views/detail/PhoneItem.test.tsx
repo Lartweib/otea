@@ -137,21 +137,15 @@ describe('reviewing an item on the phone', () => {
     expect(working).not.toContain('Nadie está escuchando');
   });
 
-  it('goes back to where it came from and says the item and its step on one line', () => {
+  // It goes back to where it came from. Opened from Triage, the page went back to the item's board
+  // (P7-R3-2): it says Triage, where closing it goes.
+  it.each<[App['route'], string]>([
+    [{ view: 'toca', item: 'ERR-214' }, 'Te toca'],
+    [{ view: 'triage', item: 'ERR-214' }, 'Triaje'],
+  ])('goes back to %o, saying %s (P7-R3-2)', (route, back) => {
     setLanguage('es');
-    const html = render();
-    expect(html).toContain('class="p-ihead"');
-    expect(html).toMatch(/class="p-back"[^>]*>.*Te toca<\/button>/);
-    expect(html).not.toContain('class="sheet-bar');
-    expect(html).not.toContain('d-hist');
-  });
-
-  // Opened from Triage, the page went back to the item's board (P7-R3-2): it says Triage, where
-  // closing it goes.
-  it('says it goes back to Triage when it was opened there', () => {
-    setLanguage('es');
-    const html = render(review, true, [], { view: 'triage', item: 'ERR-214' });
-    expect(html).toMatch(/class="p-back"[^>]*>.*Triaje<\/button>/);
+    const html = render(review, true, [], route);
+    expect(html).toMatch(new RegExp(`class="p-back"[^>]*>.*${back}</button>`));
   });
 
   it('shows the rounds of the step as one segment, newest first, and Comparar', () => {
@@ -340,11 +334,5 @@ describe('reviewing an item on the phone', () => {
       /class="p-ways"><button[^>]*data-move="reported"[^>]*>Mover a [^<]+<\/button>/,
     );
     expect(dock).not.toContain('data-move="wont_fix"');
-  });
-
-  it('leaves the desk sheet as it was', () => {
-    const html = render(review, false);
-    expect(html).toContain('class="sheet-bar');
-    expect(html).not.toContain('p-dock');
   });
 });

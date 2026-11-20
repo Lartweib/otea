@@ -11,26 +11,6 @@ export type NavSheetStore = {
   subscribe(fn: () => void): () => void;
 };
 
-export function makeNavSheet(): NavSheetStore {
-  let open = false;
-  const listeners = new Set<() => void>();
-  const set = (v: boolean) => {
-    if (v === open) return;
-    open = v;
-    for (const fn of [...listeners]) fn();
-  };
-  return {
-    get: () => open,
-    open: () => set(true),
-    close: () => set(false),
-    toggle: () => set(!open),
-    subscribe(fn) {
-      listeners.add(fn);
-      return () => listeners.delete(fn);
-    },
-  };
-}
-
 export const navSheet: NavSheetStore = {
   get: () => shellUi.get().nav,
   open: () => shellUi.set({ nav: true }),
