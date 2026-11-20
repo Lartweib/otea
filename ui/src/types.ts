@@ -324,6 +324,8 @@ export type RepoSettings = {
   gate: GateKind;
   items: number;
   remote: boolean;
+  // An older Otea wrote its pre-push hook, which lets a push through when Otea cannot check it.
+  hookOutdated?: true;
 };
 
 // What writing Otea's pre-push hook into the project's repos did (POST /api/project/git-hook): the

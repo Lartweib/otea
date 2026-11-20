@@ -76,4 +76,25 @@ describe('the gate of a repo', () => {
     );
     expect(html).toContain('<code class="pj-code">otea hook install --git</code>');
   });
+
+  // A hook an older Otea wrote lets a push through when Otea cannot run: the command updates it.
+  it('says the hook is outdated, with the command that updates it', () => {
+    const html = renderToStaticMarkup(
+      createElement(Repos, {
+        repos: [
+          {
+            name: 'bot',
+            folder: '.',
+            gate: 'hard',
+            items: 1,
+            remote: false,
+            hookOutdated: true,
+          },
+        ],
+      }),
+    );
+    expect(html).toContain('data-hook="outdated"');
+    expect(html).toContain('<code class="pj-code">otea hook install --git</code>');
+    expect(html).not.toContain('data-gate="hard"');
+  });
 });

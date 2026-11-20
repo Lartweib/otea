@@ -323,11 +323,22 @@ function gatesLine(gates: Record<string, boolean>): string {
 }
 
 // Whether the checkouts of the item's repo have Otea's pre-push hook (show, on a repo task).
-export function gitHookLine({ repo, installed, missing, foreign = [] }: GitHookStatus): string {
-  if (installed.length === 0 && missing.length === 0 && foreign.length === 0)
+export function gitHookLine({
+  repo,
+  installed,
+  missing,
+  foreign = [],
+  outdated = [],
+}: GitHookStatus): string {
+  if ([installed, missing, foreign, outdated].every((paths) => paths.length === 0))
     return `Git hook: no checkout of ${repo} is known to the project (otea repos add)`;
   const said = [
     ...(installed.length > 0 ? [`installed in ${installed.join(', ')}`] : []),
+    ...(outdated.length > 0
+      ? [
+          `outdated in ${outdated.join(', ')} (it lets a push through when Otea cannot check it): run otea hook install --git there`,
+        ]
+      : []),
     ...(missing.length > 0
       ? [`not installed in ${missing.join(', ')}: run otea hook install --git there`]
       : []),

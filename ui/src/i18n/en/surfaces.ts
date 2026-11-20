@@ -211,6 +211,8 @@ export const surfaces = {
   'settings.hookInstalled': 'hook installed',
   'settings.soft': 'soft',
   'settings.instructionsOnly': 'instructions only',
+  'settings.hookOutdated': 'old hook',
+  'settings.hookOutdatedText': 'lets unchecked pushes through',
   'settings.notChecked': 'not checked while missing',
   'settings.noRepos': 'No repo inside this folder yet.',
   'settings.newLocation': 'new location of {path}',

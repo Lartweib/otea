@@ -242,6 +242,7 @@ import {
   gitHookOf,
   type HookChange,
   installGitHook,
+  outdatedGitHookLine,
   removeClaudeHook,
   removeGitHook,
 } from './hooks.ts';
@@ -798,7 +799,16 @@ const connect: Command = {
     const { cwd, option, flag } = input;
     const name = input.agent;
     if (name !== undefined) assertAgentName(name);
-    if (flag('check')) return withProject(cwd, (project) => mcpCheck(project, name));
+    if (flag('check')) {
+      const checked = withProject(cwd, (project) => mcpCheck(project, name));
+      const outdated = outdatedGitHookLine(cwd);
+      if (outdated === undefined) return checked;
+      return {
+        ...checked,
+        data: { ...(checked.data as object), outdatedGitHook: outdated },
+        text: `${checked.text}\n${outdated}`,
+      };
+    }
     const model = option('model');
     const effort = option('effort');
     const { root, id } = withProject(cwd, (project) => {
@@ -3388,6 +3398,9 @@ const check: Command = {
   },
   execute: async (input) => {
     const gate = input.required('gate');
+    // The hook runs this check on every push: the person sees an outdated hook there.
+    const outdated = outdatedGitHookLine(input.cwd);
+    if (outdated !== undefined) input.warn(outdated);
     let result: GateCheck;
     try {
       const { cwd } = input;
