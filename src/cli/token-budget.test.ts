@@ -84,8 +84,11 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // Raised for answer, the person's answer to a question given in the chat, which an agent could
   // not put on the question and asked the person to paste into Otea (P4-R2-2; measured at 5272).
   // Raised for profile's help: declare what the session says, never a config file opened outside
-  // the project, which an agent read to learn its effort (P3C-R3-8; measured at 5288).
-  tools: { mcp: 5300 },
+  // the project, which an agent read to learn its effort (P3C-R3-8; measured at 5288). Raised for
+  // release's quote: only the person's newer words, relayed, set aside again an item they took up
+  // again, as an agent set one aside right after Retomar with their note unanswered (P7-R3-8;
+  // measured at 5314).
+  tools: { mcp: 5330 },
   // Otea's agent guide, the server's instructions: in every MCP agent's context from the start, so
   // it buys only what agents keep getting wrong. Measured at 203. Raised to 270 for the line on
   // declaring the profile every agent and subagent must keep current (measured at 246). Raised to

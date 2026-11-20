@@ -81,6 +81,7 @@ import {
   offerableTo,
   rowFactsOf,
   sendBackItem,
+  wokeLines,
 } from '../app/next.ts';
 import { agentNotes, noteWaiting, replyNote, roundNotesOf } from '../app/notes.ts';
 import { performanceOf } from '../app/performance.ts';
@@ -2054,7 +2055,9 @@ const wait: Command = {
         'text' in found || input.actor.kind !== 'agent'
           ? undefined
           : laterLine(project, found.id, me);
-      const added = [merges, later].filter((line) => line !== undefined);
+      // That the person took it up again, and their unanswered notes (P7-R3-8, P5-R3-8).
+      const woken = 'text' in found ? [] : wokeLines(project, found.id);
+      const added = [merges, later, ...woken].filter((line) => line !== undefined);
       const woke = added.length === 0 ? row : { ...row, text: [row.text, ...added].join('\n') };
       // While topics are on, what woke the agent reminds it to record side questions.
       const reminded = 'topics' in found ? woke : withTopicsReminder(project, input.actor, woke);
@@ -2557,13 +2560,20 @@ const release: Command = {
   summary:
     'Drop the lease you hold on an item; moving it off the agent turn releases it too. --later sets it aside for every agent (next and wait skip it), held or let go of, until it moves, is claimed or the person takes it up',
   args: ['id'],
-  options: { later: { flag: true } },
+  options: { later: { flag: true }, quote: { placeholder: "the person's words" } },
   execute: (input) => {
     const [id = ''] = input.args;
     const { actor } = input;
     const later = input.flag('later');
+    const quote = input.option('quote');
+    if (quote !== undefined && !later) throw new UsageError('--quote goes with --later');
     return withAgent(input, (project) => {
-      const item = releaseItem(project, { id, actor, later });
+      const item = releaseItem(project, {
+        id,
+        actor,
+        later,
+        ...(quote === undefined ? {} : { quote }),
+      });
       const released = itemResult(project, item);
       if (!later) return released;
       const aside = `Set ${item.id} aside for every agent: otea next and otea wait --unclaimed leave it out until it moves, an agent claims it (otea claim ${item.id}), or the person takes it up again.`;

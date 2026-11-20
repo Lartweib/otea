@@ -393,7 +393,7 @@ describe('the agent and the notes', () => {
     expect(noteWaiting(ctx, 'kiln')).toMatchObject({
       item: item.id,
       unanswered: [1],
-      text: `${item.id}: new note from the person (note 1). Read it: otea show ${item.id}`,
+      text: `${item.id}: new note from the person (note 1). Read it: otea show ${item.id}\n  1 · "¿?"`,
     });
   });
 

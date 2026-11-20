@@ -133,12 +133,14 @@ describe('notes from the person, on the CLI and over MCP', () => {
     });
   });
 
-  it('wakes a wait with the note', async () => {
+  // The note's own words, not only its number: an agent woken by one acted without reading it
+  // (P7-R3-8).
+  it('wakes a wait with the note, in the person’s words', async () => {
     note('¿Y la cola?');
     const { code, out } = await otea('wait', '--turn', 'agent', '--timeout', '5s');
     expect(code).toBe(0);
     expect(out).toBe(
-      'CRI-1: new note from the person (note 1). Read it: otea show CRI-1\nThen keep going: otea next --as claude; when it has nothing, otea wait --turn agent --unclaimed --as claude in the background if you can.\n',
+      'CRI-1: new note from the person (note 1). Read it: otea show CRI-1\n  1 · "¿Y la cola?"\nThen keep going: otea next --as claude; when it has nothing, otea wait --turn agent --unclaimed --as claude in the background if you can.\n',
     );
   });
 

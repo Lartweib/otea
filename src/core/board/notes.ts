@@ -343,6 +343,19 @@ export function notesRefusal(id: string, open: readonly number[]): string[] {
   ];
 }
 
+// The refusal of a set-aside for later while notes wait for an answer (P7-R3-8): the person may
+// have asked for the item now; the first note in brief, and the command that answers it.
+export function laterNotesRefusal(id: string, open: readonly ItemNote[]): string {
+  const [first, ...rest] = open;
+  if (!first) return '';
+  const which =
+    rest.length === 0
+      ? `note ${first.note} from the person is unanswered`
+      : `${numbered(open.map(({ note }) => note))} from the person are unanswered`;
+  const each = rest.length === 0 ? 'it' : 'each';
+  return `Not set aside ${id}: ${which} ("${brief(first.text)}"). Answer ${each} first: ${replyCommand(id, first.note)}`;
+}
+
 // The line after otea reply: what is still unanswered, or that the item may be handed off.
 export function repliedText(id: string, n: number, open: readonly number[]): string {
   const head = `Answered note ${n} on ${id}.`;
@@ -351,8 +364,16 @@ export function repliedText(id: string, n: number, open: readonly number[]): str
   return `${head} Still unanswered: ${numbered(open)} (${replyCommand(id, first)}).`;
 }
 
-// What otea wait says when a note wakes it.
-export function waitNoteText(id: string, open: readonly number[]): string {
+// What otea wait says when a note wakes it: each note in the person's words too, as an agent woken
+// by a number alone acted without reading it (P7-R3-8).
+export function waitNoteText(id: string, open: readonly ItemNote[]): string {
   const one = open.length === 1;
-  return `${id}: new ${one ? 'note' : 'notes'} from the person (${numbered(open)}). Read ${one ? 'it' : 'them'}: otea show ${id}`;
+  const ns = open.map(({ note }) => note);
+  return [
+    `${id}: new ${one ? 'note' : 'notes'} from the person (${numbered(ns)}). Read ${one ? 'it' : 'them'}: otea show ${id}`,
+    ...open.flatMap(({ note, text }) => {
+      const [first = '', ...rest] = quoted(text, '      ');
+      return [`  ${note} · ${first}`, ...rest];
+    }),
+  ].join('\n');
 }

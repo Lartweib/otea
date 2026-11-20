@@ -116,6 +116,71 @@ describe('an item the agent let go of, offered again', () => {
     );
   });
 
+  // P7-R3-8: the person took the item up again with a note; the agent's wait showed only the row,
+  // and the agent set it aside again, the note unanswered. P5-R3-8: nothing said to do it now.
+  it('shows what woke it: the person took it up again, and their note, with the reply', async () => {
+    expect((await otea('release', 'CAM-1', '--later')).code).toBe(0);
+    const project = openProject(repo.dir);
+    try {
+      const note = { id: 'CAM-1', text: 'Retómala ya:\nsin premios', channel: 'ui' as const };
+      leaveNote(project, { ...note, actor: { kind: 'human', name: 'fede' } });
+    } finally {
+      project.db.close();
+    }
+
+    const woke = await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '1s');
+
+    expect(woke.code, woke.err).toBe(0);
+    expect(woke.out).toMatch(/\nThe person took it up again \(note 1, .+ UTC\): do it now\.\n/);
+    expect(woke.out).toContain(
+      [
+        'Notes from the person: 1, 1 unanswered',
+        '  1 · "Retómala ya:',
+        '      sin premios"',
+        '      unanswered: otea reply CAM-1 --note 1 "<your short answer>"',
+      ].join('\n'),
+    );
+  });
+
+  it('sets it aside again only once the note is answered and the person’s newer words relayed', async () => {
+    expect((await otea('release', 'CAM-1', '--later')).code).toBe(0);
+    const project = openProject(repo.dir);
+    try {
+      const note = { id: 'CAM-1', text: 'Retómala ya', channel: 'ui' as const };
+      leaveNote(project, { ...note, actor: { kind: 'human', name: 'fede' } });
+    } finally {
+      project.db.close();
+    }
+
+    const unanswered = await otea('release', 'CAM-1', '--later');
+    expect(unanswered.code).toBe(4);
+    expect(unanswered.err).toContain(
+      'Not set aside CAM-1: note 1 from the person is unanswered ("Retómala ya"). Answer it first: otea reply CAM-1 --note 1 "<your short answer>"',
+    );
+    expect((await otea('reply', 'CAM-1', '--note', '1', 'Voy')).code).toBe(0);
+    const retaken = await otea('release', 'CAM-1', '--later');
+    expect(retaken.code).toBe(4);
+    expect(retaken.err).toContain(
+      'If they asked you since to leave it for later, relay their words: otea release CAM-1 --later --quote "<the person\'s words>"',
+    );
+
+    const quoted = await otea(
+      'release',
+      'CAM-1',
+      '--later',
+      '--quote',
+      'Mejor la semana que viene',
+    );
+    expect(quoted.code, quoted.err).toBe(0);
+    expect((await otea('wait', '--turn', 'agent', '--unclaimed', '--timeout', '1s')).code).toBe(13);
+  });
+
+  it('takes --quote only with --later', async () => {
+    const refused = await otea('release', 'CAM-1', '--quote', 'Luego');
+    expect(refused.code).toBe(2);
+    expect(refused.err).toContain('--quote goes with --later');
+  });
+
   it('says nothing of it on an item the agent never let go of', async () => {
     const next = await otea('next');
     expect(next.out).not.toContain('--later');

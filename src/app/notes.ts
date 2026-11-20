@@ -396,7 +396,7 @@ export function noteWaiting(ctx: Context, agent: string): NoteWaiting | undefine
     const open = waiting(ctx, requireItem(ctx.db, id));
     if (open.length === 0) continue;
     const unanswered = open.map(({ note }) => note);
-    return { item: id, unanswered, notes: open, text: waitNoteText(id, unanswered) };
+    return { item: id, unanswered, notes: open, text: waitNoteText(id, open) };
   }
   return undefined;
 }
