@@ -128,6 +128,8 @@ export const detail = {
   'evidence.diffEmpty': 'No diff yet',
   'evidence.diagram': 'Diagram',
   'evidence.diagramEmpty': 'No diagram yet',
+  'evidence.file': 'Files',
+  'evidence.fileEmpty': 'No files yet',
 
   // The diagram module: a Mermaid flowchart, drawn by Otea
   'diagram.aria': { one: 'Diagram of {count} node', other: 'Diagram of {count} nodes' },
