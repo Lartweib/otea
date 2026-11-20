@@ -1,3 +1,17 @@
+<div align="center">
+  <p>
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="docs/images/otea-logo-dark.svg">
+      <img src="docs/images/otea-logo-light.svg" alt="Otea" width="116" height="161">
+    </picture>
+  </p>
+  <p>
+    <a href="https://github.com/Lartweib/otea/actions/workflows/ci.yml"><img src="https://github.com/Lartweib/otea/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+    <a href="LICENSE"><img src="https://img.shields.io/badge/license-AGPL--3.0-blue" alt="Licencia: AGPL-3.0"></a>
+    <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/node-%3E%3D22.18-339933" alt="Node &gt;=22.18"></a>
+  </p>
+</div>
+
 # Otea · inicio rápido
 
 > Del verbo *otear*: mirar desde lo alto lo que pasa y lo que viene.
