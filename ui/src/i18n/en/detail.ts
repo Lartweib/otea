@@ -444,6 +444,10 @@ export const detail = {
   'sheet.says.yours': 'it stays yours',
   'sheet.says.lands': 'an agent then lands it in {base}, as the {step} step says',
   'sheet.says.landsAny': 'an agent then lands it, as the {step} step says',
+  'sheet.says.landsPush':
+    'an agent then lands it in {base} and pushes it to the remote, as the {step} step says',
+  'sheet.says.landsAnyPush':
+    'an agent then lands it and pushes it to the remote, as the {step} step says',
   'sheet.says.landsOwn': 'an agent then pushes {base} to the remote',
   'sheet.says.unpushed': 'note: {branch} was never pushed to the remote',
   'sheet.says.unchanged': 'it brings no code change: there is nothing to push',
