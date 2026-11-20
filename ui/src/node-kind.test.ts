@@ -1,8 +1,8 @@
 import { readFileSync } from 'node:fs';
 import { describe, expect, it } from 'vitest';
 import { parsePreset } from '../../src/core/preset.ts';
-import { itemNodeKind, nodeKind } from './node-kind.ts';
-import type { Closing, TypeView } from './types.ts';
+import { itemNodeKind, type NodeFacts, type NodeKind, nodeKind } from './node-kind.ts';
+import type { TypeView } from './types.ts';
 
 const closedStatesOf = (preset: string) =>
   parsePreset(
@@ -12,32 +12,20 @@ const closedStatesOf = (preset: string) =>
 describe('nodeKind', () => {
   const open = { turn: 'agent' as const, leased: false, incomplete: false };
 
-  it('marks your turn as yours', () => {
-    expect(nodeKind({ ...open, turn: 'human' })).toBe('you');
-  });
-
-  it('shows an agent at work while a lease is held', () => {
-    expect(nodeKind({ ...open, leased: true })).toBe('working');
-    expect(nodeKind({ ...open, incomplete: true, leased: true })).toBe('working');
-  });
-
-  it('shows an incomplete item nobody holds as incomplete', () => {
-    expect(nodeKind({ ...open, incomplete: true })).toBe('incomplete');
-  });
-
-  it('shows an agent-turn item nobody holds as queued', () => {
-    expect(nodeKind(open)).toBe('queued');
-  });
-
-  it('splits closed items by how their state closes them, whatever it is called', () => {
-    const closed = (closes: Closing) => nodeKind({ ...open, turn: 'none', closes });
-
-    expect(closed('done')).toBe('done');
-    expect(closed('discarded')).toBe('discarded');
-  });
-
-  it('reads a closed item as done while its closing is unknown', () => {
-    expect(nodeKind({ ...open, turn: 'none' })).toBe('done');
+  // Your turn is yours; an agent at work while a lease is held; an item nobody holds is incomplete
+  // or queued; a closed item reads how its state closes it, whatever it is called, and as done
+  // while its closing is unknown.
+  it.each<[Partial<NodeFacts>, NodeKind]>([
+    [{ turn: 'human' }, 'you'],
+    [{ leased: true }, 'working'],
+    [{ incomplete: true, leased: true }, 'working'],
+    [{ incomplete: true }, 'incomplete'],
+    [{}, 'queued'],
+    [{ turn: 'none', closes: 'done' }, 'done'],
+    [{ turn: 'none', closes: 'discarded' }, 'discarded'],
+    [{ turn: 'none' }, 'done'],
+  ])('reads %o as %s', (facts, kind) => {
+    expect(nodeKind({ ...open, ...facts })).toBe(kind);
   });
 });
 

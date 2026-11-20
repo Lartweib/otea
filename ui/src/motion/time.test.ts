@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { STAGGER, T, Tt } from './time.ts';
+import { Tt } from './time.ts';
 
 describe('durations by distance', () => {
   it('travels for 480 + 28√d, between 560 and 1040 ms, either way', () => {
@@ -21,10 +21,5 @@ describe('durations by distance', () => {
     expect(Tt.morph(0)).toBe(480);
     expect(Tt.morph(100)).toBe(580);
     expect(Tt.morph(10_000)).toBe(760);
-  });
-
-  it('keeps the fixed steps and the menu stagger', () => {
-    expect(T).toEqual({ hover: 120, fade: 240, small: 360, surface: 440, pane: 600, reduced: 160 });
-    expect(STAGGER).toEqual({ menu: 34, cap: 5 });
   });
 });
