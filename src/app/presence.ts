@@ -64,16 +64,17 @@ export type Sighting = {
 // Seen again after this long away, an agent connects anew (its connectedAt starts over).
 export const LIVE_WINDOW_MS = 5 * 60_000;
 
-// An agent counts as connected while it listens, holds a lease, or acted within LISTEN_WINDOW_MS: a
+// An agent counts as connected while it listens, or ran an otea command within LISTEN_WINDOW_MS: a
 // listener (an open MCP server, a running otea wait) is heard every LISTEN_BEAT_MS, and counts as
 // listening for LISTEN_WINDOW_MS after the last beat, so a closed session drops out within it. An
 // agent working through the command line, between its commands, counts as connected too, never as
-// listening: having run a command lately is no listening.
+// listening: having run a command lately is no listening. A lease alone keeps no agent connected
+// (P7-R3-10): after its session ended, it would stay «trabajando» until the lease ran out.
 export const LISTEN_BEAT_MS = 60_000;
 export const LISTEN_WINDOW_MS = 150_000;
 
-// A call counts for this long: an agent seen acting, between its commands, counts as connected,
-// and an ended subagent drops out soon after its last call (P1-11).
+// A sighting counts for this long: an agent seen, between its commands, counts as connected, and
+// an ended subagent drops out soon after its last call (P1-11).
 export const ACTIVE_WINDOW_MS = 90_000;
 
 // Seen again within this, an agent's last-seen time is left as it is: an agent reading item after
@@ -94,8 +95,14 @@ export type AgentPresence = {
   connectedAt: string | null;
   holding: string[];
   lastSeen: string;
-  // Connected: it listens, holds a lease, or acted within LISTEN_WINDOW_MS.
+  // When it last ran an otea command, through the command line or MCP (null if never): a
+  // listener's beat is none.
+  actedAt: string | null;
+  // Connected: it listens, or ran an otea command within LISTEN_WINDOW_MS; never for a lease alone.
   live: boolean;
+  // Every process it was heard listening through (its MCP server, its wait) has ended: Otea knows
+  // its session ended. Never for one heard through none, such as one at the command line.
+  sessionEnded: boolean;
   // Heard listening within LISTEN_WINDOW_MS.
   listening: boolean;
   // Heard waiting in otea wait within LISTEN_WINDOW_MS: what the person does on the desk reaches
@@ -565,9 +572,12 @@ export function listAgents(
     // it is a subagent that finished.
     const ended =
       done || (gone && heardAt !== undefined && Date.parse(lastSeen) <= Date.parse(heardAt));
-    // It acted lately (a command-line agent between its commands); a profile given for it by
+    // It was seen lately (a command-line agent between its commands); a profile given for it by
     // the person, with no sighting of its own, is no act.
     const active = connectedAt !== null && since(lastSeen, ACTIVE_WINDOW_MS);
+    // It ran an otea command within the listening window: still at work, between two items too
+    // (P7-R2-9). What it holds counts only while it is heard so (P7-R3-10).
+    const called = since(record.actedAt ?? undefined, LISTEN_WINDOW_MS);
     const declared = declaredOf.get(name);
     const mcp = mcpOf(record);
     return {
@@ -577,7 +587,9 @@ export function listAgents(
       connectedAt,
       holding: held,
       lastSeen,
-      live: !ended && (listening || held.length > 0 || active),
+      actedAt: record.actedAt ?? null,
+      live: !ended && (listening || active || called),
+      sessionEnded: silenced(name),
       listening,
       waiting: within(waits.get(name)) && !gone,
       profile: declared ? profileView(declared.profile) : null,

@@ -35,9 +35,10 @@ export function joinFacts(ctx: Place, now = systemClock): JoinFacts {
       ).length;
       return [{ name: live.def.name, agentSteps, waiting }];
     });
-  // Working: listening now, or holding an item it works on, which a long step does without a wait.
+  // Working: connected now, or holding an item while Otea cannot tell its session ended: a long
+  // step runs with no wait and no otea call. Its name is taken either way.
   const working = listAgents(ctx.db, now)
-    .filter(({ live }) => live)
+    .filter(({ live, holding, sessionEnded }) => live || (holding.length > 0 && !sessionEnded))
     .map(({ name }) => name);
   // Nobody works there now: the one joining has nobody to join.
   return {
