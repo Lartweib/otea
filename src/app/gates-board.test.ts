@@ -128,6 +128,40 @@ describe('gates on a board', () => {
       });
     });
 
+    // P5-R3-2: a branch no item named (refresh-2026) went to the client's remote before any
+    // approval, «no item with a push gate matches; push allowed». Where a board protects the base,
+    // a push takes only the branches items name, and the base under its own rule.
+    it('refuses a push of a branch no item names, with the person’s way past it', () => {
+      const { ctx, id } = repoTask('main');
+      const stray = checkGate(ctx, 'push', { branch: 'refresh-2026', repo: 'api' });
+      expect(stray).toMatchObject({ allowed: false, items: [] });
+      expect(stray.refusal).toBe(
+        'push refused: no item names the branch refresh-2026, and Tareas de repo protects main: a push in this project takes only the branch of an item, while its step allows it, or main, as the board lets it. Push the branch of the item you work on, as otea next shows it under Branch; to push refresh-2026 for an item, set it on that item first, in a step that pushes it: otea update <id> --field "Rama=refresh-2026".',
+      );
+      expect(stray.person).toBe(
+        'Para la persona: si la rama es tuya, pásala por el tablero (pídele a tu agente un ítem con esa rama y apruébalo en Otea) o súbela tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.',
+      );
+      expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'web' }).allowed).toBe(false);
+      updateItemState(ctx.db, id, 'simpl', now());
+      expect(checkGate(ctx, 'push', { branch: 'feat/x', repo: 'api' })).toMatchObject({
+        allowed: true,
+        items: [{ id, allowed: true }],
+      });
+      // A merge is no push: an unnamed branch merged into the base is the base rule's to refuse.
+      expect(checkGate(ctx, 'merge', { branch: 'refresh-2026', repo: 'api' })).toMatchObject({
+        allowed: true,
+        items: [],
+      });
+    });
+
+    it('lets a branch no item names through, with a note, where no board protects a base', () => {
+      const { ctx } = repoTask();
+      const check = checkGate(ctx, 'push', { branch: 'refresh-2026', repo: 'api' });
+      expect(check).toMatchObject({ allowed: true, items: [] });
+      expect(check.refusal).toBeUndefined();
+      expect(check.note).toBe('no item with a push gate matches');
+    });
+
     it('refuses a push to the base that brings in no item’s branch', () => {
       const { ctx } = repoTask('main');
       const check = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => ['scratch']);

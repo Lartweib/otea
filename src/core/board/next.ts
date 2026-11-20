@@ -1167,6 +1167,37 @@ export function forPersonText(all: readonly BoardDefinition[]): string {
   return FOR_PERSON[first?.title === TITLE_NAME.es ? 'es' : 'en'];
 }
 
+// Why a push of a branch no item names is refused, in a project where a board protects a base
+// (P5-R3-2): there, a push takes only an item's branch, while its step allows it, or the base, as
+// its board lets it. Said once for every board that protects a base; the field is the first
+// board's protected branch, by name.
+export function unnamedBranchRefusal(all: readonly BoardDefinition[], branch: string): string {
+  const names = and(
+    all.map((def) => def.name),
+    'and',
+  );
+  const bases = and(
+    [...new Set(all.flatMap((def) => guardedBranch(def)?.guard.base ?? []))],
+    'and',
+  );
+  const verb = all.length > 1 ? 'protect' : 'protects';
+  const field = all.map((def) => guardedBranch(def)?.name).find(Boolean) ?? 'branch';
+  const lets = all.length > 1 ? 'as their boards let it' : 'as the board lets it';
+  return `push refused: no item names the branch ${branch}, and ${names} ${verb} ${bases}: a push in this project takes only the branch of an item, while its step allows it, or ${bases}, ${lets}. Push the branch of the item you work on, as otea next shows it under Branch; to push ${branch} for an item, set it on that item first, in a step that pushes it: otea update <id> --field "${field}=${branch}".`;
+}
+
+// What the person reads under that refusal: the same way out as for the protected base, said of a
+// branch, in the language of the first board that protects a base; never an agent's.
+const BRANCH_FOR_PERSON: Readonly<Record<Lang, string>> = {
+  en: "For the person: if the branch is yours, put it through the board (ask your agent for an item with that branch and approve it in Otea) or push it yourself this once with git push --no-verify, which skips Otea's check. An agent never uses --no-verify.",
+  es: 'Para la persona: si la rama es tuya, pásala por el tablero (pídele a tu agente un ítem con esa rama y apruébalo en Otea) o súbela tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.',
+};
+
+export function branchForPersonText(all: readonly BoardDefinition[]): string {
+  const [first] = all;
+  return BRANCH_FOR_PERSON[first?.title === TITLE_NAME.es ? 'es' : 'en'];
+}
+
 // What the person reads under a refused push that rewrites an item's branch (P1-R3-3): the same
 // way out as for the protected base, said in the board's language; never an agent's.
 const REWRITE_FOR_PERSON: Readonly<Record<Lang, string>> = {

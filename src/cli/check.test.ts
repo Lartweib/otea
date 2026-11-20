@@ -570,7 +570,46 @@ describe('check', () => {
       expect(
         (await push('--branch', 'main', '--repo', '--commits', `${head}..${'0'.repeat(40)}`)).code,
       ).toBe(19);
-      expect((await push('--branch', 'other', '--repo')).code).toBe(0);
+    });
+
+    // P5-R3-2: a branch no item named went to the remote before any approval («no item with a
+    // push gate matches; push allowed»). With the base protected, it is refused, the person's way
+    // past it said under it; the hook stops a real push of it.
+    it('refuses a push of a branch no item names, and the hook stops it', async () => {
+      const remote = tempGitRepo();
+      try {
+        const bare = join(remote.dir, 'origin.git');
+        execFileSync('git', ['init', '-q', '--bare', bare]);
+        installGitHook(
+          repo.dir,
+          oteaLauncher(fileURLToPath(new URL('./main.ts', import.meta.url)), {
+            execPath: process.execPath,
+          }),
+        );
+        git('checkout', '-q', '-b', 'refresh-2026');
+        commit('a new look');
+
+        expect(await push('--branch', '--repo')).toEqual({
+          code: 19,
+          out: `push refused: no item names the branch refresh-2026, and Tareas de repo protects main: a push in this project takes only the branch of an item, while its step allows it, or main, as the board lets it. Push the branch of the item you work on, as otea next shows it under Branch; to push refresh-2026 for an item, set it on that item first, in a step that pushes it: otea update <id> --field "Rama=refresh-2026".\nPara la persona: si la rama es tuya, pásala por el tablero (pídele a tu agente un ítem con esa rama y apruébalo en Otea) o súbela tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.\n`,
+          err: '',
+        });
+        const refused = (() => {
+          try {
+            git('push', '-q', bare, 'refresh-2026');
+            return 'pushed';
+          } catch (error) {
+            return String((error as { stdout?: string }).stdout);
+          }
+        })();
+        expect(refused).toContain('push refused: no item names the branch refresh-2026');
+        expect(git('--git-dir', bare, 'branch', '--list')).toBe('');
+        // The person pushes their own branch past the hook, as the refusal says.
+        git('push', '-q', '--no-verify', bare, 'refresh-2026');
+        expect(git('--git-dir', bare, 'branch', '--list')).toContain('refresh-2026');
+      } finally {
+        remote.remove();
+      }
     });
 
     // P3C-R3-3: a commit the repo does not have leaves the check blind; it says so, and refuses.
