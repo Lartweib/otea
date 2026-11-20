@@ -371,7 +371,8 @@ const IMPLEMENTATION: Template = {
         ['branch', 'always'],
         ['did', 'always'],
         ['tests', 'always', true],
-        ['changes', 'no', true],
+        // The person reviews the code itself, as on Cambios (P7-8).
+        ['changes', 'always', true],
       ],
       waits: ['parts', 'blockers'],
       note: w('What you did and what you tested', 'Qué hiciste y qué probaste'),
@@ -380,8 +381,8 @@ const IMPLEMENTATION: Template = {
         'Lee la idea que esta tarea implementa y su documento de arquitectura antes de empezar. Crea @{branch} desde main y trabaja solo ahí; una tarea dividida en subtareas se integra a través de ellas, así que escribe main en @{branch}. Haz solo lo que dice @{todo}; lo que no entre, propónlo como otra tarea.',
       ),
       before: w(
-        'Each criterion of @{donewhen} has its test in @{tests}.',
-        'Cada criterio de @{donewhen} tiene su prueba en @{tests}.',
+        'Attach the @{changes}: the whole git diff main...HEAD of @{branch} (for a task divided into subtasks, what they brought into main). Each criterion of @{donewhen} has its test in @{tests}.',
+        'Adjunta los @{changes}: el git diff main...HEAD de @{branch}, completo (en una tarea dividida en subtareas, lo que ellas llevaron a main). Cada criterio de @{donewhen} tiene su prueba en @{tests}.',
       ),
     },
     LAND,
