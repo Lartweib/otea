@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { ago, item as fixture, inMinutes, NOW } from './derive/fixtures.ts';
 import {
   anyoneWaits,
-  busyAgents,
+  goneHolder,
   handsToAgent,
   hearing,
   unheard,
@@ -59,6 +59,12 @@ describe('unheard', () => {
     expect(unheard(item({ lease }), [agent('a', { lastSeen: ago(10) })], NOW)).toBe(true);
   });
 
+  // P7-R3-10: its lease keeps the item after the session ended, but nobody does it.
+  it('marks an item whose holder is no longer connected, though it was seen moments ago', () => {
+    const lease = { holder: 'a', expiresAt: inMinutes(10) };
+    expect(unheard(item({ lease }), [agent('a', { live: false })], NOW)).toBe(true);
+  });
+
   // P7-R3-1: the only agent set it aside for later; the desk says that instead of an alarm.
   it('leaves alone an item an agent set aside for later', () => {
     const setAside = { by: 'a', at: ago(3) };
@@ -66,43 +72,46 @@ describe('unheard', () => {
   });
 });
 
-// P7-R2-12: every queued item read «nadie está escuchando» in red while the only agent worked on
-// another item; that is a queue, not an alarm.
-describe('busyAgents', () => {
+// P7-R3-10: after /exit the item read «claude-haiku lo está haciendo» until its lease ran out.
+describe('goneHolder', () => {
   const lease = { holder: 'a', expiresAt: inMinutes(10) };
-  const items = [item({ id: 'TASK-2', lease })];
 
-  it('names the agents at work on an item they hold', () => {
-    expect(busyAgents([agent('a', { holding: ['TASK-2'] }), agent('b')], items, NOW)).toEqual([
-      'a',
-    ]);
+  it('names the holder of a live lease once it is no longer connected', () => {
+    expect(goneHolder(item({ lease }), [agent('a', { live: false })], NOW)?.name).toBe('a');
   });
 
-  it('names none gone idle on what it holds, nor one only waiting for your answer', () => {
-    expect(
-      busyAgents([agent('a', { holding: ['TASK-2'], lastSeen: ago(10) })], items, NOW),
-    ).toEqual([]);
-    const asks = { question: 1, by: 'a', text: 'Which one?', at: ago(1) };
-    const asking = [item({ id: 'TASK-2', lease, asks })];
-    expect(busyAgents([agent('a', { holding: ['TASK-2'] })], asking, NOW)).toEqual([]);
+  it('names none while it is connected, with no live lease, or before presence loads', () => {
+    expect(goneHolder(item({ lease }), [agent('a')], NOW)).toBeNull();
+    const ran = { holder: 'a', expiresAt: ago(1) };
+    expect(goneHolder(item({ lease: ran }), [agent('a', { live: false })], NOW)).toBeNull();
+    expect(goneHolder(item({ lease }), undefined, NOW)).toBeNull();
+    expect(goneHolder(item({ lease }), [], NOW)).toBeNull();
   });
 });
 
-// P7-R2-9: a review read «Nadie está escuchando» in red while claude-haiku plainly worked: an agent
-// at work sees what the person hands it when it waits again.
+// P7-R2-9, P7-R2-12: a review read «Nadie está escuchando» in red while claude-haiku plainly
+// worked, and every queued item did while it worked on another: an agent at work sees what the
+// person hands it when it waits again, and what nobody hears waits in its queue.
 describe('workingAgents', () => {
   const lease = { holder: 'a', expiresAt: inMinutes(10) };
   const items = [item({ id: 'TASK-2', lease })];
 
-  it('names an agent that holds an item it works on, however long since its last call', () => {
-    expect(
-      workingAgents([agent('a', { holding: ['TASK-2'], lastSeen: ago(20) })], items, NOW),
-    ).toEqual(['a']);
+  it('names the agents at work on an item they hold, however long since their last call', () => {
+    // Its MCP server beats while it works a long step with no call: the server counts it connected.
+    const beating = { holding: ['TASK-2'], listening: true, actedAt: ago(20) };
+    expect(workingAgents([agent('a', beating), agent('b')], items, NOW)).toEqual(['a']);
   });
 
-  it('names a command-line agent that called lately though it holds nothing', () => {
-    expect(workingAgents([agent('a', { lastSeen: ago(1) })], items, NOW)).toEqual(['a']);
-    expect(workingAgents([agent('a', { lastSeen: ago(10) })], items, NOW)).toEqual([]);
+  it('names an agent that called Otea lately though it holds nothing', () => {
+    expect(workingAgents([agent('a', { actedAt: ago(1) })], items, NOW)).toEqual(['a']);
+    expect(workingAgents([agent('a', { actedAt: ago(10) })], items, NOW)).toEqual([]);
+  });
+
+  // P7-R2-9: between two items its wait had just found work, so it was still heard listening, and
+  // the desk read it as idle in its chat: red in 8 of 20 samples.
+  it('names an agent between two items whose wait just ended, as it calls Otea', () => {
+    const between = { listening: true, actedAt: ago(0.5) };
+    expect(workingAgents([agent('a', between)], items, NOW)).toEqual(['a']);
   });
 
   // An open MCP server is heard on its beats, so a fresh sighting is no call: idle in its chat, it
@@ -117,7 +126,8 @@ describe('workingAgents', () => {
     const asks = { question: 1, by: 'a', text: 'Which one?', at: ago(1) };
     const asking = [item({ id: 'TASK-2', lease, asks })];
     expect(workingAgents([agent('a', { holding: ['TASK-2'] })], asking, NOW)).toEqual([]);
-    expect(workingAgents([agent('a', { live: false, lastSeen: ago(1) })], items, NOW)).toEqual([]);
+    const gone = { live: false, holding: ['TASK-2'], actedAt: ago(1) };
+    expect(workingAgents([agent('a', gone)], items, NOW)).toEqual([]);
   });
 });
 
@@ -128,11 +138,11 @@ describe('hearing', () => {
   });
 
   it('names the agents at work while none waits, else raises the alarm', () => {
-    expect(hearing([agent('a', { lastSeen: ago(1) })], [], NOW)).toEqual({
+    expect(hearing([agent('a', { actedAt: ago(1) })], [], NOW)).toEqual({
       kind: 'working',
       agents: ['a'],
     });
-    expect(hearing([agent('a', { lastSeen: ago(10) })], [], NOW)).toEqual({ kind: 'unheard' });
+    expect(hearing([agent('a', { actedAt: ago(10) })], [], NOW)).toEqual({ kind: 'unheard' });
     expect(hearing([], [], NOW)).toEqual({ kind: 'unheard' });
   });
 });

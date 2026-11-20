@@ -25,7 +25,7 @@ import { toast } from '../../kit/pop/toast.tsx';
 import { redrawLists } from '../../lanes/dom.ts';
 import { LaneHead } from '../../lanes/LaneHead.tsx';
 import { type LaneBlock, LaneList } from '../../lanes/LaneList.tsx';
-import { busyAgents } from '../../listening.ts';
+import { workingAgents } from '../../listening.ts';
 import { C } from '../../motion/curves.ts';
 import { reduced } from '../../motion/reduced.ts';
 import type { Folds } from '../../nesting.ts';
@@ -363,7 +363,7 @@ function Board({ board }: { board: string }) {
     onFold: toggleFold,
     onTick,
     agents: app.agents,
-    busy: busyAgents(app.agents, app.all, app.now),
+    busy: workingAgents(app.agents, app.all, app.now),
   };
   const empty: LaneBlock[] | null = !items.length
     ? [

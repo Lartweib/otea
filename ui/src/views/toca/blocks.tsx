@@ -23,7 +23,7 @@ import { laneOf } from '../../lanes/geometry.ts';
 import type { Universe } from '../../lanes/handoff.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
-import { busyAgents, unheard } from '../../listening.ts';
+import { unheard, workingAgents } from '../../listening.ts';
 import { actedWith } from '../../presence.ts';
 import { stateWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
@@ -290,7 +290,7 @@ function TocaRow({
             </span>
           ) : null}
           {sec === 'encamino' && unheard(it, app.agents, app.now) ? (
-            <UnheardMark busy={busyAgents(app.agents, app.all, app.now)} />
+            <UnheardMark busy={workingAgents(app.agents, app.all, app.now)} />
           ) : null}
           {/* The phone hides the call to act, which says who set it aside on the desk. */}
           {phone && sec === 'encamino' && it.setAside ? <SetAsideMark by={it.setAside.by} /> : null}

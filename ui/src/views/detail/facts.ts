@@ -257,10 +257,18 @@ export function standOf(o: {
   // Its holder's question waits for your answer on another item (P7-R3-9): it says so, never that
   // the holder is on this one.
   asksOn?: { by: string; item: string } | undefined;
+  // The holder of its live lease is no longer connected (P7-R3-10): Otea knows its session ended
+  // (`ended`), or it has been quiet for `quiet`. The lease keeps the item until it runs out.
+  gone?: { agent: string; ended: boolean; quiet: string | null } | undefined;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
   if (o.archived !== undefined) return { key: 'sheet.stand.archived', board: o.archived };
+  if (o.gone !== undefined && o.look === 'working') {
+    const { agent, ended, quiet } = o.gone;
+    if (ended) return { key: 'sheet.stand.ended', agent };
+    if (quiet !== null) return { key: 'sheet.stand.silent', agent, time: quiet };
+  }
   const waitsAgent = o.look === 'queued' || o.look === 'waiting' || o.look === 'stuck';
   if (o.aside !== undefined && waitsAgent) return { key: 'sheet.stand.setAside', agent: o.aside };
   const agentTurn = o.look === 'working' || o.look === 'queued' || o.look === 'stuck';

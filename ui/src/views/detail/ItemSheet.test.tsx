@@ -1,7 +1,7 @@
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { type App, AppTestProvider } from '../../app/context.tsx';
-import { ago, NOW, officialType } from '../../derive/fixtures.ts';
+import { ago, inMinutes, NOW, officialType } from '../../derive/fixtures.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { CollectionView, ItemEvent, ItemView } from '../../types.ts';
 import { Acts } from './Acts.tsx';
@@ -216,7 +216,8 @@ describe('the item sheet', () => {
       expect(html).toContain('data-unheard="calm"');
       expect(html).toContain('Mender está trabajando; lo verá cuando vuelva a esperar.');
       expect(html).not.toContain('Nadie está escuchando');
-      const two = [busy, { ...busy, name: 'kiln', lastSeen: ago(1), holding: [] }];
+      // kiln holds nothing, and called Otea a minute ago: at work between two items (P7-R2-9).
+      const two = [busy, { ...busy, name: 'kiln', lastSeen: ago(1), actedAt: ago(1), holding: [] }];
       expect(render(onward, withAgents(two))).toContain(
         '2 agentes están trabajando; lo verán cuando vuelvan a esperar.',
       );
@@ -265,6 +266,75 @@ describe('the item sheet', () => {
     const lone = { name: 'Mender', harness: null, holding: [], lastSeen: ago(30), live: true };
     const silent = render(queued, { ...app, agents: [{ ...lone, waiting: false }] } as App);
     expect(silent).toContain('>Espera a un agente. Nadie está escuchando.</span></p>');
+  });
+
+  // P7-R2-9: while claude-haiku handed off one item and claimed the next, the item waiting for an
+  // agent read «Nadie está escuchando» in red, on and off: it called Otea moments before.
+  it('says calmly that an agent at work between two items will see an item that waits for one', () => {
+    setLanguage('es');
+    const queued: ItemView = { ...item, state: 'fixing', turn: 'agent', events: [] };
+    const haiku = { name: 'claude-haiku', harness: null, holding: [], live: true, waiting: false };
+    const between = { ...haiku, lastSeen: ago(0.5), actedAt: ago(0.5), listening: true };
+    const html = render(queued, { ...app, agents: [between] } as App);
+    expect(html).toContain('data-unheard="calm"');
+    expect(html).toContain('claude-haiku está trabajando; lo verá cuando vuelva a esperar.');
+    expect(html).not.toContain('data-unheard=""');
+    const idle = { ...haiku, lastSeen: ago(0.5), actedAt: ago(10), listening: true };
+    expect(render(queued, { ...app, agents: [idle] } as App)).toContain(
+      '<b>Nadie está escuchando.</b>',
+    );
+  });
+
+  // P7-R3-10: after /exit the header said «claude-haiku lo está haciendo» for 15 minutes, the
+  // lease's lifetime: its session is no longer heard, and the lease alone keeps the item.
+  describe('an item whose holder is no longer connected', () => {
+    const haiku = { kind: 'agent', name: 'claude-haiku' } as const;
+    const held: ItemView = {
+      ...item,
+      state: 'fixing',
+      turn: 'agent',
+      lease: { holder: 'claude-haiku', expiresAt: inMinutes(12) },
+      events: [ev('claimed', haiku, { holder: 'claude-haiku' }, 6)],
+    };
+    const holder = {
+      name: 'claude-haiku',
+      harness: null,
+      holding: ['ERR-214'],
+      lastSeen: ago(4),
+      actedAt: ago(4),
+      live: false,
+      waiting: false,
+    };
+    const withHolder = (o: object) => ({ ...app, agents: [{ ...holder, ...o }] }) as App;
+
+    it('says its session ended and when the item goes back to the queue', () => {
+      setLanguage('es');
+      const html = render(held, withHolder({ sessionEnded: true }));
+      expect(html).toContain(
+        'La sesión de <b>claude-haiku</b> terminó; vuelve a la cola cuando venza su reserva.',
+      );
+      expect(html).not.toContain('lo está haciendo');
+      setLanguage('en');
+      expect(render(held, withHolder({ sessionEnded: true }))).toContain(
+        '<b>claude-haiku</b>’s session ended; it goes back to the queue when its lease runs out.',
+      );
+    });
+
+    // A command-line agent on a long step with no otea call is not told apart from an ended one.
+    it('says how long it has been quiet when Otea cannot tell its session ended', () => {
+      setLanguage('es');
+      const html = render(held, withHolder({ sessionEnded: false }));
+      expect(html).toContain(
+        '<b>claude-haiku</b> no da señales desde hace 4 min; vuelve a la cola cuando venza su reserva.',
+      );
+      expect(html).not.toContain('lo está haciendo');
+    });
+
+    it('says it is on it while it is connected', () => {
+      setLanguage('es');
+      const html = render(held, withHolder({ live: true, lastSeen: ago(0.5) }));
+      expect(html).toContain('<b>claude-haiku</b> lo está haciendo.');
+    });
   });
 
   // P7-R3-1: the only agent set it aside for later, and the header said «Espera a un agente» with
