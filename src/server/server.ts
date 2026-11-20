@@ -157,6 +157,9 @@ export type OteaServer = {
   machine: DatabaseSync;
   // The notifier of a project served, once it is open.
   notifierOf(id: string): Notifier | undefined;
+  // The routes of a project's API as its router holds them, opening the project if it must; none
+  // for a project not served. What write-guards.test.ts walks, so no write route goes unguarded.
+  routesOf(id: string): { method: string; path: string }[];
   // Opens every project served now, so each one's notices go out from the start.
   sync(): void;
   // Phone access: the pairing code and the doors a phone comes through (opening the local network
@@ -1085,6 +1088,7 @@ export function createServer(
     phone,
     lan,
     notifierOf: (id) => hosts.get(id)?.notifier,
+    routesOf: (id) => (hostOf(id)?.app.routes ?? []).map(({ method, path }) => ({ method, path })),
     sync,
     listeningOn(listened) {
       port = listened;
