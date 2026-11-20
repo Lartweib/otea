@@ -1,5 +1,5 @@
 import type { ItemFacts, Phase } from '../../../../src/core/board/engine.ts';
-import { startsWith } from '../../../../src/core/board/engine.ts';
+import { startsWith, whenHolds } from '../../../../src/core/board/engine.ts';
 import {
   type BoardDefinition,
   isEvidence,
@@ -115,6 +115,9 @@ export function sampleValue(part: Part, seed = 0): string {
     case 'date':
       return t('bs.preview.value.date');
     case 'yesno':
+      // The value the board starts it with, when it gives one (P5-R3-16).
+      if (part.initial === 'yes' || part.initial === 'no')
+        return t(part.initial === 'no' ? 'bs.no' : 'bs.yes');
       return t(seed % 2 ? 'bs.no' : 'bs.yes');
     case 'url':
       return 'example.com/docs';
@@ -145,12 +148,40 @@ export function sampleRaw(part: Part, seed = 0): unknown {
     case 'date':
       return '2026-11-14';
     case 'yesno':
-      return 'yes';
+      return part.initial === 'no' ? 'no' : 'yes';
     case 'url':
       return 'https://example.com/docs';
     default:
       return sampleValue(part, seed);
   }
+}
+
+// The parts the sample item never gets: a deliverable a step asks for only when a field holds a
+// value other than the one the board starts that field with («Rama» and «Cambios» when «En el
+// repositorio» starts «no»), and that nothing else gives it (P5-R3-16). The preview leaves them
+// out, as a real item would. A field the board gives no starting value never hides anything: the
+// sample's own pick for it is only an example.
+export function sampleSkipped(def: BoardDefinition): Set<string> {
+  const fields: Record<string, unknown> = {};
+  for (const part of Object.values(def.parts))
+    if (!isEvidence(part)) fields[part.id] = sampleRaw(part, part.name.length);
+  // What the item is created with (a later step starts with what the steps before it handed).
+  const first = def.steps[0];
+  const given = new Set<string>([
+    ...def.anytime,
+    ...(first ? startsWith(def, first.id).map(({ ref }) => ref) : []),
+  ]);
+  const sometimes = new Set<string>();
+  for (const step of def.steps) {
+    for (const hand of step.hand) {
+      const when = hand.req === 'when' ? hand.when : undefined;
+      const set = when && partOf(def, when.part)?.initial !== undefined;
+      if (when && set && !whenHolds(def, { fields }, when.part, when.value))
+        sometimes.add(hand.ref);
+      else given.add(hand.ref);
+    }
+  }
+  return new Set([...sometimes].filter((ref) => !given.has(ref)));
 }
 
 const CREATED = '2026-11-10T09:00:00.000Z';
@@ -190,9 +221,10 @@ export function sampleFacts(
     if (part && !(part.id in evidence) && !(part.id in fields)) fill(part, 2, CREATED);
   }
   if (phase !== 'doing') {
+    const skipped = sampleSkipped(def);
     for (const { ref } of stepById(def, stepId)?.hand ?? []) {
       const part = partOf(def, ref);
-      if (part) fill(part, 1, HANDED);
+      if (part && !skipped.has(ref)) fill(part, 1, HANDED);
     }
   }
   return { title, fields, evidence, engine: { fields, evidence: attached, roundStartedAt: ROUND } };
