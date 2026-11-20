@@ -14,7 +14,7 @@ import {
 import { useFileUrl } from '../evidence-files.ts';
 import { type PlainKey, t } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
-import { type Round, roundFiles } from '../rounds.ts';
+import { comparedFiles, type Round, roundFiles } from '../rounds.ts';
 import type { Evidence } from '../types.ts';
 
 const MODE_LABEL: Readonly<Record<CompareMode, PlainKey>> = {
@@ -100,8 +100,8 @@ export function CompareRounds({ rounds, modules, marks, onMark }: CompareRoundsP
   const a = rounds.find(({ n }) => n === pins.a);
   const b = rounds.find(({ n }) => n === pins.b);
   const module = sharedModule(a, b, modules);
-  const fileA = module ? roundFiles(a, module)[0] : undefined;
-  const fileB = module ? roundFiles(b, module)[0] : undefined;
+  // The pair a module's files make by name, never by their place (P5-R3-1).
+  const { a: fileA, b: fileB } = module ? comparedFiles(a, b, module) : {};
   const clocked = fileA?.kind === 'video' && fileB?.kind === 'video';
   const count = Math.max(1, Math.round(duration * FPS));
 

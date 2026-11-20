@@ -123,6 +123,35 @@ describe('the rounds of the step under review, on the phone', () => {
     ]);
   });
 
+  // P5-R3-1: round 2 renamed its pictures (r2-…), and the pairs came out shifted by one. A picture
+  // pairs with the one of the round before whose name says the same thing, never by its place.
+  it('pairs pictures renamed from one round to the next by the words of their names', () => {
+    const was = [file('comparacion-2026.png', 'image'), file('logo-2026-chico.png', 'image')];
+    const now = [file('r2-logo-chico.png', 'image'), file('r2-comparacion.png', 'image')];
+    expect(
+      imagePairs(was, now).map((p) => [p.before?.filename ?? null, p.after?.filename ?? null]),
+    ).toEqual([
+      ['logo-2026-chico.png', 'r2-logo-chico.png'],
+      ['comparacion-2026.png', 'r2-comparacion.png'],
+    ]);
+    // Pictures whose names share nothing stand alone; a lone picture on each side pairs anyway.
+    const odd = imagePairs(
+      [file('hoja.png', 'image'), file('marca.png', 'image')],
+      [file('final.png', 'image'), file('marca-v2.png', 'image')],
+    );
+    expect(odd.map((p) => [p.before?.filename ?? null, p.after?.filename ?? null])).toEqual([
+      [null, 'final.png'],
+      ['marca.png', 'marca-v2.png'],
+      ['hoja.png', null],
+    ]);
+    expect(
+      imagePairs([file('a.png', 'image')], [file('b.png', 'image')]).map((p) => [
+        p.before?.filename,
+        p.after?.filename,
+      ]),
+    ).toEqual([['a.png', 'b.png']]);
+  });
+
   it('marks a file that came again with other contents as changed, not the same', () => {
     const before = { ...file('app.ts'), sha256: 'aaa' };
     const kept = { ...file('readme.md'), sha256: 'bbb' };
