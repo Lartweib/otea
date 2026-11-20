@@ -48,9 +48,26 @@ const GENERAL_WORDS = new Set(
     'todas todo todos ' +
     'about after also before does done from have into just like make more most much need only ' +
     'other over some such than then there these they this those very want were when where which ' +
-    'will would your'
+    'will would your ' +
+    // What any work request or bug says, whatever it is about (P6-R3-7): an error, a fix, a file.
+    'agregar anadir arreglar arreglo cambiar cambio cambios dato datos error errores falla fallas ' +
+    'fallo fallos nueva nuevas nuevo nuevos problema problemas quitar usar archivo archivos ' +
+    'change changes data error errors fail fails failing file files issue issues problem ' +
+    'problems remove'
   ).split(' '),
 );
+
+// The words a project's items say: those in at least a quarter of its items, and in three at
+// least, are too common there to tie a topic to one of them (P6-R3-7: a project's own name, its
+// domain's word, on every item).
+export function commonWords(texts: readonly string[]): Set<string> {
+  const counts = new Map<string, number>();
+  for (const text of texts) {
+    for (const word of new Set(wordsOf(text))) counts.set(word, (counts.get(word) ?? 0) + 1);
+  }
+  const floor = Math.max(3, texts.length / 4);
+  return new Set([...counts].filter(([, n]) => n >= floor).map(([word]) => word));
+}
 
 // The telling words of a text, to tie it to another (a topic an item may have come from): none
 // common, none shorter than four letters, so nothing rather than noise (P4-R2-7).

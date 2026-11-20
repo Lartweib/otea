@@ -307,6 +307,29 @@ describe('topics and items', () => {
     expect(topicSuggestions(ctx, 'TAR-2', now)).toEqual([]);
     expect(topicSuggestions(ctx, 'TAR-3', now).map(({ id }) => id)).toEqual(['TEM-1']);
   });
+
+  // P6-R3-7: ERR-1 read «Puede venir de TEM-1», a topic about COPY it shared one ordinary word with.
+  // A word most of the project's items say, or one any work request says, ties nothing.
+  it('suggests nothing on a word most of the project’s items say', () => {
+    addTopic(ctx, { question: '¿Cargamos ventas con COPY o con pandas?', actor: quill }, now);
+    later(60_000);
+    seedItem('TAR-1', fede, now(), 'Ventas: reporte mensual');
+    seedItem('TAR-2', fede, now(), 'Ventas: columnas nuevas');
+    seedItem('TAR-3', fede, now(), 'Ventas por región');
+    seedItem('TAR-4', quill, now(), 'Ventas duplicadas en el reporte');
+    seedItem('TAR-5', quill, now(), 'Cargar ventas con COPY');
+
+    expect(topicSuggestions(ctx, 'TAR-4', now)).toEqual([]);
+    expect(topicSuggestions(ctx, 'TAR-5', now).map(({ id }) => id)).toEqual(['TEM-1']);
+  });
+
+  it('suggests nothing on a word any work request says', () => {
+    addTopic(ctx, { question: '¿Por qué falla el error de COPY en la carga?', actor: quill }, now);
+    later(60_000);
+    seedItem('TAR-1', quill, now(), 'Arreglar el error del reporte');
+
+    expect(topicSuggestions(ctx, 'TAR-1', now)).toEqual([]);
+  });
 });
 
 describe('topics awaiting an agent', () => {
