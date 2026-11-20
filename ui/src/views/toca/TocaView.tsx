@@ -105,8 +105,11 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
   const empty = app.items.status === 'ready' && !atasco && app.all.length === 0;
   // On the phone En camino comes folded in one line.
   const [encamino, setEncamino] = useState(false);
+  // Before the first load nothing is known yet: it says so, never that nothing waits (P5-R3-6),
+  // and draws no lanes, whose empty sections would say it too, nor a recap of zeros.
+  const loading = app.items.status === 'loading';
   // The day's recap sits under the title, on Te toca.
-  const recap = !atasco;
+  const recap = !atasco && !loading;
   // Nobody connected, on the desk: the way to connect one, over the lanes.
   const lonely =
     !atasco && !app.phone && !empty && !!app.agents && liveAgents(app.agents).length === 0;
@@ -115,7 +118,10 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
 
   let dekKey: string;
   let dek: React.ReactNode;
-  if (atasco) {
+  if (loading) {
+    dekKey = 'loading';
+    dek = t('common.loading');
+  } else if (atasco) {
     const d = atascoDek(app.all, app.now);
     dekKey = d.lead + d.quiet.map((q) => q.agent + q.text).join(';');
     dek = (
@@ -157,7 +163,7 @@ export function TocaView({ atasco = false }: { atasco?: boolean }) {
         {atasco ? null : (
           <QueuedCaptures captures={queue.captures} onDiscard={(id) => void discard(id)} />
         )}
-        {empty ? (
+        {loading ? null : empty ? (
           <EmptyProject />
         ) : (
           <>
