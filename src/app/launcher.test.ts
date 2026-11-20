@@ -1,6 +1,9 @@
-import { describe, expect, it } from 'vitest';
+import { chmodSync, mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { mcpEntry } from './agents.ts';
-import { oteaLauncher, shellLine, withHome } from './launcher.ts';
+import { oteaLauncher, pathLauncher, shellLine, withHome } from './launcher.ts';
 
 const MAIN = '/opt/Otea/resources/otea/src/cli/main.ts';
 
@@ -57,6 +60,107 @@ describe('oteaLauncher', () => {
       const launcher = oteaLauncher(MAIN, { execPath: 'node' });
 
       expect(withHome(launcher, undefined)).toBe(launcher);
+    });
+  });
+});
+
+// The otea on PATH is what `otea connect` writes into the MCP entry (cli/run.ts oteaOnPath), so
+// the entry survives a checkout that moves. Real folders and files: the lookup stats them.
+describe('pathLauncher', () => {
+  let root: string;
+  beforeEach(() => {
+    root = mkdtempSync(join(tmpdir(), 'otea-path-'));
+  });
+  afterEach(() => rmSync(root, { recursive: true, force: true }));
+
+  // A folder on PATH holding the files named.
+  const folder = (name: string, ...files: string[]) => {
+    const dir = join(root, name);
+    mkdirSync(dir, { recursive: true });
+    for (const file of files) writeFileSync(join(dir, file), '@echo off\r\n');
+    return dir;
+  };
+
+  describe('on Windows', () => {
+    it('starts npm’s otea.cmd shim through cmd /c, found in a folder with spaces', () => {
+      const node = folder('Program Files/nodejs', 'node.exe');
+      const npm = folder('npm global', 'otea.cmd', 'otea');
+      const env = { Path: `${node};${npm}`, PATHEXT: '.com;.exe;.bat;.cmd' };
+
+      const launcher = pathLauncher(env, 'win32');
+
+      expect(launcher).toEqual({ command: 'cmd', args: ['/c', 'otea'] });
+      // The entry never names the folder, so its spaces never need quoting.
+      expect(launcher && mcpEntry(launcher, 'shop-k3x7qa')).toEqual({
+        command: 'cmd',
+        args: ['/c', 'otea', 'mcp', '--project', 'shop-k3x7qa'],
+      });
+    });
+
+    it.each([
+      ['otea.bat', 'cmd /c otea', { command: 'cmd', args: ['/c', 'otea'] }],
+      ['otea.exe', 'otea', { command: 'otea', args: [] }],
+    ])('starts %s as %s', (file, _said, launcher) => {
+      const env = { PATH: folder('bin', file), PATHEXT: '.com;.exe;.bat;.cmd' };
+
+      expect(pathLauncher(env, 'win32')).toEqual(launcher);
+    });
+
+    it('takes the first folder on PATH, then the first ending PATHEXT lists', () => {
+      const shim = folder('first', 'otea.cmd');
+      const both = folder('second', 'otea.exe', 'otea.cmd');
+      const PATHEXT = '.com;.exe;.bat;.cmd';
+
+      expect(pathLauncher({ PATH: `${shim};${both}`, PATHEXT }, 'win32')?.command).toBe('cmd');
+      expect(pathLauncher({ PATH: `${both};${shim}`, PATHEXT }, 'win32')?.command).toBe('otea');
+    });
+
+    it('looks for Windows’ usual endings when PATHEXT is unset, in any case', () => {
+      const env = { PATH: folder('bin', 'otea.CMD') };
+
+      expect(pathLauncher(env, 'win32')).toEqual({ command: 'cmd', args: ['/c', 'otea'] });
+    });
+
+    it('passes over a folder named like the command', () => {
+      const decoy = folder('decoy');
+      mkdirSync(join(decoy, 'otea.exe'));
+      const env = { PATH: `${decoy};${folder('bin', 'otea.cmd')}`, PATHEXT: '.exe;.cmd' };
+
+      expect(pathLauncher(env, 'win32')).toEqual({ command: 'cmd', args: ['/c', 'otea'] });
+    });
+
+    it('finds nothing when no otea is on PATH, or there is no PATH', () => {
+      const env = { PATH: folder('bin', 'node.exe', 'otea.ps1'), PATHEXT: '.exe;.cmd' };
+
+      expect(pathLauncher(env, 'win32')).toBeUndefined();
+      expect(pathLauncher({}, 'win32')).toBeUndefined();
+    });
+  });
+
+  // A POSIX PATH holds drive-free folders split by ':', and only a file with an execute bit runs.
+  describe.skipIf(process.platform === 'win32')('elsewhere', () => {
+    const executable = (dir: string, mode: number) => {
+      const path = join(dir, 'otea');
+      writeFileSync(path, '#!/bin/sh\n');
+      chmodSync(path, mode);
+      return dir;
+    };
+
+    it('runs otea by its name, passing over a file that cannot run', () => {
+      const plain = executable(folder('plain'), 0o644);
+      const linked = executable(folder('npm global/bin'), 0o755);
+
+      expect(pathLauncher({ PATH: `${plain}:${linked}` }, 'linux')).toEqual({
+        command: 'otea',
+        args: [],
+      });
+      expect(pathLauncher({ PATH: plain }, 'linux')).toBeUndefined();
+    });
+
+    it('never takes a Windows shim', () => {
+      const env = { PATH: folder('bin', 'otea.cmd'), PATHEXT: '.cmd' };
+
+      expect(pathLauncher(env, 'darwin')).toBeUndefined();
     });
   });
 });
