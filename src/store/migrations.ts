@@ -453,6 +453,14 @@ export const MIGRATIONS = [
   `
   ALTER TABLE agents ADD COLUMN acted_at TEXT;
   `,
+  // When each MCP server started, when it last served a tool call, and how many long calls (a
+  // wait) it holds open: a newer server of the same harness takes an agent's name from an older
+  // one that has been quiet since the newer one started (P8-R3-1, app/presence.ts claimName).
+  `
+  ALTER TABLE process_beats ADD COLUMN started_at TEXT;
+  ALTER TABLE process_beats ADD COLUMN called_at TEXT;
+  ALTER TABLE process_beats ADD COLUMN calling INTEGER NOT NULL DEFAULT 0;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

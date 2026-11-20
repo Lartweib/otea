@@ -865,6 +865,48 @@ export function saveProcessBeat(db: DatabaseSync, pid: number, at: string, stale
   ).run({ pid, at });
 }
 
+// Notes that the MCP server `pid` starts, `at`: it has served no call yet. A row an earlier process
+// of the same id left (killed before it said it ended) is started over.
+export function saveProcessStart(db: DatabaseSync, pid: number, at: string, stale: string): void {
+  db.prepare('DELETE FROM process_beats WHERE at < ?').run(stale);
+  db.prepare(
+    `INSERT INTO process_beats (pid, at, started_at) VALUES (:pid, :at, :at)
+      ON CONFLICT (pid) DO UPDATE SET at = excluded.at, started_at = excluded.started_at,
+        called_at = NULL, calling = 0`,
+  ).run({ pid, at });
+}
+
+export type ProcessCalls = {
+  startedAt: string | null;
+  calledAt: string | null;
+  calling: number;
+};
+
+// When the MCP server `pid` started, last served a call, and how many long calls it holds open.
+export function selectProcessCalls(db: DatabaseSync, pid: number): ProcessCalls | undefined {
+  const row = db
+    .prepare('SELECT started_at, called_at, calling FROM process_beats WHERE pid = ?')
+    .get(pid) as
+    | { started_at: string | null; called_at: string | null; calling: number }
+    | undefined;
+  return row && { startedAt: row.started_at, calledAt: row.called_at, calling: row.calling };
+}
+
+// The latest start of a process other than `pid` (null when none noted one).
+export function selectLatestStartBesides(db: DatabaseSync, pid: number): string | null {
+  const row = db
+    .prepare('SELECT MAX(started_at) AS at FROM process_beats WHERE pid <> ?')
+    .get(pid) as { at: string | null } | undefined;
+  return row?.at ?? null;
+}
+
+// Notes that the MCP server `pid` served a call `at`, and opened (1) or closed (-1) a long one.
+export function saveProcessCall(db: DatabaseSync, pid: number, at: string, open: number): void {
+  db.prepare(
+    `UPDATE process_beats SET called_at = :at, calling = MAX(0, calling + :open) WHERE pid = :pid`,
+  ).run({ pid, at, open });
+}
+
 export function deleteProcessBeat(db: DatabaseSync, pid: number): void {
   db.prepare('DELETE FROM process_beats WHERE pid = ?').run(pid);
 }

@@ -19,9 +19,12 @@ import {
   saveMcpLoad,
   saveNameOffer,
   saveProcessBeat,
+  saveProcessCall,
+  saveProcessStart,
   saveProfile,
   selectAgents,
   selectLastReleases,
+  selectLatestStartBesides,
   selectLeases,
   selectListener,
   selectListenerProcesses,
@@ -29,6 +32,7 @@ import {
   selectMcpLoads,
   selectNameOffers,
   selectProcessBeats,
+  selectProcessCalls,
   selectProfileChanges,
   selectWaiting,
   takeLease,
@@ -224,6 +228,38 @@ export function beatProcess(db: DatabaseSync, pid: number, now: Clock = systemCl
   saveProcessBeat(db, pid, at, new Date(Date.parse(at) - BEATS_KEPT_MS).toISOString());
 }
 
+// An MCP server says it starts: it served no call yet. The start is what tells a server its harness
+// stopped talking to from one still in use (claimName).
+export function startProcess(db: DatabaseSync, pid: number, now: Clock = systemClock): void {
+  const at = now();
+  saveProcessStart(db, pid, at, new Date(Date.parse(at) - BEATS_KEPT_MS).toISOString());
+}
+
+// An MCP server serves a tool call now; `open` 1 as a long call (a wait) begins, -1 as it ends.
+// A short call is written only when another server started since this one's last noted call, the
+// one thing a later start is compared with, so a busy agent's calls rarely write.
+export function noteCall(db: DatabaseSync, pid: number, now: Clock = systemClock, open = 0): void {
+  const at = now();
+  if (open === 0) {
+    const noted = selectProcessCalls(db, pid);
+    if (!noted) return;
+    const latest = selectLatestStartBesides(db, pid);
+    if (noted.calledAt !== null && (latest === null || latest <= noted.calledAt)) return;
+  }
+  saveProcessCall(db, pid, at, open);
+}
+
+// Whether the MCP server `session` started after the server `older`, which has served no call
+// since then and holds none open: its harness talks to the new one only (it reloaded its config
+// and left the old one running, P8-R3-1). Unknown for a server that never noted its start.
+function quietSince(db: DatabaseSync, older: number, session: number): boolean {
+  const mine = selectProcessCalls(db, session);
+  const theirs = selectProcessCalls(db, older);
+  if (!mine?.startedAt || !theirs?.startedAt || theirs.calling > 0) return false;
+  if (Date.parse(theirs.startedAt) >= Date.parse(mine.startedAt)) return false;
+  return theirs.calledAt === null || Date.parse(theirs.calledAt) < Date.parse(mine.startedAt);
+}
+
 export function endProcess(db: DatabaseSync, pid: number): void {
   deleteProcessBeat(db, pid);
 }
@@ -247,9 +283,12 @@ export function runningProcesses(
 // An MCP session (`session`, its server's process id) takes an agent name only while no other open
 // session works under it: two sessions under one name would take one item twice and hand off each
 // other's work. A session that closed or went quiet leaves the name free; a command-line wait
-// shares it with its own agent. A server the same harness process (`harness`, its parent's id) started
-// anew (`fresh`: its first call under the name) takes the name from its sibling: the harness
-// restarted it and no longer talks to the old one, which is refused from then on.
+// shares it with its own agent. A new server (`fresh`: its first call under the name) takes the name
+// from the older one, which is refused from then on, when its harness no longer talks to that one:
+// the same harness process (`harness`, its parent's id) started both, or, for a harness that starts
+// each server through a shell of its own, the agent's harness (`client`, the name its MCP client
+// gives) started the new one in this project and the old one served no call since then and holds
+// none open (P8-R3-1). A real second session under the name, at work or waiting, is still refused.
 export function claimName(
   db: DatabaseSync,
   agent: string,
@@ -258,6 +297,7 @@ export function claimName(
   now: Clock = systemClock,
   harness?: number,
   fresh = false,
+  client?: string,
 ): void {
   const heard = selectListener(db, agent);
   if (!heard?.session || heard.session === session || !heard.at) return;
@@ -265,6 +305,8 @@ export function claimName(
   const running = runningProcesses(db, now, alive);
   if (!running(heard.session)) return;
   if (fresh && harness !== undefined && heard.harness === harness) return;
+  const sameClient = client !== undefined && findAgent(db, agent)?.harness === client;
+  if (fresh && sameClient && quietSince(db, heard.session, session)) return;
   // The name it is told is handed to it, so a third session refused the same name is told another:
   // the refused session is the process calling, which runs.
   const at = now();
