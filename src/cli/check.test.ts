@@ -623,6 +623,12 @@ describe('check', () => {
         out: `push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.\n${FOR_PERSON}\n`,
         err: '',
       });
+      // P8-R3-4: a force push back to an older commit removes commits from main.
+      expect(await push('--branch', 'main', '--repo', '--commits', `${head}..${root}`)).toEqual({
+        code: 19,
+        out: `push refused: this push removes commits from main, the base branch Tareas de repo protects; main only takes the branch of an item of Tareas de repo that is Done, added on top of what it has.\n${FOR_PERSON}\n`,
+        err: '',
+      });
     });
 
     // P5-R3-2: a branch no item named went to the remote before any approval («no item with a
