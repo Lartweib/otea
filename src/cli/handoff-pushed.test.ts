@@ -128,21 +128,20 @@ describe('a handoff of a branch', () => {
     );
   });
 
-  it('hands off a branch never pushed with a warning, and keeps it for the approval', async () => {
+  // P6-R3-3: a handoff of a branch never pushed passed with a note; the agent then pushed it, and
+  // the gate refused the push, the item being in review. The push comes first.
+  it('refuses a branch never pushed, on a step that pushes it, until it is pushed', async () => {
     git('remote', 'add', 'origin', 'https://example.invalid/regar.git');
 
-    const handed = await handoff();
-    expect(handed.code).toBe(0);
-    expect(handed.out).toContain(
-      `Note: ${BRANCH} was never pushed to origin. If the person reviews it on the forge (a pull request), they cannot see it there: once handed off, Rama is frozen while it is reviewed.`,
+    const refused = await handoff();
+    expect(refused.code).toBe(8);
+    expect(refused.err).toContain(
+      `CAM-1 not handed off: ${BRANCH} was never pushed to origin. Push it first (git push -u origin ${BRANCH}), then hand it off again: once handed off, Rama is frozen while it is reviewed, so no push of it gets through until the review ends.`,
     );
-    const project = openProject(repo.dir);
-    try {
-      const tip = selectEvents(project.db, 'CAM-1').findLast(({ data }) => data.tip)?.data.tip;
-      expect(tip).toMatchObject({ branch: BRANCH, pushed: false });
-    } finally {
-      project.db.close();
-    }
+    git('update-ref', `refs/remotes/origin/${BRANCH}`, BRANCH);
+    const handed = await handoff();
+    expect(handed.code, handed.err).toBe(0);
+    expect(handed.out).not.toContain('never pushed');
   });
 
   it('says nothing of pushing in a repo with no remote', async () => {
