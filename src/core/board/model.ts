@@ -266,10 +266,15 @@ export function motiveById(def: BoardDefinition, id: string): Choice | undefined
   return def.drop.motives.find((motive) => motive.id === id);
 }
 
-// The protected branch field, with its guard, when the board has one.
+// The protected branch field, with its guard, when the board has one. A part the board no longer
+// uses (left in `parts` for undo and reuse, as when a step that handed it was removed or an agent's
+// draft left it out) is no field of the board, and guards nothing (P5-R3-2): the board Studio shows
+// with no branch field gates no push, and tells no agent it may push.
 export function guardedBranch(def: BoardDefinition): (Part & { guard: Guard }) | undefined {
+  const used = usedRefs(def);
   return Object.values(def.parts).find(
-    (part): part is Part & { guard: Guard } => part.kind === 'branch' && part.guard !== undefined,
+    (part): part is Part & { guard: Guard } =>
+      part.kind === 'branch' && part.guard !== undefined && used.has(part.id),
   );
 }
 

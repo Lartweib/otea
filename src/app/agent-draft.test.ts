@@ -2,7 +2,7 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
-import type { BoardDefinition } from '../core/board/model.ts';
+import { type BoardDefinition, guardedBranch } from '../core/board/model.ts';
 import { step } from '../core/board/testing.ts';
 import { OteaError } from '../core/errors.ts';
 import {
@@ -25,7 +25,8 @@ import {
   saveDraft,
 } from './boards.ts';
 import { BOARD_JSON_SCHEMA } from './draft-request.ts';
-import { getItem, moveItem, showItem, updateItem } from './items.ts';
+import { checkGate } from './gates.ts';
+import { createItem, getItem, moveItem, showItem, updateItem } from './items.ts';
 import { itemNextText, nextFor } from './next.ts';
 import type { Project } from './project.ts';
 import { memoryContext, projectOf } from './testing.ts';
@@ -699,6 +700,72 @@ describe('an agent drafting a board', () => {
       'ítem: Toma',
       'cambios en Sobre este tablero',
     ]);
+  });
+
+  // P5-R3-2: an agent drafted from Diseño visual and left out Rama, «En el repositorio» and Cambios.
+  // The merge keeps the parts it dropped (for undo and reuse), unused; once published, Rama's guard
+  // still gated pushes and told agents they may push, on a board Studio showed with no Rama.
+  it('publishes a board whose draft dropped its protected branch with no guard: what Studio shows is what agents get', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Piezas', need: 'x', agent: 'kiln', lang: 'es', template: 'design' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    const gone = ['Rama', 'En el repositorio', 'Cambios'];
+    const dropped = new Set(
+      Object.values(draft.parts)
+        .filter(({ name }) => gone.includes(name))
+        .map(({ id }) => id),
+    );
+    expect(dropped.size).toBe(3);
+    const file: BoardDefinition = {
+      ...draft,
+      parts: Object.fromEntries(Object.entries(draft.parts).filter(([id]) => !dropped.has(id))),
+      form: draft.form.filter(({ ref }) => !dropped.has(ref)),
+      // What was asked only of a piece in the repository is asked of none (Haiku's own reading).
+      steps: draft.steps.map((one) => ({
+        ...one,
+        hand: one.hand
+          .filter(({ ref }) => !dropped.has(ref))
+          .map(({ when, ...hand }) =>
+            when === undefined || !dropped.has(when.part)
+              ? { ...hand, ...(when === undefined ? {} : { when }) }
+              : { ...hand, req: 'no' as const },
+          ),
+      })),
+      layout: Object.fromEntries(Object.entries(draft.layout).filter(([ref]) => !dropped.has(ref))),
+    };
+    submitAgentDraft(
+      ctx,
+      { id: item, text: JSON.stringify(file), actor: kiln, channel: 'cli' },
+      now,
+    );
+    publishBoard(ctx, board.id, { moves: {}, by: you }, now);
+    const live = getBoardRecord(ctx, board.id).live?.definition;
+    if (!live) throw new Error('not published');
+
+    expect(guardedBranch(live)).toBeUndefined();
+    const piece = createItem(
+      ctx,
+      {
+        collection: 'Piezas',
+        title: 'Logo',
+        fields: { 'Qué tiene que transmitir': 'calma' },
+        actor: you,
+      },
+      now,
+    );
+    expect(showItem(ctx, piece.id, { actor: kiln, channel: 'cli' }, now).gates).toBeUndefined();
+    const text = itemNextText(ctx, getItem(ctx, piece.id, now), 'kiln', now) ?? '';
+    expect(text).not.toContain('push');
+    expect(text).not.toMatch(/^Branch$/m);
+    expect(checkGate(ctx, 'push', { branch: 'refresh-2026' })).toMatchObject({
+      allowed: true,
+      items: [],
+    });
   });
 
   it('refuses to merge evidence that is not a board draft of the board', () => {
