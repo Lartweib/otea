@@ -58,9 +58,44 @@ function named(entry: EvidenceModuleEntry): string {
 function asDiff(entry: LayoutEntry, filename: string): string {
   const accepted = takes(entry);
   if (!accepted.includes('diff') || evidenceTypeOf(filename).kind !== 'log') return '';
+  return `: a diff is known by its extension, so save it as ${diffName(filename)} (or .patch) and attach that`;
+}
+
+// The file's name as a .diff.
+function diffName(filename: string): string {
   const dot = filename.lastIndexOf('.');
-  const stem = dot < 0 ? filename : filename.slice(0, dot);
-  return `: a diff is known by its extension, so save it as ${stem}.diff (or .patch) and attach that`;
+  return `${dot < 0 ? filename : filename.slice(0, dot)}.diff`;
+}
+
+// Whether a text reads as a unified diff: git's header, or a file pair followed by a hunk.
+export function readsAsDiff(text: string): boolean {
+  return /^diff --git \S/m.test(text) || /^--- \S.*\r?\n\+\+\+ \S.*\r?\n@@ -\d/m.test(text);
+}
+
+// A diff saved as a text file and attached without naming a part goes, by its extension, to a part
+// that takes logs, though the layout has one that takes diffs (P8-R3-5): that part, to say so.
+// Undefined for any other file, or when no part takes diffs.
+export function diffPartFor(
+  layout: Layout,
+  filename: string,
+  text: string,
+): EvidenceModuleEntry | undefined {
+  if (evidenceTypeOf(filename).kind !== 'log' || !readsAsDiff(text)) return undefined;
+  return evidenceModules(layout).find((entry) => moduleAccepts(entry, diffName(filename)));
+}
+
+// What Otea says of such a diff, with the commands that put it in the diff part. `went`: the part
+// it went to, when it went to one.
+export function diffPartText(
+  id: string,
+  filename: string,
+  part: EvidenceModuleEntry,
+  went?: string,
+): string {
+  const named = (text: string) => (/^[\w.<>/-]+$/.test(text) ? text : `"${text}"`);
+  const target = part.label ?? part.id;
+  const where = went === undefined ? '' : `, but a .${extensionOf(filename)} goes to ${went}`;
+  return `"${filename}" reads as a unified diff${where}: ${target} takes a diff saved as .diff. Save it as "${diffName(filename)}" and run otea attach ${id} ${named(diffName(filename))} --module ${named(target)}`;
 }
 
 function isCompare(entry: LayoutEntry): boolean {

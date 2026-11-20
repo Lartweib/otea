@@ -2743,7 +2743,8 @@ const attach: Command = {
           ? undefined
           : tickPoint(project, { id, point, source: { evidence: evidence.id }, actor, channel });
       const drawn = evidence.kind === 'diagram' ? diagramNote(evidenceInput.path, evidence) : '';
-      const text = `${formatEvidence(shown)}${same}${drawn}${ticked ? `\n${ticked.text}` : ''}`;
+      const diff = evidence.diffNote === undefined ? '' : `\n${evidence.diffNote}`;
+      const text = `${formatEvidence(shown)}${same}${diff}${drawn}${ticked ? `\n${ticked.text}` : ''}`;
       return withNotes(project, evidence.itemId, {
         // --json and MCP read the diagram's refusal to be drawn too.
         data: {

@@ -1,6 +1,12 @@
 import { describe, expect, it } from 'vitest';
 import { defaultLayout, type Layout, type LayoutEntry, readLayout } from './modules.ts';
-import { evidenceModules, groupEvidence, holderOf, placeEvidence } from './placement.ts';
+import {
+  evidenceModules,
+  groupEvidence,
+  holderOf,
+  placeEvidence,
+  readsAsDiff,
+} from './placement.ts';
 
 const FIELDS = { title: { module: 'text', required: 'create' } } as const;
 
@@ -197,5 +203,19 @@ describe('groupEvidence', () => {
       ['log', [1]],
     ]);
     expect(others.map(({ id }) => id)).toEqual([3]);
+  });
+});
+
+// A diff saved as text is told by its lines (P8-R3-5): git's header, or a file pair and a hunk.
+describe('readsAsDiff', () => {
+  it('reads git diff and diff -u output as a diff', () => {
+    expect(readsAsDiff('diff --git a/x.ts b/x.ts\nindex 1..2\n')).toBe(true);
+    expect(readsAsDiff('--- a/x.ts\n+++ b/x.ts\n@@ -1,2 +1,3 @@\n x\n+y\n')).toBe(true);
+    expect(readsAsDiff('--- a/x.ts\r\n+++ b/x.ts\r\n@@ -1 +1 @@\r\n')).toBe(true);
+  });
+
+  it('never reads a log that only draws a rule as one', () => {
+    expect(readsAsDiff('ok 12 tests\n--- summary\n+++ 3 skipped\n')).toBe(false);
+    expect(readsAsDiff('PASS src/a.test.ts\n')).toBe(false);
   });
 });

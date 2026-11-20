@@ -23,6 +23,8 @@ import {
 import type { Actor } from '../core/item.ts';
 import type { Layout } from '../core/modules.ts';
 import {
+  diffPartFor,
+  diffPartText,
   evidenceModules,
   holderOf,
   moduleAccepts,
@@ -160,6 +162,12 @@ function personsPlace(
   return { module: null, role: request.role ?? 'single' };
 }
 
+// The part that takes diffs, for a diff saved as a text file (core/placement.ts). Only the start of
+// a large file is read: a diff says so in its first lines.
+function diffPartOf(layout: Layout, file: Pick<EvidenceFile, 'filename' | 'bytes'>) {
+  return diffPartFor(layout, file.filename, file.bytes.subarray(0, 64 * 1024).toString('utf8'));
+}
+
 export function placeFile(
   project: Project,
   item: ItemRecord,
@@ -189,9 +197,21 @@ export function placeFile(
       : { module: boardModule(project, item.collection, file.module) }),
   };
   const { filename, bytes, caption } = file;
-  const placement =
-    personsPlace(project, item, actor, request) ??
-    placeEvidence(type.layout, { id: item.id, type: type.name }, request);
+  let placement: Placement;
+  try {
+    placement =
+      personsPlace(project, item, actor, request) ??
+      placeEvidence(type.layout, { id: item.id, type: type.name }, request);
+  } catch (error) {
+    // Asked which log part, a diff saved as text names the part that takes diffs too (P8-R3-5).
+    const diff = request.module === undefined && diffPartOf(type.layout, file);
+    if (!(error instanceof OteaError) || error.code !== 'module_required' || !diff) throw error;
+    throw new OteaError(
+      error.code,
+      `${error.message}. ${diffPartText(item.id, filename, diff)}`,
+      error.details,
+    );
+  }
   return { filename, bytes, ...(caption === undefined ? {} : { caption }), ...placement };
 }
 
@@ -237,8 +257,10 @@ export function recordEvidence(
   return { id, ...entry };
 }
 
-// An attach that added nothing: the item already had the same file there.
-export type Attached = EvidenceRecord & { duplicate?: true };
+// An attach that added nothing: the item already had the same file there. `diffPart`: a diff saved
+// as text went to another part than the one that takes diffs (its name), and `diffNote` says how to
+// put it there (P8-R3-5).
+export type Attached = EvidenceRecord & { duplicate?: true; diffPart?: string; diffNote?: string };
 
 // The evidence ids attached since the item last moved (its current round).
 function addedSinceMoved(project: Project, itemId: string): Set<number> {
@@ -313,8 +335,17 @@ export function attachEvidence(project: Project, input: AttachInput, now = syste
     const at = now();
     const placed = placeFile(project, item, file, input.actor, at);
     const same = sameSinceMoved(project, item.id, placed);
-    if (same) return { ...same, duplicate: true };
-    return recordEvidence(project, item.id, placed, input, at);
+    const attached = same
+      ? { ...same, duplicate: true as const }
+      : recordEvidence(project, item.id, placed, input, at);
+    if (input.module !== undefined) return attached;
+    const layout = typeOfItem(project, item).layout;
+    const diff = diffPartOf(layout, file);
+    if (!diff || diff.id === placed.module) return attached;
+    const went = evidenceModules(layout).find(({ id }) => id === placed.module);
+    const name = diff.label ?? diff.id;
+    const note = `${diffPartText(item.id, file.filename, diff, went && (went.label ?? went.id))}, then otea detach ${item.id} ${attached.id}`;
+    return { ...attached, diffPart: name, diffNote: note };
   });
 }
 
