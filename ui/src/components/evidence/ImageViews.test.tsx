@@ -3,6 +3,7 @@ import { describe, expect, it } from 'vitest';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { Evidence } from '../../types.ts';
 import { ImageCompare, ImageGallery } from './ImageViews.tsx';
+import { ItemReview } from './item-evidence.ts';
 
 const image = (id: number): Evidence => ({
   id,
@@ -42,5 +43,33 @@ describe('ImageGallery', () => {
     expect(html).toMatch(/class="ev-img ev-set"[^>]*alt="ronda-3.png"/);
     expect(html.indexOf('ronda-1.png')).toBeLessThan(html.indexOf('ronda-2.png'));
     expect(html).toMatch(/aria-current="true" aria-label="[^"]*ronda-3.png"/);
+  });
+});
+
+// P5-5: on the desk the gallery's thumbnails said nothing of the round each picture came in.
+describe('ImageGallery on a reviewed item', () => {
+  it('names the round of each thumbnail and of the picture shown', () => {
+    setLanguage('es');
+    const roundOf = new Map([
+      [1, 1],
+      [2, 1],
+      [3, 2],
+    ]);
+    const html = renderToStaticMarkup(
+      <ItemReview.Provider value={{ roundOf }}>
+        <ImageGallery evidence={[image(1), image(2), image(3)]} label="Arte" />
+      </ItemReview.Provider>,
+    );
+    const rounds = [...html.matchAll(/class="ev-thumb-round">ronda (\d)</g)].map((m) => m[1]);
+    expect(rounds).toEqual(['1', '1', '2']);
+    expect(html).toMatch(/class="ev-tag r"[^>]*>3 \/ 3 · ronda 2</);
+    setLanguage('en');
+  });
+
+  it('says no round off a review', () => {
+    const html = renderToStaticMarkup(
+      <ImageGallery evidence={[image(1), image(2)]} label="Arte" />,
+    );
+    expect(html).not.toContain('ev-thumb-round');
   });
 });
