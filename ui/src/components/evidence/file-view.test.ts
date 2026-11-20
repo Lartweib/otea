@@ -7,32 +7,29 @@ const file = (filename: string, contentType = 'application/octet-stream') => ({
 });
 
 describe('fileViewOf: how a file in a files part is read', () => {
-  it('reads data as data: JSON as a tree, CSV and TSV as a table', () => {
-    expect(fileViewOf(file('data.json'))).toBe('json');
-    expect(fileViewOf(file('respuesta', 'application/json'))).toBe('json');
-    expect(fileViewOf(file('x.csv'))).toBe('table');
-    expect(fileViewOf(file('x.tsv'))).toBe('table');
-  });
-
-  it('reads Markdown as formatted text', () => {
-    expect(fileViewOf(file('arquitectura.md', 'text/markdown'))).toBe('markdown');
-    expect(fileViewOf(file('NOTAS.MARKDOWN'))).toBe('markdown');
-  });
-
-  it('reads code, data and plain text as lines', () => {
-    for (const name of ['main.ts', 'app.py', 'q.sql', 'conf.yaml', 'run.sh', 'a.txt'])
-      expect(fileViewOf(file(name))).toBe('text');
-    expect(fileViewOf(file('LICENSE', 'text/plain'))).toBe('text');
-  });
-
-  it('reads a PDF as its pages', () => {
-    expect(fileViewOf(file('informe.pdf', 'application/pdf'))).toBe('pdf');
-    expect(fileViewOf(file('INFORME.PDF'))).toBe('pdf');
-    expect(fileViewOf(file('sin-nombre', 'application/pdf'))).toBe('pdf');
-  });
-
-  it('offers anything else to open or download, never as text', () => {
-    expect(fileViewOf(file('proyecto.bin'))).toBe('download');
-    expect(fileViewOf(file('dibujo.svg', 'image/svg+xml'))).toBe('download');
+  // Data as data (JSON as a tree, CSV and TSV as a table), Markdown as formatted text, code, data
+  // and plain text as lines, a PDF as its pages, and anything else to open or download, never as
+  // text.
+  it.each<[string, string | undefined, string]>([
+    ['data.json', undefined, 'json'],
+    ['respuesta', 'application/json', 'json'],
+    ['x.csv', undefined, 'table'],
+    ['x.tsv', undefined, 'table'],
+    ['arquitectura.md', 'text/markdown', 'markdown'],
+    ['NOTAS.MARKDOWN', undefined, 'markdown'],
+    ['main.ts', undefined, 'text'],
+    ['app.py', undefined, 'text'],
+    ['q.sql', undefined, 'text'],
+    ['conf.yaml', undefined, 'text'],
+    ['run.sh', undefined, 'text'],
+    ['a.txt', undefined, 'text'],
+    ['LICENSE', 'text/plain', 'text'],
+    ['informe.pdf', 'application/pdf', 'pdf'],
+    ['INFORME.PDF', undefined, 'pdf'],
+    ['sin-nombre', 'application/pdf', 'pdf'],
+    ['proyecto.bin', undefined, 'download'],
+    ['dibujo.svg', 'image/svg+xml', 'download'],
+  ])('reads %s (%s) as %s', (name, contentType, view) => {
+    expect(fileViewOf(file(name, contentType))).toBe(view);
   });
 });

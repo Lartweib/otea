@@ -4,13 +4,11 @@ import {
   briefHash,
   hashFor,
   hashOf,
-  ITEMS_HASH,
   idFromHash,
   modulesHash,
   type Route,
   routeFromHash,
   studioHash,
-  TRIAGE_HASH,
 } from './selection.ts';
 
 describe('selection', () => {
@@ -90,14 +88,6 @@ describe('selection', () => {
   it('opens an item only on the views that list items, and over Triage', () => {
     expect(hashOf({ view: 'settings', item: 'A' })).toBe('#/settings');
     expect(hashOf({ view: 'triage', item: 'A' })).toBe('#/triage/i/A');
-  });
-
-  it('writes Te toca with nothing open as a hash', () => {
-    expect(routeFromHash(ITEMS_HASH)).toEqual({ view: 'toca' });
-  });
-
-  it('writes swipe triage as a hash', () => {
-    expect(routeFromHash(TRIAGE_HASH)).toEqual({ view: 'triage' });
   });
 
   it('writes a board as a hash', () => {

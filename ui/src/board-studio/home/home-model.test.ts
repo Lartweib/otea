@@ -98,30 +98,16 @@ const summary = (over: Partial<BoardSummary>): BoardSummary =>
   }) as BoardSummary;
 
 describe('a board’s status', () => {
-  it('is its published version when nothing waits to be published', () => {
-    expect(statusOf(summary({ status: 'live', liveVersion: 3 }))).toEqual({
-      kind: 'live',
-      version: 3,
-    });
-  });
-
-  it('adds the unpublished changes to a published board', () => {
-    expect(statusOf(summary({ status: 'changed', liveVersion: 2 }))).toEqual({
-      kind: 'changed',
-      version: 2,
-    });
-  });
-
-  it('is a draft before its first publish', () => {
-    expect(statusOf(summary({ status: 'draft', liveVersion: null }))).toEqual({ kind: 'draft' });
-  });
-
-  it('names the agent drafting it, when it is known', () => {
-    expect(statusOf(summary({ status: 'waiting' }), 'kiln')).toEqual({
-      kind: 'waiting',
-      agent: 'kiln',
-    });
-    expect(statusOf(summary({ status: 'waiting' }))).toEqual({ kind: 'waiting', agent: null });
+  // Its published version when nothing waits to be published, the unpublished changes added to a
+  // published board, a draft before its first publish, and the agent drafting it when it is known.
+  it.each<[Partial<BoardSummary>, string | null, ReturnType<typeof statusOf>]>([
+    [{ status: 'live', liveVersion: 3 }, null, { kind: 'live', version: 3 }],
+    [{ status: 'changed', liveVersion: 2 }, null, { kind: 'changed', version: 2 }],
+    [{ status: 'draft', liveVersion: null }, null, { kind: 'draft' }],
+    [{ status: 'waiting' }, 'kiln', { kind: 'waiting', agent: 'kiln' }],
+    [{ status: 'waiting' }, null, { kind: 'waiting', agent: null }],
+  ])('reads %j, drafted by %s, as %j', (over, drafter, status) => {
+    expect(statusOf(summary(over), drafter)).toEqual(status);
   });
 });
 
@@ -136,16 +122,14 @@ describe('a free name', () => {
 });
 
 describe('a new board’s name', () => {
-  it('needs some text', () => {
-    expect(nameIssue('   ', [])).toBe('empty');
-  });
-
-  it('is taken when a board has it already, whatever the case and spacing', () => {
-    expect(nameIssue('  criaturas   del pantano ', ['Criaturas del pantano'])).toBe('taken');
-  });
-
-  it('is fine otherwise', () => {
-    expect(nameIssue('Criaturas', ['Errores'])).toBeNull();
+  // It needs some text, is taken when a board has it already whatever the case and spacing, and
+  // is fine otherwise.
+  it.each<[string, string[], ReturnType<typeof nameIssue>]>([
+    ['   ', [], 'empty'],
+    ['  criaturas   del pantano ', ['Criaturas del pantano'], 'taken'],
+    ['Criaturas', ['Errores'], null],
+  ])('nameIssue(%j, %j) is %j', (name, taken, issue) => {
+    expect(nameIssue(name, taken)).toBe(issue);
   });
 });
 

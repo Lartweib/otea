@@ -30,16 +30,16 @@ const broken = {
 };
 
 describe('parseChoice', () => {
-  it('accepts the three known choices', () => {
-    expect(parseChoice('system')).toBe('system');
-    expect(parseChoice('light')).toBe('light');
-    expect(parseChoice('dark')).toBe('dark');
-  });
-
-  it('falls back to system for anything else', () => {
-    expect(parseChoice(null)).toBe('system');
-    expect(parseChoice('')).toBe('system');
-    expect(parseChoice('sepia')).toBe('system');
+  // It accepts the three known choices and falls back to system for anything else.
+  it.each([
+    ['system', 'system'],
+    ['light', 'light'],
+    ['dark', 'dark'],
+    [null, 'system'],
+    ['', 'system'],
+    ['sepia', 'system'],
+  ])('reads %j as %s', (raw, choice) => {
+    expect(parseChoice(raw)).toBe(choice);
   });
 });
 
@@ -56,18 +56,16 @@ describe('resolveTheme', () => {
 });
 
 describe('readChoice', () => {
-  it('reads a stored choice', () => {
-    expect(readChoice(memory({ [THEME_KEY]: 'dark' }))).toBe('dark');
-  });
-
-  it('defaults to system when nothing or garbage is stored', () => {
-    expect(readChoice(memory())).toBe('system');
-    expect(readChoice(memory({ [THEME_KEY]: 'neon' }))).toBe('system');
-  });
-
-  it('defaults to system when storage is missing or throws', () => {
-    expect(readChoice(undefined)).toBe('system');
-    expect(readChoice(broken)).toBe('system');
+  // It reads a stored choice, and defaults to system when nothing or garbage is stored, or when
+  // storage is missing or throws.
+  it.each([
+    ['a stored choice', memory({ [THEME_KEY]: 'dark' }), 'dark'],
+    ['nothing stored', memory(), 'system'],
+    ['garbage stored', memory({ [THEME_KEY]: 'neon' }), 'system'],
+    ['no storage', undefined, 'system'],
+    ['storage that throws', broken, 'system'],
+  ])('reads %s as %s', (_, storage, choice) => {
+    expect(readChoice(storage)).toBe(choice);
   });
 });
 

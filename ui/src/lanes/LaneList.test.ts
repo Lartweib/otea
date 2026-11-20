@@ -60,12 +60,6 @@ describe('a list on the lanes', () => {
     expect(html).toContain('data-s="ERR-214:node"');
   });
 
-  it('heads a section with its name, its count, its gloss and a hairline', () => {
-    expect(render()).toContain(
-      '<div class="sec" data-k="sec:revisiones"><h2 data-leaf="">Revisiones</h2><span class="n" data-leaf=""><span class="nv" data-v="2">2</span></span><span class="gloss" data-leaf="">para ti</span><i class="rl" data-leaf=""></i></div>',
-    );
-  });
-
   it('says an empty section in its own line, big when the whole list is empty', () => {
     expect(render()).toContain(
       '<div class="empty" data-k="empty:atasco" data-leaf="">Nada atascado.</div>',

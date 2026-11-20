@@ -12,31 +12,36 @@ const phone: NotifyPlace = {
 };
 
 describe('notifyOffer', () => {
-  it('offers the desktop app its own notifications, on this computer', () => {
-    expect(notifyOffer({ ...phone, target: 'desktop', key: null, desktopApp: true })).toBe(
+  it.each<[string, Partial<NotifyPlace>, ReturnType<typeof notifyOffer>]>([
+    [
+      'offers the desktop app its own notifications, on this computer',
+      { target: 'desktop', key: null, desktopApp: true },
       'desktop',
-    );
-  });
-
-  it('offers nothing in a plain browser on this computer: the phone and the desktop app are told', () => {
-    expect(notifyOffer({ ...phone, target: 'desktop', key: null })).toBeNull();
-  });
-
-  it('offers push to a phone on HTTPS', () => {
-    expect(notifyOffer(phone)).toBe('push');
-  });
-
-  it('explains a phone on the local network’s plain HTTP needs HTTPS', () => {
-    expect(notifyOffer({ ...phone, key: null })).toBe('needs-https');
-  });
-
-  it('explains an iPhone needs Otea on its home screen first', () => {
-    expect(notifyOffer({ ...phone, platform: 'ios', hasPush: false })).toBe('needs-home-screen');
-    expect(notifyOffer({ ...phone, platform: 'ios', standalone: true })).toBe('push');
-  });
-
-  it('says when this browser cannot receive them, or they were blocked', () => {
-    expect(notifyOffer({ ...phone, hasPush: false })).toBe('unsupported');
-    expect(notifyOffer({ ...phone, permission: 'denied' })).toBe('blocked');
+    ],
+    [
+      'offers nothing in a plain browser on this computer: the phone and the desktop app are told',
+      { target: 'desktop', key: null },
+      null,
+    ],
+    ['offers push to a phone on HTTPS', {}, 'push'],
+    [
+      'explains a phone on the local network’s plain HTTP needs HTTPS',
+      { key: null },
+      'needs-https',
+    ],
+    [
+      'explains an iPhone needs Otea on its home screen first',
+      { platform: 'ios', hasPush: false },
+      'needs-home-screen',
+    ],
+    [
+      'offers push to an iPhone with Otea on its home screen',
+      { platform: 'ios', standalone: true },
+      'push',
+    ],
+    ['says when this browser cannot receive them', { hasPush: false }, 'unsupported'],
+    ['says when they were blocked', { permission: 'denied' }, 'blocked'],
+  ])('%s', (_, over, offer) => {
+    expect(notifyOffer({ ...phone, ...over })).toBe(offer);
   });
 });
