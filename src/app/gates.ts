@@ -22,6 +22,8 @@ import {
   baseGateText,
   baseRefusal,
   branchForPersonText,
+  commitsForPersonText,
+  DONE_NAME,
   forPersonText,
   gateText,
   placeText,
@@ -30,7 +32,7 @@ import {
 } from '../core/board/next.ts';
 import { partByName, stateName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
-import { listCollections, selectEvents, selectItems } from '../store/queries.ts';
+import { type ItemRecord, listCollections, selectEvents, selectItems } from '../store/queries.ts';
 import { presetOf } from './collections.ts';
 import type { Context } from './context.ts';
 import { type Item, listItems, workflowOf } from './items.ts';
@@ -64,17 +66,20 @@ export type GateCheck = {
   refusal?: string;
   // Under a refused push into a protected base: how the person lands a commit of their own.
   person?: string;
+  // Under a refusal of commits no approved item holds or records: those commits.
+  stray?: readonly BroughtCommit[];
 };
 
 // The branches a push or merge into a base branch brings in: asked of git only when a board
 // protects that branch as its base. `unpushed` names those of them that hold commits their remote
 // never got (`remote`): never reviewed, so they are refused whatever their item's state.
-// `outside` names the commits the action brings in that none of the given branches holds: they
-// ride along unreviewed, so the action is refused.
+// `outside` names the commits the action brings in that none of the given branches holds, nor any
+// of the `tips` (commits that hold the history under them, as a branch does), merge commits aside:
+// they ride along unreviewed, so the action is refused, unless an approved item records them.
 export type Brought = {
   branches: readonly string[];
   unpushed?: readonly { branch: string; remote: string }[];
-  outside?: (held: readonly string[]) => readonly string[];
+  outside?: (held: readonly string[], tips?: readonly string[]) => readonly BroughtCommit[];
   // Whether the commit the action writes holds exactly what was approved of the branches it lands
   // (each at its approved tip, or as it stands when none was recorded), merged onto the base the
   // remote has: `onto` names that base for a push of the item's own branch, else it is what the
@@ -102,6 +107,10 @@ export type MergeTake =
       added: readonly { commit: string; author: string }[];
     }
   | { unknown: string };
+
+// A commit an action brings in, by its full id, with its subject (the first line of its message),
+// for a person to know it by.
+export type BroughtCommit = { commit: string; subject: string };
 
 export type Landing = { branch: string; tip?: Tip };
 export type Brings = () => readonly string[] | Brought;
@@ -481,12 +490,135 @@ function unapprovedRefusal(gate: string, base: string, approved: readonly Approv
   return `${gate} refused: ${base} would not hold exactly what the person approved of ${which}: it brings in changes nobody reviewed, or a merge whose conflicts the review never saw. Bring in the approved commits as they are, or rebased onto ${base} with the same result; for anything else, ${again}.`;
 }
 
-// Why a push or merge into a base branch is refused when it brings in commits no branch of the
-// items it brings in holds: nobody reviewed them, whatever those items' steps say.
-function strayRefusal(gate: string, base: string, commits: readonly string[]): string {
-  const shown = commits.slice(0, 5).join(', ') + (commits.length > 5 ? ', …' : '');
+// The commits of a refusal as a reader knows them: each short id with its subject, five at most.
+function commitsShown(commits: readonly BroughtCommit[]): string {
+  const shown = commits
+    .slice(0, 5)
+    .map(({ commit, subject }) => (subject ? `${short(commit)} (${subject})` : short(commit)));
+  return shown.join(', ') + (commits.length > 5 ? ', …' : '');
+}
+
+// Why a push or merge into a base branch is refused when it brings in commits that no branch of an
+// approved item holds and no approved or Done item records as its own (P5-R3-3): nobody approved
+// them, whatever the steps of the items it brings in say. What the agent does about it: record a
+// commit on the approved item that made it, or push nothing of it.
+function strayRefusal(
+  gate: string,
+  base: string,
+  defs: readonly BoardDefinition[],
+  commits: readonly BroughtCommit[],
+): string {
   const count = commits.length === 1 ? '1 commit' : `${commits.length} commits`;
-  return `${gate} refused: ${base} would take ${count} no reviewed branch holds (${shown}); it takes only the branches of the items it brings in, as they were pushed.`;
+  const names = defs.map((def) => def.name).join(' and ');
+  const verb = defs.length > 1 ? 'protect' : 'protects';
+  const example = short(commits[0]?.commit ?? '<commit>');
+  return `${gate} refused: ${base} would take ${count} that no approved item holds on its branch or records as its own: ${commitsShown(commits)}. ${names} ${verb} ${base}: it takes only the branches of approved items, as they were pushed, and the commits an approved or Done item records by its id. If an approved item made it, record it on that item: while it is landed, in the field its step asks for (otea update <id> --field "<field>=${example}"); once it is Done, with otea merged <id> --commit ${example}. If no approved item made it, push nothing of it: ask the person, otea ask <id> "<question>".`;
+}
+
+// An id of a commit as an item records it in a field: 7 to 40 hex digits, a word of its own.
+const COMMIT_ID = /\b[0-9a-f]{7,40}\b/gi;
+
+function commitIds(value: unknown): string[] {
+  return typeof value === 'string'
+    ? (value.match(COMMIT_ID) ?? []).map((id) => id.toLowerCase())
+    : [];
+}
+
+// An approved or Done item of a board that guards a branch, and the commits it records as its
+// own (P5-R3-3): a board that commits approved work straight on the base, in its land step, writes
+// each commit's id in a field of the item (Commit en main), and otea merged --commit records one on
+// a Done item. Each id holds that one commit, matched as a prefix. `tip`: what its handoff
+// recorded of the base itself, on a board that works straight on it, which holds the commits under
+// it, as a branch does.
+type CommitRecord = {
+  item: ItemRecord;
+  def: BoardDefinition;
+  ids: string[];
+  tip?: string;
+};
+
+function recordsOf(
+  ctx: Context,
+  boards: readonly LiveBoard[],
+  fields: Readonly<Record<string, string>>,
+  base: string,
+): CommitRecord[] {
+  return boards.flatMap((board) => {
+    const branch = guardedBranch(board.def);
+    if (!branch) return [];
+    const repo = branch.guard.repo;
+    return selectItems(ctx.db, { collection: board.collection }).flatMap((item): CommitRecord[] => {
+      const position = positionOf(item.state);
+      if (isDropped(position) || !gateAt(board.def, position, 'merge').allowed) return [];
+      if (
+        repo !== undefined &&
+        fields.repo !== undefined &&
+        !sameRepo(item.fields[repo], fields.repo)
+      )
+        return [];
+      const ids = [
+        ...Object.values(item.fields).flatMap(commitIds),
+        ...commitIds(mergedOf(ctx, item.id)?.commit),
+      ];
+      const tip = approvedTipOf(ctx, item.id, base);
+      const held = tip && !tip.unchanged ? { tip: tip.commit } : {};
+      return ids.length > 0 || held.tip ? [{ item, def: board.def, ids, ...held }] : [];
+    });
+  });
+}
+
+// What the approved and Done items record of the commits a push of the base brings in, when it
+// brings in no item's branch: each item with the commits of the push that are its own, and the
+// commits none of them records. Undefined when git cannot list what the push brings in (the remote
+// has no base yet), or the push brings in no commit at all.
+function recordedTake(
+  records: readonly CommitRecord[],
+  outside: NonNullable<Brought['outside']>,
+):
+  | { taken: { record: CommitRecord; commits: BroughtCommit[] }[]; left: BroughtCommit[] }
+  | undefined {
+  const every = outside([]);
+  if (every.length === 0) return undefined;
+  const taken = records.flatMap((record) => {
+    const underTip = record.tip
+      ? new Set(outside([], [record.tip]).map(({ commit }) => commit))
+      : undefined;
+    const commits = every.filter(
+      ({ commit }) =>
+        record.ids.some((id) => commit.toLowerCase().startsWith(id)) ||
+        (underTip !== undefined && !underTip.has(commit)),
+    );
+    return commits.length > 0 ? [{ record, commits }] : [];
+  });
+  const owned = new Set(taken.flatMap(({ commits }) => commits.map(({ commit }) => commit)));
+  return { taken, left: every.filter(({ commit }) => !owned.has(commit)) };
+}
+
+// What otea check answers for an item whose recorded commits a push of the base takes.
+function recordedVerdict(
+  ctx: Context,
+  gate: GateAction,
+  base: string,
+  { record, commits }: { record: CommitRecord; commits: readonly BroughtCommit[] },
+): GateVerdict {
+  const { item, def } = record;
+  const position = positionOf(item.state);
+  const allowedIn = workflowOf(ctx, item).gates?.merge ?? [];
+  const where = isClosed(position)
+    ? `is ${DONE_NAME}`
+    : `is being landed in ${placeText(def, position)}, after the person's approval,`;
+  const ids = commits.map(({ commit }) => short(commit));
+  const listed =
+    ids.length > 5 ? `${ids.slice(0, 5).join(', ')} and ${ids.length - 5} more` : ids.join(', ');
+  return {
+    id: item.id,
+    state: item.state,
+    stateName: stateName(def, item.state),
+    allowed: true,
+    allowedIn,
+    allowedInNames: allowedIn.map((state) => stateName(def, state)),
+    text: `${gate} allowed: ${item.id} ${where} and records ${listed} as its own; ${base} takes ${ids.length === 1 ? 'it' : 'them'}.`,
+  };
 }
 
 // Checks the items whose fields hold every value given and whose workflow gates the action: on a
@@ -515,7 +647,11 @@ export function checkGate(
   if (bases.length > 0) {
     const check = baseVerdict(ctx, boards, bases, gate, fields, brings);
     if (check.allowed || gate !== 'push') return check;
-    return { ...check, person: forPersonText(bases.map(({ def }) => def)) };
+    const defs = bases.map(({ def }) => def);
+    const person = check.stray
+      ? commitsForPersonText(defs, fields.branch ?? '', check.stray)
+      : forPersonText(defs);
+    return { ...check, person };
   }
   const fromBoards = GATED.includes(gate)
     ? boards.flatMap((board) => boardVerdicts(ctx, board, gate as GateAction, fields, brings))
@@ -652,27 +788,45 @@ function baseVerdict(
   const guarding = boards.filter(({ def }) => guardedBranch(def) !== undefined);
   const checks = guarding.map((board) => baseCheck(ctx, board, gate as GateAction, fields, brings));
   const items = checks.flatMap((check) => check.items);
+  const base = fields.branch ?? '';
+  const defs = bases.map(({ def }) => def);
+  const outside = brought(brings).outside;
   if (items.length === 0) {
-    const defs = bases.map(({ def }) => def);
+    // It brings in no item's branch: it may still bring in only commits that approved or Done
+    // items record as their own (P5-R3-3), a board that commits approved work straight on the base.
+    const take = outside
+      ? recordedTake(recordsOf(ctx, guarding, fields, base), outside)
+      : undefined;
+    if (take && take.left.length === 0) {
+      const taken = take.taken.map((one) => recordedVerdict(ctx, gate as GateAction, base, one));
+      return { gate, allowed: true, items: taken };
+    }
+    if (take)
+      return {
+        gate,
+        allowed: false,
+        items,
+        refusal: strayRefusal(gate, base, defs, take.left),
+        stray: take.left,
+      };
     return {
       gate,
       allowed: false,
       items,
-      refusal: baseRefusal(defs, gate as GateAction, fields.branch ?? ''),
+      refusal: baseRefusal(defs, gate as GateAction, base),
     };
   }
   const allowed = items.every((item) => item.allowed);
   // Every item brought in may land, but the action must not bring in more than their branches:
   // a commit made on the base, or on a branch no item has, rides along unreviewed.
-  const stray = allowed
-    ? (brought(brings).outside?.(checks.flatMap(({ held }) => held)) ?? [])
-    : [];
+  const stray = allowed ? (outside?.(checks.flatMap(({ held }) => held)) ?? []) : [];
   if (stray.length > 0) {
     return {
       gate,
       allowed: false,
       items,
-      refusal: strayRefusal(gate, fields.branch ?? '', stray),
+      refusal: strayRefusal(gate, base, defs, stray),
+      stray,
     };
   }
   // Every branch it brings in is one the person approved: what it writes must be exactly that,

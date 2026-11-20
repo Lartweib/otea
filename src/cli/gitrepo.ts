@@ -1,6 +1,6 @@
 import { execFileSync } from 'node:child_process';
 import { basename, dirname, relative, resolve, sep } from 'node:path';
-import type { Landing, MergeTake, Tip } from '../app/gates.ts';
+import type { BroughtCommit, Landing, MergeTake, Tip } from '../app/gates.ts';
 import { excludeFromGit } from '../app/project.ts';
 
 function git(cwd: string, ...args: string[]): string {
@@ -107,7 +107,7 @@ export function hasCommit(cwd: string, ref: string): boolean {
 export type Brought = {
   branches: string[];
   unpushed: { branch: string; remote: string }[];
-  outside?: (held: readonly string[]) => string[];
+  outside?: (held: readonly string[], tips?: readonly string[]) => BroughtCommit[];
   landsAs?: (landing: readonly Landing[], onto?: string) => boolean;
 };
 
@@ -139,7 +139,9 @@ export function branchesBrought(cwd: string, to: string, from?: string): Brought
   const brought: Brought = { branches: [...new Set([...local, ...fromRemotes])], unpushed };
   // With nothing on the remote to start from, the whole history would count as brought in: only a
   // push onto a branch the remote has is asked which commits ride along.
-  if (base) brought.outside = (held) => commitsOutside(cwd, tip, base, held, refs, remotes);
+  if (base)
+    brought.outside = (held, tips = []) =>
+      commitsOutside(cwd, tip, base, held, refs, remotes, tips);
   brought.landsAs = (landing, onto) => {
     const start =
       onto === undefined ? base : (commitOf(cwd, remoteOf(cwd, onto)) ?? commitOf(cwd, onto));
@@ -353,9 +355,10 @@ export function tipOf(cwd: string, branch: string, local = false): Tip | undefin
   return commit === undefined || tree === undefined ? undefined : { branch, commit, tree };
 }
 
-// The commits in `tip` and not in `base` that none of the `held` branches holds, by short id, merge
-// commits aside; `refs` are the refs the push brings in, a branch counting by its local ref and by
-// the remote's alike.
+// The commits in `tip` and not in `base` that none of the `held` branches holds, nor any of the
+// `tips` (commits that hold the history under them; one this checkout lacks holds nothing), oldest
+// first, each by its full id with its subject, merge commits aside; `refs` are the refs the push
+// brings in, a branch counting by its local ref and by the remote's alike.
 function commitsOutside(
   cwd: string,
   tip: string,
@@ -363,7 +366,8 @@ function commitsOutside(
   held: readonly string[],
   refs: readonly string[],
   remotes: readonly string[],
-): string[] {
+  tips: readonly string[] = [],
+): BroughtCommit[] {
   const holding = refs.filter((ref) =>
     held.some(
       (name) =>
@@ -371,16 +375,26 @@ function commitsOutside(
         remotes.some((remote) => ref === `refs/remotes/${remote}/${name}`),
     ),
   );
+  const under = tips.flatMap((commit) => commitOf(cwd, commit) ?? []);
   const listed = git(
     cwd,
-    'rev-list',
+    'log',
     '--no-merges',
-    '--abbrev-commit',
+    '--reverse',
+    '--format=%H%x09%s',
     tip,
     `^${base}`,
     ...holding.map((ref) => `^${ref}`),
+    ...under.map((commit) => `^${commit}`),
+    '--',
   );
-  return listed.split(/\r?\n/).filter(Boolean);
+  return listed
+    .split(/\r?\n/)
+    .filter(Boolean)
+    .map((line) => {
+      const [commit = '', ...subject] = line.split('\t');
+      return { commit, subject: subject.join('\t') };
+    });
 }
 
 // The remote branch a local one is pushed to, by name (origin/feat/x): the remote-tracking branch

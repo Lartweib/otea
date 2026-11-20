@@ -16,6 +16,13 @@ import { type Cli, cliAt, presetCollection, tempGitRepo } from './testing.ts';
 const FOR_PERSON =
   'Para la persona: si el commit es tuyo, pásalo por el tablero (pídele a tu agente un ítem y apruébalo en Otea) o súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.';
 
+// A push of main that brings one commit no approved item holds or records (P5-R3-3): the agent's
+// refusal, and what the person reads under it.
+const stray = (commit: string, subject: string) =>
+  `push refused: main would take 1 commit that no approved item holds on its branch or records as its own: ${commit} (${subject}). Tareas de repo protects main: it takes only the branches of approved items, as they were pushed, and the commits an approved or Done item records by its id. If an approved item made it, record it on that item: while it is landed, in the field its step asks for (otea update <id> --field "<field>=${commit}"); once it is Done, with otea merged <id> --commit ${commit}. If no approved item made it, push nothing of it: ask the person, otea ask <id> "<question>".`;
+const strayForPerson = (commit: string, subject: string) =>
+  `Para la persona: esta subida lleva a main 1 cambio que ningún ítem aprobado reconoce como suyo: ${commit} «${subject}». Otea solo deja llegar a main lo que aprobaste. Si es de un ítem que ya aprobaste, pídele a tu agente que anote ese cambio en el ítem; si el ítem espera tu revisión, revísalo en el escritorio de Otea; luego vuelve a subir. Si el cambio es tuyo, súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.`;
+
 describe('check', () => {
   let repo: ReturnType<typeof tempGitRepo>;
   let otea: Cli;
@@ -467,15 +474,53 @@ describe('check', () => {
       git('merge', '-q', '--ff-only', 'chg-1/keys');
       const reviewed = git('rev-parse', 'HEAD');
       commit('never reviewed');
-      const extra = git('rev-parse', '--short', 'HEAD');
+      const extra = git('rev-parse', 'HEAD').slice(0, 7);
 
       expect(await push('--branch', '--repo')).toEqual({
         code: 19,
-        out: `push refused: main would take 1 commit no reviewed branch holds (${extra}); it takes only the branches of the items it brings in, as they were pushed.\n${FOR_PERSON}\n`,
+        out: `${stray(extra, 'never reviewed')}\n${strayForPerson(extra, 'never reviewed')}\n`,
         err: '',
       });
       git('reset', '-q', '--hard', reviewed);
       expect((await push('--branch', '--repo')).code).toBe(0);
+    });
+
+    // P5-R3-3: a board that commits approved work straight on main, in its land step, writes each
+    // commit's id on its item (Commit en main). git push origin main was refused all the same, «this
+    // push brings in none», and the only advice was --no-verify.
+    it('takes into the base the commits approved or Done items record as their own, and names the rest', async () => {
+      git('checkout', '-q', 'main');
+      commit('Logo 2026');
+      const logo = git('rev-parse', 'HEAD').slice(0, 7);
+      const project = openProject(repo.dir);
+      try {
+        // Its Rama left empty, as on a board where it is asked only when the piece is in the repo.
+        project.db
+          .prepare(
+            "UPDATE items SET fields = (SELECT json_group_object(key, CASE WHEN value = 'chg-1/keys' THEN '' ELSE value END) FROM json_each(items.fields)) WHERE id = ?",
+          )
+          .run(task);
+      } finally {
+        project.db.close();
+      }
+      person(task, 'implementing');
+      const noted = await otea('update', task, '--field', `Descripción=Hecho en main: ${logo}`);
+      expect(noted.code, noted.err).toBe(0);
+      await otea('move', task, 'implementing__review');
+      expect((await push('--branch', '--repo')).code).toBe(19);
+      person(task, 'done');
+
+      expect(await push('--branch', '--repo')).toMatchObject({
+        code: 0,
+        out: `push allowed: ${task} is Done and records ${logo} as its own; main takes it.\n`,
+      });
+      commit('Retoques');
+      const extra = git('rev-parse', 'HEAD').slice(0, 7);
+      expect(await push('--branch', '--repo')).toEqual({
+        code: 19,
+        out: `${stray(extra, 'Retoques')}\n${strayForPerson(extra, 'Retoques')}\n`,
+        err: '',
+      });
     });
 
     it('takes a merge commit that joins a Done branch into the base', async () => {
@@ -545,7 +590,9 @@ describe('check', () => {
             return String((error as { stdout?: string }).stdout);
           }
         })();
-        expect(riding).toContain('push refused: main would take 1 commit no reviewed branch holds');
+        expect(riding).toContain(
+          'push refused: main would take 1 commit that no approved item holds on its branch or records as its own',
+        );
         git('reset', '-q', '--hard', 'chg-1/keys');
         git('push', '-q', bare, 'main');
         expect(git('--git-dir', bare, 'rev-parse', 'main')).toBe(git('rev-parse', 'main'));
@@ -559,7 +606,8 @@ describe('check', () => {
       git('checkout', '-q', 'main');
       commit('straight onto main');
       const head = git('rev-parse', 'HEAD');
-      const none = `push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.\n${FOR_PERSON}\n`;
+      // The commit it sends, by its id and subject, for the agent and the person (P5-R3-3).
+      const none = `${stray(head.slice(0, 7), 'straight onto main')}\n${strayForPerson(head.slice(0, 7), 'straight onto main')}\n`;
 
       expect(await push('--branch', '--repo')).toEqual({ code: 19, out: none, err: '' });
       expect(await push('--branch', 'main', '--repo', '--commits', `${root}..${head}`)).toEqual({
@@ -567,9 +615,14 @@ describe('check', () => {
         out: none,
         err: '',
       });
+      // A delete brings in nothing to name: the base's own refusal.
       expect(
-        (await push('--branch', 'main', '--repo', '--commits', `${head}..${'0'.repeat(40)}`)).code,
-      ).toBe(19);
+        await push('--branch', 'main', '--repo', '--commits', `${head}..${'0'.repeat(40)}`),
+      ).toEqual({
+        code: 19,
+        out: `push refused: main is the base branch Tareas de repo protects; it takes only the branch of an item of Tareas de repo that is Done, and this push brings in none.\n${FOR_PERSON}\n`,
+        err: '',
+      });
     });
 
     // P5-R3-2: a branch no item named went to the remote before any approval («no item with a
