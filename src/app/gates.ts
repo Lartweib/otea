@@ -28,6 +28,7 @@ import {
   gateText,
   placeText,
   reviewForPersonText,
+  rewindRefusal,
   rewriteForPersonText,
   unnamedBranchRefusal,
 } from '../core/board/next.ts';
@@ -833,11 +834,13 @@ function baseVerdict(
         refusal: strayRefusal(gate, base, defs, take.left),
         stray: take.left,
       };
+    // A force push of an older commit brings in nothing and takes commits away (P8-R3-4).
+    const rewinds = gate === 'push' && brought(brings).rewrites?.() === true;
     return {
       gate,
       allowed: false,
       items,
-      refusal: baseRefusal(defs, gate as GateAction, base),
+      refusal: rewinds ? rewindRefusal(defs, base) : baseRefusal(defs, gate as GateAction, base),
     };
   }
   const allowed = items.every((item) => item.allowed);

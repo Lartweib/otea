@@ -178,6 +178,19 @@ describe('gates on a board', () => {
       expect(checkGate(ctx, 'push', { branch: 'main', repo: 'api' }).allowed).toBe(false);
     });
 
+    // P8-R3-4: a force push that rewinds main was told it «brings in none», as if it added nothing.
+    it('says a push that rewinds the base removes commits from it', () => {
+      const { ctx } = repoTask('main');
+      const check = checkGate(ctx, 'push', { branch: 'main', repo: 'api' }, () => ({
+        branches: [],
+        rewrites: () => true,
+      }));
+      expect(check).toMatchObject({ allowed: false, items: [] });
+      expect(check.refusal).toBe(
+        'push refused: this push removes commits from main, the base branch Tareas de repo protects; main only takes the branch of an item of Tareas de repo that is Done, added on top of what it has.',
+      );
+    });
+
     // P5-R3-3: a board that commits approved work straight on main, in its land step, records each
     // commit on its item (Commit en main); git push origin main was still refused, «this push
     // brings in none», though every commit it brought was an approved item's.

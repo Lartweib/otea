@@ -1141,6 +1141,20 @@ export function baseRefusal(
   action: GateAction,
   base: string,
 ): string {
+  const { names, verb, items, when } = baseWords(all);
+  return `${action} refused: ${base} is the base branch ${names} ${verb}; it takes only the branch of ${items} ${when}, and this ${action} brings in none.`;
+}
+
+// Why a push that rewinds the protected base branch (a force push of an older commit: it removes
+// commits the remote has and brings in none) is refused (P8-R3-4): «brings in none» read as if it
+// added nothing, when it takes commits away.
+export function rewindRefusal(all: readonly BoardDefinition[], base: string): string {
+  const { names, verb, items, when } = baseWords(all);
+  return `push refused: this push removes commits from ${base}, the base branch ${names} ${verb}; ${base} only takes the branch of ${items} ${when}, added on top of what it has.`;
+}
+
+// The words both refusals of a protected base use: its boards, and the items it takes.
+function baseWords(all: readonly BoardDefinition[]) {
   const names = all.map((def) => def.name).join(' and ');
   // Named by board, never "a <item>": an item's name is the board's language ("a Entrega").
   const items = `an item of ${all.map((def) => def.name).join(' or ')}`;
@@ -1150,7 +1164,7 @@ export function baseRefusal(
     lands.length === all.length
       ? `the person approved (being landed in ${[...new Set(lands)].join(' or ')}, or ${DONE_NAME})`
       : `that is ${DONE_NAME}`;
-  return `${action} refused: ${base} is the base branch ${names} ${verb}; it takes only the branch of ${items} ${when}, and this ${action} brings in none.`;
+  return { names, verb, items, when };
 }
 
 // What the person reads under a refused push into a protected base (P2S-R3-4): the hook shows the
