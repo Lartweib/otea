@@ -364,6 +364,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     reopened: onBoard?.reopened?.why,
     byYou: !!closedBy?.doneByPerson,
     aside: item.setAside?.by,
+    asksOn: item.holderAsks,
   });
   const standWords = tx(
     stand.key as 'sheet.stand.handedRound',
@@ -373,6 +374,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
       ...(stand.time ? { time: stand.time } : {}),
       ...(stand.why ? { why: stand.why } : {}),
       ...(stand.board ? { board: stand.board } : {}),
+      ...(stand.item ? { item: <b>{stand.item}</b> } : {}),
     } as never,
   );
   // An item nobody will bring an agent to says so in its header too, not only below (P8-R2-7).

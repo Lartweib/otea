@@ -42,3 +42,20 @@ export function withAsks<T extends { turn: string }>(
   const asks = { question: open.question, by: open.by, text: open.text, at: open.at };
   return { ...item, turn: 'human', asks };
 }
+
+// The item an agent holds while its own question waits for the person on another one (P7-R3-9):
+// the desk says it waits for the answer there, not that it is doing this one. `asking`: from
+// askingItems, read once for a whole list. Undefined while the item has no live lease, or its
+// holder asks nothing elsewhere.
+export function holderAsksOf(
+  asking: ReadonlyMap<string, ItemQuestion>,
+  item: { id: string; lease: { holder: string; expiresAt: string } | null },
+  now: string,
+): { by: string; item: string } | undefined {
+  const holder = item.lease && item.lease.expiresAt > now ? item.lease.holder : undefined;
+  if (holder === undefined || asking.has(item.id)) return undefined;
+  const asked = [...asking]
+    .filter(([, open]) => open.by === holder)
+    .sort(([, a], [, b]) => a.at.localeCompare(b.at))[0];
+  return asked ? { by: holder, item: asked[0] } : undefined;
+}

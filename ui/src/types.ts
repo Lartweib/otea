@@ -51,6 +51,9 @@ export type Item = {
   // While an agent has it set aside for later (otea release --later, app/set-aside.ts): that agent
   // and when. Its next and wait leave the item out until it lifts (Retomar, or what the person does).
   setAside?: { by: string; at: string };
+  // Held by an agent whose own question waits for your answer on another item (P7-R3-9): that
+  // agent and the item; the desk says it waits there, not that it is on this one.
+  holderAsks?: { by: string; item: string };
   // The item's relations, read from it, and a parent's children summary; absent when it has none.
   relations?: RelationRef[];
   children?: ChildrenSummary;

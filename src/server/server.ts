@@ -5,6 +5,7 @@ import { getCookie, setCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { agentDetail } from '../app/agent-detail.ts';
 import { promptFacts, promptKindOf } from '../app/agent-prompts.ts';
+import { askingItems, holderAsksOf } from '../app/asking.ts';
 import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews, listShownCollectionViews } from '../app/collections.ts';
@@ -461,6 +462,9 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
         const priority = priorityOf(project.db);
         // When each item entered its state: the turn it stands on began then (Te toca counts from it).
         const entered = selectStateEntries(project.db);
+        // The questions that wait for the person: an item held by an agent that asks elsewhere.
+        const asking = askingItems(project.db);
+        const at = new Date().toISOString();
         const estimated = estimatesOfItems(
           project,
           items,
@@ -479,10 +483,13 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
             const enteredAt = entered.get(item.id);
             // Set aside for later by an agent (otea release --later): by whom, so the desk says so.
             const setAside = setAsideOf(selectEvents(project.db, item.id));
+            // Held by an agent whose question waits for you on another item (P7-R3-9).
+            const holderAsks = holderAsksOf(asking, item, at);
             return {
               ...item,
               ...row,
               ...(setAside === undefined ? {} : { setAside }),
+              ...(holderAsks === undefined ? {} : { holderAsks }),
               ...(enteredAt === undefined ? {} : { enteredAt }),
               ...(round === undefined ? {} : { round }),
               ...(notes === undefined ? {} : { notes }),
@@ -545,7 +552,10 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
       )
       .get('/items/:id', (c) => {
         const id = c.req.param('id');
-        let item: ReturnType<typeof showItem> & { setAside?: { by: string; at: string } };
+        let item: ReturnType<typeof showItem> & {
+          setAside?: { by: string; at: string };
+          holderAsks?: { by: string; item: string };
+        };
         try {
           item = showItem(project, id, HUMAN_IN_UI);
         } catch (error) {
@@ -557,6 +567,8 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
         }
         const setAside = setAsideOf(item.events);
         if (setAside) item = { ...item, setAside };
+        const holderAsks = holderAsksOf(askingItems(project.db), item, new Date().toISOString());
+        if (holderAsks) item = { ...item, holderAsks };
         if (!item.archived) return c.json(item);
         // An archived board's collection is in no list: the page reads the item's words from here.
         const collection = listCollectionViews(project, { archived: true }).find(
