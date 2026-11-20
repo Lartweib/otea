@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { creatures } from '../../src/core/board/testing.ts';
 import { optionsSummary, parseOptions } from './options.ts';
-import { comparedFiles, roundFiles, roundsOf } from './rounds.ts';
+import { comparedFiles, earlierRoundPair, roundFiles, roundsOf } from './rounds.ts';
 import type { Evidence, ItemEvent, State } from './types.ts';
 
 const agent = { kind: 'agent' as const, name: 'claude-b' };
@@ -251,5 +251,43 @@ Verify with the current and the previous key for 48 h.
 
   it('finds no options in text without headings', () => {
     expect(parseOptions('We could do A or B.')).toEqual([]);
+  });
+});
+
+// The desk gallery compares the picture shown with its version in the round before (P5-R3-17's
+// desk side): paired by name as the phone pairs them (namePairs, #472), never by place.
+describe('earlierRoundPair', () => {
+  const logo1 = file(1, '10:00', 'logo-chico.png', 'shots');
+  const cover1 = file(2, '10:01', 'portada.png', 'shots');
+  const cover2 = file(3, '11:00', 'r2-portada.png', 'shots');
+  const logo2 = file(4, '11:01', 'logo-chico.png', 'shots');
+  const cover3 = file(5, '12:00', 'portada-v3.png', 'shots');
+  const roundOf = new Map([
+    [1, 1],
+    [2, 1],
+    [3, 2],
+    [4, 2],
+    [5, 3],
+  ]);
+  const all = [logo1, cover1, cover2, logo2, cover3];
+
+  it('pairs the picture shown with its namesake in the round before', () => {
+    expect(earlierRoundPair(all, roundOf, cover2)).toEqual({ before: cover1, from: 1, to: 2 });
+    expect(earlierRoundPair(all, roundOf, logo2)).toEqual({ before: logo1, from: 1, to: 2 });
+  });
+
+  it('goes back to the last round before it that has pictures', () => {
+    expect(earlierRoundPair(all, roundOf, cover3)).toEqual({ before: cover2, from: 2, to: 3 });
+  });
+
+  it('has nothing to compare in the first round, or off a review', () => {
+    expect(earlierRoundPair(all, roundOf, cover1)).toBeUndefined();
+    expect(earlierRoundPair(all, new Map(), cover2)).toBeUndefined();
+  });
+
+  it('has nothing when no picture of the round before goes with it', () => {
+    const other = file(6, '11:02', 'banner-ancho.png', 'shots');
+    const rounds = new Map([...roundOf, [6, 2]]);
+    expect(earlierRoundPair([...all, other], rounds, other)).toBeUndefined();
   });
 });

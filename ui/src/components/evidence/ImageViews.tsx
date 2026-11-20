@@ -10,6 +10,7 @@ import { comparePair, nudgeSplit, splitAt, stepIndex } from '../../evidence.ts';
 import { useFileUrl } from '../../evidence-files.ts';
 import { t } from '../../i18n/i18n.ts';
 import { Button, Icon } from '../../kit/index.ts';
+import { earlierRoundPair } from '../../rounds.ts';
 import type { Evidence } from '../../types.ts';
 import { stepWithArrows } from './arrows.ts';
 import { FileMeta } from './FileMeta.tsx';
@@ -35,10 +36,13 @@ export function ImageSingle({ evidence }: { evidence: Evidence }) {
 
 // Every image, oldest first: one large, the rest as thumbnails. It opens on the newest (the latest
 // round's), and follows a newer one that arrives until another is picked. Left and right step
-// through them. On a reviewed item each says the round it came in, the thumbnails too (P5-5).
+// through them. On a reviewed item each says the round it came in, the thumbnails too (P5-5), and
+// the picture shown compares with its version in the round before, paired by name as the phone
+// pairs them (rounds.ts, earlierRoundPair), in the compare the desk has for a before and an after.
 export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label: string }) {
   const fileUrl = useFileUrl();
   const { roundOf } = useContext(ItemReview);
+  const [comparing, setComparing] = useState(false);
   const roundWord = (entry: Evidence) => {
     const n = roundOf?.get(entry.id);
     return n === undefined ? undefined : t('evidence.roundTag', { n });
@@ -49,6 +53,30 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
   const current = evidence[index];
   if (!current) return null;
   const many = evidence.length > 1;
+  const earlier = roundOf ? earlierRoundPair(evidence, roundOf, current) : undefined;
+  if (comparing && earlier) {
+    const names = {
+      before: t('evidence.roundTag', { n: earlier.from }),
+      after: t('evidence.roundTag', { n: earlier.to }),
+    };
+    return (
+      <section className="ev-gallery" aria-label={label}>
+        <div className="ev-gallery-tools">
+          <Button size="sm" onClick={() => setComparing(false)}>
+            <Icon name="left" />
+            {t('evidence.backToGallery')}
+          </Button>
+        </div>
+        <ImageCompare
+          evidence={[
+            { ...earlier.before, role: 'before' },
+            { ...current, role: 'after' },
+          ]}
+          names={names}
+        />
+      </section>
+    );
+  }
   const setIndex = (to: number) => setPicked(evidence[to]?.id);
   const step = (delta: number) => setIndex(stepIndex(index, delta, evidence.length));
   const onKeyDown = (event: KeyboardEvent<HTMLElement>) =>
@@ -95,6 +123,13 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
         ) : null}
       </div>
       <FileMeta evidence={current} />
+      {earlier ? (
+        <div className="ev-gallery-tools">
+          <Button size="sm" onClick={() => setComparing(true)}>
+            {t('evidence.compareWithRound', { n: earlier.from })}
+          </Button>
+        </div>
+      ) : null}
       {many ? (
         <ul className="ev-thumbs">
           {evidence.map((entry, at) => (

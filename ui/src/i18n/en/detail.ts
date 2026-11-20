@@ -196,6 +196,8 @@ export const detail = {
   'evidence.blindEmpty': 'No A and B yet',
   'evidence.rounds': 'Compare rounds',
   'evidence.roundTag': 'round {n}',
+  'evidence.compareWithRound': 'Compare with round {n}',
+  'evidence.backToGallery': 'Back to the gallery',
   'compare.title': 'Compare rounds',
   'compare.mode': 'How to look at A and B',
   'compare.side': 'side by side',

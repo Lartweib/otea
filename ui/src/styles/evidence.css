@@ -118,6 +118,16 @@
 }
 
 .ev-picker,
+.ev-gallery-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+.ev-gallery > .ev-gallery-tools:first-child {
+  justify-content: flex-start;
+  margin: 0 0 8px;
+}
 .ev-modes {
   display: flex;
   flex-wrap: wrap;
