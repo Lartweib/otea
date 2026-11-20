@@ -11,9 +11,11 @@ import {
   type NotifyTarget,
 } from '../app/notify-targets.ts';
 import type { Project } from '../app/project.ts';
-import { localMinuteOfDay, Planner } from '../core/notify/planner.ts';
+import { setAsideOf } from '../app/set-aside.ts';
+import { localMinuteOfDay, type Notice, Planner } from '../core/notify/planner.ts';
 import { freshSignals, type NotifyFacts, signalsOf } from '../core/notify/signals.ts';
 import { type NoticeLang, type NoticeText, noticeText } from '../core/notify/text.ts';
+import { selectEvents } from '../store/queries.ts';
 import type { ChangeFeed } from './changes.ts';
 import type { PushSender } from './push.ts';
 
@@ -54,10 +56,13 @@ function factsOf(project: Project, now: number): NotifyFacts[] {
   return listItems(project, {}, () => new Date(now).toISOString()).map((item) => {
     const round = boardRoundOf(project, item, boards);
     const notes = notesSummary(project, item, boards);
+    const setAside =
+      item.turn === 'agent' ? setAsideOf(selectEvents(project.db, item.id)) : undefined;
     return {
       ...item,
       ...(round === undefined ? {} : { round }),
       ...(notes === undefined ? {} : { notes }),
+      ...(setAside === undefined ? {} : { setAside }),
     };
   });
 }
@@ -69,12 +74,16 @@ export function createNotifier(
 ): Notifier {
   const targetsDb = options.targets;
   // A notice names its project and opens it: one phone and one desktop app hear every project.
+  // A burst says it in its own words ("3 cosas te tocan en tienda-web").
   const { id, name } = project.identity;
-  const ofProject = (text: NoticeText): NoticeText => ({
-    ...text,
-    title: `${name} · ${text.title}`,
-    url: `/p/${id}${text.url}`,
-  });
+  const words = (notice: Notice, lang: NoticeLang): NoticeText => {
+    const text = noticeText(notice, lang, { id, name });
+    return {
+      ...text,
+      title: notice.kind === 'group' ? text.title : `${name} · ${text.title}`,
+      url: `/p/${id}${text.url}`,
+    };
+  };
   const now = options.now ?? Date.now;
   const minuteOfDay = options.minuteOfDay ?? localMinuteOfDay;
   const planners = new Map<string, Planner>();
@@ -122,19 +131,19 @@ export function createNotifier(
     for (const target of targets) {
       let planner = planners.get(target.id);
       if (!planner) {
-        planner = new Planner(minuteOfDay);
+        planner = new Planner(minuteOfDay, id);
         planners.set(target.id, planner);
       }
       planner.offer(fresh, target.prefs, at);
       for (const notice of planner.take(at, seen, target.prefs)) {
         if (target.id !== DESKTOP) {
-          push(target, ofProject(noticeText(notice, target.lang)));
+          push(target, words(notice, target.lang));
           continue;
         }
         // The language chosen in Preferencias, once it was; else the system's.
         const chose = desktopChosen(targetsDb);
         for (const [listener, { lang }] of desktop) {
-          listener(ofProject(noticeText(notice, chose ? target.lang : lang)));
+          listener(words(notice, chose ? target.lang : lang));
         }
       }
     }

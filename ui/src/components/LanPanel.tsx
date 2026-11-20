@@ -4,6 +4,7 @@ import { useApp } from '../app/context.tsx';
 import { agoLabel, momentLabel } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { Button, Swap } from '../kit/index.ts';
+import { notifySummary } from '../notify/summary.ts';
 import {
   addressHint,
   addressLabel,
@@ -72,6 +73,9 @@ function DeviceRow({
                 hint: device.hint,
               })}
         </small>
+        {revoked || device.notify === undefined ? null : (
+          <small className="dev-notify">{notifySummary(device.notify)}</small>
+        )}
       </Swap>
       {revoked ? null : (
         <Button

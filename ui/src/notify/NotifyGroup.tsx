@@ -1,7 +1,8 @@
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { DEFAULT_QUIET, type NotifyPrefs } from '../../../src/core/notify/planner.ts';
-import { fetchNotify, postNotifyPrefs } from '../api.ts';
-import { language, t } from '../i18n/i18n.ts';
+import type { NotifyKind } from '../../../src/core/notify/signals.ts';
+import { fetchNotify, fetchProjects, postNotifyPrefs } from '../api.ts';
+import { language, type PlainKey, t } from '../i18n/i18n.ts';
 import { Icon } from '../kit/Icon.tsx';
 import { type NotifyOffer, type NotifyView, notifyOffer } from './offer.ts';
 import { placeHere, subscribeHere, unsubscribeHere } from './push-client.ts';
@@ -9,18 +10,28 @@ import { placeHere, subscribeHere, unsubscribeHere } from './push-client.ts';
 // Preferencias › Avisos. On a phone over HTTPS: turn them on (the browser asks), then what you are
 // told and when, and turn them off. On a phone that cannot have them: one line that says why and
 // what would make it work. In the desktop app: the same choices for the system's notifications.
-
-type Kind = 'turn' | 'replied' | 'stuck';
+// The kinds are what the server tells (core/notify/signals.ts); with several projects, each can be
+// muted. The server keeps the choice per device and applies it before anything is sent.
 
 const KINDS: {
-  kind: Kind;
-  label: 'notify.turn' | 'notify.replied' | 'notify.stuck';
-  hint?: 'notify.turnHint' | 'notify.stuckHint';
+  kind: NotifyKind;
+  label: PlainKey;
+  hint?: PlainKey;
 }[] = [
   { kind: 'turn', label: 'notify.turn', hint: 'notify.turnHint' },
+  { kind: 'ask', label: 'notify.ask' },
   { kind: 'replied', label: 'notify.replied' },
   { kind: 'stuck', label: 'notify.stuck', hint: 'notify.stuckHint' },
+  { kind: 'aside', label: 'notify.aside' },
 ];
+
+export type NotifyProject = { id: string; name: string };
+
+// Mutes a project, or hears it again.
+export function toggleMuted(prefs: NotifyPrefs, project: string, on: boolean): NotifyPrefs {
+  const rest = prefs.muted.filter((id) => id !== project);
+  return { ...prefs, muted: on ? rest : [...rest, project] };
+}
 
 function Toggle({
   on,
@@ -47,10 +58,11 @@ function Toggle({
 
 export type NotifyChoicesProps = {
   prefs: NotifyPrefs;
+  projects: readonly NotifyProject[];
   onChange: (next: NotifyPrefs) => void;
 };
 
-export function NotifyChoices({ prefs, onChange }: NotifyChoicesProps) {
+export function NotifyChoices({ prefs, projects, onChange }: NotifyChoicesProps) {
   const from = useId();
   const quiet = prefs.quiet;
   return (
@@ -95,6 +107,20 @@ export function NotifyChoices({ prefs, onChange }: NotifyChoicesProps) {
           />
         </div>
       ) : null}
+      {projects.length > 1 ? (
+        <>
+          <span className="nhead">{t('notify.projects')}</span>
+          {projects.map((project) => (
+            <Toggle
+              key={project.id}
+              on={!prefs.muted.includes(project.id)}
+              onChange={(next) => onChange(toggleMuted(prefs, project.id, next))}
+            >
+              {project.name}
+            </Toggle>
+          ))}
+        </>
+      ) : null}
     </div>
   );
 }
@@ -116,12 +142,22 @@ export type NotifyBodyProps = {
   view: NotifyView;
   busy: boolean;
   problem: 'notify.failed' | 'notify.saveFailed' | null;
+  projects: readonly NotifyProject[];
   onOn: () => void;
   onOff: () => void;
   onPrefs: (next: NotifyPrefs) => void;
 };
 
-export function NotifyBody({ offer, view, busy, problem, onOn, onOff, onPrefs }: NotifyBodyProps) {
+export function NotifyBody({
+  offer,
+  view,
+  busy,
+  problem,
+  projects,
+  onOn,
+  onOff,
+  onPrefs,
+}: NotifyBodyProps) {
   const why = WHY[offer];
   if (why) return <p className="gnote">{t(why)}</p>;
   const failed = problem ? (
@@ -143,7 +179,7 @@ export function NotifyBody({ offer, view, busy, problem, onOn, onOff, onPrefs }:
   }
   return (
     <>
-      <NotifyChoices prefs={view.prefs} onChange={onPrefs} />
+      <NotifyChoices prefs={view.prefs} projects={projects} onChange={onPrefs} />
       {offer === 'desktop' ? <p className="gnote">{t('notify.desktopNote')}</p> : null}
       {failed}
       {offer === 'push' ? (
@@ -160,11 +196,17 @@ export function NotifyGroup() {
   const [view, setView] = useState<NotifyView | null>(null);
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<NotifyBodyProps['problem']>(null);
+  const [projects, setProjects] = useState<NotifyProject[]>([]);
   useEffect(() => {
     const controller = new AbortController();
     fetchNotify(controller.signal)
       .then((answer) => {
         if (answer && typeof answer === 'object' && 'target' in answer) setView(answer);
+      })
+      .catch(() => undefined);
+    fetchProjects(controller.signal)
+      .then((all) => {
+        if (Array.isArray(all)) setProjects(all.map(({ id, name }) => ({ id, name })));
       })
       .catch(() => undefined);
     return () => controller.abort();
@@ -197,6 +239,7 @@ export function NotifyGroup() {
           view={view}
           busy={busy}
           problem={problem}
+          projects={projects}
           onOn={() =>
             void act(async () => {
               if (!view.key) return null;

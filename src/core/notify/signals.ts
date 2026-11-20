@@ -1,11 +1,13 @@
 // What is worth a notification (a push to a phone, a desktop notification), read from the items as
 // the lists show them. Each signal has a key that stays the same while the thing it says holds, so
 // comparing two looks finds what is new:
-// - turn: an item is yours (a review, your own step, or an agent's question via otea ask);
+// - turn: an item is yours to review, approve or do (your own step);
+// - ask: an agent asks you something (otea ask), the turn yours until you answer;
 // - replied: an agent answered one of your notes (otea reply);
-// - stuck: an agent's lease ran out with nobody releasing it or taking the item again.
+// - stuck: an agent's lease ran out with nobody releasing it or taking the item again;
+// - aside: an agent set the item aside for later (otea release --later).
 
-export const NOTIFY_KINDS = ['turn', 'replied', 'stuck'] as const;
+export const NOTIFY_KINDS = ['turn', 'ask', 'replied', 'stuck', 'aside'] as const;
 
 export type NotifyKind = (typeof NOTIFY_KINDS)[number];
 
@@ -22,6 +24,8 @@ export type NotifyFacts = {
   expiredLease?: Lease;
   asks?: { question: number; by: string };
   notes?: { replied?: { note: number; by: string; at: string } };
+  // Set aside for later by an agent, while nothing lifted it (app/set-aside.ts).
+  setAside?: { by: string; at: string };
 };
 
 export type Signal = {
@@ -29,10 +33,8 @@ export type Signal = {
   kind: NotifyKind;
   item: string;
   title: string;
-  // Who asks (a question), answered, or went quiet.
+  // Who asks (a question), answered, went quiet or set it aside.
   by?: string;
-  // The turn is yours because an agent asks you something.
-  asks?: true;
 };
 
 const active = (lease: Lease | null, now: number) =>
@@ -48,11 +50,10 @@ export function signalsOf(items: readonly NotifyFacts[], now: number): Signal[] 
         facts.asks
           ? {
               key: `${base}:q${facts.asks.question}`,
-              kind: 'turn',
+              kind: 'ask',
               item,
               title,
               by: facts.asks.by,
-              asks: true,
             }
           : { key: base, kind: 'turn', item, title },
       );
@@ -65,6 +66,16 @@ export function signalsOf(items: readonly NotifyFacts[], now: number): Signal[] 
         item,
         title,
         by: quiet.holder,
+      });
+    }
+    const aside = facts.setAside;
+    if (aside) {
+      out.push({
+        key: `aside:${item}:${aside.by}:${aside.at}`,
+        kind: 'aside',
+        item,
+        title,
+        by: aside.by,
       });
     }
     const replied = facts.notes?.replied;

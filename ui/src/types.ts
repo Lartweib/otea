@@ -1,4 +1,5 @@
 import type { Layout } from '../../src/core/modules.ts';
+import type { NotifyPrefs } from '../../src/core/notify/planner.ts';
 import type { FieldRequirement, Labels } from '../../src/core/preset.ts';
 import type { ChildrenSummary, RelationRef, RelationView } from '../../src/core/relations.ts';
 import type { AgentProfile } from './presence.ts';
@@ -165,6 +166,9 @@ export type Device = {
   pairedAt: string;
   lastSeenAt: string | null;
   hint: string;
+  // What it chose to be told (Preferencias › Avisos), in the desk's device list; null while it has
+  // notifications off.
+  notify?: NotifyPrefs | null;
 };
 
 // How a phone reaches the desk (src/app/phone.ts): the local network (the default), Tailscale, or

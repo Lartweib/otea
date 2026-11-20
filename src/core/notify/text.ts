@@ -29,59 +29,63 @@ export const itemUrl = (id: string) => `/#/i/${encodeURIComponent(id)}`;
 const WORDS = {
   es: {
     turn: 'Te toca',
-    asks: (by: string) => `${by} te pregunta`,
+    ask: (by: string) => `${by} te pregunta`,
     replied: (by: string) => `${by} contestó tu nota`,
     stuck: (by: string) => `Se atascó · ${by} no responde`,
+    aside: (by: string) => `${by} lo dejó para después`,
     group: {
       turn: (n: number) => `${n} cosas te tocan`,
+      ask: (n: number) => `${n} preguntas te esperan`,
       replied: (n: number) => `${n} notas contestadas`,
       stuck: (n: number) => `${n} cosas se atascaron`,
+      aside: (n: number) => `${n} cosas apartadas`,
       mixed: (n: number) => `${n} cosas te esperan`,
     },
+    in: (title: string, project: string) => `${title} en ${project}`,
   },
   en: {
     turn: 'Your turn',
-    asks: (by: string) => `${by} asks you`,
+    ask: (by: string) => `${by} asks you`,
     replied: (by: string) => `${by} answered your note`,
     stuck: (by: string) => `Stuck · ${by} went quiet`,
+    aside: (by: string) => `${by} set it aside for later`,
     group: {
       turn: (n: number) => `${n} things are yours`,
+      ask: (n: number) => `${n} questions wait for you`,
       replied: (n: number) => `${n} notes answered`,
       stuck: (n: number) => `${n} things got stuck`,
+      aside: (n: number) => `${n} things set aside`,
       mixed: (n: number) => `${n} things wait for you`,
     },
+    in: (title: string, project: string) => `${title} in ${project}`,
   },
 } as const satisfies Record<
   NoticeLang,
   {
     turn: string;
-    asks: (by: string) => string;
-    replied: (by: string) => string;
-    stuck: (by: string) => string;
-    group: Record<NotifyKind | 'mixed', (n: number) => string>;
-  }
+  } & Record<Exclude<NotifyKind, 'turn'>, (by: string) => string> & {
+      group: Record<NotifyKind | 'mixed', (n: number) => string>;
+      in: (title: string, project: string) => string;
+    }
 >;
 
-export function noticeText(notice: Notice, lang: NoticeLang): NoticeText {
+// The project a notice comes from: a burst names it and takes the place of its own last burst.
+export type NoticeProject = { id: string; name: string };
+
+export function noticeText(notice: Notice, lang: NoticeLang, project?: NoticeProject): NoticeText {
   const words = WORDS[lang];
   if (notice.kind === 'group') {
+    const title = words.group[notice.of](notice.count);
     return {
-      title: words.group[notice.of](notice.count),
+      title: project ? words.in(title, project.name) : title,
       body: short(notice.items.map(({ title }) => title).join(' · ')),
-      tag: 'otea-group',
+      tag: project ? `otea-group-${project.id}` : 'otea-group',
       url: '/#/',
       item: null,
     };
   }
   const by = notice.by ?? '';
-  const title =
-    notice.kind === 'turn'
-      ? notice.asks
-        ? words.asks(by)
-        : words.turn
-      : notice.kind === 'replied'
-        ? words.replied(by)
-        : words.stuck(by);
+  const title = notice.kind === 'turn' ? words.turn : words[notice.kind](by);
   return {
     title,
     body: short(`${notice.item} · ${notice.title}`),

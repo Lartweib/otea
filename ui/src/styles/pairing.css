@@ -309,6 +309,12 @@
   display: block;
   margin-top: 3px;
 }
+/* What the device is told (Preferencias › Avisos), under its meta line. */
+.devs small.dev-notify {
+  color: var(--ink-2);
+  font-family: var(--sans);
+  font-size: 12px;
+}
 .dialog .devs-none {
   font-size: 14px;
   padding: 10px 0;

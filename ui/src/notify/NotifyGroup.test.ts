@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../../../src/core/notify/planner.ts';
 import { setLanguage } from '../i18n/i18n.ts';
-import { NotifyBody, type NotifyBodyProps } from './NotifyGroup.tsx';
+import { NotifyBody, type NotifyBodyProps, toggleMuted } from './NotifyGroup.tsx';
 import { keyBytes } from './push-client.ts';
 
 afterEach(() => setLanguage('en'));
@@ -17,6 +17,7 @@ const render = (props: Partial<NotifyBodyProps>) =>
       view,
       busy: false,
       problem: null,
+      projects: [],
       onOn: () => {},
       onOff: () => {},
       onPrefs: () => {},
@@ -29,20 +30,51 @@ describe('Preferencias › Avisos', () => {
     setLanguage('es');
     const html = render({});
     expect(html).toContain('Activar avisos');
-    expect(html).toContain('Como mucho uno por ítem cada pocos minutos');
+    expect(html).toContain('Una ráfaga llega como un solo aviso');
     expect(html).not.toContain('role="switch"');
   });
 
   it('shows what is told, all on by default, and how to turn them off', () => {
     setLanguage('es');
     const html = render({ view: { ...view, subscribed: true } });
-    expect(html.match(/role="switch" aria-checked="true"/g)).toHaveLength(3);
-    expect(html).toContain('role="switch" aria-checked="false"');
+    expect(html.match(/role="switch" aria-checked="true"/g)).toHaveLength(4);
+    expect(html.match(/role="switch" aria-checked="false"/g)).toHaveLength(2);
     expect(html).toContain('Te toca');
+    expect(html).toContain('una revisión o una aprobación');
+    expect(html).toContain('Un agente te pregunta');
     expect(html).toContain('Un agente contestó tu nota');
     expect(html).toContain('Algo se atascó');
+    expect(html).toContain('Un agente dejó algo para después');
     expect(html).toContain('Horas de silencio');
     expect(html).toContain('Desactivar en este teléfono');
+  });
+
+  it('lets each project be muted, when there is more than one', () => {
+    setLanguage('es');
+    const projects = [
+      { id: 'web-1', name: 'tienda-web' },
+      { id: 'api-2', name: 'api' },
+    ];
+    const prefs = { ...DEFAULT_PREFS, muted: ['api-2'] };
+    const html = render({ view: { ...view, subscribed: true, prefs }, projects });
+    expect(html).toContain('proyectos');
+    expect(html).toMatch(/role="switch" aria-checked="true"[^>]*>.*?tienda-web/s);
+    expect(html).toMatch(/role="switch" aria-checked="false"[^>]*>(?:(?!role="switch").)*api/s);
+    const one = render({ view: { ...view, subscribed: true }, projects: projects.slice(0, 1) });
+    expect(one).not.toContain('proyectos');
+  });
+
+  it('turns a project off and on again without touching the rest', () => {
+    const projects = [
+      { id: 'web-1', name: 'tienda-web' },
+      { id: 'api-2', name: 'api' },
+    ];
+    expect(toggleMuted({ ...DEFAULT_PREFS, muted: ['x'] }, 'api-2', false).muted).toEqual([
+      'x',
+      'api-2',
+    ]);
+    expect(toggleMuted({ ...DEFAULT_PREFS, muted: ['api-2'] }, 'api-2', true).muted).toEqual([]);
+    expect(projects).toHaveLength(2);
   });
 
   it('shows the quiet hours once they are on', () => {
