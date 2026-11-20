@@ -260,6 +260,9 @@ export function standOf(o: {
   // The holder of its live lease is no longer connected (P7-R3-10): Otea knows its session ended
   // (`ended`), or it has been quiet for `quiet`. The lease keeps the item until it runs out.
   gone?: { agent: string; ended: boolean; quiet: string | null } | undefined;
+  // Its holder never picked up your answer to its question (P6-R3-4, listening.ts silentHolder):
+  // since `quiet`, with the items waiting behind it to land in the same base.
+  unread?: { agent: string; quiet: string | null; behind: readonly string[] } | undefined;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
@@ -268,6 +271,12 @@ export function standOf(o: {
     const { agent, ended, quiet } = o.gone;
     if (ended) return { key: 'sheet.stand.ended', agent };
     if (quiet !== null) return { key: 'sheet.stand.silent', agent, time: quiet };
+  }
+  if (o.unread !== undefined && o.unread.quiet !== null && o.look === 'working') {
+    const { agent, quiet: time, behind } = o.unread;
+    return behind.length > 0
+      ? { key: 'sheet.stand.unreadBehind', agent, time, item: behind.join(', ') }
+      : { key: 'sheet.stand.unread', agent, time };
   }
   const waitsAgent = o.look === 'queued' || o.look === 'waiting' || o.look === 'stuck';
   if (o.aside !== undefined && waitsAgent) return { key: 'sheet.stand.setAside', agent: o.aside };
