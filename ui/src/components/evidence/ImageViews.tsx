@@ -2,6 +2,7 @@ import {
   type KeyboardEvent,
   type PointerEvent,
   type SyntheticEvent,
+  useContext,
   useRef,
   useState,
 } from 'react';
@@ -12,6 +13,7 @@ import { Button, Icon } from '../../kit/index.ts';
 import type { Evidence } from '../../types.ts';
 import { stepWithArrows } from './arrows.ts';
 import { FileMeta } from './FileMeta.tsx';
+import { ItemReview } from './item-evidence.ts';
 
 function altOf(evidence: Evidence): string {
   return evidence.caption ?? evidence.filename;
@@ -33,9 +35,14 @@ export function ImageSingle({ evidence }: { evidence: Evidence }) {
 
 // Every image, oldest first: one large, the rest as thumbnails. It opens on the newest (the latest
 // round's), and follows a newer one that arrives until another is picked. Left and right step
-// through them.
+// through them. On a reviewed item each says the round it came in, the thumbnails too (P5-5).
 export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label: string }) {
   const fileUrl = useFileUrl();
+  const { roundOf } = useContext(ItemReview);
+  const roundWord = (entry: Evidence) => {
+    const n = roundOf?.get(entry.id);
+    return n === undefined ? undefined : t('evidence.roundTag', { n });
+  };
   const [picked, setPicked] = useState<number | undefined>(undefined);
   const at = evidence.findIndex(({ id }) => id === picked);
   const index = at >= 0 ? at : evidence.length - 1;
@@ -64,6 +71,7 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
           <>
             <span className="ev-tag r" aria-live="polite">
               {index + 1} / {evidence.length}
+              {roundWord(current) ? ` · ${roundWord(current)}` : ''}
             </span>
             <Button
               className="ev-nav l"
@@ -99,6 +107,9 @@ export function ImageGallery({ evidence, label }: { evidence: Evidence[]; label:
                 onClick={() => setIndex(at)}
               >
                 <img src={fileUrl(entry)} alt="" loading="lazy" />
+                {roundWord(entry) ? (
+                  <span className="ev-thumb-round">{roundWord(entry)}</span>
+                ) : null}
               </button>
             </li>
           ))}
