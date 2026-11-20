@@ -17,7 +17,14 @@ import { GhostButton, Icon, StepPill, Swap, toast } from '../../kit/index.ts';
 import { laneOf } from '../../lanes/geometry.ts';
 import { lookOf } from '../../lanes/looks.ts';
 import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
-import { goneHolder, unheard, unheardLead, workingAgents } from '../../listening.ts';
+import {
+  goneHolder,
+  silentHolder,
+  unheard,
+  unheardLead,
+  waitingToLand,
+  workingAgents,
+} from '../../listening.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { ItemTypeScope, stateWord, stateWordIn, typeWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
@@ -358,6 +365,9 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const ci = onBoard ? onBoard.route.ci : type ? routeIndex(type, item.state, facts.visited) : 0;
   // Its holder is no longer connected, and the lease alone keeps it (P7-R3-10).
   const gone = look === 'working' ? goneHolder(item, app.agents, now) : null;
+  // Its holder never picked up your answer to its question, and what waits behind it to land
+  // (P6-R3-4).
+  const unread = look === 'working' ? silentHolder(item, app.agents, item.events, now) : null;
   const stand = standOf({
     look,
     agent: standAgentOf(facts, onBoard !== null && item.turn === 'agent', !!closedBy?.doer),
@@ -374,6 +384,13 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     asksOn: item.holderAsks,
     gone: gone
       ? { agent: gone.name, ended: gone.sessionEnded === true, quiet: quietFor(gone.lastSeen, now) }
+      : undefined,
+    unread: unread
+      ? {
+          agent: unread.agent,
+          quiet: quietFor(unread.since, now),
+          behind: waitingToLand(item, app.all, live, now),
+        }
       : undefined,
   });
   const standWords = tx(

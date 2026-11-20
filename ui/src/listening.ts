@@ -1,7 +1,9 @@
+import { isClosed, isLandStep, positionOf } from '../../src/core/board/engine.ts';
+import type { BoardDefinition } from '../../src/core/board/model.ts';
 import { activeLease } from './active-lease.ts';
 import { t } from './i18n/i18n.ts';
 import type { Agent } from './presence.ts';
-import type { Item } from './types.ts';
+import type { Item, ItemEvent } from './types.ts';
 
 // Whether the desk is heard (PLAN5 G3): only an agent waiting in otea wait wakes for what the person
 // does here. One idle in its chat, even with its MCP server open, hears nothing until it is told to
@@ -66,6 +68,35 @@ export function goneHolder(
   return holder && !holder.live ? holder : null;
 }
 
+// The holder of the item's live lease when its question on it was answered and it never picked the
+// answer up (P6-R3-4): no otea call since the answer, no otea wait running, past the moment it
+// takes to pick it up. Its MCP server may still beat, so it can be connected; the lease alone keeps
+// the item. A long step with no call reads as at work, as #477 has it: only an answer left unread
+// tells it went quiet. `since`: when the answer came. Null otherwise, or before presence loads.
+export function silentHolder(
+  item: Pick<Item, 'lease'>,
+  agents: readonly Agent[] | null | undefined,
+  events: readonly Pick<ItemEvent, 'type' | 'actor' | 'at' | 'data'>[],
+  now: number,
+): { agent: string; since: string } | null {
+  const lease = activeLease(item.lease, now);
+  const holder = lease ? agents?.find((a) => a.name === lease.holder) : undefined;
+  if (!holder || holder.waiting === true) return null;
+  const asked = new Set(
+    events
+      .filter((e) => e.type === 'question_asked' && e.actor.name === holder.name)
+      .map((e) => e.data.question),
+  );
+  const answer = events.findLast(
+    (e) => e.type === 'question_answered' && asked.has(e.data.question),
+  );
+  if (!answer) return null;
+  const since = Date.parse(answer.at) || 0;
+  if (now - since < AT_WORK_MS) return null;
+  if (holder.actedAt && (Date.parse(holder.actedAt) || 0) >= since) return null;
+  return { agent: holder.name, since: answer.at };
+}
+
 // What the desk says beside a move that hands the item to an agent (P7-R2-9): nothing while an
 // agent waits (it hears it at once); while none does, that the agents at work will see it when
 // they wait again (calm), or, with none at work, that nobody is listening (the alarm).
@@ -120,4 +151,26 @@ export function unheard(
   if (!lease) return true;
   const holder = agents?.find((a) => a.name === lease.holder);
   return !holder?.live || now - (Date.parse(holder.lastSeen) || 0) > AT_WORK_MS;
+}
+
+// The items waiting behind `item` to land: on a board's land step (one agent lands at a time on a
+// base, app/land-order.ts), the others of its board on the same step that no agent holds. What a
+// silent holder keeps waiting (P6-R3-4). None off a land step, or off a board.
+export function waitingToLand(
+  item: Pick<Item, 'id' | 'collection' | 'state'>,
+  all: readonly Pick<Item, 'id' | 'collection' | 'state' | 'lease'>[],
+  def: BoardDefinition | null | undefined,
+  now: number,
+): string[] {
+  const at = positionOf(item.state);
+  if (!def || isClosed(at) || at.phase !== 'doing' || !isLandStep(def, at.step)) return [];
+  return all
+    .filter(
+      (other) =>
+        other.id !== item.id &&
+        other.collection === item.collection &&
+        other.state === item.state &&
+        !activeLease(other.lease, now),
+    )
+    .map(({ id }) => id);
 }

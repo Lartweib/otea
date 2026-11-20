@@ -410,6 +410,10 @@ export const detail = {
     '{agent}’s session ended; it goes back to the queue when its lease runs out.',
   'sheet.stand.silent':
     '{agent} has gone quiet for {time}; it goes back to the queue when its lease runs out.',
+  'sheet.stand.unread':
+    '{agent} has given no sign since you answered its question, {time} ago; it goes back to the queue when its lease runs out.',
+  'sheet.stand.unreadBehind':
+    '{agent} has given no sign since you answered its question, {time} ago; it goes back to the queue when its lease runs out. Waiting behind it: {item}.',
   'sheet.stand.waits': 'Waiting for {agent}.',
   'sheet.stand.waitsRound': 'Waiting for {agent}, in round {round}.',
   'sheet.stand.waitsAgent': 'Waiting for an agent.',

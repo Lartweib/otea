@@ -417,6 +417,10 @@ export const detail = {
   'sheet.stand.ended': 'La sesión de {agent} terminó; vuelve a la cola cuando venza su reserva.',
   'sheet.stand.silent':
     '{agent} no da señales desde hace {time}; vuelve a la cola cuando venza su reserva.',
+  'sheet.stand.unread':
+    '{agent} no da señales desde que respondiste su pregunta, hace {time}; vuelve a la cola cuando venza su reserva.',
+  'sheet.stand.unreadBehind':
+    '{agent} no da señales desde que respondiste su pregunta, hace {time}; vuelve a la cola cuando venza su reserva. Detrás esperan {item}.',
   'sheet.stand.waits': 'Espera a {agent}.',
   'sheet.stand.waitsRound': 'Espera a {agent}, en la ronda {round}.',
   'sheet.stand.waitsAgent': 'Espera a un agente.',

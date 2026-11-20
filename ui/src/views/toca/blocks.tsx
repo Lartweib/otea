@@ -23,7 +23,7 @@ import { laneOf } from '../../lanes/geometry.ts';
 import type { Universe } from '../../lanes/handoff.ts';
 import type { LaneBlock } from '../../lanes/LaneList.tsx';
 import { lookOf } from '../../lanes/looks.ts';
-import { unheard, workingAgents } from '../../listening.ts';
+import { silentHolder, unheard, workingAgents } from '../../listening.ts';
 import { actedWith } from '../../presence.ts';
 import { stateWord } from '../../preset-words.ts';
 import { roundsOf } from '../../rounds.ts';
@@ -88,6 +88,7 @@ export type SubKey =
   | 'toca.sub.thenAgent'
   | 'toca.sub.thenClose'
   | 'toca.sub.does'
+  | 'toca.sub.silent'
   | 'toca.sub.waitsFor'
   | 'toca.sub.waitsAgent'
   | 'toca.sub.waitsKids'
@@ -169,6 +170,11 @@ export function rowCall(item: Item, sec: TocaSection, ctx: TocaContext): RowCall
       // Set aside for later: who did, never «espera a un agente» (P7-R3-1).
       if (item.setAside) return { act, sub: sub('toca.sub.setAside', item.setAside.by) };
       const holder = activeLease(item.lease, now)?.holder;
+      // Its question was answered and it never picked the answer up: it says so, never that it is
+      // on it (P6-R3-4).
+      const events = feed.filter((e) => e.itemId === item.id);
+      const silent = holder ? silentHolder(item, ctx.agents, events, now) : null;
+      if (silent) return { act, sub: sub('toca.sub.silent', silent.agent) };
       if (holder) return { act, sub: sub('toca.sub.does', holder) };
       if ((item.children?.open ?? 0) > 0) return { act, sub: sub('toca.sub.waitsKids') };
       const who = agentOf(item, feed);
@@ -374,6 +380,7 @@ export function tocaBlocks(
     types: (it: Item) => typeOfItem(it, app.collectionOf),
     onBoard: (it: Item) => onPublishedBoard(it.collection),
     find: (id: string) => listed.get(id),
+    agents: app.agents ?? null,
     leadsTo: (it: Item) => {
       const def = publishedDefinition(it.collection);
       return def ? boardThen(def, it) : undefined;

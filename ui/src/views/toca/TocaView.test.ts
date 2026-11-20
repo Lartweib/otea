@@ -197,6 +197,27 @@ describe('a row’s call to act', () => {
       act: 'Después lo revisas tú',
       sub: { key: 'toca.sub.does', agent: 'Mender' },
     });
+    // P6-R3-4: its question was answered, and it made no call and runs no wait since.
+    const unread = [
+      { ...moved('W', 'fixing', agent('Mender')), type: 'question_asked', data: { question: 1 } },
+      { ...moved('W', 'fixing', you), type: 'question_answered', data: { question: 1 } },
+    ];
+    const quiet = [
+      {
+        name: 'Mender',
+        harness: null,
+        holding: ['W'],
+        lastSeen: ago(1),
+        live: true,
+        listening: true,
+        waiting: false,
+        actedAt: ago(30),
+      },
+    ];
+    expect(rowCall(working, 'encamino', { ...ctx(unread), agents: quiet }).sub).toEqual({
+      key: 'toca.sub.silent',
+      agent: 'Mender',
+    });
     const queued = item({ id: 'U', turn: 'agent', state: 'accepted' });
     expect(rowCall(queued, 'encamino', ctx()).sub).toEqual({ key: 'toca.sub.waitsAgent' });
     const done = item({ id: 'D', turn: 'none', state: 'fixed', closes: 'done' });

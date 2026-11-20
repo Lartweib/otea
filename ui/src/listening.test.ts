@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { instantiate, requireTemplate } from '../../src/core/board/templates.ts';
 import { ago, item as fixture, inMinutes, NOW } from './derive/fixtures.ts';
 import { setLanguage } from './i18n/i18n.ts';
 import {
@@ -6,12 +7,14 @@ import {
   goneHolder,
   handsToAgent,
   hearing,
+  silentHolder,
   unheard,
   unheardLead,
+  waitingToLand,
   workingAgents,
 } from './listening.ts';
 import type { Agent } from './presence.ts';
-import type { Item } from './types.ts';
+import type { Item, ItemEvent } from './types.ts';
 
 const agent = (name: string, o: Partial<Agent> = {}): Agent => ({
   name,
@@ -184,5 +187,83 @@ describe('unheardLead', () => {
       'Nobody is listening now: claude-a is at work and will see it when it waits again.',
     );
     expect(unheardLead([], [free], 'TASK-1')).toBe('Nobody is listening.');
+  });
+});
+
+// P6-R3-4: the holder's question was answered, it ran no wait and made no otea call since, and the
+// desk said «lo hace claude-haiku · quedan 10 min» for 13 minutes while two items waited behind it.
+// Only an answer it never picked up says so: a long step with no call is still at work (#477).
+describe('silentHolder', () => {
+  const lease = { holder: 'a', expiresAt: inMinutes(10) };
+  const said = (id: number, type: string, by: 'a' | 'fede', minutesAgo: number): ItemEvent => ({
+    id,
+    type,
+    actor: by === 'a' ? { kind: 'agent', name: 'a' } : { kind: 'human', name: 'fede' },
+    at: ago(minutesAgo),
+    data: { question: 1 },
+  });
+  const asked = said(1, 'question_asked', 'a', 12);
+  const answered = said(2, 'question_answered', 'fede', 10);
+
+  it('names the holder that made no call since its question was answered and waits for nothing', () => {
+    const quiet = agent('a', { holding: ['TASK-1'], listening: true, actedAt: ago(11) });
+    expect(silentHolder(item({ lease }), [quiet], [asked, answered], NOW)).toEqual({
+      agent: 'a',
+      since: ago(10),
+    });
+  });
+
+  it('names none once it called Otea after the answer, or while it waits', () => {
+    const called = agent('a', { holding: ['TASK-1'], actedAt: ago(4) });
+    expect(silentHolder(item({ lease }), [called], [asked, answered], NOW)).toBeNull();
+    const waits = agent('a', { holding: ['TASK-1'], waiting: true, actedAt: ago(11) });
+    expect(silentHolder(item({ lease }), [waits], [asked, answered], NOW)).toBeNull();
+  });
+
+  it('gives it a moment to pick the answer up', () => {
+    const quiet = agent('a', { holding: ['TASK-1'], actedAt: ago(3) });
+    const justNow = { ...answered, at: ago(1) };
+    expect(silentHolder(item({ lease }), [quiet], [asked, justNow], NOW)).toBeNull();
+  });
+
+  it('keeps a long step with no call at work: no question answered, no word of it', () => {
+    const working = agent('a', { holding: ['TASK-1'], listening: true, actedAt: ago(40) });
+    expect(silentHolder(item({ lease }), [working], [], NOW)).toBeNull();
+    // A question another agent asked is not the holder's.
+    const theirs = { ...asked, actor: { kind: 'agent' as const, name: 'b' } };
+    expect(silentHolder(item({ lease }), [working], [theirs, answered], NOW)).toBeNull();
+  });
+
+  it('names none with no live lease, or before presence loads', () => {
+    const quiet = agent('a', { actedAt: ago(11) });
+    expect(silentHolder(item(), [quiet], [asked, answered], NOW)).toBeNull();
+    expect(silentHolder(item({ lease }), undefined, [asked, answered], NOW)).toBeNull();
+  });
+});
+
+// P6-R3-4: CAM-1 and CAM-2, approved, waited 13 min behind the silent holder's landing in main.
+describe('waitingToLand', () => {
+  const def = instantiate(requireTemplate('changes'), 'es', {}, undefined, { keep: true });
+  const lease = { holder: 'a', expiresAt: inMinutes(10) };
+  const on = (id: string, state: string, o: Partial<Item> = {}) =>
+    item({ id, collection: def.name, state, ...o });
+
+  it('names the items on the same land step that nobody holds', () => {
+    const landing = on('CAM-4', 'land', { lease });
+    const all = [
+      landing,
+      on('CAM-1', 'land'),
+      on('CAM-2', 'land'),
+      on('CAM-3', 'doit'),
+      on('CAM-5', 'land', { lease: { holder: 'b', expiresAt: inMinutes(5) } }),
+      item({ id: 'TASK-9', state: 'land' }),
+    ];
+    expect(waitingToLand(landing, all, def, NOW)).toEqual(['CAM-1', 'CAM-2']);
+  });
+
+  it('names none off a land step, or off a board', () => {
+    const doing = on('CAM-3', 'doit', { lease });
+    expect(waitingToLand(doing, [doing, on('CAM-6', 'doit')], def, NOW)).toEqual([]);
+    expect(waitingToLand(doing, [doing], undefined, NOW)).toEqual([]);
   });
 });

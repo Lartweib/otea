@@ -262,6 +262,30 @@ describe('the standfirst (mock:2670-2678)', () => {
     );
   });
 
+  // P6-R3-4: «lo hace claude-haiku» for 13 min after you answered it, two items waiting behind it.
+  it('says its holder never picked up your answer, and what waits behind it to land', () => {
+    const unread = { agent: 'claude-haiku', quiet: '12 min', behind: [] };
+    expect(standOf({ ...base, look: 'working', unread })).toEqual({
+      key: 'sheet.stand.unread',
+      agent: 'claude-haiku',
+      time: '12 min',
+    });
+    expect(
+      standOf({ ...base, look: 'working', unread: { ...unread, behind: ['CAM-1', 'CAM-2'] } }),
+    ).toEqual({
+      key: 'sheet.stand.unreadBehind',
+      agent: 'claude-haiku',
+      time: '12 min',
+      item: 'CAM-1, CAM-2',
+    });
+    // A holder no longer connected says so first.
+    const ended = { agent: 'claude-haiku', ended: true, quiet: '3 min' };
+    expect(standOf({ ...base, look: 'working', unread, gone: ended }).key).toBe(
+      'sheet.stand.ended',
+    );
+    expect(standOf({ ...base, look: 'queued', unread }).key).toBe('sheet.stand.waits');
+  });
+
   it('says waiting, working, its children', () => {
     expect(standOf({ ...base, look: 'queued' }).key).toBe('sheet.stand.waits');
     expect(standOf({ ...base, look: 'queued', agent: null }).key).toBe('sheet.stand.waitsAgent');

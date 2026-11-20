@@ -4,6 +4,7 @@ import { legacyAsks } from '../../../src/core/board/questions.ts';
 import { activeLease } from '../active-lease.ts';
 import type { FeedEvent } from '../activity.ts';
 import { onPublishedBoard } from '../board-studio/home/boards-store.ts';
+import type { Agent } from '../presence.ts';
 import type { Item, TypeView } from '../types.ts';
 
 // The sections of Te toca (SPEC §6.7). Otea has no "question" or "own step" in its data, so they are
@@ -36,6 +37,8 @@ export type TocaContext = {
   find?: (id: string) => Item | undefined;
   // On a board, the state its step leads the item to by default (boardThen), when known.
   leadsTo?: (item: Item) => string | undefined;
+  // The agents the server has seen, to tell a holder that went quiet on an answer (P6-R3-4).
+  agents?: readonly Agent[] | null;
 };
 
 // Where a board item's step leads it by default, as the engine reads the item: the lead that

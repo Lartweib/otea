@@ -330,6 +330,29 @@ describe('the item sheet', () => {
       const html = render(held, withHolder({ live: true, lastSeen: ago(0.5) }));
       expect(html).toContain('<b>claude-haiku</b> lo está haciendo.');
     });
+
+    // P6-R3-4: its MCP server kept it connected, but it never picked up your answer.
+    it('says it gives no sign since you answered its question, though it is connected', () => {
+      setLanguage('es');
+      const fede = { kind: 'human', name: 'fede' } as const;
+      const answered: ItemView = {
+        ...held,
+        events: [
+          ...held.events,
+          ev('question_asked', haiku, { question: 1, text: '¿Puedo hacer push?' }, 14),
+          ev('question_answered', fede, { question: 1, text: 'Sí.' }, 12),
+        ],
+      };
+      const quiet = { live: true, listening: true, lastSeen: ago(0.5), actedAt: ago(13) };
+      const html = render(answered, withHolder(quiet));
+      expect(html).toContain(
+        '<b>claude-haiku</b> no da señales desde que respondiste su pregunta, hace 12 min; vuelve a la cola cuando venza su reserva.',
+      );
+      expect(html).not.toContain('lo está haciendo');
+      // Once it calls Otea again, it is on it.
+      const back = render(answered, withHolder({ ...quiet, actedAt: ago(1) }));
+      expect(back).toContain('<b>claude-haiku</b> lo está haciendo.');
+    });
   });
 
   // P7-R3-1: the only agent set it aside for later, and the header said «Espera a un agente» with

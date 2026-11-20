@@ -62,6 +62,7 @@ export const toca = {
   'toca.sub.thenAgent': 'después lo toma un agente',
   'toca.sub.thenClose': 'después se cierra',
   'toca.sub.does': 'lo hace {agent}',
+  'toca.sub.silent': '{agent} no da señales',
   'toca.sub.waitsFor': 'espera a {agent}',
   'toca.sub.waitsAgent': 'espera a un agente',
   'toca.sub.waitsKids': 'espera a sus hijos',
