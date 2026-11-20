@@ -1461,8 +1461,10 @@
 }
 /* The reader (DR-4): a file read in the desk's viewer for its kind, the others a step away. */
 /* It sits on the keyboard (--kb) as the other sheets do: typing a note, the box and its button stay
-   above the keys (DR2-10). */
-.nsheet.p-read {
+   above the keys (DR2-10). The reader is a note sheet too (p-sb), whose 88dvh, later in this file,
+   held it 47px short of its height on a 784px phone (P5-R3-7): named with both, it keeps it. */
+.nsheet.p-read,
+.nsheet.p-sb.p-read {
   bottom: var(--kb, 0px);
   height: calc(94dvh - var(--kb, 0px));
   max-height: calc(94dvh - var(--kb, 0px));
@@ -1477,6 +1479,8 @@
   top: 0;
   z-index: 2;
   background: var(--sheet);
+  /* The sheet's padding above it stays covered too: a file scrolled under it showed there. */
+  box-shadow: 0 -12px 0 var(--sheet);
 }
 .p-read .ev-stage img,
 .p-read .ev-stage video,
@@ -1771,6 +1775,24 @@
 }
 .p-read .ev-reader-note {
   padding-top: 8px;
+}
+/* Untouched, the note box is one line, its words and its button waiting for a tap (P5-R3-7): with
+   the moves it took 45% of a 412 x 784 phone, and a picture compared showed as a strip. */
+.p-read .ev-reader-note[data-idle]:not(:focus-within) {
+  grid-template-columns: minmax(0, 1fr);
+}
+.p-read .ev-reader-note[data-idle]:not(:focus-within) .ev-reader-on,
+.p-read .ev-reader-note[data-idle]:not(:focus-within) .btn {
+  display: none;
+}
+.p-read .ev-reader-note[data-idle]:not(:focus-within) textarea {
+  height: 44px;
+  min-height: 44px;
+  resize: none;
+}
+/* While two pictures are compared, what a comment does waits under the count: the pictures first. */
+.p-read .ev-reader:has(.ev-compare) .ev-reader-notice {
+  display: none;
 }
 .p-read .ev-reader-note .btn {
   min-height: 44px;

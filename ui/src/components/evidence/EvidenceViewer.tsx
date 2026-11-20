@@ -244,6 +244,32 @@ export function EvidenceReader({
     if (start && shownId !== undefined) setPick({ id: shownId, pick: start });
   }, [start]);
   const picked = pick && pick.id === shownId ? pick.pick : null;
+  // On the phone, Comparar brings the two pictures up under the reader's bar: below its buttons and
+  // the side's words they started a hand's width from the moves (P5-R3-7).
+  useEffect(() => {
+    if (!phone || !compared) return;
+    const root = view.current;
+    const frame = root?.querySelector<HTMLElement>('.ev-compare > :not(fieldset)');
+    const bar = root?.closest('.ev-reader')?.querySelector<HTMLElement>('.ev-reader-bar');
+    if (!frame) return;
+    const bringUp = () => {
+      frame.style.scrollMarginTop = `${(bar?.offsetHeight ?? 0) + 8}px`;
+      frame.scrollIntoView({ block: 'start' });
+    };
+    // The frame takes its pictures' shape only once they load, and until then leaves the sheet
+    // nothing to scroll: it comes up again each time it grows, in its first moments.
+    if (typeof ResizeObserver === 'undefined') {
+      bringUp();
+      return;
+    }
+    const grows = new ResizeObserver(bringUp);
+    grows.observe(frame);
+    const settled = window.setTimeout(() => grows.disconnect(), 1500);
+    return () => {
+      grows.disconnect();
+      window.clearTimeout(settled);
+    };
+  }, [phone, compared]);
   // An image takes a point (or, on the desk, a zone dragged over it) for the note.
   const spotting =
     note !== undefined && shown !== undefined && !compared && pickableOn(shown) === 'spot';
@@ -392,8 +418,11 @@ export function EvidenceReader({
     ).finally(() => setSending(false));
   };
   if (!shown) return null;
+  // On the phone a note box nobody touched folds to one line (phone.css): beside the moves it took
+  // the sheet a picture needs (P5-R3-7). Typing in it, or a pick, opens it.
+  const idle = !!phone && !text.trim() && !picked;
   const noteBox = note ? (
-    <div className="ev-reader-note">
+    <div className="ev-reader-note" data-idle={idle ? 'true' : undefined}>
       <div className="ev-reader-on">
         <b>{t('notes.pick.on', { what: pickWords(picked) })}</b>
         <span>
