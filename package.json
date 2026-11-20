@@ -40,7 +40,7 @@
     "vitest": "5.0.5"
   },
   "dependencies": {
-    "@hono/node-server": "2.1.5",
+    "@hono/node-server": "2.1.6",
     "@modelcontextprotocol/server": "2.3.1",
     "hono": "4.13.14",
     "uqr": "0.1.3",
