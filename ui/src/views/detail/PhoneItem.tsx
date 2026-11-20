@@ -529,13 +529,27 @@ function RoundView({
 // Comparar, on the phone: one column, the two rounds' notes in order and the files marked by what
 // changed; never two side by side.
 // The pictures of two rounds side by side, the older on the left, each under its round (P5-5).
-function ComparePictures({ older, newer }: { older: PhoneRound; newer: PhoneRound }) {
+// A tap on a picture opens it in the reader, the others of the comparison a step away (P5-R3-17).
+export function ComparePictures({ older, newer }: { older: PhoneRound; newer: PhoneRound }) {
   const pairs = imagePairs(older.evidence, newer.evidence);
+  const order = pairs.flatMap((p) => [p.before, p.after]).filter((e): e is Evidence => !!e);
+  const [at, setAt] = useState<number | null>(null);
+  const opened = useRef<HTMLElement | null>(null);
   if (pairs.length === 0) return null;
   const side = (e: Evidence | undefined, n: number) => (
     <figure>
       {e ? (
-        <img src={evidenceFileUrl(e.id)} alt={e.filename} loading="lazy" />
+        <button
+          type="button"
+          className="p-cmp-open"
+          aria-label={`${t('phone.r.read', { file: e.filename })} · ${t('bi.rounds.round', { n })}`}
+          onClick={(ev) => {
+            opened.current = ev.currentTarget;
+            setAt(order.indexOf(e));
+          }}
+        >
+          <img src={evidenceFileUrl(e.id)} alt={e.filename} loading="lazy" />
+        </button>
       ) : (
         <span className="none">{t('phone.r.noPicture')}</span>
       )}
@@ -554,6 +568,20 @@ function ComparePictures({ older, newer }: { older: PhoneRound; newer: PhoneRoun
           {side(p.after, newer.n)}
         </div>
       ))}
+      <BottomSheet
+        open={at !== null}
+        label={t('phone.r.reader')}
+        title={t('phone.r.reader')}
+        className="p-sb p-read"
+        from={() => opened.current}
+        onClose={() => setAt(null)}
+      >
+        {at !== null ? (
+          <div data-i="">
+            <EvidenceReader evidence={order} at={at} onAt={setAt} phone />
+          </div>
+        ) : null}
+      </BottomSheet>
     </section>
   );
 }
