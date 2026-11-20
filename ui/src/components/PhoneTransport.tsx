@@ -1,14 +1,31 @@
-import { useCallback, useEffect, useState } from 'react';
-import { choosePhoneTransport, closeLan, fetchPhone, openLan } from '../api.ts';
+import { type ReactNode, useCallback, useEffect, useState } from 'react';
+import {
+  choosePhoneTransport,
+  closeLan,
+  fetchPhone,
+  fetchTailscaleGuide,
+  openLan,
+  serveOverTailscale,
+} from '../api.ts';
 import { type MessageKey, type PlainKey, t, tx } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
-import type { PhoneStatus, TailscaleCheck, TransportKind } from '../types.ts';
+import { qrPath } from '../pairing.ts';
+import type {
+  GuideStep,
+  PhoneStatus,
+  StoreLink,
+  TailscaleCheck,
+  TailscaleGuide,
+} from '../types.ts';
 import { CopyCommand } from './CopyCommand.tsx';
 
-// Configuración · Teléfono: how a phone reaches Otea. The transports are interchangeable: the local
-// network (the default, opened here with Abrir a la red local), Tailscale (set up here: Otea runs tailscale serve on this
-// computer, never an installer) and the Otea relay, which is not available yet. Whichever carries
-// the phone, it pairs with a code from this computer and only paired devices get in.
+// Configuración · Teléfono: how you reach Otea, three options side by side, each with what it
+// needs, what it gives and what you lose: only on this computer (the local network closed), from
+// the phone at home (the local network open, plain HTTP) and from anywhere with Tailscale (HTTPS,
+// with notifications). The one in use is read from the server. Tailscale leads into guided steps,
+// each read on this computer; Otea never changes Tailscale by itself, and runs the one command it
+// shows only once the person confirms it. Whichever carries the phone, it pairs with a code from
+// this computer and only paired devices get in.
 
 // What stops Tailscale, as the person reads it: the words, the command to run, the page to open.
 export type Problem = {
@@ -62,48 +79,90 @@ export function problemOf(check: TailscaleCheck): Problem | null {
   }
 }
 
-const OPTIONS: readonly { kind: TransportKind; name: PlainKey; text: PlainKey }[] = [
-  { kind: 'lan', name: 'phone.transport.lan', text: 'phone.transport.lanText' },
-  { kind: 'tailscale', name: 'phone.transport.tailscale', text: 'phone.transport.tailscaleText' },
-  { kind: 'relay', name: 'phone.transport.relay', text: 'phone.transport.relayText' },
+export type Reach = 'local' | 'lan' | 'tailscale';
+
+// Which option is in use now, from the server's status.
+export function reachOf(status: PhoneStatus | null): Reach | null {
+  if (!status) return null;
+  if (status.transport === 'tailscale') return 'tailscale';
+  return status.lanOpen ? 'lan' : 'local';
+}
+
+type ReachWords = {
+  name: PlainKey;
+  what: PlainKey;
+  needs: PlainKey;
+  gives: PlainKey;
+  loses: PlainKey;
+};
+
+const REACHES: readonly ({ kind: Reach } & ReachWords)[] = [
+  {
+    kind: 'local',
+    name: 'phone.reach.local',
+    what: 'phone.reach.localWhat',
+    needs: 'phone.reach.localNeeds',
+    gives: 'phone.reach.localGives',
+    loses: 'phone.reach.localLoses',
+  },
+  {
+    kind: 'lan',
+    name: 'phone.reach.lan',
+    what: 'phone.reach.lanWhat',
+    needs: 'phone.reach.lanNeeds',
+    gives: 'phone.reach.lanGives',
+    loses: 'phone.reach.lanLoses',
+  },
+  {
+    kind: 'tailscale',
+    name: 'phone.reach.tailscale',
+    what: 'phone.reach.tailscaleWhat',
+    needs: 'phone.reach.tailscaleNeeds',
+    gives: 'phone.reach.tailscaleGives',
+    loses: 'phone.reach.tailscaleLoses',
+  },
 ];
 
 function Option({
   kind,
-  name,
-  text,
-  checked,
+  words,
+  inUse,
+  shown,
   disabled,
-  onChoose,
+  onPick,
 }: {
-  kind: TransportKind;
-  name: PlainKey;
-  text: PlainKey;
-  checked: boolean;
+  kind: Reach;
+  words: ReachWords;
+  inUse: boolean;
+  shown: boolean;
   disabled: boolean;
-  onChoose: (kind: TransportKind) => void;
+  onPick: (kind: Reach) => void;
 }) {
-  const tag =
-    kind === 'relay'
-      ? t('phone.transport.soon')
-      : kind === 'lan'
-        ? t('phone.transport.default')
-        : null;
+  const row = (label: PlainKey, text: PlainKey) => (
+    <span className="ph-opt-row">
+      <span className="ph-opt-label">{t(label)}</span>
+      <span>{t(text)}</span>
+    </span>
+  );
   return (
-    // biome-ignore lint/a11y/useSemanticElements: a card with a title and a line, not a bare radio input
+    // biome-ignore lint/a11y/useSemanticElements: a card with a title and lines, not a bare radio input
     <button
       type="button"
       role="radio"
-      aria-checked={checked}
-      className="ph-opt"
+      aria-checked={inUse}
       data-kind={kind}
-      disabled={disabled || kind === 'relay'}
-      onClick={() => onChoose(kind)}
+      data-shown={shown || undefined}
+      className="ph-opt"
+      disabled={disabled}
+      onClick={() => onPick(kind)}
     >
       <span className="ph-opt-mark" aria-hidden="true" />
-      <span className="ph-opt-name">{t(name)}</span>
-      {tag ? <span className="ph-opt-tag">{tag}</span> : null}
-      <span className="ph-opt-text">{t(text)}</span>
+      <span className="ph-opt-name">{t(words.name)}</span>
+      {inUse ? <span className="ph-opt-tag">{t('phone.transport.inUse')}</span> : null}
+      <span className="ph-opt-text">{t(words.what)}</span>
+      {row('phone.reach.needs', words.needs)}
+      {row('phone.reach.gives', words.gives)}
+      {row('phone.reach.loses', words.loses)}
     </button>
   );
 }
@@ -131,32 +190,224 @@ function reachLabel(status: PhoneStatus | null): string {
   return status.reachable ? t('phone.status.yes') : t('phone.status.no');
 }
 
-export type PhoneTransportViewProps = {
-  status: PhoneStatus | null;
-  // What the last Tailscale setup found, kept while the transport stays where it was.
-  setup: TailscaleCheck | null;
+function StoreCode({ store, label }: { store: StoreLink; label: string }) {
+  const { size, cells } = store.qr;
+  return (
+    <a className="ph-store" href={store.url} target="_blank" rel="noreferrer noopener">
+      <svg
+        className="qr ph-store-qr"
+        viewBox={`-1 -1 ${size + 2} ${size + 2}`}
+        role="img"
+        aria-label={label}
+        shapeRendering="crispEdges"
+      >
+        <path d={qrPath(cells)} className="qr-ink" />
+      </svg>
+      <span>{label}</span>
+    </a>
+  );
+}
+
+function Step({
+  step,
+  n,
+  done,
+  title,
+  children,
+}: {
+  step: GuideStep;
+  n: number;
+  done: boolean;
+  title: string;
+  children: ReactNode;
+}) {
+  return (
+    <li className="ph-step" data-step={step} data-done={done}>
+      <span className="ph-step-mark" aria-hidden="true">
+        {done ? '✓' : n}
+      </span>
+      <div className="ph-step-body">
+        <h4>
+          {title}
+          <span className="ph-step-state">
+            {done ? t('phone.guide.done') : t('phone.guide.pending')}
+          </span>
+        </h4>
+        {children}
+      </div>
+    </li>
+  );
+}
+
+export type GuideProps = {
+  guide: TailscaleGuide;
+  inUse: boolean;
+  confirming: boolean;
   busy: boolean;
-  canWrite: boolean;
-  onChoose: (kind: TransportKind) => void;
+  onCheck: () => void;
+  onUseTailscale: () => void;
+  onAskServe: () => void;
+  onConfirmServe: () => void;
+  onCancelServe: () => void;
   onPair: () => void;
-  onOpenLan: () => void;
-  onCloseLan: () => void;
 };
 
-// Emparejar un teléfono on the closed local network opens it first, then shows the code.
-export function opensBeforePairing(status: PhoneStatus | null): boolean {
-  return status?.transport === 'lan' && !status.lanOpen;
+export function TailscaleSteps({
+  guide,
+  inUse,
+  confirming,
+  busy,
+  onCheck,
+  onUseTailscale,
+  onAskServe,
+  onConfirmServe,
+  onCancelServe,
+  onPair,
+}: GuideProps) {
+  const { done, check } = guide;
+  const url = `https://${guide.host ?? '<machine>.<tailnet>.ts.net'}`;
+  const signInProblem = done.pc && check.state === 'logged_out' ? problemOf(check) : null;
+  const serveProblem =
+    check.state === 'taken' || check.state === 'failed' ? problemOf(check) : null;
+  // Only once every step before it holds and the HTTPS name forwards nowhere yet.
+  const canServe = check.state === 'ready' && !check.serving && done.pc && done.https;
+  return (
+    <section className="ph-guide" aria-label={t('phone.guide.title')}>
+      <h3>{t('phone.guide.title')}</h3>
+      <p className="pj-hint">{t('phone.guide.lead')}</p>
+      <ol className="ph-steps-list">
+        <Step step="phone" n={1} done={done.phone} title={t('phone.guide.phone')}>
+          <p>{done.phone ? t('phone.guide.phoneSeen') : t('phone.guide.phoneText')}</p>
+          <div className="ph-stores">
+            <StoreCode store={guide.stores.android} label={t('phone.guide.android')} />
+            <StoreCode store={guide.stores.ios} label={t('phone.guide.ios')} />
+          </div>
+        </Step>
+        <Step step="pc" n={2} done={done.pc} title={t('phone.guide.pc')}>
+          {done.pc ? null : (
+            <>
+              <p>{t('phone.guide.pcText')}</p>
+              {guide.install.commands.map((command) => (
+                <CopyCommand key={command} command={command} />
+              ))}
+              <a
+                className="ph-link"
+                href={guide.install.link}
+                target="_blank"
+                rel="noreferrer noopener"
+              >
+                {t('phone.ts.download')}
+              </a>
+            </>
+          )}
+        </Step>
+        <Step step="signIn" n={3} done={done.signIn} title={t('phone.guide.signIn')}>
+          <p>{t('phone.guide.signInText')}</p>
+          {guide.signedIn && !done.signIn ? (
+            <p className="pj-hint">{t('phone.guide.signedIn')}</p>
+          ) : null}
+          {signInProblem ? <ProblemNote found={signInProblem} /> : null}
+        </Step>
+        <Step step="https" n={4} done={done.https} title={t('phone.guide.https')}>
+          <p>{t('phone.guide.httpsText')}</p>
+          <a className="ph-link" href={guide.settings} target="_blank" rel="noreferrer noopener">
+            {t('phone.guide.dnsPage')}
+          </a>
+          {guide.host ? (
+            <p className="ph-ledger">
+              {tx('phone.ts.ledger', { host: <code>{guide.host}</code> })}
+            </p>
+          ) : null}
+        </Step>
+        <Step step="serve" n={5} done={done.serve} title={t('phone.guide.serve')}>
+          <p>
+            {done.serve ? t('phone.guide.served', { url }) : t('phone.guide.serveText', { url })}
+          </p>
+          <CopyCommand command={guide.command} />
+          <p className="pj-hint">{t('phone.guide.undo')}</p>
+          <CopyCommand command={guide.undo} small />
+          {serveProblem ? <ProblemNote found={serveProblem} /> : null}
+          {canServe && !confirming ? (
+            <div className="ph-acts">
+              <Button size="sm" variant="primary" disabled={busy} onClick={onAskServe}>
+                {t('phone.guide.run')}
+              </Button>
+              <span className="pj-hint">{t('phone.guide.runHint')}</span>
+            </div>
+          ) : null}
+          {canServe && confirming ? (
+            <div className="ph-confirm" role="alertdialog" aria-label={t('phone.guide.confirm')}>
+              <p className="ph-confirm-q">{t('phone.guide.confirm')}</p>
+              <code className="ph-confirm-cmd">{guide.command}</code>
+              <p className="pj-hint">{t('phone.guide.confirmText')}</p>
+              <div className="ph-acts">
+                <Button size="sm" variant="primary" disabled={busy} onClick={onConfirmServe}>
+                  {t('phone.guide.yes')}
+                </Button>
+                <Button size="sm" variant="quiet" disabled={busy} onClick={onCancelServe}>
+                  {t('phone.guide.no')}
+                </Button>
+              </div>
+            </div>
+          ) : null}
+          {done.serve && !inUse ? (
+            <div className="ph-acts">
+              <Button size="sm" variant="primary" disabled={busy} onClick={onUseTailscale}>
+                {t('phone.guide.use')}
+              </Button>
+            </div>
+          ) : null}
+        </Step>
+        <Step step="pair" n={6} done={done.pair} title={t('phone.guide.pair')}>
+          <p>{done.pair ? t('phone.guide.pairDone') : t('phone.guide.pairText', { url })}</p>
+          {inUse ? (
+            <div className="ph-acts">
+              <Button size="sm" variant="primary" disabled={busy} onClick={onPair}>
+                {t('phone.transport.pair')}
+              </Button>
+            </div>
+          ) : null}
+        </Step>
+      </ol>
+      <Button size="sm" variant="quiet" disabled={busy} onClick={onCheck}>
+        {t('phone.transport.again')}
+      </Button>
+    </section>
+  );
 }
+
+export type PhoneTransportViewProps = {
+  status: PhoneStatus | null;
+  // The guided steps to Tailscale, once read.
+  guide: TailscaleGuide | null;
+  // The option the person opened, when it is not the one in use (Tailscale, before it is ready).
+  picked: Reach | null;
+  confirming: boolean;
+  busy: boolean;
+  canWrite: boolean;
+  onPick: (kind: Reach) => void;
+  onPair: () => void;
+  onCheck: () => void;
+  onUseTailscale: () => void;
+  onAskServe: () => void;
+  onConfirmServe: () => void;
+  onCancelServe: () => void;
+};
 
 export function PhoneTransportView({
   status,
-  setup,
+  guide,
+  picked,
+  confirming,
   busy,
   canWrite,
-  onChoose,
+  onPick,
   onPair,
-  onOpenLan,
-  onCloseLan,
+  onCheck,
+  onUseTailscale,
+  onAskServe,
+  onConfirmServe,
+  onCancelServe,
 }: PhoneTransportViewProps) {
   if (!canWrite) {
     return (
@@ -165,26 +416,27 @@ export function PhoneTransportView({
       </p>
     );
   }
-  const transport = status?.transport ?? 'lan';
-  const check = status?.tailscale ?? setup;
-  const found = check && (transport === 'tailscale' || setup) ? problemOf(check) : null;
-  const tailscale = transport === 'tailscale';
-  const host = tailscale && status?.url ? new URL(status.url).host : null;
-  const lan = !tailscale && status !== null;
-  const lanClosed = lan && !status.lanOpen;
+  const active = reachOf(status);
+  const shown = picked ?? active;
+  const tailscale = status?.transport === 'tailscale';
   return (
     <div className="ph-transport">
-      <div className="ph-opts" role="radiogroup" aria-label={t('phone.transport.choose')}>
-        {OPTIONS.map((option) => (
+      <div className="ph-opts" role="radiogroup" aria-label={t('phone.reach.choose')}>
+        {REACHES.map(({ kind, ...words }) => (
           <Option
-            key={option.kind}
-            {...option}
-            checked={option.kind === transport}
-            disabled={busy}
-            onChoose={onChoose}
+            key={kind}
+            kind={kind}
+            words={words}
+            inUse={kind === active}
+            shown={kind === shown}
+            disabled={busy || status === null}
+            onPick={onPick}
           />
         ))}
       </div>
+      {active === 'local' && status?.firewallPrompt ? (
+        <p className="pj-hint">{t('phone.lan.firewall')}</p>
+      ) : null}
       <dl className="pj-storage ph-status" aria-busy={busy}>
         <dt>{t('phone.status.transport')}</dt>
         <dd>
@@ -204,64 +456,58 @@ export function PhoneTransportView({
           </span>
         </dd>
       </dl>
-      {lan ? (
-        <div className="ph-lan">
-          <Button
-            size="sm"
-            variant="quiet"
-            disabled={busy}
-            onClick={lanClosed ? onOpenLan : onCloseLan}
-          >
-            {t(lanClosed ? 'phone.lan.open' : 'phone.lan.close')}
-          </Button>
-          {lanClosed && status.firewallPrompt ? (
-            <p className="pj-hint">{t('phone.lan.firewall')}</p>
-          ) : null}
-        </div>
-      ) : null}
-      {found ? <ProblemNote found={found} /> : null}
-      {tailscale && found ? (
-        <Button size="sm" variant="quiet" disabled={busy} onClick={() => onChoose('tailscale')}>
-          {t('phone.transport.again')}
-        </Button>
-      ) : null}
-      {tailscale ? (
-        <div className="ph-steps">
-          <h3>{t('phone.ts.steps')}</h3>
-          <ol>
-            <li>{t('phone.ts.step1')}</li>
-            <li>{t('phone.ts.step2')}</li>
-            <li>{t('phone.ts.step3')}</li>
-          </ol>
-          {host ? (
-            <p className="ph-ledger">{tx('phone.ts.ledger', { host: <code>{host}</code> })}</p>
-          ) : null}
-        </div>
+      {shown === 'tailscale' && guide ? (
+        <TailscaleSteps
+          guide={guide}
+          inUse={tailscale}
+          confirming={confirming}
+          busy={busy}
+          onCheck={onCheck}
+          onUseTailscale={onUseTailscale}
+          onAskServe={onAskServe}
+          onConfirmServe={onConfirmServe}
+          onCancelServe={onCancelServe}
+          onPair={onPair}
+        />
       ) : null}
       {/* Only HTTPS lets the installed app open without this computer: plain HTTP promises none. */}
       <p className="pj-hint">
         {t(tailscale ? 'phone.transport.offline' : 'phone.transport.lanOnly')}
       </p>
       <p className="pj-hint">{t('phone.transport.tokens')}</p>
-      <div className="ph-acts">
-        <Button size="sm" variant="primary" disabled={busy} onClick={onPair}>
-          {t('phone.transport.pair')}
-        </Button>
-      </div>
+      {active === 'lan' || (active === 'tailscale' && shown !== 'tailscale') ? (
+        <div className="ph-acts">
+          <Button size="sm" variant="primary" disabled={busy} onClick={onPair}>
+            {t('phone.transport.pair')}
+          </Button>
+        </div>
+      ) : null}
     </div>
   );
 }
 
-// The section's data: the status from the server, and the transport the person picks.
+const messageOf = (error: unknown) => (error instanceof Error ? error.message : '');
+
+// The section's data: the status from the server, the guide while Tailscale is open, and what the
+// person picks. A pick opens or closes the local network (Otea's own setting); Tailscale opens its
+// steps and changes nothing until the person confirms the command they show.
 export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair: () => void }) {
   const [status, setStatus] = useState<PhoneStatus | null>(null);
-  const [setup, setSetup] = useState<TailscaleCheck | null>(null);
+  const [guide, setGuide] = useState<TailscaleGuide | null>(null);
+  const [picked, setPicked] = useState<Reach | null>(null);
+  const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
   const [failure, setFailure] = useState<string | undefined>();
 
   const load = useCallback((signal: AbortSignal) => {
     fetchPhone(signal).then(setStatus, (error: unknown) => {
-      if (!signal.aborted) setFailure(error instanceof Error ? error.message : '');
+      if (!signal.aborted) setFailure(messageOf(error));
+    });
+  }, []);
+
+  const readGuide = useCallback((signal: AbortSignal = new AbortController().signal) => {
+    fetchTailscaleGuide(signal).then(setGuide, (error: unknown) => {
+      if (!signal.aborted) setFailure(messageOf(error));
     });
   }, []);
 
@@ -272,21 +518,16 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
     return () => controller.abort();
   }, [canWrite, load]);
 
-  const choose = (kind: TransportKind) => {
-    if (kind === 'relay' || (kind === status?.transport && kind === 'lan')) return;
-    setBusy(true);
-    setFailure(undefined);
-    choosePhoneTransport(kind)
-      .then((next) => {
-        setStatus(next);
-        setSetup(kind === 'tailscale' ? next.tailscale : null);
-      })
-      .catch((error: unknown) => setFailure(error instanceof Error ? error.message : ''))
-      .finally(() => setBusy(false));
-  };
+  const shown = picked ?? reachOf(status);
+  useEffect(() => {
+    if (!canWrite || shown !== 'tailscale') return undefined;
+    const controller = new AbortController();
+    readGuide(controller.signal);
+    return () => controller.abort();
+  }, [canWrite, shown, readGuide]);
 
-  // Opens or closes the local network on the running server; the status comes back with it.
-  const lan = (change: () => Promise<PhoneStatus>, then?: () => void) => {
+  // One change at a time; the status comes back with it.
+  const act = (change: () => Promise<PhoneStatus>, then?: () => void) => {
     setBusy(true);
     setFailure(undefined);
     change()
@@ -294,21 +535,55 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
         setStatus(next);
         then?.();
       })
-      .catch((error: unknown) => setFailure(error instanceof Error ? error.message : ''))
+      .catch((error: unknown) => setFailure(messageOf(error)))
       .finally(() => setBusy(false));
+  };
+
+  const pick = (kind: Reach) => {
+    setConfirming(false);
+    if (kind === 'tailscale') {
+      setPicked('tailscale');
+      return;
+    }
+    setPicked(null);
+    if (kind === reachOf(status)) return;
+    const change = kind === 'lan' ? openLan : closeLan;
+    act(
+      status?.transport === 'tailscale'
+        ? () => choosePhoneTransport('lan').then(() => change())
+        : change,
+    );
   };
 
   return (
     <>
       <PhoneTransportView
         status={status}
-        setup={setup}
+        guide={guide}
+        picked={picked}
+        confirming={confirming}
         busy={busy}
         canWrite={canWrite}
-        onChoose={choose}
-        onPair={() => (opensBeforePairing(status) ? lan(openLan, onPair) : onPair())}
-        onOpenLan={() => lan(openLan)}
-        onCloseLan={() => lan(closeLan)}
+        onPick={pick}
+        onPair={onPair}
+        onCheck={() => readGuide()}
+        onUseTailscale={() =>
+          act(
+            () => choosePhoneTransport('tailscale'),
+            () => readGuide(),
+          )
+        }
+        onAskServe={() => setConfirming(true)}
+        onCancelServe={() => setConfirming(false)}
+        onConfirmServe={() => {
+          if (!guide) return;
+          const { command } = guide;
+          setConfirming(false);
+          act(
+            () => serveOverTailscale(command),
+            () => readGuide(),
+          );
+        }}
       />
       {failure ? (
         <p className="dhint" role="alert">

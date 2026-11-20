@@ -29,6 +29,7 @@ import type {
   ProjectSettings,
   ProjectView,
   Session,
+  TailscaleGuide,
   TransportKind,
 } from './types.ts';
 import { type AgentDetail, parseAgentDetail } from './views/agent/agent-sheet.ts';
@@ -381,6 +382,16 @@ export function closeLan(): Promise<PhoneStatus> {
 // Chooses the phone transport; Tailscale is set up on this computer first and kept once ready.
 export function choosePhoneTransport(transport: TransportKind): Promise<PhoneStatus> {
   return post<PhoneStatus>('/api/phone', { transport });
+}
+
+// The guided path to Tailscale: each step, done or still to do. It changes nothing.
+export async function fetchTailscaleGuide(signal: AbortSignal): Promise<TailscaleGuide> {
+  return (await get('/api/phone/tailscale', signal)).json();
+}
+
+// Runs the command the guide showed, word for word, once the person confirmed it.
+export function serveOverTailscale(command: string): Promise<PhoneStatus> {
+  return post<PhoneStatus>('/api/phone/tailscale/serve', { command });
 }
 
 // Preferencias › Avisos: this device's push subscription and what it is told, or the desktop
