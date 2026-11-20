@@ -1,6 +1,7 @@
 import type { Channel } from '../core/authority.ts';
 import { isClosed, positionOf } from '../core/board/engine.ts';
 import { stepById } from '../core/board/model.ts';
+import { NOTE_LEFT } from '../core/board/notes.ts';
 import {
   askedText,
   chatAnswerText,
@@ -19,6 +20,7 @@ import {
   type ItemRecord,
   selectEvents,
   selectEventsOfTypes,
+  selectRelationsOf,
   selectStateEntries,
 } from '../store/queries.ts';
 import { askingItems } from './asking.ts';
@@ -28,7 +30,7 @@ import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { itemOnBoard, type LiveBoard, liveBoardOf } from './next.ts';
 import { sessionEnded } from './presence.ts';
 import { RELAYED_HUMAN } from './relay.ts';
-import { liftSetAside } from './set-aside.ts';
+import { liftSetAside, SET_ASIDE_LIFTED } from './set-aside.ts';
 
 // An agent's question to the person (core/board/questions.ts): the agent asks while it does a step,
 // and the turn is the person's until they answer; the answer hands it back to the agent in the same
@@ -254,10 +256,36 @@ export function wakesWhileAsking(
     if (asking.has(item.id)) return false;
     if ((entered.get(item.id) ?? item.createdAt) > asked) return true;
     const record = requireItem(ctx.db, item.id);
+    const events = selectEvents(ctx.db, item.id);
+    const mine = ({ actor }: { actor: Actor }) => actor.kind === 'agent' && actor.name === agent;
+    // What happened since it asked, while it did nothing on the item after it (P7-R3-9): the
+    // person took the item up (a note, Retomar, any act of theirs that lifted a set-aside), or,
+    // on an item it holds, the parts or blockers it waited for closed: its work again.
+    const since = (at: string | undefined) =>
+      at !== undefined && at > asked && !events.some((event) => event.at > at && mine(event));
+    if (since(events.findLast(tookUp)?.at)) return true;
+    if (record.lease?.holder === agent && since(waitsClosedAt(ctx, item.id))) return true;
     const board = liveBoardOf(ctx, record.collection);
     if (!board || itemOnBoard(ctx, record, board.def).sentBack === undefined) return false;
-    return selectEvents(ctx.db, item.id).some(
-      ({ actor }) => actor.kind === 'agent' && actor.name === agent,
-    );
+    return events.some(mine);
   };
+}
+
+// The person's own acts that take an item up: a note, or what lifted a set-aside (P7-R3-9).
+function tookUp({ type, actor }: { type: string; actor: Actor }): boolean {
+  return actor.kind === 'human' && (type === NOTE_LEFT || type === SET_ASIDE_LIFTED);
+}
+
+// When the last of the item's parts and blockers closed, while every one of them is closed;
+// undefined while one is open or it has none.
+function waitsClosedAt(ctx: Context, id: string): string | undefined {
+  let last: string | undefined;
+  for (const relation of selectRelationsOf(ctx.db, id)) {
+    if (relation.to !== id || (relation.kind !== 'parent' && relation.kind !== 'blocks')) continue;
+    const other = requireItem(ctx.db, relation.from);
+    if (!isClosed(positionOf(other.state))) return undefined;
+    const closed = selectEvents(ctx.db, other.id).findLast(({ type }) => type === 'transitioned');
+    if (closed && (last === undefined || closed.at > last)) last = closed.at;
+  }
+  return last;
 }

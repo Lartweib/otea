@@ -417,6 +417,7 @@ export const detail = {
   'sheet.stand.setAside': '{agent} lo dejó para más adelante.',
   'sheet.stand.kids': 'Espera a sus hijos.',
   'sheet.stand.working': '{agent} lo está haciendo.',
+  'sheet.stand.workingAsks': '{agent} lo tiene, pero espera tu respuesta en {item}.',
   'sheet.stand.reopened': 'Se reabrió: «{why}». {agent} lo retoma.',
   'sheet.stand.reopenedWaits': 'Se reabrió: «{why}». Espera a un agente.',
   'sheet.stand.workingRound': '{agent} lo está haciendo en la ronda {round}.',

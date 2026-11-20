@@ -230,6 +230,8 @@ export type Stand = {
   time?: string;
   why?: string;
   board?: string;
+  // The item the holder's question waits on.
+  item?: string;
 };
 
 // The standfirst under the headline: who hands it to you, asks, has gone quiet; your step; done.
@@ -252,6 +254,9 @@ export function standOf(o: {
   byYou?: boolean;
   // The agent that set it aside for later: it says so, never that it waits for one (P7-R3-1).
   aside?: string | undefined;
+  // Its holder's question waits for your answer on another item (P7-R3-9): it says so, never that
+  // the holder is on this one.
+  asksOn?: { by: string; item: string } | undefined;
 }): Stand {
   const a = o.agent ? { agent: o.agent } : {};
   const r = o.round > 1;
@@ -288,6 +293,8 @@ export function standOf(o: {
     case 'waiting':
       return { key: 'sheet.stand.kids' };
     case 'working':
+      if (o.asksOn)
+        return { key: 'sheet.stand.workingAsks', agent: o.asksOn.by, item: o.asksOn.item };
       if (!o.agent) return { key: 'sheet.stand.waitsAgent' };
       return r
         ? { key: 'sheet.stand.workingRound', ...a, round: o.round }

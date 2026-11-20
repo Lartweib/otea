@@ -230,6 +230,15 @@ describe('the standfirst (mock:2670-2678)', () => {
     expect(standOf({ ...base, look: 'yours', aside: 'kiln' }).key).toBe('sheet.stand.handed');
   });
 
+  // P7-R3-9: «claude-haiku lo está haciendo» on items it held while it waited for your answer
+  // on another one: it was doing nothing there.
+  it('says the holder waits for your answer elsewhere, rather than that it is on it', () => {
+    expect(
+      standOf({ ...base, look: 'working', asksOn: { by: 'claude-haiku', item: 'IDE-10' } }),
+    ).toEqual({ key: 'sheet.stand.workingAsks', agent: 'claude-haiku', item: 'IDE-10' });
+    expect(standOf({ ...base, look: 'working', round: 3 }).key).toBe('sheet.stand.workingRound');
+  });
+
   it('says waiting, working, its children', () => {
     expect(standOf({ ...base, look: 'queued' }).key).toBe('sheet.stand.waits');
     expect(standOf({ ...base, look: 'queued', agent: null }).key).toBe('sheet.stand.waitsAgent');
