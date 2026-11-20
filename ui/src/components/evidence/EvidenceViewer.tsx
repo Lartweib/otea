@@ -293,6 +293,19 @@ export function EvidenceReader({
   const [zoom, setZoom] = useState(1);
   // biome-ignore lint/correctness/useExhaustiveDependencies: each file opens fitted
   useEffect(() => setZoom(1), [shownId]);
+  // The height a picture fits in, taken as each file opens and when the window is resized, never
+  // as notes come and go under it: the first note's list took 28% off the picture and moved the
+  // next click target (P5-R3-15). The view scrolls instead.
+  const [fitH, setFitH] = useState<number | null>(null);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: once per file, and on each resize
+  useLayoutEffect(() => {
+    const el = view.current;
+    if (!el) return;
+    const measure = () => setFitH(el.clientHeight || null);
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [shownId]);
   const zoomable = !!shown && !compared && viewOf(shown) === 'image';
   // The notes already left on the file shown, numbered as listed; the points and zones among them
   // are drawn over the image, or on their page of a PDF, beside the one being picked (P5-3).
@@ -577,7 +590,14 @@ export function EvidenceReader({
         data-picking={note ? 'true' : undefined}
         data-spotting={spotting ? 'true' : undefined}
         data-zoomed={zoom !== 1 ? 'true' : undefined}
-        style={zoom !== 1 ? ({ '--zoom': String(zoom) } as CSSProperties) : undefined}
+        style={
+          zoom !== 1 || fitH
+            ? ({
+                ...(zoom !== 1 ? { '--zoom': String(zoom) } : {}),
+                ...(fitH ? { '--fit-h': `${fitH}px` } : {}),
+              } as CSSProperties)
+            : undefined
+        }
         onPointerDown={
           spotting
             ? (e) => {
