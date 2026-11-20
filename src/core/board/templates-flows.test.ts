@@ -183,6 +183,29 @@ describe('the Entregas con PR set', () => {
   });
 });
 
+// P6-R3-1: the second item landed in main needs a rebase, and the push of main is refused until
+// the rebased branch is pushed; the land step says so.
+describe('a land step that rebases the branch', () => {
+  it('says to push the rebased branch with --force-with-lease before main, in Cambios and Implementación', () => {
+    const says = {
+      en: 'Once rebased, push @{branch} first (git push --force-with-lease origin <branch>), then main: main takes the branch only as the remote has it.',
+      es: 'Ya rebasada, sube primero @{branch} (git push --force-with-lease origin <rama>) y después main: main toma la rama solo como la tiene el remoto.',
+    };
+    for (const lang of ['en', 'es'] as const) {
+      const changes = instantiate(requireTemplate('changes'), lang, {}, sequenceIds());
+      const [, tasks] = made('ideas', lang);
+      for (const def of [changes, tasks]) {
+        if (!def) throw new Error('no board');
+        const land = def.steps.find((step) => isLandStep(def, step.id));
+        const branch = partNamed(def, lang === 'es' ? 'Rama' : 'Branch')?.name ?? '';
+        expect(mentionText(def, land?.instructions.take ?? '')).toContain(
+          says[lang].replaceAll('@{branch}', branch),
+        );
+      }
+    }
+  });
+});
+
 describe('the Cambios template', () => {
   it('clarifies, does and lands each change, with one approval of yours', () => {
     const def = instantiate(requireTemplate('changes'), 'es', {}, sequenceIds());

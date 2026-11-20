@@ -73,13 +73,14 @@ export type GateCheck = {
 
 // The branches a push or merge into a base branch brings in: asked of git only when a board
 // protects that branch as its base. `unpushed` names those of them that hold commits their remote
-// never got (`remote`): never reviewed, so they are refused whatever their item's state.
+// never got (`remote`): never reviewed, so they are refused whatever their item's state. `push`
+// is the remote the branch is pushed to.
 // `outside` names the commits the action brings in that none of the given branches holds, nor any
 // of the `tips` (commits that hold the history under them, as a branch does), merge commits aside:
 // they ride along unreviewed, so the action is refused, unless an approved item records them.
 export type Brought = {
   branches: readonly string[];
-  unpushed?: readonly { branch: string; remote: string }[];
+  unpushed?: readonly { branch: string; remote: string; push?: string }[];
   outside?: (held: readonly string[], tips?: readonly string[]) => readonly BroughtCommit[];
   // Whether the commit the action writes holds exactly what was approved of the branches it lands
   // (each at its approved tip, or as it stands when none was recorded), merged onto the base the
@@ -408,6 +409,13 @@ function baseCheck(
     const allowedIn = workflowOf(ctx, item).gates?.merge ?? [];
     const ahead = unpushed.find(({ branch: name }) => branch && name === item.fields[branch.id]);
     if (ahead) {
+      // On its land step the item's branch may take a rebase onto the base with the same result
+      // (landingPushRefusal): the refusal names that push first (P6-R3-1).
+      const rebase =
+        gateAt(board.def, position, 'merge').why === 'landing' &&
+        gateAt(board.def, position, 'push').allowed
+          ? ` To land a branch you rebased onto ${base}, push it first, git push --force-with-lease ${ahead.push ?? 'origin'} ${ahead.branch}, then push ${base} again, git push ${ahead.push ?? 'origin'} ${base}.`
+          : '';
       return {
         id: item.id,
         state: item.state,
@@ -415,7 +423,7 @@ function baseCheck(
         allowed: false,
         allowedIn,
         allowedInNames: allowedIn.map((state) => stateName(board.def, state)),
-        text: `${gate} refused: ${ahead.branch} holds commits ${ahead.remote} never got, so nobody reviewed them; ${base} takes ${item.id}'s branch only as it was pushed.`,
+        text: `${gate} refused: ${ahead.branch} holds commits ${ahead.remote} never got, so nobody reviewed them; ${base} takes ${item.id}'s branch only as it was pushed.${rebase}`,
       };
     }
     return {

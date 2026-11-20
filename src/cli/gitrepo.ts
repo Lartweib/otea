@@ -106,7 +106,7 @@ export function hasCommit(cwd: string, ref: string): boolean {
 // none of its own. Throws outside a repo.
 export type Brought = {
   branches: string[];
-  unpushed: { branch: string; remote: string }[];
+  unpushed: { branch: string; remote: string; push: string }[];
   outside?: (held: readonly string[], tips?: readonly string[]) => BroughtCommit[];
   landsAs?: (landing: readonly Landing[], onto?: string) => boolean;
 };
@@ -134,7 +134,9 @@ export function branchesBrought(cwd: string, to: string, from?: string): Brought
   const unpushed = local.flatMap((branch) => {
     const remote = remoteName(cwd, branch);
     if (remote === undefined) return [];
-    return isAncestor(cwd, `refs/heads/${branch}`, remote) ? [] : [{ branch, remote }];
+    return isAncestor(cwd, `refs/heads/${branch}`, remote)
+      ? []
+      : [{ branch, remote, push: pushRemote(cwd, branch) }];
   });
   const brought: Brought = { branches: [...new Set([...local, ...fromRemotes])], unpushed };
   // With nothing on the remote to start from, the whole history would count as brought in: only a
