@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../i18n/i18n.ts';
 import type { QueuedCapture } from './capture-queue.ts';
-import { InstallLine } from './InstallHint.tsx';
+import { InstallLine, installLineWanted } from './InstallHint.tsx';
 import { downWords, OfflineBar, syncedTime } from './OfflineBar.tsx';
 import { QueuedCaptures } from './QueuedCaptures.tsx';
 
@@ -91,20 +91,38 @@ describe('the queue in Te toca', () => {
 });
 
 describe('the install line in Preferencias', () => {
-  const line = (platform: 'ios' | 'android' | 'other', prompt = false) =>
-    renderToStaticMarkup(createElement(InstallLine, { platform, prompt, onPrompt: () => {} }));
+  const line = (platform: 'ios' | 'android' | 'other', prompt = false, offline = true) =>
+    renderToStaticMarkup(
+      createElement(InstallLine, { platform, prompt, offline, onPrompt: () => {} }),
+    );
+
+  // Dismissed on first open, the banner never comes back: Preferencias is where it is offered again,
+  // over the LAN too, but promising the offline app only over HTTPS.
+  it('offers it on the local network too, without promising it opens with the PC off', () => {
+    setLanguage('es');
+    const html = line('android', false, false);
+
+    expect(html).toContain('Agregar a la pantalla de inicio');
+    expect(html).not.toContain('se abre aunque tu PC esté apagado');
+  });
+
+  it('belongs on a phone in the browser, never in the installed app or on the desk', () => {
+    expect(installLineWanted({ phone: true, standalone: false })).toBe(true);
+    expect(installLineWanted({ phone: true, standalone: true })).toBe(false);
+    expect(installLineWanted({ phone: false, standalone: false })).toBe(false);
+  });
 
   it('on iOS, says it is in Safari’s Share menu', () => {
     setLanguage('es');
     const html = line('ios');
 
-    expect(html).toContain('Añadir a la pantalla de inicio');
-    expect(html).toContain('En Safari: Compartir › Añadir a la pantalla de inicio.');
+    expect(html).toContain('Agregar a la pantalla de inicio');
+    expect(html).toContain('En Safari: Compartir › Agregar a inicio.');
     expect(html).toContain('se abre aunque tu PC esté apagado y se actualiza sola');
   });
 
   it('on Android, a button when the browser offers its prompt, the menu otherwise', () => {
     expect(line('android', true)).toMatch(/<button[^>]*>.*Add to Home Screen/s);
-    expect(line('android')).toContain('In the browser menu (⋮) › Add to Home screen.');
+    expect(line('android')).toContain('In Chrome: menu (⋮) › Add to Home screen.');
   });
 });

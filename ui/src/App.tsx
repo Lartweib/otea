@@ -25,6 +25,7 @@ import { Tooltip } from './kit/Tooltip.tsx';
 import { LaneDefs } from './lanes/LaneDefs.tsx';
 import { MODULES } from './modules/registry.ts';
 import { useQuestionNotice } from './notify/question-notice.ts';
+import { InstallBanner } from './offline/InstallBanner.tsx';
 import { OfflineBar } from './offline/OfflineBar.tsx';
 import { CaptureSheet } from './phone/CaptureSheet.tsx';
 import { DeskOnly, deskOnlyOf } from './phone/DeskOnly.tsx';
@@ -168,6 +169,7 @@ function Shell() {
       <ConnectDialog />
       <StudioDialogs />
       <TabBar />
+      <InstallBanner />
       <NavSheet />
       <CaptureSheet />
       <LanguageNote />

@@ -214,9 +214,20 @@ export const phone = {
   'offline.queue.refused': 'no se envió: {message}',
   'offline.queue.discard': 'Descartar',
   'offline.install.title': 'Aplicación',
-  'offline.install.add': 'Añadir a la pantalla de inicio',
-  'offline.install.ios': 'En Safari: Compartir › Añadir a la pantalla de inicio.',
-  'offline.install.android': 'En el menú del navegador (⋮) › Añadir a la pantalla de inicio.',
+  'offline.install.add': 'Agregar a la pantalla de inicio',
+  'offline.install.ios': 'En Safari: Compartir › Agregar a inicio.',
+  'offline.install.android': 'En Chrome: menú (⋮) › Agregar a la pantalla principal.',
+  'install.title': 'Instalar Otea en tu inicio',
+  'install.install': 'Instalar',
+  'install.later': 'Ahora no',
+  'install.prompt': 'Se abre como una app, en su propia ventana.',
+  'install.ios': 'En Safari, toca Compartir y luego Agregar a inicio.',
+  'install.iosPush':
+    'En iPhone, los avisos solo llegan a Otea si está en tu pantalla de inicio: agrégala antes de activarlos.',
+  'install.android':
+    'En Chrome, abre el menú (⋮) y luego Agregar a la pantalla principal (o Instalar app).',
+  'install.other': 'Usa el menú del navegador para agregar esta página a tu pantalla de inicio.',
+  'install.again': 'Puedes agregarla más tarde desde Preferencias.',
   'offline.install.why': 'Instalada, se abre aunque tu PC esté apagado y se actualiza sola.',
   'phone.transport.lanOnly':
     'Por la red local el teléfono funciona solo mientras este equipo está encendido y Otea abierto.',

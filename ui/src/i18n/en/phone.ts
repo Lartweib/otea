@@ -213,7 +213,17 @@ export const phone = {
   'offline.install.title': 'App',
   'offline.install.add': 'Add to Home Screen',
   'offline.install.ios': 'In Safari: Share › Add to Home Screen.',
-  'offline.install.android': 'In the browser menu (⋮) › Add to Home screen.',
+  'offline.install.android': 'In Chrome: menu (⋮) › Add to Home screen.',
+  'install.title': 'Install Otea on your home screen',
+  'install.install': 'Install',
+  'install.later': 'Not now',
+  'install.prompt': 'It opens like an app, in its own window.',
+  'install.ios': 'In Safari, tap Share, then Add to Home Screen.',
+  'install.iosPush':
+    'On iPhone, notifications reach Otea only once it is on the Home Screen: add it before turning them on.',
+  'install.android': 'In Chrome, open the menu (⋮), then Add to Home screen (or Install app).',
+  'install.other': "Use your browser's menu to add this page to your home screen.",
+  'install.again': 'You can add it later from Preferences.',
   'offline.install.why': 'Installed, it opens even with your PC off and updates itself.',
   'phone.transport.lanOnly':
     'Over the local network the phone works only while this computer is on and Otea is open.',
