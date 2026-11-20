@@ -1,8 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { isLandStep } from './engine.ts';
+import { handoffCheck, isLandStep } from './engine.ts';
 import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
-import { type BoardDefinition, SAME } from './model.ts';
+import { type BoardDefinition, isEvidence, SAME } from './model.ts';
 import {
   instantiate,
   instantiateSet,
@@ -89,6 +89,69 @@ describe('the Implementación board', () => {
     expect(handOf(tasks, 'Integrar', 'Commit en main')).toMatchObject({ req: 'always' });
     expect(stepNamed(tasks, 'Integrar')?.ways).toEqual([stepNamed(tasks, 'Hacer')?.id]);
   });
+
+  // P7-8: tasks reached the person's review with no diff, since Cambios was optional in Hacer.
+  it("asks for the task's diff in Hacer, says so before the handoff, and refuses it without one", () => {
+    for (const lang of ['en', 'es'] as const) {
+      const [, tasks] = made('ideas', lang);
+      if (!tasks) throw new Error('no Implementación');
+      const doit = stepNamed(tasks, lang === 'es' ? 'Hacer' : 'Do it');
+      const changes = Object.values(tasks.parts).find(({ kind }) => kind === 'code');
+      if (!doit || !changes) throw new Error('no Hacer or no Cambios');
+      expect(doit.hand.find(({ ref }) => ref === changes.id)).toMatchObject({
+        req: 'always',
+        fresh: true,
+      });
+      expect(mentionText(tasks, doit.instructions.before)).toContain(changes.name);
+      const everythingButTheDiff = {
+        fields: Object.fromEntries(
+          doit.hand.flatMap(({ ref }) => {
+            const part = tasks.parts[ref];
+            if (!part || isEvidence(part)) return [];
+            return [[part.id, part.kind === 'branch' ? 'tarea/1-x' : 'x']];
+          }),
+        ),
+        evidence: doit.hand
+          .filter(({ ref }) => ref !== changes.id && tasks.parts[ref]?.kind === 'log')
+          .map(({ ref }) => ({ part: ref, at: '2026-11-20T10:00:00Z' })),
+        note: 'done',
+      };
+      expect(handoffCheck(tasks, doit.id, everythingButTheDiff).missing).toEqual([
+        { ref: changes.id, name: changes.name, reason: 'missing', fresh: true },
+      ]);
+    }
+  });
+});
+
+// P7-8, on every board: a step that changes code on its protected branch (one its guard pushes,
+// other than the land step that brings the reviewed branch in) asks for the diff whenever it asks
+// for the branch, and its «Before you hand it off» names it, so the person never reviews code
+// they cannot see. A board says a step needs no diff by asking for neither.
+describe('a step that changes code on its protected branch', () => {
+  const boards = [
+    ...TEMPLATES.filter(({ hidden }) => !hidden).map((template) =>
+      instantiate(template, 'en', {}, sequenceIds()),
+    ),
+    ...['ideas', 'repos'].flatMap((set) => made(set, 'en')),
+  ];
+  for (const def of boards) {
+    const guard = Object.values(def.parts).find((part) => part.kind === 'branch' && part.guard);
+    const diff = Object.values(def.parts).find(({ kind }) => kind === 'code');
+    const coding = def.steps.filter(
+      (step) => guard?.guard?.push.includes(step.id) && !isLandStep(def, step.id),
+    );
+    for (const step of coding)
+      it(`asks for the diff on ${def.name}'s ${step.name} and names it before the handoff`, () => {
+        const branch = step.hand.find(({ ref }) => ref === guard?.id);
+        const asked = step.hand.find(({ ref }) => ref === diff?.id);
+        expect(diff).toBeDefined();
+        expect({ req: asked?.req, when: asked?.when }).toEqual({
+          req: branch?.req ?? 'always',
+          when: branch?.when,
+        });
+        expect(mentionText(def, step.instructions.before)).toContain(diff?.name);
+      });
+  }
 });
 
 describe('the Entregas con PR set', () => {

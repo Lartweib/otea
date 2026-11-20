@@ -220,6 +220,10 @@ const BUG_REPORTS: Template = {
         'Reproduce it with @{frepro} before changing code. For behaviour and crashes, write a failing test first; for performance, measure before you change anything.',
         'Reprodúcelo con @{frepro} antes de tocar el código. Para comportamiento y cierres, escribe primero una prueba que falle; para rendimiento, mide antes de cambiar nada.',
       ),
+      before: w(
+        'Attach the @{ediff}: git diff main...HEAD of @{fbranch}, with the proof its kind of failure asks for.',
+        'Adjunta los @{ediff}: el git diff main...HEAD de @{fbranch}, con la prueba que pide su clase de fallo.',
+      ),
       review: w(
         'Check the proof shows the same steps as @{frepro}.',
         'Comprueba que la prueba muestra los mismos pasos que @{frepro}.',
@@ -1195,6 +1199,10 @@ const EXPERIMENTS: Template = {
       take: w(
         'Run exactly @{fplan}. Never touch production data or live systems.',
         'Corre exactamente @{fplan}. Nunca toques datos de producción ni sistemas en vivo.',
+      ),
+      before: w(
+        'Attach the @{ediff}: git diff main...HEAD of @{fbranch}, with the whole @{elog}.',
+        'Adjunta el @{ediff}: el git diff main...HEAD de @{fbranch}, con la @{elog} completa.',
       ),
       review: w(
         'Compare @{fresult} with the baseline before believing it.',
