@@ -58,6 +58,11 @@ describe('gates on a board', () => {
     expect(push.items[0]?.text).toBe(
       `push refused: ${id} waits for the person to review Implementar; its branch can be pushed only while Implementar is being done.`,
     );
+    // P5-R3-13: the other refusals had a line for the person in the board's language; this one
+    // was English only.
+    expect(push.person).toBe(
+      `Para la persona: ${id} espera la revisión de Implementar, y su rama no cambia mientras se revisa: así lo que apruebas es lo que se sube. Revísalo en el escritorio de Otea. Si el cambio es tuyo, súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.`,
+    );
     const merge = checkGate(ctx, 'merge', { branch: 'feat/x', repo: 'api' });
     expect(merge.items[0]?.text).toBe(
       `merge refused: ${id} is in the review of Implementar, round 1; its branch can be merged only once ${id} is Done.`,

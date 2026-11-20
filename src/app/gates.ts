@@ -27,6 +27,7 @@ import {
   forPersonText,
   gateText,
   placeText,
+  reviewForPersonText,
   rewriteForPersonText,
   unnamedBranchRefusal,
 } from '../core/board/next.ts';
@@ -201,7 +202,13 @@ function boardVerdicts(
   gate: GateAction,
   fields: Readonly<Record<string, string>>,
   brings: Brings,
-): { verdict: GateVerdict; open: boolean; dropped?: boolean; rewrite?: BoardDefinition }[] {
+): {
+  verdict: GateVerdict;
+  open: boolean;
+  dropped?: boolean;
+  rewrite?: BoardDefinition;
+  person?: string;
+}[] {
   const keys = boardKeys(board.def, fields);
   if (!keys) return [];
   const guard = guardedBranch(board.def);
@@ -234,11 +241,16 @@ function boardVerdicts(
           : undefined;
       const refused = unreviewed ?? rewritten;
       if (refused) Object.assign(verdict, { allowed: false, text: refused });
+      // A push refused because its step is reviewed: the person's line says why (P5-R3-13).
+      const inReview =
+        gate === 'push' && !verdict.allowed && !isClosed(position) && position.phase === 'review';
+      const step = inReview ? stepById(board.def, position.step)?.name : undefined;
       return {
         verdict,
         open: !isClosed(position),
         dropped: isDropped(position),
         ...(rewritten ? { rewrite: board.def } : {}),
+        ...(step ? { person: reviewForPersonText(board.def, item.id, step) } : {}),
       };
     });
 }
@@ -662,6 +674,7 @@ export function checkGate(
     open: boolean;
     dropped?: boolean;
     rewrite?: BoardDefinition;
+    person?: string;
   }[] = [...fromBoards, ...fromPresets];
   const open = gated.filter((entry) => entry.open);
   // Of the closed ones, a dropped duplicate left on the branch never blocks the item that was done
@@ -688,6 +701,9 @@ export function checkGate(
   // A person who means to rewrite the branch pushes it themselves, past the hook (P1-R3-3).
   const rewritten = answered.find(({ rewrite }) => rewrite !== undefined)?.rewrite;
   if (rewritten) check.person = rewriteForPersonText(rewritten);
+  // A push refused while its item is reviewed says why to the person too (P5-R3-13).
+  const reviewed = answered.find(({ person }) => person !== undefined)?.person;
+  if (!check.allowed && !check.person && reviewed) check.person = reviewed;
   return check;
 }
 

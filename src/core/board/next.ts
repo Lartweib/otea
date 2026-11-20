@@ -1229,6 +1229,20 @@ export function commitsForPersonText(
   return COMMITS_FOR_PERSON[lang](base, commits.length, shown);
 }
 
+// What the person reads under a refused push of an item's branch while its step is reviewed
+// (P5-R3-13): why the branch holds still, where to act, and the same way past it as under the other
+// refusals, in the board's language; never an agent's.
+const REVIEW_FOR_PERSON: Readonly<Record<Lang, (id: string, step: string) => string>> = {
+  en: (id, step) =>
+    `For the person: ${id} waits for the review of ${step}, and its branch holds still while it is reviewed: so what you approve is what gets pushed. Review it in Otea's desk. If the change is yours, push it yourself this once with git push --no-verify, which skips Otea's check. An agent never uses --no-verify.`,
+  es: (id, step) =>
+    `Para la persona: ${id} espera la revisión de ${step}, y su rama no cambia mientras se revisa: así lo que apruebas es lo que se sube. Revísalo en el escritorio de Otea. Si el cambio es tuyo, súbelo tú esta vez con git push --no-verify, que se salta la revisión de Otea. Un agente nunca usa --no-verify.`,
+};
+
+export function reviewForPersonText(def: BoardDefinition, id: string, step: string): string {
+  return REVIEW_FOR_PERSON[def.title === TITLE_NAME.es ? 'es' : 'en'](id, step);
+}
+
 // What the person reads under a refused push that rewrites an item's branch (P1-R3-3): the same
 // way out as for the protected base, said in the board's language; never an agent's.
 const REWRITE_FOR_PERSON: Readonly<Record<Lang, string>> = {
