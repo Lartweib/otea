@@ -2,13 +2,13 @@ import { createECDH, randomBytes } from 'node:crypto';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { addCollection } from '../app/collections.ts';
 import { createItem, moveItem } from '../app/items.ts';
-import { claimItem } from '../app/leases.ts';
+import { claimItem, releaseItem } from '../app/leases.ts';
 import { listTargets } from '../app/notify-targets.ts';
 import { choosePhoneTransport } from '../app/phone.ts';
 import type { Project } from '../app/project.ts';
 import { fakeTailscale, TAILNET_HOST } from '../app/tailscale-testing.ts';
 import type { Actor } from '../core/item.ts';
-import { GATHER_MS } from '../core/notify/planner.ts';
+import { DEFAULT_PREFS, GATHER_MS, SPACING_MS } from '../core/notify/planner.ts';
 import { formatCode } from './lan.ts';
 import type { PushResult, PushSender, PushSubscriptionKeys } from './push.ts';
 import { createServer, type OteaServer } from './server.ts';
@@ -139,7 +139,15 @@ describe('notifications on the server', () => {
         target: 'device',
         key: expect.stringMatching(/^[A-Za-z0-9_-]{87}$/),
         subscribed: false,
-        prefs: { turn: true, replied: true, stuck: true, quiet: null },
+        prefs: {
+          turn: true,
+          ask: true,
+          replied: true,
+          stuck: true,
+          aside: false,
+          quiet: null,
+          muted: [],
+        },
       });
     });
 
@@ -198,10 +206,11 @@ describe('notifications on the server', () => {
       const { cookie } = await pair();
       await subscribe(cookie);
       const prefs = {
-        turn: true,
+        ...DEFAULT_PREFS,
         replied: false,
-        stuck: true,
+        aside: true,
         quiet: { from: '23:00', to: '07:00' },
+        muted: ['other-bbbbbb'],
       };
       const saved = await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
@@ -215,6 +224,35 @@ describe('notifications on the server', () => {
         body: { prefs: { ...prefs, quiet: { from: '25:00', to: '07:00' } }, lang: 'en' },
       });
       expect(wrong.status).toBe(400);
+      const { muted: _, ...unmuted } = prefs;
+      const partial = await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
+        method: 'POST',
+        cookie,
+        body: { prefs: unmuted, lang: 'en' },
+      });
+      expect(partial.status).toBe(400);
+    });
+
+    it('shows the desk what each paired device is told, or that it is told nothing', async () => {
+      const { cookie, device } = await pair();
+      const quiet = await pair();
+      await subscribe(cookie);
+      await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
+        method: 'POST',
+        cookie,
+        body: { prefs: { ...DEFAULT_PREFS, stuck: false, muted: ['other-bbbbbb'] }, lang: 'es' },
+      });
+
+      const lan = (await (await desk('/p/memory-aaaaaa/api/lan')).json()) as {
+        devices: { id: string; notify: unknown }[];
+      };
+
+      expect(lan.devices.find(({ id }) => id === device)?.notify).toEqual({
+        ...DEFAULT_PREFS,
+        stuck: false,
+        muted: ['other-bbbbbb'],
+      });
+      expect(lan.devices.find(({ id }) => id === quiet.device)?.notify).toBeNull();
     });
 
     it('unsubscribes a phone when it is unpaired', async () => {
@@ -233,7 +271,7 @@ describe('notifications on the server', () => {
         target: 'desktop',
         key: null,
       });
-      const prefs = { turn: true, replied: true, stuck: false, quiet: null };
+      const prefs = { ...DEFAULT_PREFS, stuck: false };
       const saved = await desk('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
         body: { prefs, lang: 'es' },
@@ -358,12 +396,66 @@ describe('notifications on the server', () => {
       await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
         method: 'POST',
         cookie,
-        body: { prefs: { turn: false, replied: true, stuck: true, quiet: null }, lang: 'es' },
+        body: { prefs: { ...DEFAULT_PREFS, turn: false }, lang: 'es' },
       });
       toReview(first);
       await pass(1000);
       await pass(GATHER_MS);
       expect(sent.map(({ subscription }) => subscription.endpoint)).toEqual([endpoint(1)]);
+    });
+
+    const choose = (cookie: string | undefined, prefs: Partial<typeof DEFAULT_PREFS>) =>
+      viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
+        method: 'POST',
+        cookie,
+        body: { prefs: { ...DEFAULT_PREFS, ...prefs }, lang: 'es' },
+      });
+
+    it('tells nothing from a project the phone muted', async () => {
+      const { cookie } = await pair();
+      await subscribe(cookie, 2);
+      await choose(cookie, { muted: ['memory-aaaaaa'] });
+      toReview(first);
+      await pass(1000);
+      await pass(GATHER_MS);
+      expect(sent.map(({ subscription }) => subscription.endpoint)).toEqual([endpoint(1)]);
+    });
+
+    it('tells that an agent set an item aside only to a phone that asked for it', async () => {
+      const { cookie } = await pair();
+      await subscribe(cookie, 2);
+      await choose(cookie, { aside: true });
+      claimItem(project, { id: first, actor: claude }, at);
+      await pass(1000);
+      releaseItem(project, { id: first, actor: claude, later: true }, at);
+      await pass(1000);
+      await pass(GATHER_MS);
+      expect(sent).toEqual([
+        expect.objectContaining({
+          subscription: expect.objectContaining({ endpoint: endpoint(2) }),
+          payload: expect.objectContaining({ title: 'memory · claude lo dejó para después' }),
+        }),
+      ]);
+    });
+
+    it('gathers what many agents hand over into one notice now and then, naming the project', async () => {
+      toReview(first);
+      await pass(1000);
+      await pass(GATHER_MS);
+      expect(sent).toHaveLength(1);
+      for (const title of ['Two', 'Three', 'Four']) {
+        toReview(newTask(title));
+        await pass(20_000);
+      }
+      expect(sent).toHaveLength(1);
+      await pass(SPACING_MS);
+      expect(sent).toHaveLength(2);
+      expect(sent[1]?.payload).toMatchObject({
+        title: '3 cosas te tocan en memory',
+        body: 'Two · Three · Four',
+        tag: 'otea-group-memory-aaaaaa',
+        url: '/p/memory-aaaaaa/#/',
+      });
     });
 
     it('forgets a subscription the push service says is gone', async () => {

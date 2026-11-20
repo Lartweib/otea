@@ -11,7 +11,9 @@ import {
   repairDevice,
   revokeDevice,
 } from '../app/devices.ts';
+import { targetOfDevice } from '../app/notify-targets.ts';
 import type { PhoneSettings, TransportKind } from '../app/phone.ts';
+import type { NotifyPrefs } from '../core/notify/planner.ts';
 import { RejectedRequest } from './errors.ts';
 import { type AttemptLimiter, formatCode, type PairingCode, type PairingCodes } from './lan.ts';
 import { clientOf, deviceCookie, type Port, type Session } from './session.ts';
@@ -45,8 +47,12 @@ export type PairingView = {
   // The URLs a phone opens on it, best guess first; HTTPS on Tailscale.
   urls: string[];
   code: { code: string; expiresAt: string; url: string; qr: QrCode } | null;
-  devices: Device[];
+  devices: PairedDevice[];
 };
+
+// A paired device, with what it chose to be told (Preferencias › Avisos); null while it has no
+// notifications on.
+export type PairedDevice = Device & { notify: NotifyPrefs | null };
 
 export function pairingUrl(base: string, code: PairingCode): string {
   // The code rides in the fragment, which the browser never sends, logs or passes on as a referrer.
@@ -67,7 +73,10 @@ export function pairingView(
   port: number,
   pick?: string,
 ): PairingView {
-  const devices = listDevices(machine);
+  const devices = listDevices(machine).map((device) => ({
+    ...device,
+    notify: targetOfDevice(machine, device.id)?.prefs ?? null,
+  }));
   const { transport } = phone.settings();
   const door = phone.chosen();
   if (!door) return { transport, enabled: false, urls: [], code: null, devices };

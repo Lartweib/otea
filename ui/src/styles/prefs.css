@@ -151,6 +151,12 @@
   outline-offset: 2px;
   border-radius: 6px;
 }
+/* Proyectos: one switch per project, under a small label. */
+.nchoices .nhead {
+  margin-top: 10px;
+  font: 400 11px / 1.4 var(--mono);
+  color: var(--ink-3);
+}
 .nquiet {
   display: flex;
   flex-wrap: wrap;

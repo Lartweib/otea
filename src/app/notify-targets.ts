@@ -1,6 +1,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 import { DEFAULT_PREFS, type NotifyPrefs, TIME_PATTERN } from '../core/notify/planner.ts';
+import { NOTIFY_KINDS, type NotifyKind } from '../core/notify/signals.ts';
 import { isNoticeLang, type NoticeLang } from '../core/notify/text.ts';
 
 // Who is told when something becomes yours, and how they want it (see core/notify):
@@ -52,13 +53,20 @@ function readPrefs(text: string): NotifyPrefs {
   } catch {
     // the defaults
   }
-  const flag = (key: 'turn' | 'replied' | 'stuck') =>
-    typeof kept[key] === 'boolean' ? kept[key] : DEFAULT_PREFS[key];
+  const flag = (key: NotifyKind) => {
+    const value = kept[key];
+    return typeof value === 'boolean' ? value : DEFAULT_PREFS[key];
+  };
+  const muted = Array.isArray(kept.muted)
+    ? kept.muted.filter((id): id is string => typeof id === 'string')
+    : DEFAULT_PREFS.muted;
   return {
-    turn: flag('turn'),
-    replied: flag('replied'),
-    stuck: flag('stuck'),
+    ...(Object.fromEntries(NOTIFY_KINDS.map((kind) => [kind, flag(kind)])) as Record<
+      NotifyKind,
+      boolean
+    >),
     quiet: isQuiet(kept.quiet) ? kept.quiet : DEFAULT_PREFS.quiet,
+    muted,
   };
 }
 

@@ -17,7 +17,8 @@ describe('noticeText', () => {
   });
 
   it.each([
-    [{ kind: 'turn', asks: true, by: 'claude' }, 'claude te pregunta', 'claude asks you'],
+    [{ kind: 'ask', by: 'claude' }, 'claude te pregunta', 'claude asks you'],
+    [{ kind: 'aside', by: 'kiln' }, 'kiln lo dejó para después', 'kiln set it aside for later'],
     [{ kind: 'replied', by: 'claude' }, 'claude contestó tu nota', 'claude answered your note'],
     [{ kind: 'stuck', by: 'codex' }, 'Se atascó · codex no responde', 'Stuck · codex went quiet'],
   ] as const)('says %j in Spanish and English', (what, es, en) => {
@@ -47,6 +48,30 @@ describe('noticeText', () => {
     expect(noticeText({ ...group, of: 'mixed' }, 'en').title).toBe('3 things wait for you');
     expect(noticeText({ ...group, of: 'stuck' }, 'es').title).toBe('3 cosas se atascaron');
     expect(noticeText({ ...group, of: 'replied' }, 'en').title).toBe('3 notes answered');
+    expect(noticeText({ ...group, of: 'ask' }, 'es').title).toBe('3 preguntas te esperan');
+    expect(noticeText({ ...group, of: 'aside' }, 'en').title).toBe('3 things set aside');
+  });
+
+  it('names the project a burst comes from, and keeps one burst per project on screen', () => {
+    const web = { id: 'tienda-web-x1', name: 'tienda-web' };
+    const group: Notice = {
+      kind: 'group',
+      count: 3,
+      of: 'mixed',
+      items: [
+        { item: 'A-1', title: 'One', kind: 'turn' },
+        { item: 'A-2', title: 'Two', kind: 'stuck' },
+        { item: 'A-3', title: 'Three', kind: 'ask' },
+      ],
+    };
+    expect(noticeText(group, 'es', web)).toMatchObject({
+      title: '3 cosas te esperan en tienda-web',
+      tag: 'otea-group-tienda-web-x1',
+    });
+    expect(noticeText(group, 'en', web).title).toBe('3 things wait for you in tienda-web');
+    expect(noticeText({ ...group, of: 'turn' }, 'es', { id: 'api-z9', name: 'api' }).title).toBe(
+      '3 cosas te tocan en api',
+    );
   });
 
   it('keeps a long title short', () => {

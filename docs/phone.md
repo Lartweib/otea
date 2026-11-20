@@ -78,4 +78,20 @@ What `tailscale serve` forwards comes from this computer, so Otea tells it apart
 
 On a phone over HTTPS (Tailscale), **Preferences › Notifications** (Avisos) turns on Web Push: the phone's browser subscribes with the server's VAPID key pair (made on the first `otea serve`, kept in `push-keys.json` in the Otea home with owner-only permissions); a notice names its project and opens it and `otea serve` posts each notice to that browser's push service, encrypted for it (aes128gcm) and to no other host. On iPhone, Safari allows it only for Otea added to the Home Screen; over the local network's plain HTTP no browser allows it, and Preferences says so. The desktop app shows the same notices as the system's notifications (see `desktop/README.md`).
 
-What is told, each a switch, all on by default: something is your turn (a review, or an agent's question via `otea ask`), an agent answered your note, an item got stuck (an agent went quiet holding its lease). A burst arrives as one ("3 things are yours"), an item is told about at most once every five minutes, and optional quiet hours (off by default) keep it silent. A notice carries a title, the item's id and title and where tapping it leads (the item, or Your turn for a burst); nothing else from the item. Unpairing a phone unsubscribes it, and a subscription its push service reports gone (404, 410) is dropped. The API: `GET /api/notify`, `POST /api/notify/subscribe` (a paired device on HTTPS), `/api/notify/unsubscribe`, `/api/notify/prefs`, and the desktop app's `GET /api/notify/stream` (this computer only).
+Each paired phone chooses what it is told, and the server keeps that choice per device and applies it before it sends anything. The desk's device list (**Pair a phone**) shows each device's choice in a line. Each kind is a switch:
+
+| Kind | Default |
+| --- | --- |
+| Your turn: a review or an approval | on |
+| An agent asks you (`otea ask`) | on |
+| An agent answered your note | on |
+| Something got stuck: an agent went quiet holding its lease | on |
+| An agent set something aside for later (`otea release --later`) | off |
+
+So that many agents taking items never become a nonstop stream:
+
+- **Bursts become one notice.** What arrives within a few seconds goes out together, naming its project ("3 things wait for you in tienda-web").
+- **Notices are spaced.** After a notice, the next one from that project waits at least two minutes, and everything in between goes out as one.
+- **One item never stacks.** An item's news collapses into one notice: a question comes first, then your turn, then the rest. An item is told about at most once every five minutes, and a later notice replaces the earlier one on screen.
+- **Quiet hours** keep it silent. They are off by default, and nothing is caught up afterwards.
+- **Per project.** With several projects, each one can be muted. A notice carries a title, the item's id and title and where tapping it leads (the item, or Your turn for a burst); nothing else from the item. Unpairing a phone unsubscribes it, and a subscription its push service reports gone (404, 410) is dropped. The API: `GET /api/notify`, `POST /api/notify/subscribe` (a paired device on HTTPS), `/api/notify/unsubscribe`, `/api/notify/prefs`, and the desktop app's `GET /api/notify/stream` (this computer only).

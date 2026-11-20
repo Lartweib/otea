@@ -29,9 +29,33 @@ describe('signalsOf', () => {
   });
 
   it('says who asks when an agent’s question waits for you', () => {
-    const [signal] = signalsOf([item({ asks: { question: 2, by: 'claude' } })], NOW);
-    expect(signal).toMatchObject({ kind: 'turn', asks: true, by: 'claude' });
-    expect(signal?.key).toBe('turn:TASKS-1:build__review::q2');
+    const signals = signalsOf([item({ asks: { question: 2, by: 'claude' } })], NOW);
+    expect(signals).toEqual([
+      {
+        key: 'turn:TASKS-1:build__review::q2',
+        kind: 'ask',
+        item: 'TASKS-1',
+        title: 'Ship the login',
+        by: 'claude',
+      },
+    ]);
+  });
+
+  it('says an agent set an item aside for later, once per set-aside', () => {
+    const aside = item({
+      turn: 'agent',
+      lease: null,
+      setAside: { by: 'kiln', at: earlier },
+    });
+    expect(signalsOf([aside], NOW)).toEqual([
+      {
+        key: `aside:TASKS-1:kiln:${earlier}`,
+        kind: 'aside',
+        item: 'TASKS-1',
+        title: 'Ship the login',
+        by: 'kiln',
+      },
+    ]);
   });
 
   it('tells a new round on your turn from the one before', () => {

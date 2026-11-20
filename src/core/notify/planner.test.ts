@@ -6,6 +6,7 @@ import {
   inQuietHours,
   type NotifyPrefs,
   Planner,
+  SPACING_MS,
 } from './planner.ts';
 import type { Signal } from './signals.ts';
 
@@ -135,7 +136,7 @@ describe('Planner', () => {
 
     const burst = [stuck('A'), turn('B')];
     planner.offer(burst, prefs, T0 + 30_000);
-    expect(planner.take(T0 + 30_000 + GATHER_MS, keys(burst), prefs)).toEqual([
+    expect(planner.take(T0 + GATHER_MS + SPACING_MS, keys(burst), prefs)).toEqual([
       { kind: 'turn', item: 'B', title: 'Title B' },
     ]);
     expect(planner.hasPending()).toBe(true);
@@ -148,6 +149,106 @@ describe('Planner', () => {
     expect(planner.take(T0 + GATHER_MS, keys(news), prefs)).toEqual([
       { kind: 'turn', item: 'B', title: 'Title B' },
     ]);
+  });
+
+  it('tells a question and your turn on review apart, each its own switch', () => {
+    const ask: Signal = {
+      key: 'turn:B:review::q1',
+      kind: 'ask',
+      item: 'B',
+      title: 'Title B',
+      by: 'claude',
+    };
+    prefs = { ...prefs, turn: false };
+    planner.offer([turn('A'), ask], prefs, T0);
+    expect(planner.take(T0 + GATHER_MS, keys([turn('A'), ask]), prefs)).toEqual([
+      { kind: 'ask', item: 'B', title: 'Title B', by: 'claude' },
+    ]);
+  });
+
+  it('leaves out what an agent set aside unless the person asked for it', () => {
+    const aside: Signal = {
+      key: 'aside:A:kiln:t',
+      kind: 'aside',
+      item: 'A',
+      title: 'Title A',
+      by: 'kiln',
+    };
+    planner.offer([aside], prefs, T0);
+    expect(planner.take(T0 + GATHER_MS, keys([aside]), prefs)).toEqual([]);
+
+    prefs = { ...prefs, aside: true };
+    planner.offer([aside], prefs, T0 + 1000);
+    expect(planner.take(T0 + 1000 + GATHER_MS, keys([aside]), prefs)).toEqual([
+      { kind: 'aside', item: 'A', title: 'Title A', by: 'kiln' },
+    ]);
+  });
+
+  it('tells nothing from a project the person muted, not even what waited', () => {
+    const web = new Planner(minuteOfDay, 'web-1');
+    web.offer([turn('A')], prefs, T0);
+    prefs = { ...prefs, muted: ['web-1'] };
+    expect(web.take(T0 + GATHER_MS, keys([turn('A')]), prefs)).toEqual([]);
+    web.offer([turn('B')], prefs, T0 + GATHER_MS);
+    expect(web.hasPending()).toBe(false);
+
+    const api = new Planner(minuteOfDay, 'api-2');
+    api.offer([turn('C')], prefs, T0);
+    expect(api.take(T0 + GATHER_MS, keys([turn('C')]), prefs)).toHaveLength(1);
+  });
+
+  // Many agents taking items: one notice, then at most one more every SPACING_MS, holding the rest.
+  it('spaces notices out, so many agents never make a stream', () => {
+    planner.offer([turn('A')], prefs, T0);
+    expect(planner.take(T0 + GATHER_MS, keys([turn('A')]), prefs)).toHaveLength(1);
+    const sent = T0 + GATHER_MS;
+
+    const later = [turn('A'), turn('B'), turn('C'), turn('D')];
+    planner.offer([turn('B')], prefs, sent + 15_000);
+    expect(planner.take(sent + 15_000 + GATHER_MS, keys(later), prefs)).toEqual([]);
+    planner.offer([turn('C')], prefs, sent + 40_000);
+    planner.offer([turn('D')], prefs, sent + 70_000);
+    expect(planner.take(sent + SPACING_MS - 1, keys(later), prefs)).toEqual([]);
+    expect(planner.take(sent + SPACING_MS, keys(later), prefs)).toEqual([
+      {
+        kind: 'group',
+        count: 3,
+        of: 'turn',
+        items: [
+          { item: 'B', title: 'Title B', kind: 'turn' },
+          { item: 'C', title: 'Title C', kind: 'turn' },
+          { item: 'D', title: 'Title D', kind: 'turn' },
+        ],
+      },
+    ]);
+    expect(planner.hasPending()).toBe(false);
+  });
+
+  it('collapses the news of one item into one notice, never a stack', () => {
+    const ask: Signal = {
+      key: 'turn:A:review::q1',
+      kind: 'ask',
+      item: 'A',
+      title: 'Title A',
+      by: 'claude',
+    };
+    const news = [replied('A'), stuck('A'), ask];
+    planner.offer(news, prefs, T0);
+    expect(planner.take(T0 + GATHER_MS, keys(news), prefs)).toEqual([
+      { kind: 'ask', item: 'A', title: 'Title A', by: 'claude' },
+    ]);
+  });
+
+  it('starts with what matters on, and what an agent set aside off', () => {
+    expect(DEFAULT_PREFS).toEqual({
+      turn: true,
+      ask: true,
+      replied: true,
+      stuck: true,
+      aside: false,
+      quiet: null,
+      muted: [],
+    });
   });
 
   it('keeps quiet in the quiet hours, and does not catch up after', () => {
