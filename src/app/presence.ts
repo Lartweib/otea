@@ -353,8 +353,13 @@ export function sessionAlive(
   alive: (pid: number) => boolean = processAlive,
 ): boolean {
   if (sessionRuns(db, agent, now, alive)) return true;
-  const acted = findAgent(db, agent)?.actedAt;
-  return !!acted && Date.parse(now()) - Date.parse(acted) <= LISTEN_WINDOW_MS;
+  return calledLately(findAgent(db, agent)?.actedAt, now());
+}
+
+// Whether an agent that ran an otea command at `actedAt` (a listener's beat is none) still counts
+// as at work at `at`: within LISTEN_WINDOW_MS (P7-R2-9, P7-R3-11).
+function calledLately(actedAt: string | null | undefined, at: string): boolean {
+  return !!actedAt && Date.parse(at) - Date.parse(actedAt) <= LISTEN_WINDOW_MS;
 }
 
 // Any otea call of an agent keeps what it holds (P1-R3-6): each live lease of it with less than half
@@ -577,7 +582,7 @@ export function listAgents(
     const active = connectedAt !== null && since(lastSeen, ACTIVE_WINDOW_MS);
     // It ran an otea command within the listening window: still at work, between two items too
     // (P7-R2-9). What it holds counts only while it is heard so (P7-R3-10).
-    const called = since(record.actedAt ?? undefined, LISTEN_WINDOW_MS);
+    const called = calledLately(record.actedAt, at);
     const declared = declaredOf.get(name);
     const mcp = mcpOf(record);
     return {
