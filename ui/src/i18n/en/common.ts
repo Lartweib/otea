@@ -69,6 +69,11 @@ export const common = {
     one: 'Nobody is listening now: {agent} is busy with another item.',
     other: 'Nobody is listening now: {count} agents are busy with other items.',
   },
+  'listen.activeLead': {
+    one: 'Nobody is listening now: {agent} is at work and will see it when it waits again.',
+    other:
+      'Nobody is listening now: {count} agents are at work and will see it when they wait again.',
+  },
   'listen.notice':
     '{lead} No agent waits in otea wait: this stays here until one comes back. Ask your agent to keep listening with {command}.',
   'listen.working': {

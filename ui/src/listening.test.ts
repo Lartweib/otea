@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import { ago, item as fixture, inMinutes, NOW } from './derive/fixtures.ts';
+import { setLanguage } from './i18n/i18n.ts';
 import {
   anyoneWaits,
   goneHolder,
   handsToAgent,
   hearing,
   unheard,
+  unheardLead,
   workingAgents,
 } from './listening.ts';
 import type { Agent } from './presence.ts';
@@ -156,5 +158,31 @@ describe('handsToAgent', () => {
     expect(handsToAgent([choice('none'), choice('human')])).toBe(false);
     expect(handsToAgent([null, choice('none'), choice('agent')])).toBe(true);
     expect(handsToAgent([])).toBe(false);
+  });
+});
+
+// P6-R3-5: after «Retomar», the desk said «claude-a está ocupado con otro ítem» while claude-a held
+// nothing: it was claiming this very item. «Busy with another item» is said only of an agent that
+// holds another one; one at work holding none is only at work.
+describe('unheardLead', () => {
+  it('says an agent is busy with another item only when it holds one', () => {
+    setLanguage('es');
+    const busy = agent('claude-a', { holding: ['TASK-2'] });
+    expect(unheardLead(['claude-a'], [busy], 'TASK-1')).toBe(
+      'Nadie escucha ahora: claude-a está ocupado con otro ítem.',
+    );
+    const free = agent('claude-a', { holding: [], actedAt: ago(0.5) });
+    expect(unheardLead(['claude-a'], [free], 'TASK-1')).toBe(
+      'Nadie escucha ahora: claude-a está trabajando y lo verá cuando vuelva a esperar.',
+    );
+    const here = agent('claude-a', { holding: ['TASK-1'] });
+    expect(unheardLead(['claude-a'], [here], 'TASK-1')).toBe(
+      'Nadie escucha ahora: claude-a está trabajando y lo verá cuando vuelva a esperar.',
+    );
+    setLanguage('en');
+    expect(unheardLead(['claude-a'], [free], 'TASK-1')).toBe(
+      'Nobody is listening now: claude-a is at work and will see it when it waits again.',
+    );
+    expect(unheardLead([], [free], 'TASK-1')).toBe('Nobody is listening.');
   });
 });
