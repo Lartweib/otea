@@ -525,6 +525,7 @@ export const surfaces = {
   'topics.items.said.reply': 'Respuesta de {agent}',
   'topics.items.said.handoff': 'Nota de entrega de {agent}',
   'topics.search.everywhere': 'En todos los proyectos',
+  'topics.search.tryEverywhere': 'Buscar en todos los proyectos',
   'topics.search.noneAnywhere': 'Ningún tema de ningún proyecto menciona «{words}».',
   'topics.search.label': 'Buscar en los temas',
   'topics.search.placeholder': 'Buscar en temas e hilos de ítems…',
