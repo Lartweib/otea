@@ -12,11 +12,12 @@ export const MIN = 60_000;
 export const ago = (minutes: number): string => new Date(NOW - minutes * MIN).toISOString();
 export const inMinutes = (minutes: number): string => new Date(NOW + minutes * MIN).toISOString();
 
+// This file's own address. Named apart so that, in a test that runs in a DOM, Vite never reads the
+// presets' URL below as a page's asset and points it at the served root instead.
+const HERE = import.meta.url;
+
 export function officialType(preset: string): TypeView {
-  const yaml = readFileSync(
-    new URL(`../../../presets/${preset}/preset.yaml`, import.meta.url),
-    'utf8',
-  );
+  const yaml = readFileSync(new URL(`../../../presets/${preset}/preset.yaml`, HERE), 'utf8');
   const [type] = typeViews(parsePreset(yaml).types);
   if (!type) throw new Error(`no type in ${preset}`);
   return type as unknown as TypeView;
