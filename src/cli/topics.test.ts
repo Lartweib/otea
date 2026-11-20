@@ -150,6 +150,52 @@ describe('otea topic', () => {
     expect(next).toContain('"¿Y en Linux?"');
   });
 
+  it('refuses agents again once the person turns topics off, drops the topics rule and keeps the topics', async () => {
+    const { repo, otea } = fresh();
+    const person = cliAt(repo.dir);
+    await otea(
+      'profile',
+      '--model',
+      'claude-opus-5-5',
+      '--effort',
+      'high',
+      '--harness',
+      'claude-code',
+    );
+    await otea(
+      'create',
+      '--collection',
+      'Cambios',
+      '--title',
+      'Arreglar el build',
+      '--field',
+      'Qué quiero=x',
+    );
+    await person('topic', 'on');
+    await otea('topic', 'add', '¿Por qué falla el build?');
+    expect((await otea('next')).out).toContain('otea topic answer TEM-1');
+
+    const off = await person('topic', 'off');
+    expect(off.code).toBe(0);
+    expect(off.out.trim()).toBe('Topics are off.');
+
+    for (const refused of [
+      await otea('topic', 'add', '¿Y en Linux?'),
+      await otea('topic', 'answer', 'TEM-1', '--summary', 'Falta una variable.'),
+    ]) {
+      expect(refused.code).not.toBe(0);
+      expect(refused.err).toContain('otea topic on');
+    }
+    expect((await otea('board')).out).not.toContain('otea topic add');
+    expect((await otea('next')).out).not.toContain('otea topic');
+    const woken = await otea('wait', '--turn', 'agent', '--timeout', '5s');
+    expect(woken.code).toBe(0);
+    expect(woken.out).not.toContain('otea topic add');
+    // The ones kept stay, for the person to read.
+    const kept = JSON.parse((await person('topic', 'list', '--json')).out) as { id: string }[];
+    expect(kept.map(({ id }) => id)).toEqual(['TEM-1']);
+  });
+
   it('wakes a waiting agent once the person turns topics on, with the topics rule', async () => {
     const { repo } = fresh();
     const person = cliAt(repo.dir);
