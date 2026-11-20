@@ -95,21 +95,28 @@ describe('a checklist point proved, in the history', () => {
     ),
   ];
 
-  it('says which point, with what proof', () => {
-    expect(historyOf(proved, bug, word, NOW).map((l) => [l.text, l.who])).toEqual([
-      ['Proved “looks” in checks with after.png', 'Mender'],
-      ['Proved “loads” in checks with the test “ok” of junit.xml, which passes', 'Mender'],
-      ['Proved “saves” in checks with line 12 of test.log', 'Mender'],
-    ]);
-  });
-
-  it('says it in Spanish too', () => {
-    setLanguage('es');
-    expect(historyOf(proved, bug, word, NOW).map((l) => l.text)).toEqual([
-      'Probó «looks» en checks con after.png',
-      'Probó «loads» en checks con el test «ok» de junit.xml, que pasa',
-      'Probó «saves» en checks con la línea 12 de test.log',
-    ]);
+  it.each([
+    [
+      'en',
+      [
+        'Proved “looks” in checks with after.png',
+        'Proved “loads” in checks with the test “ok” of junit.xml, which passes',
+        'Proved “saves” in checks with line 12 of test.log',
+      ],
+    ],
+    [
+      'es',
+      [
+        'Probó «looks» en checks con after.png',
+        'Probó «loads» en checks con el test «ok» de junit.xml, que pasa',
+        'Probó «saves» en checks con la línea 12 de test.log',
+      ],
+    ],
+  ] as const)('says which point was proved, with what proof, in %s', (lang, texts) => {
+    setLanguage(lang);
+    const lines = historyOf(proved, bug, word, NOW);
+    expect(lines.map((l) => l.text)).toEqual(texts);
+    expect(lines.map((l) => l.who)).toEqual(['Mender', 'Mender', 'Mender']);
   });
 });
 

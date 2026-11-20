@@ -67,23 +67,33 @@ describe('a travelling copy looks exactly like the piece it stands for', () => {
 });
 
 describe('a wrapping copy is as wide as the line it wraps in', () => {
-  it('runs from where the text starts to the content edge of its block', () => {
-    // An inline title measures as wide as its longest line, which may break one word sooner.
-    expect(wrapWidth({ x: 316, w: 150 }, 487)).toBe(171);
-  });
-
-  it('never narrower than the text itself', () => {
-    expect(wrapWidth({ x: 316, w: 180 }, 487)).toBe(180);
+  // It runs from where the text starts to the content edge of its block, never narrower than the
+  // text itself. An inline title measures as wide as its longest line, which may break one word
+  // sooner.
+  it.each([
+    [{ x: 316, w: 150 }, 487, 171],
+    [{ x: 316, w: 180 }, 487, 180],
+  ])('wraps %o within %d at %d', (text, edge, width) => {
+    expect(wrapWidth(text, edge)).toBe(width);
   });
 });
 
 describe('a copy is set where its glyphs fall on the original', () => {
-  it('moves by what separates its first line from the original first line', () => {
-    expect(settleDelta({ x: 10, y: 20 }, { x: 10, y: 17.5 })).toEqual({ dx: 0, dy: 2.5 });
-  });
-
-  it('does not move when they already meet', () => {
-    expect(settleDelta({ x: 4, y: 4 }, { x: 4, y: 4 })).toEqual({ dx: 0, dy: 0 });
+  // It moves by what separates its first line from the original first line, and not at all when
+  // they already meet.
+  it.each([
+    [
+      { x: 10, y: 20 },
+      { x: 10, y: 17.5 },
+      { dx: 0, dy: 2.5 },
+    ],
+    [
+      { x: 4, y: 4 },
+      { x: 4, y: 4 },
+      { dx: 0, dy: 0 },
+    ],
+  ])('sets a copy of %o found at %o by %o', (original, copy, delta) => {
+    expect(settleDelta(original, copy)).toEqual(delta);
   });
 });
 
@@ -108,13 +118,14 @@ describe('a piece at rest carries no transform and no filter', () => {
 describe('a piece that lands is handed back at once', () => {
   // Its copy goes and the real piece shows in the frame it lands, so the morph's last frame is
   // made of the destination's own pieces, not of copies that only look like them.
-  it('lands on the side the clock is going to, once its own clock is through', () => {
-    expect(landedOn(1, 1)).toBe(1);
-    expect(landedOn(1, 0)).toBe(0);
-  });
-
-  it('is still travelling until then', () => {
-    expect(landedOn(0.999, 1)).toBeNull();
-    expect(landedOn(0, 0)).toBeNull();
+  // It lands on the side the clock is going to, once its own clock is through, and is still
+  // travelling until then.
+  it.each([
+    [1, 1, 1],
+    [1, 0, 0],
+    [0.999, 1, null],
+    [0, 0, null],
+  ] as const)('landedOn(%s, %s) is %s', (clock, side, landed) => {
+    expect(landedOn(clock, side)).toBe(landed);
   });
 });

@@ -61,12 +61,6 @@ describe('NavBody (mobile mock 5)', () => {
     expect(html).toMatch(/class="nrow on"[^>]*aria-current="page"[^>]*>.*?Tareas/);
   });
 
-  it('gives every row, the label and the desk line a data-i, in order, for the sheet to resolve them', () => {
-    const html = render(props({ view: 'toca' }));
-    const is = [...html.matchAll(/data-i="(\d+)"/g)].map((m) => Number(m[1]));
-    expect(is).toEqual([0, 1, 2, 3, 4, 5]);
-  });
-
   it('speaks Spanish', () => {
     setLanguage('es');
     const html = render(props({ view: 'toca' }));

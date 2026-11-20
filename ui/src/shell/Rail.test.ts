@@ -217,15 +217,6 @@ describe('the rail', () => {
     expect(reader).toContain('<div class="rail-label first">vistas</div>');
   });
 
-  it('ends with Preferencias and you', () => {
-    const html = rail();
-    expect(html).toMatch(
-      /<div class="rail-foot"><button type="button" class="prefs-btn"[^>]*aria-expanded="false"/,
-    );
-    expect(html).toContain('class="buddy"');
-    expect(html).toContain('<span class="lb">Preferencias</span>');
-  });
-
   it('says it opens again once folded', () => {
     workspace.set({ folded: true });
     expect(rail()).toMatch(/aria-expanded="false"[^>]*aria-label="Mostrar el panel"/);

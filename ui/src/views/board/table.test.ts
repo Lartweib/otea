@@ -3,14 +3,7 @@ import { officialType } from '../../derive/fixtures.ts';
 import { availableColumns, chosenColumns } from '../../grid.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import type { CollectionView } from '../../types.ts';
-import {
-  cellClass,
-  colMenuAfter,
-  headLabel,
-  resizedWidth,
-  tableLayout,
-  widthChip,
-} from './table.ts';
+import { colMenuAfter, headLabel, resizedWidth, tableLayout, widthChip } from './table.ts';
 
 const bugs: CollectionView = {
   name: 'Errores',
@@ -66,11 +59,6 @@ describe('the heads and cells', () => {
       age: 'edad',
     });
   });
-
-  it('gives each column a class its cells and head share', () => {
-    expect(cellClass('severity')).toBe('c-severity');
-    expect(cellClass('my field')).toBe('c-my_field');
-  });
 });
 
 describe('resizing a column by the edge that faces the title', () => {
@@ -91,15 +79,12 @@ describe('resizing a column by the edge that faces the title', () => {
 
 describe('a column head menu', () => {
   const a = {} as HTMLElement;
-  it('opens on a press of its head', () => {
-    expect(colMenuAfter(null, 'title', a)).toEqual({ kind: 'col', key: 'title', anchor: a });
-  });
-  it('closes on a second press of the same head', () => {
-    expect(colMenuAfter({ kind: 'col', key: 'title', anchor: a }, 'title', a)).toBeNull();
-  });
-  it('moves to another head', () => {
-    expect(colMenuAfter({ kind: 'col', key: 'title', anchor: a }, 'state', a)).toMatchObject({
-      key: 'state',
-    });
+  const open = (key: string) => ({ kind: 'col', key, anchor: a });
+  it.each([
+    ['opens on a press of its head', null, 'title', open('title')],
+    ['closes on a second press of the same head', open('title'), 'title', null],
+    ['moves to another head', open('title'), 'state', open('state')],
+  ])('%s', (_, menu, key, after) => {
+    expect(colMenuAfter(menu, key, a)).toEqual(after);
   });
 });

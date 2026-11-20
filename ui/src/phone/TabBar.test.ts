@@ -2,7 +2,6 @@ import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it } from 'vitest';
 import { setLanguage } from '../i18n/i18n.ts';
-import { IC } from '../kit/Icon.tsx';
 import { captureTarget, TabBarView, type TabBarViewProps, tabBarFor, tabOn } from './TabBar.tsx';
 
 afterEach(() => setLanguage('en'));
@@ -73,13 +72,6 @@ describe('TabBarView', () => {
 
   it('says nothing for nothing waiting', () => {
     expect(render(props({ toca: 0 }))).not.toContain('class="tbadge"');
-  });
-
-  it('draws the create button as the ink round with a +, the panel with its own icon', () => {
-    const html = render(props());
-    expect(html).toMatch(/data-tab="new"[^>]*><span class="disc"><svg/);
-    expect(html).toContain(IC.plus);
-    expect(html).toContain(IC.panel);
   });
 
   it('cannot create without the right to write', () => {

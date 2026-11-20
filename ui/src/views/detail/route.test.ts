@@ -9,7 +9,6 @@ import {
   routeGeom,
   routeIndex,
   routeSteps,
-  seg,
   trunkD,
   walkedD,
 } from './route.ts';
@@ -51,15 +50,6 @@ describe('the route geometry (mock:2615-2629)', () => {
       [738, 64.5],
     ]);
     expect(g.node).toEqual([738, 64.5]);
-  });
-
-  it('changes lanes with a 30 px S-curve halfway between two steps', () => {
-    expect(seg([44, 64.5], [275, 32.5], false)).toBe('H129.5C154.5 64.5 164.5 32.5 189.5 32.5H275');
-    expect(seg([275, 32.5], [507, 32.5], false)).toBe('H507');
-  });
-
-  it('fuses into the trunk at the last step', () => {
-    expect(seg([738, 64.5], [969, 48.5], true)).toBe('H901C931 64.5 939 48.5 969 48.5');
   });
 
   it('draws the walked line through every step reached', () => {

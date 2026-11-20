@@ -48,18 +48,16 @@ describe('dragFrame', () => {
 });
 
 describe('release', () => {
-  it('dismisses past 30% of the height', () => {
-    expect(release(301, 0, 1000)).toBe('dismiss');
-    expect(release(299, 0, 1000)).toBe('back');
-  });
-
-  it('dismisses on a flick down over .5 px/ms', () => {
-    expect(release(40, 0.51, 1000)).toBe('dismiss');
-    expect(release(40, 0.49, 1000)).toBe('back');
-  });
-
-  it('never dismisses a sheet that is not pulled down', () => {
-    expect(release(0, 2, 1000)).toBe('back');
-    expect(release(-20, 2, 1000)).toBe('back');
+  // It dismisses past 30% of the height or on a flick down over .5 px/ms, and never a sheet that
+  // is not pulled down.
+  it.each([
+    [301, 0, 'dismiss'],
+    [299, 0, 'back'],
+    [40, 0.51, 'dismiss'],
+    [40, 0.49, 'back'],
+    [0, 2, 'back'],
+    [-20, 2, 'back'],
+  ])('release at y=%d, v=%d of 1000: %s', (y, v, outcome) => {
+    expect(release(y, v, 1000)).toBe(outcome);
   });
 });

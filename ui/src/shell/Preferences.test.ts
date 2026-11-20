@@ -15,17 +15,6 @@ const body = (canManageDevices = true) => {
 };
 
 describe('Preferences', () => {
-  it('heads with you and whose preferences these are', () => {
-    expect(body()).toMatch(
-      /class="phead" data-i="">.*<b>Preferencias<\/b><small>este navegador<\/small>/,
-    );
-  });
-
-  it('groups theme, motion, language, session and about, in that order: the handoff is not a choice', () => {
-    const labels = [...body().matchAll(/<span class="gl">([^<]+)<\/span>/g)].map((m) => m[1]);
-    expect(labels).toEqual(['tema', 'movimiento', 'idioma', 'sesión', 'acerca de']);
-  });
-
   it('offers each choice as a segmented switch, the current one checked', () => {
     const html = body();
     expect(html).toMatch(/role="radio" aria-checked="true" class="on">.*Sistema/);

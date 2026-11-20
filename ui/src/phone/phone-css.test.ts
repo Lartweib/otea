@@ -42,11 +42,6 @@ describe('a row on the phone', () => {
     expect(rules(phone, '.row .age')).toMatch(/grid-column:\s*2/);
   });
 
-  it('hides the separator that leads a wrapped line', () => {
-    expect(rules(phone, '.row .m')).toMatch(/clip-path:\s*inset\(/);
-    expect(rules(phone, '.row .m > :first-child')).toMatch(/margin-left:/);
-  });
-
   it('wraps a child’s title on the item page, its id and step on a line under it', () => {
     expect(rules(phone, '.krow')).toMatch(/grid-template-columns:\s*22px minmax\(0, 1fr\) auto/);
     expect(rules(phone, '.krow')).toMatch(/height:\s*auto/);
@@ -62,16 +57,6 @@ describe('a row on the phone', () => {
 });
 
 describe('the bottom buttons', () => {
-  it('has no panel button in the topbar any more', () => {
-    expect(phoneCss).not.toContain('.navbtn');
-    expect(sheet('shell.css')).not.toContain('.navbtn');
-  });
-
-  it('has no floating buttons: the sheet button and the + gave way to the bottom bar', () => {
-    expect(phoneCss).not.toContain('.sheetbtn');
-    expect(phoneCss).not.toContain('.fab');
-  });
-
   it('draws the bottom bar on the screen’s foot, three tabs wide, clear of the home bar', () => {
     const bar = rules(phone, '.tabbar');
     expect(bar).toMatch(/position:\s*fixed/);

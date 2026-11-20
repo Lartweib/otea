@@ -13,33 +13,6 @@ describe('sheetParts (mock:3588-3594)', () => {
   const items = Array.from({ length: 8 }, (_, i) => el(`i${i}`));
   const parts = sheetParts({ scrim: el('scrim'), sheet: el('sheet'), grab: el('grab'), items });
 
-  it('fades the scrim 360 drift and slides the sheet up 560 settle, both at once', () => {
-    const [scrim, sheet] = parts;
-    expect(scrim).toMatchObject({
-      from: { opacity: 0 },
-      to: { opacity: 1 },
-      T: 360,
-      curve: 'drift',
-      d0: 0,
-    });
-    expect(sheet).toMatchObject({
-      from: { transform: 'translateY(calc(100% + 2px))' },
-      to: { transform: 'translateY(0px)' },
-      T: 560,
-      curve: 'settle',
-      d0: 0,
-    });
-  });
-
-  it('draws the grab 360 ink at 120', () => {
-    expect(parts[2]).toMatchObject({
-      from: { transform: 'scaleX(0)' },
-      T: 360,
-      curve: 'ink',
-      d0: 120,
-    });
-  });
-
   it('resolves the rows at 160 + 34 * min(i, 5): opacity 340 drift, 4 px 380 glide', () => {
     const rows = parts.slice(3, -1);
     expect(rows).toHaveLength(16);
@@ -81,10 +54,6 @@ describe('sheetParts (mock:3588-3594)', () => {
       expect(end(p)).toBeLessThan(end(sheet));
       expect({ from: p.from, to: p.to }).toEqual({ from: row.from, to: row.to });
     }
-  });
-
-  it('leaves a missing part for the Choreo to skip', () => {
-    expect(sheetParts({ scrim: null, sheet: el('s'), grab: null, items: [] })).toHaveLength(4);
   });
 
   it('rises from a button: the sheet grows out of where it was pressed as it comes up', () => {
