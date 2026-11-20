@@ -1,4 +1,4 @@
-import type { ButtonHTMLAttributes } from 'react';
+import type { ButtonHTMLAttributes, Ref } from 'react';
 
 // primary: the one move that hands the turn on; quiet: a bordered button on the sheet; text: a
 // word that acts; danger: the confirmation that throws work away. 'default' is quiet (the moves'
@@ -10,6 +10,8 @@ type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   size?: 'md' | 'sm';
   // Icon-only: square, and it needs an aria-label.
   icon?: boolean;
+  // To move the focus to it (React 19 hands a function component its ref as a prop).
+  ref?: Ref<HTMLButtonElement>;
 };
 
 // The mock's .btn (mock:547-558): presses in to .97.

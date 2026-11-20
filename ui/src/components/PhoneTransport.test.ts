@@ -65,12 +65,11 @@ const render = (props: Partial<PhoneTransportViewProps>) =>
       guide: null,
       picked: null,
       confirming: false,
-      busy: false,
+      busy: null,
       canWrite: true,
       onPick: () => {},
       onPair: () => {},
       onCheck: () => {},
-      onUseTailscale: () => {},
       onAskServe: () => {},
       onConfirmServe: () => {},
       onCancelServe: () => {},
@@ -163,6 +162,136 @@ describe('Configuración · Teléfono: how you reach Otea', () => {
   });
 });
 
+describe('the chooser agrees with itself in every state', () => {
+  const checked = (html: string) => html.match(/aria-checked="true"[^>]*data-kind="(\w+)"/)?.[1];
+  const tagOf = (html: string, kind: string) =>
+    html
+      .match(new RegExp(`data-kind="${kind}"[\\s\\S]*?</button>`))?.[0]
+      .match(/class="ph-opt-tag"[^>]*>([^<]*)</)?.[1];
+
+  it('says no transport carries the phone while Otea stays on this computer', () => {
+    setLanguage('es');
+    const html = render({ status: closed });
+
+    expect(checked(html)).toBe('local');
+    expect(html).not.toContain('Red local');
+    expect(html).not.toContain('funciona solo mientras');
+    expect(html).not.toContain('Sea cual sea el transporte');
+  });
+
+  it('marks Tailscale chosen, and what stays in use until its steps are done', () => {
+    setLanguage('es');
+    const html = render({ status: closed, picked: 'tailscale', guide: guideOf({ pc: true }) });
+
+    expect(checked(html)).toBe('tailscale');
+    expect(tagOf(html, 'tailscale')).toBe('por configurar');
+    expect(tagOf(html, 'local')).toBe('en uso por ahora');
+    expect(html).toContain('ph-guide');
+    // Neither the local network's line nor the firewall's: the phone has no way in yet.
+    expect(html).not.toContain('Red local');
+    expect(html).not.toContain('funciona solo mientras');
+    expect(html).not.toContain('Windows puede pedir permiso');
+    expect(html).toContain('Hasta que termines los pasos, sigue en uso: Solo en este equipo.');
+  });
+
+  it('keeps the local network in use, and says so, while Tailscale is being set up from it', () => {
+    setLanguage('es');
+    const html = render({ status: lan, picked: 'tailscale', guide: guideOf({ pc: true }) });
+
+    expect(checked(html)).toBe('tailscale');
+    expect(tagOf(html, 'lan')).toBe('en uso por ahora');
+    expect(html).toContain('Red local');
+    expect(html).toContain('http://192.168.1.24:4400');
+    expect(html).toContain('sigue en uso: Desde el teléfono, en tu casa.');
+    expect(html).not.toMatch(/<button[^>]*>Emparejar un teléfono<\/button>/);
+  });
+
+  it('says only Tailscale’s lines once Tailscale carries the phone', () => {
+    setLanguage('es');
+    const html = render({ status: tailscale, guide: guideOf({ serve: true }) });
+
+    expect(checked(html)).toBe('tailscale');
+    expect(tagOf(html, 'tailscale')).toBe('en uso');
+    expect(html).not.toContain('por configurar');
+    expect(html).not.toContain('funciona solo mientras');
+    expect(html).toContain('aunque este equipo esté apagado');
+  });
+
+  it('says the local network is still open beside Tailscale, and closes it from there', () => {
+    setLanguage('es');
+    const html = render({
+      status: { ...tailscale, lanOpen: true },
+      guide: guideOf({ serve: true }),
+    });
+
+    expect(html).toContain('También está abierta');
+    expect(html).toMatch(/<button[^>]*>Cerrar a la red<\/button>/);
+    expect(render({ status: tailscale, guide: guideOf({ serve: true }) })).not.toContain(
+      'Cerrar a la red',
+    );
+  });
+
+  it('names what a change is doing while it runs, never Tailscale for the local network', () => {
+    setLanguage('es');
+    expect(render({ status: closed, busy: 'switch' })).not.toContain('Tailscale…');
+    expect(render({ status: closed, busy: 'switch' })).toContain('Cambiando…');
+  });
+});
+
+describe('what the guide says back', () => {
+  const steps = (props: Partial<PhoneTransportViewProps>) =>
+    render({ status: closed, picked: 'tailscale', ...props });
+  const ready = { pc: true, phone: true, signIn: true, https: true };
+
+  it('shows why the command failed in its own step', () => {
+    setLanguage('es');
+    const html = steps({
+      guide: guideOf(ready),
+      ran: { state: 'failed', message: 'Access denied: serve config denied' },
+    });
+
+    expect(html).toMatch(/data-step="serve"[\s\S]*Access denied: serve config denied/);
+  });
+
+  it('says Check again is reading, then what it found', () => {
+    setLanguage('es');
+    expect(steps({ guide: guideOf(ready), busy: 'check' })).toMatch(
+      /<button[^>]*disabled=""[^>]*>Comprobando…<\/button>/,
+    );
+    expect(steps({ guide: guideOf(ready), checked: true })).toContain('4 de 6 pasos hechos');
+  });
+
+  it('says what stops every step at the top when Tailscale itself answers with an error', () => {
+    const html = steps({
+      guide: { ...guideOf({ pc: true }), check: { state: 'failed', message: 'not running' } },
+    });
+
+    expect(html.indexOf('not running')).toBeLessThan(html.indexOf('data-step="phone"'));
+  });
+
+  it('never offers to free the name another app holds without saying it may be yours', () => {
+    setLanguage('es');
+    const html = steps({
+      guide: {
+        ...guideOf(ready),
+        check: { state: 'taken', host: HOST, target: 'http://127.0.0.1:4400' },
+      },
+    });
+
+    expect(html).toContain('no a este Otea');
+    // The undo line once, in the problem, not twice.
+    expect(html.match(/tailscale serve --https=443 off/g)?.length).toBe(1);
+  });
+
+  it('folds a done step to the line that says so', () => {
+    setLanguage('es');
+    const html = steps({ guide: guideOf(ready) });
+
+    expect(html).not.toContain('class="qr ph-store-qr"');
+    expect(html).not.toContain('Abre Tailscale en este equipo y en el teléfono');
+  });
+});
+
 describe('the guided steps to Tailscale', () => {
   const steps = (props: Partial<PhoneTransportViewProps>) =>
     render({ status: lan, picked: 'tailscale', ...props });
@@ -245,13 +374,12 @@ describe('the guided steps to Tailscale', () => {
     );
   });
 
-  it('uses Tailscale for the phone once Otea is served, without running anything', () => {
+  it('says Otea is served once it is, with nothing left to run', () => {
     const html = steps({ guide: guideOf({ pc: true, signIn: true, https: true, serve: true }) });
 
-    expect(html).toMatch(/<button[^>]*>Use Tailscale for the phone<\/button>/);
-    expect(render({ status: tailscale, guide: guideOf({ serve: true }) })).not.toContain(
-      'Use Tailscale for the phone',
-    );
+    expect(html).toContain(`https://${HOST} forwards to Otea`);
+    expect(html).not.toContain('tailscale serve --bg');
+    expect(html).not.toContain('Run this command');
   });
 
   it('ends with pairing over the HTTPS name and turning notifications on', () => {

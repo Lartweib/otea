@@ -95,7 +95,12 @@ export const phone = {
   'phone.transport.lan': 'Red local',
   'phone.transport.tailscale': 'Tailscale',
   'phone.transport.inUse': 'en uso',
-  'phone.transport.settingUp': 'Configurando Tailscale…',
+  'phone.transport.changing': 'Cambiando…',
+  'phone.transport.running': 'Ejecutando el comando…',
+  'phone.transport.none': 'ninguno: Otea está solo en este equipo',
+  'phone.transport.inUseForNow': 'en uso por ahora',
+  'phone.transport.toSetUp': 'por configurar',
+  'phone.transport.lanAlso': 'También está abierta: un teléfono emparejado entra por las dos.',
   'phone.transport.again': 'Comprobar de nuevo',
   'phone.transport.signIn':
     'Inicia sesión en este navegador con {command} para elegir cómo llega el teléfono a Otea.',
@@ -127,11 +132,17 @@ export const phone = {
   'phone.guide.title': 'Configura Tailscale, paso a paso',
   'phone.guide.lead':
     'Otea lee cada paso en este equipo y lo marca como hecho. Nunca cambia Tailscale por su cuenta.',
+  'phone.guide.meanwhile': 'Hasta que termines los pasos, sigue en uso: {option}.',
+  'phone.guide.checking': 'Comprobando…',
+  'phone.guide.someHost': 'https://<equipo>.<tailnet>.ts.net',
+  'phone.guide.checked': 'Comprobado: {done} de {total} pasos hechos.',
   'phone.guide.done': 'hecho',
   'phone.guide.pending': 'pendiente',
   'phone.guide.phone': 'Instala Tailscale en el teléfono',
   'phone.guide.phoneText': 'Escanea con la cámara el código de la tienda de tu teléfono.',
   'phone.guide.phoneSeen': 'Hay un teléfono en tu tailnet.',
+  'phone.guide.phoneUnseen':
+    'Otea lo marca como hecho cuando este equipo inicia sesión en Tailscale y ve el teléfono en tu tailnet.',
   'phone.guide.android': 'Google Play · Android',
   'phone.guide.ios': 'App Store · iPhone',
   'phone.guide.pc': 'Instala Tailscale en este equipo',
@@ -141,11 +152,13 @@ export const phone = {
     'Abre Tailscale en este equipo y en el teléfono, e inicia sesión con la misma cuenta: los dos entran en tu tailnet.',
   'phone.guide.signedIn':
     'Este equipo ya inició sesión. Todavía no aparece un teléfono en la misma tailnet.',
+  'phone.guide.signInDone': 'Este equipo y un teléfono están en tu tailnet.',
   'phone.guide.https': 'Activa HTTPS',
   'phone.guide.httpsText':
     'En la consola de administración, en la página DNS: activa MagicDNS si está apagado y, en HTTPS Certificates, elige Enable HTTPS.',
   'phone.guide.dnsPage': 'Abrir la página DNS',
-  'phone.guide.serve': 'Sirve Otea por HTTPS',
+  'phone.guide.httpsDone': 'MagicDNS y los certificados HTTPS están activados en tu tailnet.',
+  'phone.guide.serve': 'Da a Otea su dirección HTTPS',
   'phone.guide.serveText':
     'Este comando hace que Tailscale responda en {url} con su propio certificado y lo pase a Otea en este equipo. Lo ve solo tu tailnet (serve, nunca funnel). Sigue activo después de reiniciar.',
   'phone.guide.undo': 'Para deshacerlo:',
@@ -157,7 +170,6 @@ export const phone = {
   'phone.guide.yes': 'Sí, ejecutarlo',
   'phone.guide.no': 'Cancelar',
   'phone.guide.served': '{url} ya pasa a Otea.',
-  'phone.guide.use': 'Usar Tailscale para el teléfono',
   'phone.guide.pair': 'Empareja el teléfono y activa los avisos',
   'phone.guide.pairText':
     'Emparejar un teléfono muestra un código QR que abre {url}. Escanéalo con el teléfono y luego activa los avisos en Preferencias › Avisos. En iPhone, primero agrega Otea a la pantalla de inicio: Safari solo permite avisos ahí.',
@@ -169,11 +181,11 @@ export const phone = {
   'phone.status.no': 'sin respuesta',
   'phone.status.none': 'ninguna dirección que probar',
   'phone.status.loading': 'comprobando…',
-  'phone.status.closed': 'no está abierto a la red',
+  'phone.status.lan': 'red local',
   'phone.lan.open': 'Abrir a la red local',
   'phone.lan.close': 'Cerrar a la red',
   'phone.lan.firewall':
-    'Windows puede pedir permiso al firewall la primera vez. Otea nunca cambia el firewall ni la configuración de red.',
+    'Al abrir la red local, Windows puede pedir permiso al firewall la primera vez. Otea nunca cambia el firewall ni la configuración de red.',
   'phone.ts.missing':
     'Tailscale no está instalado en este equipo. Otea no lo instala: instálalo, inicia sesión y vuelve a comprobar.',
   'phone.ts.download': 'Descargar Tailscale',
@@ -185,10 +197,12 @@ export const phone = {
   'phone.ts.noHttps':
     'Los certificados HTTPS están desactivados en tu tailnet. Actívalos en la configuración de DNS.',
   'phone.ts.dnsSettings': 'Abrir la configuración de DNS',
-  'phone.ts.taken': '{url} ya redirige a {target}. Libéralo con esto y vuelve a comprobar:',
-  'phone.ts.failed': 'Tailscale respondió con un error: {message}',
+  'phone.ts.taken':
+    '{url} ya lleva a {target}, no a este Otea. Si es otro Otea tuyo, úsalo desde allí; si ya no lo usas, libéralo con esto y vuelve a comprobar:',
+  'phone.ts.failed':
+    'Tailscale respondió con un error: {message}. Comprueba que Tailscale esté abierto en este equipo y vuelve a comprobar.',
   'phone.ts.notServing':
-    'tailscale serve ya no redirige a Otea. Comprueba de nuevo para configurarlo.',
+    'tailscale serve ya no lleva a Otea, así que el teléfono no entra. Vuelve a darle su dirección en el paso 5.',
   'phone.ts.steps': 'En el teléfono',
   'phone.ts.step1': 'Instala la app de Tailscale.',
   'phone.ts.step2': 'Inicia sesión con la misma cuenta que en este equipo.',
