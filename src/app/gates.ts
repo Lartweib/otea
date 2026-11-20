@@ -21,10 +21,12 @@ import {
 import {
   baseGateText,
   baseRefusal,
+  branchForPersonText,
   forPersonText,
   gateText,
   placeText,
   rewriteForPersonText,
+  unnamedBranchRefusal,
 } from '../core/board/next.ts';
 import { partByName, stateName } from '../core/board/reading.ts';
 import { OteaError } from '../core/errors.ts';
@@ -532,6 +534,19 @@ export function checkGate(
   const closed = kept.length > 0 ? kept : gated;
   const answered = open.length > 0 ? open : closed;
   const items = answered.map(({ verdict }) => verdict);
+  // Where a board protects a base, a push takes only a branch an item names (P5-R3-2): one no item
+  // names is no item's work, and Otea never lets through what no board lets through.
+  const guarding = boards.filter(({ def }) => guardedBranch(def)?.guard.base !== undefined);
+  if (items.length === 0 && gate === 'push' && fields.branch !== undefined && guarding.length > 0) {
+    const defs = guarding.map(({ def }) => def);
+    return {
+      gate,
+      allowed: false,
+      items,
+      refusal: unnamedBranchRefusal(defs, fields.branch),
+      person: branchForPersonText(defs),
+    };
+  }
   const check: GateCheck = { gate, allowed: items.every(({ allowed }) => allowed), items };
   if (items.length === 0) check.note = `no item with a ${gate} gate matches`;
   // A person who means to rewrite the branch pushes it themselves, past the hook (P1-R3-3).
