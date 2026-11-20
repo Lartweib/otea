@@ -315,6 +315,20 @@ describe('the agents pill', () => {
     expect(pillMark('live', quiet)).toBe('none');
   });
 
+  // P7-R3-10: an agent no longer connected still holds a live lease on another item; it is quiet,
+  // never «trabajando».
+  it('never counts an agent gone quiet as working on what its lease still holds', () => {
+    const held = item({ id: 'Y', turn: 'agent', lease: { holder: 'q', expiresAt: inMinutes(9) } });
+    const quiet = agentRows(
+      [agent('q', { live: false, lastSeen: ago(12), holding: ['Y'] })],
+      [...stuck, held],
+      NOW,
+    );
+    expect(quiet[0]).toMatchObject({ quiet: true, working: false, state: 'quiet' });
+    expect(pillSummary('live', quiet)).toEqual({ kind: 'none', quiet: 1 });
+    expect(pillMark('live', quiet)).toBe('none');
+  });
+
   it('says "escuchando" only of an agent waiting in otea wait, never of one only connected', () => {
     const a = (name: string, o: Partial<Agent> = {}) => agent(name, { profile: opus, ...o });
     const idle = rows([a('a', { waiting: false }), a('b', { waiting: false })]);

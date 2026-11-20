@@ -157,8 +157,10 @@ export function agentRows(
       );
       const st = agentState(a.name, items, feed, now, a.lastSeen);
       const quiet = stuck.length > 0;
-      // An item whose question waits for you is not work: the agent waits for your answer.
-      const working = a.holding.some((id) => !items.find((each) => each.id === id)?.asks);
+      // An item whose question waits for you is not work: the agent waits for your answer. One
+      // no longer connected works on nothing, whatever its lease still holds (P7-R3-10).
+      const working =
+        live.includes(a) && a.holding.some((id) => !items.find((each) => each.id === id)?.asks);
       const state: AgentDoing = working ? 'work' : quiet ? 'quiet' : DOING[st.state];
       return {
         name: a.name,
