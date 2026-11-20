@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { draftKeyOf, dropDraft, keepDraft, readDraft } from './note-draft.ts';
+import { answerDraftKeyOf, draftKeyOf, dropDraft, keepDraft, readDraft } from './note-draft.ts';
 
 const memory = () => {
   const data = new Map<string, string>();
@@ -45,5 +45,16 @@ describe('a send-back draft', () => {
     expect(() => keepDraft(broken, 'k', 'x')).not.toThrow();
     expect(() => dropDraft(broken, 'k')).not.toThrow();
     expect(readDraft(undefined, 'k')).toBe('');
+  });
+});
+
+// P6-R3-6: an answer typed and not sent is kept per item, apart from the send-backs' drafts.
+describe('answerDraftKeyOf', () => {
+  it('keeps one answer per item, apart from its send-back drafts', () => {
+    const store = memory();
+    keepDraft(store, answerDraftKeyOf('ERR-1'), 'Sí, el río también');
+    expect(readDraft(store, answerDraftKeyOf('ERR-1'))).toBe('Sí, el río también');
+    expect(readDraft(store, answerDraftKeyOf('ERR-2'))).toBe('');
+    expect(readDraft(store, draftKeyOf('ERR-1', 'fixing'))).toBe('');
   });
 });

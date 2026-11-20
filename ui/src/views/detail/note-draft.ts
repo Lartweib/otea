@@ -6,6 +6,9 @@ type Store = Pick<Storage, 'getItem' | 'setItem' | 'removeItem'>;
 
 export const draftKeyOf = (item: string, to: string): string => `otea.sendBack.${item}.${to}`;
 
+// The answer to an agent's question not sent yet, per item (P6-R3-6).
+export const answerDraftKeyOf = (item: string): string => `otea.answer.${item}`;
+
 export function draftStore(): Store | undefined {
   try {
     return window.localStorage;

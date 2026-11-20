@@ -15,6 +15,7 @@ import type { ItemView, TypeView } from '../../types.ts';
 import { closerOf, type Facts } from './facts.ts';
 import { resumedToastOf, stuckToastOf, toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf } from './moves.ts';
+import { answerDraftKeyOf, draftStore, dropDraft, keepDraft, readDraft } from './note-draft.ts';
 import { PickForm, type PickMade } from './PickForm.tsx';
 import type { Pick } from './pick.ts';
 
@@ -199,7 +200,15 @@ export function Acts({
   const [reassign, setReassign] = useState<HTMLButtonElement | null>(null);
   const [stuckSays, setStuckSays] = useState<'resume' | 'reassign'>('resume');
   const [opt, setOpt] = useState<string | null>(null);
-  const [free, setFree] = useState('');
+  // The answer typed and not sent, kept per item until it goes: Android Back closed the page and
+  // lost it (P6-R3-6).
+  const answerKey = answerDraftKeyOf(item.id);
+  const [free, setFreeText] = useState(() => readDraft(draftStore(), answerKey));
+  useEffect(() => setFreeText(readDraft(draftStore(), answerKey)), [answerKey]);
+  const setFree = (text: string) => {
+    setFreeText(text);
+    keepDraft(draftStore(), answerKey, text);
+  };
   // While the answer is typed: its send row kept above the phone's keyboard (DR3-15).
   const sendRow = useRef<HTMLDivElement>(null);
   const following = useRef<(() => void) | null>(null);
@@ -434,7 +443,7 @@ export function Acts({
                   : back
                     ? app.move(item.id, back.move.to, answer, toastOf('answer', item.title, ''))
                     : Promise.reject(new Error('no way to answer'));
-                sent.catch(refused);
+                sent.then(() => dropDraft(draftStore(), answerKey), refused);
               }}
             >
               {t('sheet.qa.send')}
