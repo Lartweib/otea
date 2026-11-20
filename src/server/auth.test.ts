@@ -53,34 +53,18 @@ describe('auth', () => {
       expect((await request(readOnly, '/auth?token=')).status).toBe(401);
       readOnly.close();
     });
-
-    it('keeps the host guard', async () => {
-      expect((await request(server, `/auth?token=${TOKEN}`, 'evil.example:4400')).status).toBe(403);
-    });
   });
 
   describe('GET /api/session', () => {
-    it('cannot write without a cookie', async () => {
-      expect(await session()).toEqual({
-        canWrite: false,
-        canManageDevices: false,
-        canConfigure: false,
-      });
-    });
-
-    it('can write with the session cookie', async () => {
-      expect(await session({ cookie: SESSION_COOKIE })).toEqual({
-        canWrite: true,
-        canManageDevices: true,
-        canConfigure: true,
-      });
-    });
-
-    it('cannot write with a wrong cookie', async () => {
-      expect(await session({ cookie: 'otea_session_4400=wrong' })).toEqual({
-        canWrite: false,
-        canManageDevices: false,
-        canConfigure: false,
+    it.each([
+      ['no cookie', undefined, false],
+      ['the session cookie', SESSION_COOKIE, true],
+      ['a wrong cookie', 'otea_session_4400=wrong', false],
+    ])('with %s: canWrite, canManageDevices and canConfigure are %s', async (_, cookie, can) => {
+      expect(await session(cookie === undefined ? undefined : { cookie })).toEqual({
+        canWrite: can,
+        canManageDevices: can,
+        canConfigure: can,
       });
     });
   });

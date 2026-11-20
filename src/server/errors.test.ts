@@ -19,39 +19,41 @@ describe('errors', () => {
     expect(HTTP_STATUS[code]).toBe(status);
   });
 
-  it('describes an OteaError with its code and message', () => {
-    expect(toErrorResponse(new OteaError('not_found', 'Gone'))).toEqual({
-      status: 404,
-      body: { error: { code: 'not_found', message: 'Gone' } },
-    });
-  });
-
-  it('carries a refusal’s details beside its English message, for the UI to word it', () => {
-    const details = { kind: 'closed', item: 'BUG-1' } as const;
-    expect(toErrorResponse(new OteaError('item_closed', 'BUG-1 is done', details))).toEqual({
-      status: 409,
-      body: { error: { code: 'item_closed', message: 'BUG-1 is done', details } },
-    });
-  });
-
-  it('describes an invalid query as 400', () => {
-    expect(toErrorResponse(new InvalidQuery('Bad turn'))).toEqual({
-      status: 400,
-      body: { error: { code: 'invalid_query', message: 'Bad turn' } },
-    });
-  });
-
-  it('describes a forbidden host as 403', () => {
-    expect(toErrorResponse(new ForbiddenHost('Nope'))).toEqual({
-      status: 403,
-      body: { error: { code: 'forbidden_host', message: 'Nope' } },
-    });
-  });
-
-  it('hides the details of unexpected errors', () => {
-    expect(toErrorResponse(new Error('secret path'))).toEqual({
-      status: 500,
-      body: { error: { code: 'unexpected', message: 'Unexpected error' } },
-    });
+  // An OteaError keeps its code and message, and a refusal its details beside the English message
+  // for the UI to word it; an unexpected error hides its details.
+  const details = { kind: 'closed', item: 'BUG-1' } as const;
+  it.each<[string, Error, number, Record<string, unknown>]>([
+    [
+      'an OteaError',
+      new OteaError('not_found', 'Gone'),
+      404,
+      { code: 'not_found', message: 'Gone' },
+    ],
+    [
+      'a refusal with details',
+      new OteaError('item_closed', 'BUG-1 is done', details),
+      409,
+      { code: 'item_closed', message: 'BUG-1 is done', details },
+    ],
+    [
+      'an invalid query',
+      new InvalidQuery('Bad turn'),
+      400,
+      { code: 'invalid_query', message: 'Bad turn' },
+    ],
+    [
+      'a forbidden host',
+      new ForbiddenHost('Nope'),
+      403,
+      { code: 'forbidden_host', message: 'Nope' },
+    ],
+    [
+      'an unexpected error',
+      new Error('secret path'),
+      500,
+      { code: 'unexpected', message: 'Unexpected error' },
+    ],
+  ])('describes %s as %i', (_, error, status, body) => {
+    expect(toErrorResponse(error)).toEqual({ status, body: { error: body } });
   });
 });

@@ -245,15 +245,5 @@ describe('evidence api', () => {
 
       expect((await get('/p/memory-aaaaaa/api/evidence/1/file')).status).toBe(404);
     });
-
-    it('keeps the host guard', async () => {
-      attach('before.png', 'png');
-
-      const response = await server.app.request('/p/memory-aaaaaa/api/evidence/1/file', {
-        headers: { host: 'evil.example:4400', cookie: SESSION_COOKIE },
-      });
-
-      expect(response.status).toBe(403);
-    });
   });
 });

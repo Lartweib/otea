@@ -14,13 +14,16 @@ const BIN = 'C:\\Users\\ana\\AppData\\Local\\Programs\\Otea\\resources\\bin';
 
 type Action = 'add' | 'remove';
 
-const CASES: Array<[Action, string]> = [
-  ['add', '%USERPROFILE%\\bin;C:\\tools'],
-  ['add', ''],
-  ['add', `C:\\tools;${BIN.toUpperCase()}\\`],
-  ['remove', `C:\\tools;${BIN};%USERPROFILE%\\bin`],
-  ['remove', 'C:\\tools'],
-  ['remove', BIN],
+// Each case: the action, the PATH it finds, and the PATH it writes. Adding puts the bin folder at
+// the end, keeping the rest unexpanded, and only once whatever the case or trailing slash;
+// removing takes out only its own entry.
+const CASES: Array<[Action, string, string]> = [
+  ['add', '%USERPROFILE%\\bin;C:\\tools', `%USERPROFILE%\\bin;C:\\tools;${BIN}`],
+  ['add', '', BIN],
+  ['add', `C:\\tools;${BIN.toUpperCase()}\\`, `C:\\tools;${BIN.toUpperCase()}\\`],
+  ['remove', `C:\\tools;${BIN};%USERPROFILE%\\bin`, 'C:\\tools;%USERPROFILE%\\bin'],
+  ['remove', 'C:\\tools', 'C:\\tools'],
+  ['remove', BIN, ''],
 ];
 
 // Each case runs the script as its own invocation, with -Current bound even when empty, and its
@@ -58,35 +61,18 @@ describe.runIf(process.platform === 'win32')('path.ps1', () => {
           ...process.env,
           OTEA_PATH_SCRIPT: SCRIPT,
           OTEA_PATH_DIR: BIN,
-          OTEA_PATH_CASES: JSON.stringify(CASES),
+          OTEA_PATH_CASES: JSON.stringify(CASES.map(([action, current]) => [action, current])),
         },
       },
     );
     const answers = JSON.parse(output) as string[];
     expect(answers).toHaveLength(CASES.length);
-    results = new Map(answers.map((answer, i) => [JSON.stringify(CASES[i]), answer.trim()]));
+    results = new Map(
+      answers.map((answer, i) => [JSON.stringify(CASES[i]?.slice(0, 2)), answer.trim()]),
+    );
   }, 60_000);
 
-  it('adds the bin folder at the end, keeping the rest unexpanded', () => {
-    expect(dryRun('add', '%USERPROFILE%\\bin;C:\\tools')).toBe(
-      `%USERPROFILE%\\bin;C:\\tools;${BIN}`,
-    );
-  });
-
-  it('adds it to an empty PATH', () => {
-    expect(dryRun('add', '')).toBe(BIN);
-  });
-
-  it('adds it once, whatever the case or trailing slash', () => {
-    const current = `C:\\tools;${BIN.toUpperCase()}\\`;
-    expect(dryRun('add', current)).toBe(current);
-  });
-
-  it('takes out only its own entry', () => {
-    expect(dryRun('remove', `C:\\tools;${BIN};%USERPROFILE%\\bin`)).toBe(
-      'C:\\tools;%USERPROFILE%\\bin',
-    );
-    expect(dryRun('remove', 'C:\\tools')).toBe('C:\\tools');
-    expect(dryRun('remove', BIN)).toBe('');
+  it.each(CASES)('%s on %j gives %j', (action, current, written) => {
+    expect(dryRun(action, current)).toBe(written);
   });
 });

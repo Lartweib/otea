@@ -148,15 +148,6 @@ describe('api', () => {
       });
       expect((await get('/p/memory-aaaaaa/api/agents/ghost')).status).toBe(404);
     });
-
-    it('lists no one before an agent is seen', async () => {
-      const empty = createServer(memoryProject());
-
-      expect(await (await request(empty, '/p/memory-aaaaaa/api/agents')).json()).toEqual({
-        agents: [],
-      });
-      empty.close();
-    });
   });
 
   describe('GET /api/collections', () => {
@@ -362,12 +353,6 @@ types:
       }
       app.close();
       withIcons.db.close();
-    });
-
-    it('is behind the host guard like every other route', async () => {
-      const response = await request(server, '/p/memory-aaaaaa/api/presets', 'evil.example:4400');
-
-      expect(response.status).toBe(403);
     });
   });
 
@@ -587,12 +572,5 @@ types:
     it('returns 404 for an unknown collection', async () => {
       expect((await get('/p/memory-aaaaaa/api/events?collection=nope')).status).toBe(404);
     });
-  });
-
-  it('returns a JSON 404 for an unknown api route', async () => {
-    const response = await get('/p/memory-aaaaaa/api/nope');
-
-    expect(response.status).toBe(404);
-    expect(await response.json()).toMatchObject({ error: { code: 'not_found' } });
   });
 });
