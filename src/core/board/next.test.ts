@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { timeText } from '../time.ts';
+import type { Missing } from './engine.ts';
 import { boardText, handedText, idleText, nextText, noWayText, refusalText } from './next.ts';
 import { creatures, step, tareasDeRepo } from './testing.ts';
 
@@ -433,27 +434,48 @@ describe('noWayText', () => {
 });
 
 describe('refusalText', () => {
-  it('says exactly why a handoff was refused and what to do', () => {
-    expect(
-      refusalText('CRI-12', [
+  const hinted: Missing = {
+    ref: 'note',
+    name: 'note',
+    reason: 'missing',
+    fresh: true,
+    hint: 'qué cambió en esta ronda',
+  };
+  const video: Missing = { ref: 'evid', name: 'Vídeo', reason: 'missing', fresh: true };
+
+  it.each<[string, string, Missing[], string]>([
+    [
+      'says exactly why a handoff was refused and what to do',
+      'CRI-12',
+      [
         { ref: 'eart', name: 'Arte conceptual', reason: 'not_new', fresh: true },
         { ref: 'fsteps', name: 'Comprobaciones', reason: 'unchecked', fresh: false },
-      ]),
-    ).toBe(
+      ],
       'Not handed off CRI-12: missing Arte conceptual (new this round) and Comprobaciones (every box ticked).\nAttach or fill them with otea attach CRI-12 / otea update CRI-12, then call handoff again.',
-    );
-  });
-});
-
-describe('refusalText after a send-back', () => {
-  it('asks for the note the sent-back round needs, saying why', () => {
-    expect(
-      refusalText('CRI-12', [
-        { ref: 'note', name: 'note', reason: 'missing', fresh: true, hint: '', sentBack: true },
-      ]),
-    ).toBe(
+    ],
+    [
+      'asks for the note a sent-back round needs, saying why',
+      'CRI-12',
+      [{ ref: 'note', name: 'note', reason: 'missing', fresh: true, hint: '', sentBack: true }],
       'Not handed off CRI-12: missing a note (it was sent back: say what you changed).\nCall handoff again with --note "<what you changed since it was sent back>".',
-    );
+    ],
+    [
+      'asks for the note in its own words, alone',
+      'REV-2',
+      [hinted],
+      'Not handed off REV-2: missing a note.\nCall handoff again with --note "<qué cambió en esta ronda>".',
+    ],
+    [
+      'asks for the note in its own words, with the parts',
+      'REV-2',
+      [video, hinted],
+      [
+        'Not handed off REV-2: missing Vídeo (new this round) and a note.',
+        'Attach or fill them with otea attach REV-2 / otea update REV-2, then call handoff again with --note "<qué cambió en esta ronda>".',
+      ].join('\n'),
+    ],
+  ])('%s', (_, id, missing, expected) => {
+    expect(refusalText(id, missing)).toBe(expected);
   });
 });
 

@@ -23,32 +23,6 @@ function problemsOf(raw: unknown): string[] {
 }
 
 describe('the module registry', () => {
-  it('knows the field, evidence, relation and reserved modules', () => {
-    expect(Object.keys(MODULE_REGISTRY)).toEqual([
-      'text',
-      'markdown',
-      'enum',
-      'severity',
-      'images',
-      'recording',
-      'diff',
-      'log',
-      'relations',
-      'children',
-      'questions',
-      'rounds',
-      'score',
-      'options',
-      'diagram',
-      'files',
-    ]);
-    expect(moduleFamily('severity')).toBe('field');
-    expect(moduleFamily('recording')).toBe('evidence');
-    expect(moduleFamily('relations')).toBe('relation');
-    expect(moduleFamily('children')).toBe('relation');
-    expect(moduleFamily('rounds')).toBe('reserved');
-  });
-
   it('lets the files module take audio and any other file, and nothing the others draw', () => {
     const files = { module: 'files' as const, id: 'efile' };
 

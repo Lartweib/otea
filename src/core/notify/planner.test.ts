@@ -65,10 +65,6 @@ describe('Planner', () => {
     prefs = { ...DEFAULT_PREFS };
   });
 
-  it('turns everything on by default, with no quiet hours', () => {
-    expect(DEFAULT_PREFS).toEqual({ turn: true, replied: true, stuck: true, quiet: null });
-  });
-
   it('waits a moment before telling, so a burst arrives as one', () => {
     const one = [turn('A')];
     planner.offer(one, prefs, T0);

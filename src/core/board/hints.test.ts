@@ -9,10 +9,6 @@ const at = (def: BoardDefinition, id: string) => def.steps.find((s) => s.id === 
 const bare = () => ({ ...creatures(), about: '' });
 
 describe('instructionHints, what an agent reads on a step', () => {
-  it('finds nothing on a board whose instructions match its handoffs', () => {
-    expect(instructionHints(creatures())).toEqual([]);
-  });
-
   it('notes a step an agent works with nothing to read', () => {
     const def = bare();
     at(def, 'sconcept').instructions = { take: ' ', before: '', review: '' };

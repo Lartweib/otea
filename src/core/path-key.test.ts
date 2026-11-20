@@ -2,16 +2,13 @@ import { describe, expect, it } from 'vitest';
 import { longestContaining, pathKey } from './path-key.ts';
 
 describe('pathKey', () => {
-  it('uses forward slashes and lowercases on Windows', () => {
-    expect(pathKey('C:\\Code\\My App', 'win32')).toBe('c:/code/my app');
-  });
-
-  it('lowercases on macOS', () => {
-    expect(pathKey('/Users/Ana/App', 'darwin')).toBe('/users/ana/app');
-  });
-
-  it('keeps the case on Linux', () => {
-    expect(pathKey('/home/Ana/App', 'linux')).toBe('/home/Ana/App');
+  // Forward slashes and lowercase on Windows, lowercase on macOS, the case kept on Linux.
+  it.each([
+    ['C:\\Code\\My App', 'win32', 'c:/code/my app'],
+    ['/Users/Ana/App', 'darwin', '/users/ana/app'],
+    ['/home/Ana/App', 'linux', '/home/Ana/App'],
+  ] as const)('keys %s on %s as %s', (path, platform, key) => {
+    expect(pathKey(path, platform)).toBe(key);
   });
 });
 

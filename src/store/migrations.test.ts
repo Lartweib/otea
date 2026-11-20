@@ -313,12 +313,8 @@ describe('migrate', () => {
       `);
     });
 
-    it('rejects updates', () => {
-      expect(() => db.exec("UPDATE events SET type = 'edited'")).toThrow(/append-only/);
-    });
-
-    it('rejects deletes', () => {
-      expect(() => db.exec('DELETE FROM events')).toThrow(/append-only/);
+    it.each(["UPDATE events SET type = 'edited'", 'DELETE FROM events'])('rejects %s', (sql) => {
+      expect(() => db.exec(sql)).toThrow(/append-only/);
     });
 
     it('references existing items', () => {

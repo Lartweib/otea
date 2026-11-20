@@ -309,17 +309,14 @@ describe('modelPerformance', () => {
 describe('parsePeriod', () => {
   const now = '2026-02-01T00:00:00.000Z';
 
-  it('reads days and hours back from now', () => {
-    expect(parsePeriod('30d', now)).toEqual({ since: '2026-01-02T00:00:00.000Z' });
-    expect(parsePeriod('12h', now)).toEqual({ since: '2026-01-31T12:00:00.000Z' });
-  });
-
-  it('reads all as no limit', () => {
-    expect(parsePeriod('all', now)).toEqual({});
-  });
-
-  it('refuses anything else', () => {
-    expect(parsePeriod('soon', now)).toBeNull();
-    expect(parsePeriod('0d', now)).toBeNull();
+  // Days and hours read back from now, all as no limit, and anything else is refused.
+  it.each([
+    ['30d', { since: '2026-01-02T00:00:00.000Z' }],
+    ['12h', { since: '2026-01-31T12:00:00.000Z' }],
+    ['all', {}],
+    ['soon', null],
+    ['0d', null],
+  ])('reads %s as %j', (period, expected) => {
+    expect(parsePeriod(period, now)).toEqual(expected);
   });
 });

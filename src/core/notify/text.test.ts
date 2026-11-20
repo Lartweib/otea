@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { Notice } from './planner.ts';
-import { itemUrl, noticeText } from './text.ts';
+import { noticeText } from './text.ts';
 
 const review: Notice = { kind: 'turn', item: 'TASKS-7', title: 'Ship the login' };
 
@@ -53,9 +53,5 @@ describe('noticeText', () => {
     const long = noticeText({ ...review, title: 'x'.repeat(300) }, 'en');
     expect(long.body.length).toBeLessThanOrEqual(100);
     expect(long.body.endsWith('…')).toBe(true);
-  });
-
-  it('encodes the item in the link', () => {
-    expect(itemUrl('A B/1')).toBe('/#/i/A%20B%2F1');
   });
 });

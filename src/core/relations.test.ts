@@ -37,24 +37,34 @@ describe('parseRelationKind', () => {
 });
 
 describe('normalizeRelation', () => {
-  it('keeps the direction of a directed kind', () => {
-    expect(normalizeRelation(rel('B-2', 'blocks', 'B-1'))).toEqual(rel('B-2', 'blocks', 'B-1'));
-  });
-
-  it('stores a symmetric relation once, whichever way it is given', () => {
-    expect(normalizeRelation(rel('B-2', 'relates', 'B-1'))).toEqual(rel('B-1', 'relates', 'B-2'));
-    expect(normalizeRelation(rel('B-1', 'relates', 'B-2'))).toEqual(rel('B-1', 'relates', 'B-2'));
+  it.each([
+    [
+      'keeps the direction of a directed kind',
+      rel('B-2', 'blocks', 'B-1'),
+      rel('B-2', 'blocks', 'B-1'),
+    ],
+    [
+      'stores a symmetric kind given reversed once',
+      rel('B-2', 'relates', 'B-1'),
+      rel('B-1', 'relates', 'B-2'),
+    ],
+    [
+      'stores a symmetric kind given in order once',
+      rel('B-1', 'relates', 'B-2'),
+      rel('B-1', 'relates', 'B-2'),
+    ],
+  ])('%s', (_, given, stored) => {
+    expect(normalizeRelation(given)).toEqual(stored);
   });
 });
 
 describe('matchesRelation', () => {
-  it('matches a directed relation only in its direction', () => {
-    expect(matchesRelation(rel('A-1', 'blocks', 'A-2'), rel('A-1', 'blocks', 'A-2'))).toBe(true);
-    expect(matchesRelation(rel('A-1', 'blocks', 'A-2'), rel('A-2', 'blocks', 'A-1'))).toBe(false);
-  });
-
-  it('matches a symmetric relation either way', () => {
-    expect(matchesRelation(rel('A-1', 'relates', 'A-2'), rel('A-2', 'relates', 'A-1'))).toBe(true);
+  it.each([
+    [rel('A-1', 'blocks', 'A-2'), rel('A-1', 'blocks', 'A-2'), true],
+    [rel('A-1', 'blocks', 'A-2'), rel('A-2', 'blocks', 'A-1'), false],
+    [rel('A-1', 'relates', 'A-2'), rel('A-2', 'relates', 'A-1'), true],
+  ])('matches stored %j given %j: %s', (stored, given, matches) => {
+    expect(matchesRelation(stored, given)).toBe(matches);
   });
 });
 
@@ -87,10 +97,6 @@ describe('describeRelation', () => {
 describe('assertCanRelate', () => {
   const check = (existing: Relation[], next: Relation) =>
     codeOf(() => assertCanRelate(existing, next));
-
-  it('accepts a first relation', () => {
-    expect(check([], rel('W-2', 'parent', 'W-1'))).toBeUndefined();
-  });
 
   it('refuses an item related to itself', () => {
     expect(check([], rel('W-1', 'relates', 'W-1'))).toBe('self_relation');

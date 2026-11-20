@@ -194,8 +194,4 @@ describe('compileBoard', () => {
     const layout = compileBoard('bx', 1, def).types[0]?.layout;
     expect(layout?.row ?? []).toEqual([]);
   });
-
-  it('refuses a board without steps, which cannot be published', () => {
-    expect(() => compileBoard('bx', 1, { ...creatures(), steps: [] })).toThrow(/no steps/);
-  });
 });

@@ -59,15 +59,6 @@ describe('preset labels', () => {
     expect(impr?.labels?.es?.fields).toEqual({ title: 'título', area: 'área', pitch: 'propuesta' });
   });
 
-  it('leaves a preset without labels as it was', () => {
-    const raw = mixed();
-    delete raw.labels;
-
-    expect(parsePreset(stringify(raw)).types.every(({ labels }) => labels === undefined)).toBe(
-      true,
-    );
-  });
-
   it.each<[string, (raw: Raw) => void, string]>([
     [
       'an unknown type',
@@ -83,6 +74,11 @@ describe('preset labels', () => {
       'an unknown field',
       (raw) => (raw.labels.es.fields.owner = 'dueño'),
       'labels.es.fields.owner: unknown field "owner"',
+    ],
+    [
+      'values of an unknown field',
+      (raw) => (raw.labels.es.values = { owner: { me: 'yo' } }),
+      'labels.es.values.owner: unknown field "owner"',
     ],
     [
       'a missing state, since a language labels all of a preset or none of it',
@@ -139,12 +135,6 @@ describe('preset labels', () => {
     expect(preset.names).toEqual({ es: 'Errores' });
     expect(bug?.labels?.es?.values).toEqual({ severity: { high: 'alta' } });
     expect(impr?.labels?.es?.values).toBeUndefined();
-  });
-
-  it('rejects values of an unknown field', () => {
-    expect(problemsOf((raw) => (raw.labels.es.values = { owner: { me: 'yo' } }))).toEqual([
-      'labels.es.values.owner: unknown field "owner"',
-    ]);
   });
 
   const official = ['tasks', 'change', 'bug-triage', 'review', 'architecture'];

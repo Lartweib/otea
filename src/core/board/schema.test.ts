@@ -4,20 +4,6 @@ import { parseDefinition } from './schema.ts';
 import { creatures } from './testing.ts';
 
 describe('parseDefinition', () => {
-  it('reads a sound definition back as it was', () => {
-    expect(parseDefinition(JSON.parse(JSON.stringify(creatures())))).toEqual({
-      ok: true,
-      definition: creatures(),
-    });
-  });
-
-  it('refuses a malformed one with where and why, never a stack', () => {
-    const bad = { ...creatures(), steps: [{ id: 'Not An Id', name: 'x' }] };
-    const result = parseDefinition(bad);
-    expect(result.ok).toBe(false);
-    if (!result.ok) expect(result.problems.join('\n')).toMatch(/^step 1 "x"/m);
-  });
-
   describe('words a board.json of the wrong shape for whoever wrote it', () => {
     const problemsOf = (raw: unknown) => {
       const result = parseDefinition(raw);

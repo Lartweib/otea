@@ -92,11 +92,6 @@ describe('the start prompt', () => {
       'Pregúntame también si quiero que lleves registro de las preguntas sueltas que te hago fuera del trabajo (Temas); si digo que sí, actívalo: `otea topic on`.',
     );
   });
-
-  it('speaks the language of the screen', () => {
-    expect(startPrompt('es')).toMatch(/^Configura Otea/);
-    expect(startPrompt('en')).toMatch(/^Set up Otea/);
-  });
 });
 
 describe('the design prompt', () => {

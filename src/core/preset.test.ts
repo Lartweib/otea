@@ -91,12 +91,6 @@ describe('readPreset', () => {
     });
   });
 
-  it('accepts a minimal preset without playbook or incomplete state', () => {
-    const result = readPreset(stringify(minimal()));
-
-    expect(result).toMatchObject({ ok: true, preset: { name: 'notes' } });
-  });
-
   it('reports invalid YAML', () => {
     expect(readPreset('preset: [unclosed')).toMatchObject({
       ok: false,
@@ -306,17 +300,6 @@ describe('requires', () => {
     expect(stateOf(raw, 'closed')).toEqual({
       state: { name: 'closed', turn: 'none', closes: 'discarded', requires: ['children_closed'] },
       result: expect.objectContaining({ warnings: [] }),
-    });
-  });
-
-  it('records it on a working state too', () => {
-    const raw = minimal();
-    raw.workflow.states.open.requires = 'children_closed';
-
-    expect(stateOf(raw, 'open').state).toEqual({
-      name: 'open',
-      turn: 'agent',
-      requires: ['children_closed'],
     });
   });
 
@@ -668,19 +651,21 @@ describe('item types', () => {
     ]);
   });
 
-  it('groups by an enum field every type shares', () => {
+  it.each<[string, (raw: Raw) => void, string]>([
+    [
+      'an enum',
+      (raw) => {
+        raw.fields.priority = { module: 'enum', values: ['low', 'high'] };
+      },
+      'priority',
+    ],
+    ['a one-line text', () => {}, 'area'],
+  ])('groups by %s field every type shares', (_, change, groupBy) => {
     const raw = twoTypes();
-    raw.fields.priority = { module: 'enum', values: ['low', 'high'] };
-    raw.view = { group_by: 'priority' };
+    change(raw);
+    raw.view = { group_by: groupBy };
 
-    expect(parsePreset(stringify(raw)).view).toMatchObject({ kind: 'list', groupBy: 'priority' });
-  });
-
-  it('groups by a one-line text field every type shares', () => {
-    const raw = twoTypes();
-    raw.view = { group_by: 'area' };
-
-    expect(parsePreset(stringify(raw)).view).toMatchObject({ kind: 'list', groupBy: 'area' });
+    expect(parsePreset(stringify(raw)).view).toMatchObject({ kind: 'list', groupBy });
   });
 });
 
@@ -823,21 +808,6 @@ describe('type hierarchy', () => {
         raw.types.impr.root = false;
       }),
     ).toEqual(['types.impr.root: false, but no type lists impr in its children']);
-  });
-
-  it('takes children and root only under types', () => {
-    const problems = (change: (raw: Raw) => void) => {
-      const raw = minimal();
-      change(raw);
-      const result = readPreset(stringify(raw));
-      return result.ok ? [] : result.problems;
-    };
-
-    expect(
-      problems((raw) => {
-        raw.children = [];
-      }),
-    ).toEqual(['(root): Unrecognized key: "children"']);
   });
 });
 

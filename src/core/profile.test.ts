@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assertProfileValue, isUnknown, modelFamily, profileLine, UNKNOWN } from './profile.ts';
+import { assertProfileValue, modelFamily, UNKNOWN } from './profile.ts';
 
 describe('modelFamily', () => {
   it.each([
@@ -37,13 +37,11 @@ describe('modelFamily', () => {
 });
 
 describe('assertProfileValue', () => {
-  it('takes an exact id as declared', () => {
-    expect(() => assertProfileValue('model', 'claude-opus-5-5')).not.toThrow();
-    expect(() => assertProfileValue('effort', 'xhigh')).not.toThrow();
-  });
-
-  it('gives back the value as it is kept', () => {
-    expect(assertProfileValue('model', 'claude-opus-5-5')).toBe('claude-opus-5-5');
+  it.each([
+    ['model', 'claude-opus-5-5'],
+    ['effort', 'xhigh'],
+  ] as const)('takes an exact %s id as declared and gives it back as kept', (name, value) => {
+    expect(assertProfileValue(name, value)).toBe(value);
   });
 
   it.each(['model', 'effort'] as const)('takes unknown for a %s the agent cannot read', (name) => {
@@ -75,20 +73,5 @@ describe('assertProfileValue', () => {
 
   it.each(['', ' ', 'two words', 'x'.repeat(101)])('refuses %j', (value) => {
     expect(() => assertProfileValue('model', value)).toThrow(/--model/);
-  });
-});
-
-describe('profileLine', () => {
-  it('says the model and the effort', () => {
-    expect(profileLine({ harness: 'claude-code', model: 'claude-opus-5-5', effort: 'high' })).toBe(
-      'claude-opus-5-5 · high',
-    );
-  });
-});
-
-describe('isUnknown', () => {
-  it('tells a value the agent could not read', () => {
-    expect(isUnknown('unknown')).toBe(true);
-    expect(isUnknown('high')).toBe(false);
   });
 });

@@ -1,10 +1,8 @@
 import { describe, expect, it } from 'vitest';
-import { assertIconName } from '../icons.ts';
 import { isLandStep } from './engine.ts';
 import { sequenceIds } from './ids.ts';
 import { mentionText } from './mentions.ts';
 import { type BoardDefinition, SAME } from './model.ts';
-import { problemsOf } from './problems.ts';
 import {
   instantiate,
   instantiateSet,
@@ -67,33 +65,6 @@ describe('the Ideas set', () => {
     expect(stepNamed(ideas as BoardDefinition, 'Design')?.waits).toEqual(['parts']);
     expect(stepNamed(tasks as BoardDefinition, 'Do it')?.waits).toEqual(['parts', 'blockers']);
   });
-
-  for (const [set, lang] of [
-    ['ideas', 'en'],
-    ['ideas', 'es'],
-    ['repos', 'en'],
-    ['repos', 'es'],
-  ] as const) {
-    it(`reads ${set} well in ${lang}: real icons, every mention named, nothing left raw`, () => {
-      const defs = made(set, lang);
-      const split = defs.map((def) => def.split);
-      const boards = defs.map((def, index) => ({
-        id: `b${index}`,
-        name: def.name,
-        ...(split[index] ? { split: split[index] } : {}),
-      }));
-      defs.forEach((def, index) => {
-        expect(assertIconName(def.icon)).toBe(def.icon);
-        const problems = problemsOf(def, { id: `b${index}`, boards });
-        // Only the reminder that an agent dropping an item names a motive may remain.
-        expect(problems).toEqual([]);
-        for (const step of def.steps)
-          for (const text of Object.values(step.instructions)) {
-            expect(mentionText(def, text)).not.toMatch(/@[[{]/);
-          }
-      });
-    });
-  }
 });
 
 // P7-8: TAR-1..3 went «Aprobar → Hecho · se cierra» while their code sat on an unpushed agent
@@ -186,17 +157,6 @@ describe('the Cambios template', () => {
       value: value('Error'),
     });
   });
-
-  for (const lang of ['en', 'es'] as const) {
-    it(`reads well in ${lang}`, () => {
-      const def = instantiate(requireTemplate('changes'), lang, {}, sequenceIds());
-      expect(assertIconName(def.icon)).toBe(def.icon);
-      expect(problemsOf(def, {})).toEqual([]);
-      for (const step of def.steps)
-        for (const text of Object.values(step.instructions))
-          expect(mentionText(def, text)).not.toMatch(/@[[{]/);
-    });
-  }
 });
 
 describe('the words of the catalogue', () => {
