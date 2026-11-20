@@ -1,6 +1,7 @@
-import { type ReactNode, useLayoutEffect, useRef, useState } from 'react';
+import { type ReactNode, useEffect, useLayoutEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { Choreo, part } from '../../motion/choreo.ts';
+import { holdBackOnPhone } from '../../phone/back.ts';
 import { useEscape } from '../escape.ts';
 import { focusFirst, onDialogTab, returnFocus } from './focus.ts';
 import { layerEl } from './Pop.tsx';
@@ -102,6 +103,13 @@ export function Dialog({ open, label, onClose, size = 'sm', className, children 
   }, [open, mounted]);
 
   useEscape(open, 'dialog', onClose);
+  // On the phone, Android's Back closes it, never the page under it (P7-R3-12).
+  const closing = useRef(onClose);
+  closing.current = onClose;
+  useEffect(() => {
+    if (!open) return;
+    return holdBackOnPhone(() => closing.current());
+  }, [open]);
 
   if (!mounted) return null;
   const dialog = (

@@ -10,6 +10,7 @@ import {
 import { createPortal } from 'react-dom';
 import { Choreo, type Part, part } from '../../motion/choreo.ts';
 import { clamp } from '../../motion/curves.ts';
+import { holdBackOnPhone } from '../../phone/back.ts';
 import { useEscape } from '../escape.ts';
 import { type Place, placer } from './anchors.ts';
 import { focusBackAfterPress, focusFirst, noteTrigger, onMenuKey, returnFocus } from './focus.ts';
@@ -197,6 +198,12 @@ export function Pop({
     closeRef.current();
     anchor?.focus({ preventScroll: true });
   });
+  // On the phone, Android's Back closes it, never the page under it (P7-R3-12). A status only
+  // tells, so Back passes it by.
+  useEffect(() => {
+    if (!open || role === 'status') return;
+    return holdBackOnPhone(() => closeRef.current());
+  }, [open, role]);
 
   if (!mounted) return null;
   const pop = (
