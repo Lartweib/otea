@@ -155,7 +155,7 @@ Contributions are accepted under the [Contributor License Agreement](CLA.md); se
 
 ## Docs
 
-- [Working with agents](docs/working-with-agents.md): the commands agents run, leases, relaying a decision, waiting and events, the guide, profiles and stats, and what to paste into an agent's chat.
+- [Working with agents](docs/working-with-agents.md): the commands agents run, leases, relaying a decision, waiting and events, the guide, profiles and stats, what to paste into an agent's chat, and what your harness must allow.
 - [MCP](docs/mcp.md): working from an MCP client, `otea connect` and the tools.
 - [Projects](docs/projects.md): where a project lives, the files Otea writes in the repo, linking several repos, and moving a local project to common storage.
 - [Evidence](docs/evidence.md): attaching files as proof, and how the item page draws them.

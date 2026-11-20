@@ -174,6 +174,10 @@ describe('setup for agents', () => {
         "If your harness must restart or reload to load the server, ask the person for it now, before you go on, and to reopen this same conversation with your harness's resume option, if it has one, so you keep what was said; Otea keeps every item and board draft either way.",
       );
       expect(out.trimEnd().split('\n').at(-1)).toMatch(/^Run otea connect --check now/);
+      // p6: a harness's permission mode blocked git push and git worktree add mid-flow.
+      expect(out).toContain(
+        "Have your harness allow, for this project: otea (its commands and its MCP tools), git push to the items' branches (Otea's pre-push hook still checks each push) and git worktree add. Otea writes no harness config: docs/working-with-agents.md, «What your harness must allow», has examples.",
+      );
     });
 
     it('prints the server and what it did with AGENTS.md with --json', async () => {
