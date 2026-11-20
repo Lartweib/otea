@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import type { Selection } from '../../../../src/core/board/model.ts';
 import type { Problem } from '../../../../src/core/board/problems.ts';
+import { reportSetupLeft } from '../home/setup-left.ts';
 import type { PairIds, PairRole, PairWorkspace } from '../pair.ts';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import {
@@ -8,6 +9,7 @@ import {
   type SetupRow,
   type SetupStore,
   setupItems,
+  setupLeft,
   setupRows,
   startSetup,
   tick,
@@ -137,6 +139,10 @@ export function usePair(
           hide: () => update({ ...store, hidden: true }),
         }
       : null;
+  // What is left open, for «N por configurar» on Studio's pair row: 0 once it is done, hidden or
+  // the parent is published.
+  const left = setupLeft(setup);
+  useEffect(() => reportSetupLeft(ids.parent, left), [ids.parent, left]);
 
   const workspace: PairWorkspace = { ids, parent, child, active: role, setActive: setRole };
   return { workspace, role, drafts, active, switchTo, setup };
