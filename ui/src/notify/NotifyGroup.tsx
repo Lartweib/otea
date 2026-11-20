@@ -89,6 +89,7 @@ export function NotifyChoices({ prefs, projects, onChange }: NotifyChoicesProps)
           <input
             id={from}
             type="time"
+            aria-label={t('notify.quietFrom')}
             className="input"
             value={quiet.from}
             onChange={(e) => {
@@ -99,7 +100,7 @@ export function NotifyChoices({ prefs, projects, onChange }: NotifyChoicesProps)
           <input
             type="time"
             className="input"
-            aria-label={`${t('notify.quiet')} · ${t('notify.to')}`}
+            aria-label={t('notify.quietTo')}
             value={quiet.to}
             onChange={(e) => {
               if (e.target.value) onChange({ ...prefs, quiet: { ...quiet, to: e.target.value } });

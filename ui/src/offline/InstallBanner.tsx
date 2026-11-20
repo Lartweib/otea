@@ -36,6 +36,7 @@ export function InstallBannerView({ offer, onInstall, onDismiss }: InstallBanner
       <h2 id="install-banner-title">{t('install.title')}</h2>
       <p>{offer === 'prompt' ? t('install.prompt') : t(STEPS[offer])}</p>
       {offer === 'ios' ? <p className="install-note">{t('install.iosPush')}</p> : null}
+      {offer === 'prompt' ? null : <p className="install-note">{t('install.again')}</p>}
       <div className="install-acts">
         {offer === 'prompt' ? (
           <Button size="sm" variant="primary" onClick={onInstall}>
@@ -46,7 +47,6 @@ export function InstallBannerView({ offer, onInstall, onDismiss }: InstallBanner
           {offer === 'prompt' ? t('install.later') : t('home.dismiss')}
         </Button>
       </div>
-      {offer === 'prompt' ? null : <p className="install-note">{t('install.again')}</p>}
     </aside>
   );
 }

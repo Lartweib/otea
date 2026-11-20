@@ -46,10 +46,10 @@ describe('the install banner', () => {
       createElement(InstallBannerView, { offer, onInstall: () => {}, onDismiss: () => {} }),
     );
 
-  it('says «Instalar Otea en tu inicio» and installs with the browser’s prompt', () => {
+  it('says «Instalar Otea en la pantalla de inicio» and installs with the browser’s prompt', () => {
     setLanguage('es');
     const html = banner('prompt');
-    expect(html).toContain('Instalar Otea en tu inicio');
+    expect(html).toContain('Instalar Otea en la pantalla de inicio');
     expect(html).toMatch(/<button[^>]*>Instalar<\/button>/);
     expect(html).toMatch(/<button[^>]*>Ahora no<\/button>/);
   });
@@ -72,6 +72,12 @@ describe('the install banner', () => {
   it('elsewhere, points at the browser’s menu', () => {
     setLanguage('es');
     expect(banner('other')).toContain('menú del navegador');
+  });
+
+  it('says where to find it again before the button that dismisses it', () => {
+    setLanguage('es');
+    const html = banner('android');
+    expect(html.indexOf('más tarde desde Preferencias')).toBeLessThan(html.indexOf('<button'));
   });
 
   it('shows nothing when there is nothing to offer', () => {

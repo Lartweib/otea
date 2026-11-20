@@ -225,7 +225,7 @@ export const phone = {
   'offline.queue.waiting': 'queued',
   'offline.queue.refused': 'not sent: {message}',
   'offline.queue.discard': 'Discard',
-  'offline.install.title': 'App',
+  'offline.install.title': 'app',
   'offline.install.add': 'Add to Home Screen',
   'offline.install.ios': 'In Safari: Share › Add to Home Screen.',
   'offline.install.android': 'In Chrome: menu (⋮) › Add to Home screen.',
@@ -267,6 +267,8 @@ export const phone = {
   'notify.quiet': 'Quiet hours',
   'notify.from': 'From',
   'notify.to': 'to',
+  'notify.quietFrom': 'Quiet hours: from',
+  'notify.quietTo': 'Quiet hours: until',
   'notify.on': 'Turn on notifications',
   'notify.onNote':
     'On this phone, when something is yours. A burst comes as one notice, at most one every two minutes per project, and one per item every few minutes.',
