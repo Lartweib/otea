@@ -9,12 +9,19 @@ import { appendEvent, clearLease, type ItemRecord, takeLease } from '../store/qu
 import type { Context } from './context.ts';
 import { type Item, present, requireWritableItem, systemClock, workflowOf } from './items.ts';
 import { takeItem } from './lease-take.ts';
-import { assertMayClaim, liveBoardOf, setAsideRefusal } from './next.ts';
+import { assertMayClaim, liveBoardOf, setAsideRefusal, wantedNowRefusal } from './next.ts';
 
 // `later`: on a release, the agent sets the item aside for later (P3C-R2-4): next and wait leave it
 // out for every agent, as the person's wish (P7-R3-6), until it moves, an agent claims it, or the
-// set-aside lifts (app/set-aside.ts).
-export type LeaseInput = { id: string; actor: Actor; ttlMs?: number; later?: boolean };
+// set-aside lifts (app/set-aside.ts). `quote`: with `later`, the person's words asking for it later
+// again, relayed after they took it up again (P7-R3-8).
+export type LeaseInput = {
+  id: string;
+  actor: Actor;
+  ttlMs?: number;
+  later?: boolean;
+  quote?: string;
+};
 
 function notHolder(item: ItemRecord, actor: Actor, at: string): OteaError {
   const lease = activeLease(item.lease, at);
@@ -88,9 +95,12 @@ export function releaseItem(ctx: Context, input: LeaseInput, now = systemClock):
       throw new OteaError(refused.code, plain);
     }
     if (refused) throw refused;
+    const quote = input.later ? input.quote?.trim() : undefined;
+    const wanted = input.later ? wantedNowRefusal(ctx, item, quote) : undefined;
+    if (wanted) throw wanted;
     clearLease(db, item.id);
     const holder = current?.holder ?? input.actor.name;
-    const data = { holder, cause: input.later ? 'later' : 'release' };
+    const data = { holder, cause: input.later ? 'later' : 'release', ...(quote ? { quote } : {}) };
     appendEvent(db, { itemId: item.id, type: 'released', actor: input.actor, at, data });
     return present({ ...item, lease: null }, workflowOf(ctx, item), at);
   });

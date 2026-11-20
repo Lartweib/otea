@@ -124,6 +124,8 @@ export type NextInput = {
   // A step whose work is handed in some other way than otea handoff (a board draft on its
   // Pedido): what comes after it and the command that hands it in, in place of the handoff's.
   handIn?: { after: string; command: string };
+  // The line saying the person took the item up again after an agent set it aside (P5-R3-8).
+  retaken?: string;
 };
 
 // Another agent's say on the item keeps the asking agent off it: a live lease it does not hold, or
@@ -619,6 +621,7 @@ export function nextText(def: BoardDefinition, input: NextInput): string {
       ? 'an agent does this step.'
       : 'do this step.';
   const lines = [head, `${person ? "An agent's turn" : 'Your turn'}: ${turn}`];
+  if (!reviewing && input.retaken) lines.push(input.retaken);
   if (input.order) lines.push(orderLine(input.order));
   if (!input.holder && input.leftFor !== undefined && input.leftFor === input.me)
     lines.push('The person left it for you.');

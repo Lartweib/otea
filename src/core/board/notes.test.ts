@@ -253,12 +253,17 @@ describe('what the agent reads of the notes', () => {
     );
   });
 
-  it('wakes a wait with the note and where to read it', () => {
-    expect(waitNoteText('TAR-7', [3])).toBe(
-      'TAR-7: new note from the person (note 3). Read it: otea show TAR-7',
+  it('wakes a wait with the note, in the person’s words, and where to read it', () => {
+    expect(waitNoteText('TAR-7', [note(3)])).toBe(
+      'TAR-7: new note from the person (note 3). Read it: otea show TAR-7\n  3 · "nota 3"',
     );
-    expect(waitNoteText('TAR-7', [2, 3])).toBe(
-      'TAR-7: new notes from the person (notes 2 and 3). Read them: otea show TAR-7',
+    expect(waitNoteText('TAR-7', [note(2, { text: 'Más\ngrande' }), note(3)])).toBe(
+      [
+        'TAR-7: new notes from the person (notes 2 and 3). Read them: otea show TAR-7',
+        '  2 · "Más',
+        '      grande"',
+        '  3 · "nota 3"',
+      ].join('\n'),
     );
   });
 });

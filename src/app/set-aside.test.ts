@@ -6,10 +6,10 @@ import { OteaError } from '../core/errors.ts';
 import { insertEvidence, selectEvents } from '../store/queries.ts';
 import { createBoard, publishBoard, saveDraft } from './boards.ts';
 import type { Context } from './context.ts';
-import { createItem } from './items.ts';
+import { createItem, requireItem } from './items.ts';
 import { claimItem, releaseItem } from './leases.ts';
-import { approveItem, handoffItem, nextFor, offerableTo } from './next.ts';
-import { leaveNote } from './notes.ts';
+import { approveItem, handoffItem, itemNextText, nextFor, offerableTo } from './next.ts';
+import { leaveNote, replyNote } from './notes.ts';
 import { pinItems, setOrder } from './priority.ts';
 import { askQuestion } from './questions.ts';
 import { linkItems } from './relations.ts';
@@ -334,6 +334,106 @@ describe('a set-aside, as the person’s wish', () => {
 
     expect(nextFor(ctx, 'quill', {}, now).text).toContain(
       `You set aside ${mine.id} for later; kiln set aside ${theirs.id} for later: otea claim <id> takes one up again.`,
+    );
+  });
+});
+
+// P7-R3-8: the person tapped Retomar and left a note «Retómala ya»; three minutes later the agent
+// set the item aside again, with the note unanswered. P5-R3-8: after Retomar nothing told the
+// agent to act, so it took its --later as failed and held off.
+describe('setting aside an item the person wants now', () => {
+  it('is refused while a note from the person waits for an answer, with the reply', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const along = animating(ctx);
+    claimItem(ctx, { id: along.id, actor: kiln }, now);
+    leaveNote(ctx, { id: along.id, text: 'Retómala ya', actor: you, channel: 'ui' }, now);
+
+    const refused = refusal(() =>
+      releaseItem(ctx, { id: along.id, actor: kiln, later: true }, now),
+    );
+
+    expect(refused.code).toBe('invalid_transition');
+    expect(refused.message).toBe(
+      `Not set aside ${along.id}: note 1 from the person is unanswered ("Retómala ya"). Answer it first: otea reply ${along.id} --note 1 "<your short answer>"`,
+    );
+    expect(setAsideOf(selectEvents(ctx.db, along.id))).toBeUndefined();
+  });
+
+  it('is refused once the person took it up again, unless the agent relays their newer words', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const along = animating(ctx);
+    setAside(ctx, along.id);
+    resumeItem(ctx, { id: along.id, actor: you, channel: 'ui' }, now);
+
+    const refused = refusal(() =>
+      releaseItem(ctx, { id: along.id, actor: kiln, later: true }, now),
+    );
+    expect(refused.code).toBe('invalid_transition');
+    expect(refused.message).toMatch(
+      new RegExp(
+        `^Not set aside ${along.id}: the person took it up again \\(Retomar, .+ UTC\\) after kiln set it aside: do it now\\. If they asked you since to leave it for later, relay their words: otea release ${along.id} --later --quote "<the person's words>"$`,
+      ),
+    );
+
+    const quote = 'Déjala otra vez para la semana que viene';
+    releaseItem(ctx, { id: along.id, actor: kiln, later: true, quote }, now);
+    expect(setAsideOf(selectEvents(ctx.db, along.id))?.by).toBe('kiln');
+    expect(selectEvents(ctx.db, along.id).at(-1)?.data).toEqual({
+      holder: 'kiln',
+      cause: 'later',
+      quote,
+    });
+  });
+
+  it('counts a retake by a note too, once the note is answered', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const along = animating(ctx);
+    setAside(ctx, along.id);
+    leaveNote(ctx, { id: along.id, text: 'Ya toca', actor: you, channel: 'ui' }, now);
+    claimItem(ctx, { id: along.id, actor: kiln }, now);
+    replyNote(ctx, { id: along.id, note: 1, text: 'Voy', actor: kiln, channel: 'cli' }, now);
+
+    const refused = refusal(() =>
+      releaseItem(ctx, { id: along.id, actor: kiln, later: true }, now),
+    );
+    expect(refused.message).toContain('the person took it up again (note 1, ');
+  });
+
+  it('lets the agent set it aside again once the item moved on since the retake', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const along = creature(ctx, 'Tortuga');
+    setAside(ctx, along.id);
+    resumeItem(ctx, { id: along.id, actor: you, channel: 'ui' }, now);
+    claimItem(ctx, { id: along.id, actor: kiln }, now);
+    attachArt(ctx, along.id);
+    handoffItem(ctx, { id: along.id, actor: kiln, channel: 'cli' }, now);
+    approveItem(ctx, { id: along.id, actor: you, channel: 'ui' }, now);
+    claimItem(ctx, { id: along.id, actor: kiln }, now);
+
+    releaseItem(ctx, { id: along.id, actor: kiln, later: true }, now);
+
+    expect(setAsideOf(selectEvents(ctx.db, along.id))?.by).toBe('kiln');
+  });
+
+  it('tells the agent in next and show that the person took it up again', () => {
+    const ctx = memoryContext();
+    waitingBoard(ctx);
+    const along = animating(ctx);
+    setAside(ctx, along.id);
+    resumeItem(ctx, { id: along.id, actor: you, channel: 'ui' }, now);
+
+    const answer = nextFor(ctx, 'kiln', {}, now);
+
+    expect(answer.item).toBe(along.id);
+    expect(answer.text).toMatch(
+      /\nYour turn: do this step\.\nThe person took it up again \(Retomar, .+ UTC\): do it now\.\n/,
+    );
+    expect(itemNextText(ctx, requireItem(ctx.db, along.id), 'kiln', now)).toContain(
+      'The person took it up again (Retomar, ',
     );
   });
 });

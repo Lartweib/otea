@@ -1,5 +1,6 @@
 import type { DatabaseSync } from 'node:sqlite';
 import type { Actor } from '../core/item.ts';
+import { timeText } from '../core/time.ts';
 import { appendEvent, type EventRecord, selectEvents } from '../store/queries.ts';
 
 // An item set aside for later (otea release --later, P3C-R2-4): next and wait leave it out until
@@ -21,6 +22,47 @@ export function setAsideOf(events: readonly EventRecord[]): { by: string; at: st
   if (last?.type !== 'released' || last.actor.kind !== 'agent' || last.data.cause !== 'later')
     return undefined;
   return { by: last.actor.name, at: last.at };
+}
+
+// What the person did to take an item up again: a note, an answer, picking it in the order,
+// putting it on top, or Retomar (the lifts closing a part or a blocker are no wish of theirs).
+const PERSON_LIFTS: readonly string[] = ['note', 'answer', 'order', 'pin', 'resume'];
+
+export type Retake = { by: string; cause: LiftCause; at: string; note?: number };
+
+// The person took the item up again (P7-R3-8): their act lifted an agent's set-aside, and since
+// then the item has not moved nor been set aside again (by an agent relaying their newer words).
+// Undefined otherwise.
+export function retakeOf(events: readonly EventRecord[]): Retake | undefined {
+  const last = events.findLast(
+    ({ type, data }) =>
+      type === 'transitioned' ||
+      type === SET_ASIDE_LIFTED ||
+      (type === 'released' && data.cause === 'later'),
+  );
+  if (last?.type !== SET_ASIDE_LIFTED || !PERSON_LIFTS.includes(String(last.data.cause)))
+    return undefined;
+  const { by, cause, note } = last.data;
+  return {
+    by: String(by),
+    cause: cause as LiftCause,
+    at: last.at,
+    ...(typeof note === 'number' ? { note } : {}),
+  };
+}
+
+// The retake as agents read it: "Retomar, 2026-11-19 22:38 UTC".
+export function retakeText({ cause, at, note }: Retake): string {
+  const how: Record<LiftCause, string> = {
+    note: `note ${note ?? ''}`.trim(),
+    answer: 'their answer',
+    order: 'picked in the order',
+    pin: 'put on top',
+    resume: 'Retomar',
+    parts: 'its parts closed',
+    blockers: 'what blocked it closed',
+  };
+  return `${how[cause]}, ${timeText(at)}`;
 }
 
 // Lifts the item's set-aside, if it has one, recording why; whether it had one.

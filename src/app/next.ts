@@ -76,7 +76,14 @@ import {
   targetName,
   wayByName,
 } from '../core/board/next.ts';
-import { type ItemNote, notesOf, notesOfRound, unansweredOf } from '../core/board/notes.ts';
+import {
+  type ItemNote,
+  laterNotesRefusal,
+  notesBlock,
+  notesOf,
+  notesOfRound,
+  unansweredOf,
+} from '../core/board/notes.ts';
 import { type Proof, proofsFrom, provedPoints } from '../core/board/proofs.ts';
 import { type ItemQuestion, openQuestion, questionsOf } from '../core/board/questions.ts';
 import { evidenceByName, readFieldInput, stateByName, stateName } from '../core/board/reading.ts';
@@ -118,7 +125,7 @@ import { type LandsFirst, landsFirst, landsFirstLine, landsFirstText } from './l
 import { assertMayWriteItem, takeItem } from './lease-take.ts';
 import { sessionEnded, sessionRuns } from './presence.ts';
 import { priorityOf } from './priority.ts';
-import { liftSetAside, SET_ASIDE_LIFTED, setAsideOf } from './set-aside.ts';
+import { liftSetAside, retakeOf, retakeText, SET_ASIDE_LIFTED, setAsideOf } from './set-aside.ts';
 import { approvedTipOf } from './tips.ts';
 
 // What agents meet on a published board: the facts the step engine reads of an item, `next` (the
@@ -730,6 +737,51 @@ export function setAsideRefusal(ctx: Context, item: ItemRecord): OteaError | und
   return undefined;
 }
 
+// Why the item, agent work now, is not set aside for later: the person may want it now (P7-R3-8).
+// A note of theirs waits for an answer; or they took it up again after an agent set it aside, and
+// asked nothing since: only their newer words, relayed (`quote`), set it aside again. Undefined
+// when it may be set aside.
+export function wantedNowRefusal(
+  ctx: Context,
+  item: ItemRecord,
+  quote?: string,
+): OteaError | undefined {
+  const board = liveBoardOf(ctx, item.collection);
+  const position = positionOf(item.state);
+  if (board && !isClosed(position) && position.phase === 'doing') {
+    const open = itemOnBoard(ctx, item, board.def).roundNotes.filter(({ answer }) => !answer);
+    if (open.length > 0)
+      return new OteaError('invalid_transition', laterNotesRefusal(item.id, open));
+  }
+  const retake = retakeOf(selectEvents(ctx.db, item.id));
+  if (!retake || quote) return undefined;
+  return new OteaError(
+    'invalid_transition',
+    `Not set aside ${item.id}: the person took it up again (${retakeText(retake)}) after ${retake.by} set it aside: do it now. If they asked you since to leave it for later, relay their words: otea release ${item.id} --later --quote "<the person's words>"`,
+  );
+}
+
+// What next and show say while the person took the item up again (P5-R3-8): an agent that had
+// heard «leave it for later» held off, unsure its set-aside had held.
+export function retakeLine(ctx: Context, id: string): string | undefined {
+  const retake = retakeOf(selectEvents(ctx.db, id));
+  return retake ? `The person took it up again (${retakeText(retake)}): do it now.` : undefined;
+}
+
+// What otea wait adds to the item it wakes an agent for (P7-R3-8, P5-R3-8): that the person took
+// it up again, and their notes still unanswered in the round, in their words, with the reply. Its
+// row alone said neither, and the agent set the item aside again.
+export function wokeLines(ctx: Context, id: string): string[] {
+  const item = findItem(ctx.db, id);
+  const board = item && liveBoardOf(ctx, item.collection);
+  const position = item && positionOf(item.state);
+  if (!item || !board || !position || isClosed(position)) return [];
+  const on = itemOnBoard(ctx, item, board.def);
+  const retake = retakeLine(ctx, id);
+  const open = position.phase === 'doing' ? on.roundNotes.filter(({ answer }) => !answer) : [];
+  return [...(retake ? [retake] : []), ...notesBlock(id, open)];
+}
+
 // Once an item closes, what waited for it as a part or a blocker and stood aside for later is
 // agent work again: its set-aside lifts, saying so (P7-R3-1). It waited until now, so the agent
 // that set it aside was waiting for exactly this.
@@ -849,6 +901,7 @@ function textFor(
           after: 'Done, once the person tries the board and publishes it in Studio',
           command: handInCommand(item.id, me ?? item.lease?.holder ?? '<your name>'),
         };
+  const retaken = isClosed(on.position) ? undefined : retakeLine(ctx, item.id);
   return nextText(def, {
     id: item.id,
     title: item.title,
@@ -877,6 +930,7 @@ function textFor(
     ...(on.chosen === undefined ? {} : { chosen: on.chosen }),
     ...(order && (order.pin !== undefined || order.rank !== undefined) ? { order } : {}),
     ...(handIn ? { handIn } : {}),
+    ...(retaken === undefined ? {} : { retaken }),
   });
 }
 
