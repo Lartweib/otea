@@ -1530,8 +1530,8 @@ function refuseEmptyBranch(project: Project, cwd: string, move: BoardMoveInput):
 // refused when the branch it names is not here at all (P1-R2-2), or when it holds commits the
 // remote branch of its name never got, on a step that pushes it (P3C-R2-2), or when it is not the
 // work handed off: another open item's branch, or not the one checked out (P1-R3-1,
-// refuseOthersBranch). One never pushed though the repo has a remote is handed off with a warning,
-// and the person sees it when they approve (P7-8). The base itself, on a board that works straight on it, is never pushed before
+// refuseOthersBranch). One never pushed though the repo has a remote is refused into a review, where
+// it would freeze (P6-R3-3); on a step nobody reviews it goes with a warning (P7-8). The base itself, on a board that works straight on it, is never pushed before
 // the approval; when it holds nothing the remote lacks, the item made no code change (a setting, a
 // question): it goes to review as such, said, and the push gate never waits on it (P2S-R3-3).
 function handedBranch(
@@ -1606,6 +1606,14 @@ function handedBranch(
     throw new OteaError(
       'missing_fields',
       `${item.id} not handed off: ${branch} was never pushed to ${state.push}, and the approval of ${step?.name ?? position.step} closes ${item.id}, so it would be Done with its code only on this machine. Push it first (git push -u ${state.push} ${branch}), then hand it off again: ${frozen}.`,
+    );
+  }
+  // Into a review the branch freezes, so a push after the handoff is refused (P6-R3-3): the push
+  // comes first. A step nobody reviews (a land step) keeps the note.
+  if (state?.kind === 'unpushed' && pushes && step?.reviewer !== 'none') {
+    throw new OteaError(
+      'missing_fields',
+      `${item.id} not handed off: ${branch} was never pushed to ${state.push}. Push it first (git push -u ${state.push} ${branch}), then hand it off again: ${frozen}, so no push of it gets through until the review ends.`,
     );
   }
   const warning = unpushed
