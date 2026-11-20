@@ -33,7 +33,7 @@ export type RowCtx = {
   onTick: (id: string, shift: boolean) => void;
   // The agents seen, to mark what waits for an agent while none listens; absent, nothing is marked.
   agents?: readonly Agent[] | null | undefined;
-  // The agents at work on another item (busyAgents): what nobody hears then waits in the queue.
+  // The agents at work (workingAgents): what nobody hears then waits in the queue.
   busy?: readonly string[];
 };
 

@@ -410,6 +410,9 @@ export const detail = {
   'sheet.stand.yours': 'Es tu turno.',
   'sheet.stand.stuck': '{agent} no da señales desde hace {time}.',
   'sheet.stand.stuckNow': '{agent} no da señales.',
+  'sheet.stand.ended': 'La sesión de {agent} terminó; vuelve a la cola cuando venza su reserva.',
+  'sheet.stand.silent':
+    '{agent} no da señales desde hace {time}; vuelve a la cola cuando venza su reserva.',
   'sheet.stand.waits': 'Espera a {agent}.',
   'sheet.stand.waitsRound': 'Espera a {agent}, en la ronda {round}.',
   'sheet.stand.waitsAgent': 'Espera a un agente.',

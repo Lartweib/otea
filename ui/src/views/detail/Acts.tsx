@@ -613,7 +613,8 @@ export function Acts({
     body = (
       <>
         <p className="receipt">{text}</p>
-        {unheard(item, app.agents, app.now) ? <Unheard /> : null}
+        {/* While an agent is at work, it sees the item when it waits again (P7-R2-9). */}
+        {heard && unheard(item, app.agents, app.now) ? <Unheard hearing={heard} /> : null}
         {freeButton || open ? (
           <div className="actions">
             {freeButton}

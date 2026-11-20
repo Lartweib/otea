@@ -239,6 +239,29 @@ describe('the standfirst (mock:2670-2678)', () => {
     expect(standOf({ ...base, look: 'working', round: 3 }).key).toBe('sheet.stand.workingRound');
   });
 
+  // P7-R3-10: after /exit the item read «claude-haiku lo está haciendo» for its lease's lifetime.
+  it('says its holder is gone while its lease keeps it: its session ended, or since when it is quiet', () => {
+    const ended = { agent: 'claude-haiku', ended: true, quiet: '3 min' };
+    expect(standOf({ ...base, look: 'working', gone: ended })).toEqual({
+      key: 'sheet.stand.ended',
+      agent: 'claude-haiku',
+    });
+    expect(standOf({ ...base, look: 'working', gone: { ...ended, ended: false } })).toEqual({
+      key: 'sheet.stand.silent',
+      agent: 'claude-haiku',
+      time: '3 min',
+    });
+    // It says so before the reason a reopened item gives, or the question it waits on elsewhere:
+    // nobody takes it up again.
+    expect(standOf({ ...base, look: 'working', reopened: 'x', gone: ended }).key).toBe(
+      'sheet.stand.ended',
+    );
+    const asksOn = { by: 'claude-haiku', item: 'IDE-10' };
+    expect(standOf({ ...base, look: 'working', asksOn, gone: ended }).key).toBe(
+      'sheet.stand.ended',
+    );
+  });
+
   it('says waiting, working, its children', () => {
     expect(standOf({ ...base, look: 'queued' }).key).toBe('sheet.stand.waits');
     expect(standOf({ ...base, look: 'queued', agent: null }).key).toBe('sheet.stand.waitsAgent');

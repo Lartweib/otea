@@ -28,6 +28,11 @@ export type Agent = {
   // MCP as the server tells it: missing (asked, never loaded by its harness), or unused (loaded,
   // and this agent works through the command line). Absent from an older server.
   mcp?: 'missing' | 'unused' | null;
+  // When it last ran an otea command (null if never; a listener's beat is none), and whether every
+  // process it was heard listening through has ended: Otea knows its session ended. Absent from an
+  // older server.
+  actedAt?: string | null;
+  sessionEnded?: boolean;
 };
 
 // What an agent declares it runs as, as declared, with the family its model groups under.
@@ -122,6 +127,8 @@ export function parseAgents(body: unknown): Agent[] {
         ...('mcp' in each
           ? { mcp: each.mcp === 'missing' || each.mcp === 'unused' ? each.mcp : null }
           : {}),
+        ...('actedAt' in each ? { actedAt: textOr(each.actedAt) } : {}),
+        ...('sessionEnded' in each ? { sessionEnded: each.sessionEnded === true } : {}),
       },
     ];
   });

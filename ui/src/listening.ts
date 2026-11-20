@@ -7,7 +7,8 @@ import type { Item } from './types.ts';
 // does here. One idle in its chat, even with its MCP server open, hears nothing until it is told to
 // go on, so an approval or an answer would sit there with the item reading as on its way.
 
-// An agent that acted this recently is at work: it reads the item again when it next asks Otea.
+// An agent that called Otea this recently is at work: it reads the item again when it next asks
+// Otea. The server's listening window: within it, it counts the agent connected too.
 const AT_WORK_MS = 150_000;
 
 // Whether any agent waits now. Before presence loads, or from a server that does not say, it is
@@ -26,25 +27,17 @@ export function handsToAgent(
   return choices.some((choice) => choice?.move.turn === 'agent');
 }
 
-// The agents at work now (P7-R2-12): each holds an item it acted on lately, and not one that only
-// waits for your answer. While one is, an item nobody hears waits its turn in a queue: the desk
-// says so calmly, not as an alarm.
-export function busyAgents(
-  agents: readonly Agent[] | null | undefined,
-  items: readonly Pick<Item, 'id' | 'asks'>[],
-  now: number,
-): string[] {
-  return (agents ?? [])
-    .filter((a) => a.live && now - (Date.parse(a.lastSeen) || 0) <= AT_WORK_MS)
-    .filter((a) => a.holding.some((id) => !items.find((it) => it.id === id)?.asks))
-    .map((a) => a.name);
-}
+// Whether the agent called Otea lately: any command, through the command line or MCP. A listener's
+// beat is no call: an open MCP server is heard whether or not its agent acts, and idle in its chat,
+// it hears nothing of the desk.
+const calledLately = (a: Agent, now: number) =>
+  !!a.actedAt && now - (Date.parse(a.actedAt) || 0) <= AT_WORK_MS;
 
-// The agents at work now, for what the person hands to one (P7-R2-9): each is connected and holds
-// an item it works on, not one that only waits for your answer, or, holding nothing, called Otea
-// lately through the command line. An open MCP server is heard on its beats whether or not its
-// agent acts, so a fresh sighting of a listening agent is no call: idle in its chat, it hears
-// nothing of the desk.
+// The agents at work now (P7-R2-9, P7-R2-12): each is connected, which the server says of a holder
+// only while its session is heard (P7-R3-10), and holds an item it works on, not one that only
+// waits for your answer; or it called Otea lately, between two items too. While one is, what the
+// person hands to an agent reaches it when it waits again, and an item nobody hears waits its turn
+// in a queue: the desk says so calmly, not as an alarm.
 export function workingAgents(
   agents: readonly Agent[] | null | undefined,
   items: readonly Pick<Item, 'id' | 'asks'>[],
@@ -54,10 +47,23 @@ export function workingAgents(
   return (agents ?? [])
     .filter((a) => {
       if (!a.live) return false;
-      if (a.holding.length > 0) return a.holding.some((id) => !asks(id));
-      return !a.listening && now - (Date.parse(a.lastSeen) || 0) <= AT_WORK_MS;
+      if (a.holding.length > 0 && a.holding.some((id) => !asks(id))) return true;
+      return calledLately(a, now);
     })
     .map((a) => a.name);
+}
+
+// The agent that holds the item's live lease while it is no longer connected (P7-R3-10): its
+// session ended, or it went quiet, and the lease alone keeps the item until it runs out. Null while
+// it is connected, with no live lease, or before presence loads.
+export function goneHolder(
+  item: Pick<Item, 'lease'>,
+  agents: readonly Agent[] | null | undefined,
+  now: number,
+): Agent | null {
+  const lease = activeLease(item.lease, now);
+  const holder = lease ? agents?.find((a) => a.name === lease.holder) : undefined;
+  return holder && !holder.live ? holder : null;
 }
 
 // What the desk says beside a move that hands the item to an agent (P7-R2-9): nothing while an
@@ -89,8 +95,9 @@ export function unheardLead(busy: readonly string[]): string {
 }
 
 // Whether an item waits for an agent that nobody will bring: on the agent turn, no agent waiting,
-// and no agent at work on it (none holds it, or its holder has gone idle). One an agent set aside
-// for later is not: the desk says who set it aside instead, with Retomar (P7-R3-1).
+// and no agent at work on it (none holds it, or its holder has gone idle or is no longer connected,
+// P7-R3-10). One an agent set aside for later is not: the desk says who set it aside instead, with
+// Retomar (P7-R3-1).
 export function unheard(
   item: Pick<Item, 'turn' | 'lease' | 'setAside'>,
   agents: readonly Agent[] | null | undefined,
@@ -100,5 +107,5 @@ export function unheard(
   const lease = activeLease(item.lease, now);
   if (!lease) return true;
   const holder = agents?.find((a) => a.name === lease.holder);
-  return !holder || now - (Date.parse(holder.lastSeen) || 0) > AT_WORK_MS;
+  return !holder?.live || now - (Date.parse(holder.lastSeen) || 0) > AT_WORK_MS;
 }

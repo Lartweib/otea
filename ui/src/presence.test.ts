@@ -101,6 +101,20 @@ describe('parseAgents', () => {
     ]);
   });
 
+  // P7-R3-10, P7-R2-9: whether it called Otea lately, and whether its session ended.
+  it('reads when it last ran a command and whether its session ended', () => {
+    const body = {
+      agents: [
+        { name: 'a', lastSeen: 'x', actedAt: 'c', sessionEnded: true },
+        { name: 'b', lastSeen: 'y', actedAt: null, sessionEnded: 'no' },
+      ],
+    };
+    expect(parseAgents(body)).toEqual([
+      expect.objectContaining({ name: 'a', actedAt: 'c', sessionEnded: true }),
+      expect.objectContaining({ name: 'b', actedAt: null, sessionEnded: false }),
+    ]);
+  });
+
   it('reads anything else as nobody', () => {
     expect(parseAgents(null)).toEqual([]);
     expect(parseAgents({ agents: 'no' })).toEqual([]);
