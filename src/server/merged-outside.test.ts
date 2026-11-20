@@ -94,4 +94,18 @@ describe('GET /api/items/:id/merged-outside', () => {
 
     expect(await merged()).toEqual({ branch: BRANCH, base: 'main', land: 'Integrar' });
   });
+
+  // P6-R3-2: only local main held it, and the desk said it was merged outside Otea.
+  it('says when only the local base holds the branch, with the push it waits for', async () => {
+    git('remote', 'add', 'origin', 'https://example.invalid/regar.git');
+    git('update-ref', 'refs/remotes/origin/main', 'main');
+    git('merge', '-q', '--ff-only', BRANCH);
+
+    expect(await merged()).toEqual({
+      branch: BRANCH,
+      base: 'main',
+      land: 'Integrar',
+      local: { remote: 'origin/main', push: 'origin' },
+    });
+  });
 });

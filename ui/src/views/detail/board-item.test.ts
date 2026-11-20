@@ -1167,4 +1167,26 @@ describe('branchSaid', () => {
       'in main already, merged outside Otea: an agent closes the Integrar step',
     );
   });
+
+  // P6-R3-2: only the agent's local main held the branch, and the desk said «fusionada fuera de
+  // Otea», as if nothing was left but to close it.
+  it('says a branch only the local base holds is to be pushed', () => {
+    const landing = {
+      tone: 'ok',
+      key: 'landing',
+      value: 'feat/x',
+      step: 'Integrar',
+      base: 'main',
+    } as const;
+    const local = {
+      branch: 'feat/x',
+      base: 'main',
+      land: 'Integrar',
+      local: { remote: 'origin/main', push: 'origin' },
+    };
+    setLanguage('es');
+    expect(branchSaid(landing, local)).toBe('está en tu main local; súbelo (git push origin main)');
+    setLanguage('en');
+    expect(branchSaid(landing, local)).toBe('in your local main; push it (git push origin main)');
+  });
 });

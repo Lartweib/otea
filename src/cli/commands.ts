@@ -243,7 +243,7 @@ import {
   removeClaudeHook,
   removeGitHook,
 } from './hooks.ts';
-import { mergedOutsideLine } from './merged-outside.ts';
+import { mergedOutside, mergedOutsideLine } from './merged-outside.ts';
 import { boardsOf, eventData, itemCollections, itemData, readableEvent } from './names.ts';
 import { watchOwner } from './owner.ts';
 import { PHONE_COMMANDS } from './phone.ts';
@@ -1561,6 +1561,19 @@ function handedBranch(
     throw new OteaError(
       'missing_fields',
       `${item.id} not handed off: ${guard.name} names ${branch}, a branch this checkout has neither here nor on the remote${where}. Set ${guard.name} to the branch that holds the work, otea update ${item.id} --field "${guard.name}=${on}", then hand it off again: ${frozen}.`,
+    );
+  }
+  // On the land step, a branch only the local base holds is not landed yet: the handoff that closes
+  // the item waits for the push of the base (P6-R3-2).
+  const local =
+    checked && isLandStep(board.def, position.step)
+      ? mergedOutside(project, cwd, item)?.local
+      : undefined;
+  if (local) {
+    const into = guard.guard.base ?? '';
+    throw new OteaError(
+      'missing_fields',
+      `${item.id} not handed off: ${branch} is in your local ${into}, not yet in ${local.remote}, so closing it would leave it Done with ${into} unpushed. Push it first (git push ${local.push} ${into}), then hand it off again.`,
     );
   }
   if (checked && hands && !isLandStep(board.def, position.step))

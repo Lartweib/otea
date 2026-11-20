@@ -478,16 +478,24 @@ function isAncestor(cwd: string, ancestor: string, of: string): boolean {
   }
 }
 
-// Whether `branch` (here, or else on origin) is in `base` already (here, or on origin, as this
-// checkout last saw it): merged, whoever merged it. False when the repo has either of them not,
-// or cwd is no repo.
-export function mergedInto(cwd: string, branch: string, base: string): boolean {
+// Where `branch` (here, or else on origin) is in `base` already: `merged` when the base as the
+// remote has it holds it (as this checkout last saw it), or the local base does in a repo with no
+// remote; `local` when only the local base holds it, with the remote base it is not in yet
+// (`remote`, origin/main) and the remote to push it to (`push`), P6-R3-2. Undefined when neither
+// holds it, the repo has either of them not, or cwd is no repo.
+export type MergedWhere = { merged: true } | { merged: false; remote: string; push: string };
+
+export function mergedInto(cwd: string, branch: string, base: string): MergedWhere | undefined {
   const tip =
     commitOf(cwd, `refs/heads/${branch}`) ?? commitOf(cwd, `refs/remotes/origin/${branch}`);
-  if (!tip) return false;
-  return [`refs/heads/${base}`, `refs/remotes/origin/${base}`].some(
-    (ref) => commitOf(cwd, ref) !== undefined && isAncestor(cwd, tip, ref),
-  );
+  if (!tip) return undefined;
+  const remote = remoteOf(cwd, base);
+  const holds = (ref: string) => commitOf(cwd, ref) !== undefined && isAncestor(cwd, tip, ref);
+  if (holds(`refs/remotes/${remote}`)) return { merged: true };
+  if (!holds(`refs/heads/${base}`)) return undefined;
+  const remotes = git(cwd, 'remote').split(/\r?\n/).filter(Boolean);
+  if (remotes.length === 0) return { merged: true };
+  return { merged: false, remote, push: pushRemote(cwd, base) };
 }
 
 // What the remote has of a branch, as this checkout last saw it: the remote branch it is pushed

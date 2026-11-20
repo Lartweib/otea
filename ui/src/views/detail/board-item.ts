@@ -386,6 +386,9 @@ export function branchStrip(
 // left to land, only to close the step.
 export function branchSaid(strip: BranchStrip, outside?: MergedOutside | null): string {
   const step = strip.step ?? '';
+  // Only the local base holds it: it is to be pushed before the step closes (P6-R3-2).
+  if (strip.key === 'landing' && outside?.local && !strip.own)
+    return t('bi.branch.mergedLocal', { base: outside.base, push: outside.local.push });
   if (strip.key === 'landing' && outside && !strip.own)
     return t('bi.branch.mergedOutside', { base: outside.base, step: outside.land ?? step });
   if (strip.key === 'landing')
