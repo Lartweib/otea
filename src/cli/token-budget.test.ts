@@ -43,8 +43,10 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // the person wants it later, and never to poll in a loop of one's own, as an agent did both
   // (P3C-R3-2; measured at 690). Raised to 730 with rule 3 saying that otea calls keep a claim and
   // to send otea heartbeat on a long step with none, as a subagent's lease ran out mid-rebase and
-  // another agent took the item over (P1-R3-6; measured at 720).
-  'board index': { text: 730, json: 53, mcp: 53 },
+  // another agent took the item over (P1-R3-6; measured at 720). Raised to 755 with rule 4 saying
+  // a new board or a change to one goes through board draft, never otea create, as an agent made
+  // a Pedido with otea create and board draft --change made a second one (P8-R3-3; measured at 746).
+  'board index': { text: 755, json: 53, mcp: 53 },
   // The bug board's own words and each step's instructions, read once per session; show's Next:
   // block covers the step at hand. Raised when a preset collection read as a board kept its
   // playbook as the board's text: what agents read on the preset, as before.
@@ -115,8 +117,11 @@ const BUDGETS: Readonly<Record<string, Sizes>> = {
   // wait, as an agent released an item plainly, stopped waiting and later polled on its own
   // (P3C-R3-2; measured at 671). Raised to 710 for rule 3: otea calls keep a claim, and a long step
   // with none (a rebase, a test run) sends otea heartbeat, as a subagent's lease ran out mid-rebase
-  // and another agent took the item over while it still worked (P1-R3-6; measured at 702).
-  instructions: { mcp: 710 },
+  // and another agent took the item over while it still worked (P1-R3-6; measured at 702). Raised
+  // to 735 for rule 4: a new board or a change to one goes through board draft, never otea create,
+  // as an agent made a Pedido with otea create and board draft --change made a second (P8-R3-3;
+  // measured at 727).
+  instructions: { mcp: 735 },
 };
 
 // A bug as an agent files it in the bug-triage preset, every field filled.

@@ -52,6 +52,8 @@ describe("Otea's agent guide", () => {
       'otea wait --turn agent --unclaimed',
       'in a background shell, which keeps your chat free',
       'Every request the person makes, in chat too, goes on a board first: otea create it',
+      // P8-R3-3: a board request made through otea create, then board draft, became two Pedidos.
+      'A new board or a change to one goes through rule 11, never otea create.',
       'A subagent releases what it holds before it ends',
       // P4-R2-2: the person's answer is theirs; one given in the chat goes on the question.
       'an answer they give in the chat goes on it: otea answer <id> "<their words>"',
