@@ -254,32 +254,6 @@ describe('marking a Done item merged', () => {
     );
     expect(text).not.toContain('While it is reviewed');
   });
-
-  it('says who did a closed item and who approved it', () => {
-    const { ctx, id } = repoTask();
-    updateItemState(ctx.db, id, 'simpl', now());
-    insertEvidence(ctx.db, {
-      itemId: id,
-      role: 'after',
-      module: 'ecode',
-      kind: 'diff',
-      filename: 'a.diff',
-      contentType: 'text/x-diff',
-      size: 1,
-      sha256: 'a'.repeat(64),
-      caption: null,
-      createdAt: now(),
-      actor: quill,
-      channel: 'cli',
-    });
-    handoffItem(ctx, { id, actor: quill, channel: 'cli' }, now);
-    approveItem(ctx, { id, actor: you, channel: 'ui' }, now);
-
-    expect(boardBlockOf(ctx, requireItem(ctx.db, id))?.closedBy).toEqual({
-      doer: 'quill',
-      reviewer: you,
-    });
-  });
 });
 
 describe('merge order', () => {

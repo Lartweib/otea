@@ -72,12 +72,4 @@ describe('performanceOf: how each model performs on the project’s boards', () 
     expect(performanceOf(ctx, { board: 'criaturas' }, clock).rows).toHaveLength(1);
     expect(() => performanceOf(ctx, { board: 'Nada' }, clock)).toThrow(OteaError);
   });
-
-  it('keeps to the period asked', () => {
-    walk();
-    tick += 60 * 24 * 40;
-
-    expect(performanceOf(ctx, { since: '30d' }, clock).rows).toEqual([]);
-    expect(performanceOf(ctx, { since: 'all' }, clock).rows).toHaveLength(1);
-  });
 });

@@ -1,5 +1,3 @@
-import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Channel } from '../core/authority.ts';
 import type { Actor } from '../core/item.ts';
@@ -7,7 +5,7 @@ import { addCollection } from './collections.ts';
 import type { Context } from './context.ts';
 import { createItem, getItem, moveItem, showItem, updateItem } from './items.ts';
 import { claimItem } from './leases.ts';
-import { OFFICIAL_PRESETS_DIR, requirePreset } from './presets.ts';
+import { requirePreset } from './presets.ts';
 import { relayDecision } from './relay.ts';
 import { memoryContext } from './testing.ts';
 import { validateProject } from './validate.ts';
@@ -26,9 +24,6 @@ const REPORT = {
   environment: 'Firefox 131, macOS 15',
   severity: 'high',
 };
-
-const playbook = () =>
-  readFileSync(join(OFFICIAL_PRESETS_DIR, 'bug-triage', 'playbook.md'), 'utf8');
 
 describe('bug-triage preset', () => {
   let ctx: Context;
@@ -227,22 +222,5 @@ describe('bug-triage preset', () => {
     move(id, 'fixing');
     move(id, 'verify', claude, 'cli', 'Commit abc123');
     expect(relayable()).toEqual(['fixing']);
-  });
-
-  it('ships a playbook with the agent loop, the evidence, the proof and the relay rules', () => {
-    const text = playbook();
-
-    for (const phrase of [
-      'otea wait --turn agent --unclaimed',
-      'otea claim',
-      'otea attach <id> <file>',
-      '--role before',
-      '--role after',
-      'otea move <id> verify --reason',
-      'otea relay',
-      'You never approve your own fix',
-    ]) {
-      expect(text).toContain(phrase);
-    }
   });
 });

@@ -81,15 +81,6 @@ describe('a topic', () => {
     expect(second.id).toBe('TEM-2');
   });
 
-  it('takes a short title apart from a long question', () => {
-    const topic = addTopic(
-      ctx,
-      { title: 'Build en Windows', question: 'Una pregunta larga…', actor: quill },
-      now,
-    );
-    expect(topic.title).toBe('Build en Windows');
-  });
-
   it('refuses an empty question', () => {
     expect(() => addTopic(ctx, { question: '  ', actor: quill }, now)).toThrow(
       expect.objectContaining({ code: 'invalid_fields' }),

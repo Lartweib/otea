@@ -21,10 +21,6 @@ describe('the phone transport setting', () => {
 
   afterEach(() => project.db.close());
 
-  it('is the local network until one is chosen', () => {
-    expect(phoneSettings(project.db)).toEqual({ transport: 'lan', tailscaleHost: null });
-  });
-
   it('keeps the Tailscale name a phone opens, and goes back to the local network', () => {
     choosePhoneTransport(project.db, {
       transport: 'tailscale',

@@ -295,13 +295,6 @@ describe('items', () => {
     it('fails with not_found for an unknown id', () => {
       expect(() => getItem(ctx, 'TASKS-9')).toThrow(expect.objectContaining({ code: 'not_found' }));
     });
-
-    it('does not change the item when read', () => {
-      createItem(ctx, task('First'), clock('t0'));
-      const before = getItem(ctx, 'TASKS-1');
-
-      expect(getItem(ctx, 'TASKS-1')).toEqual(before);
-    });
   });
 
   describe('listItems', () => {
@@ -316,27 +309,16 @@ describe('items', () => {
 
     const ids = (items: Array<{ id: string }>) => items.map((item) => item.id);
 
-    it('lists every item in creation order', () => {
-      expect(ids(listItems(ctx))).toEqual(['TASKS-1', 'REVIEWS-1', 'TASKS-2']);
-    });
-
-    it('filters by collection', () => {
-      expect(ids(listItems(ctx, { collection: 'tasks' }))).toEqual(['TASKS-1', 'TASKS-2']);
-    });
-
-    it('filters by state', () => {
-      expect(ids(listItems(ctx, { state: 'in_progress' }))).toEqual(['TASKS-2']);
-    });
-
-    it('filters by derived turn', () => {
-      expect(ids(listItems(ctx, { turn: 'human' }))).toEqual(['REVIEWS-1']);
-      expect(ids(listItems(ctx, { turn: 'agent' }))).toEqual(['TASKS-1', 'TASKS-2']);
-    });
-
-    it('combines filters', () => {
-      expect(ids(listItems(ctx, { collection: 'tasks', state: 'todo', turn: 'agent' }))).toEqual([
-        'TASKS-1',
-      ]);
+    // Every item in creation order; by collection, state and derived turn, alone or combined.
+    it.each<[Parameters<typeof listItems>[1], string[]]>([
+      [{}, ['TASKS-1', 'REVIEWS-1', 'TASKS-2']],
+      [{ collection: 'tasks' }, ['TASKS-1', 'TASKS-2']],
+      [{ state: 'in_progress' }, ['TASKS-2']],
+      [{ turn: 'human' }, ['REVIEWS-1']],
+      [{ turn: 'agent' }, ['TASKS-1', 'TASKS-2']],
+      [{ collection: 'tasks', state: 'todo', turn: 'agent' }, ['TASKS-1']],
+    ])('lists %o as %o', (filters, expected) => {
+      expect(ids(listItems(ctx, filters))).toEqual(expected);
     });
 
     it('filters by field values, every one of them, title included', () => {

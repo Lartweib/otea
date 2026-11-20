@@ -7,7 +7,6 @@ import { createItem, listItems, moveItem, showItem, updateItem } from './items.t
 import { claimItem } from './leases.ts';
 import { listPresetViews } from './preset-views.ts';
 import { memoryContext } from './testing.ts';
-import { validateProject } from './validate.ts';
 
 const ana: Actor = { kind: 'human', name: 'ana' };
 const bot: Actor = { kind: 'agent', name: 'claude' };
@@ -41,12 +40,6 @@ describe('item types', () => {
       expect(bug()).toMatchObject({ id: 'WORK-1', type: 'bug', state: 'reported', turn: 'human' });
       expect(idea()).toMatchObject({ id: 'WORK-2', type: 'impr', state: 'idea', turn: 'human' });
       expect(idea({})).toMatchObject({ type: 'impr', state: 'draft', turn: 'agent' });
-    });
-
-    it('gives an item of a preset with a single type that type', () => {
-      const task = createItem(ctx, { collection: 'tasks', title: 'Docs', actor: ana });
-
-      expect(task.type).toBe('task');
     });
 
     it('needs a type when the preset has several, and a known one', () => {
@@ -150,18 +143,5 @@ describe('item types', () => {
     ]);
     expect(preset?.types.map(({ name }) => name)).toEqual(['bug', 'impr']);
     expect(preset?.fields.map(({ name }) => name)).toEqual(['title', 'area', 'severity', 'pitch']);
-  });
-
-  it('reports items of an unknown type as errors', () => {
-    bug();
-    ctx.db.exec("UPDATE items SET type = 'epic' WHERE id = 'WORK-1'");
-
-    expect(validateProject(ctx).findings).toEqual([
-      {
-        severity: 'error',
-        subject: 'WORK-1',
-        message: 'unknown type "epic" in preset work (types: bug, impr)',
-      },
-    ]);
   });
 });

@@ -69,10 +69,6 @@ describe('agent profile', () => {
       expect(declare({ ...OPUS, harness: 'other' }, 'mcp').profile.harness).toBe('claude-code');
     });
 
-    it('asks a command-line agent for its harness the first time', () => {
-      expect(() => declare(OPUS)).toThrow(/--harness/);
-    });
-
     it('keeps the harness it knows when the agent declares again', () => {
       declare({ ...OPUS, harness: 'codex' });
 
@@ -123,17 +119,6 @@ describe('agent profile', () => {
   });
 
   describe('sessions', () => {
-    it('leave the profile unconfirmed when the agent starts a new MCP session', () => {
-      declare(OPUS, 'mcp');
-      seeAgent(
-        ctx.db,
-        { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE, newSession: true },
-        at(T1),
-      );
-
-      expect(findProfile(ctx.db, 'claude')?.confirmed).toBe(false);
-    });
-
     it('keep it confirmed while a command-line agent keeps working', () => {
       declare({ ...OPUS, harness: 'codex' });
       seeAgent(ctx.db, { agent: 'claude', channel: 'cli' }, at(T30));

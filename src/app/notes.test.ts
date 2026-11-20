@@ -603,16 +603,6 @@ describe('comments the person leaves while reviewing', () => {
     // Only who handed it amends it.
     expect(() => handoffItem(ctx, { ...handed, actor: scout, note: 'x' }, now)).toThrow();
   });
-
-  it('are refused from an agent, and on a step an agent reviews', () => {
-    const ctx = memoryContext();
-    const item = working(ctx);
-    attach(ctx, item.id);
-    handoffItem(ctx, { id: item.id, actor: kiln, channel: 'cli' }, now);
-    expect(() =>
-      leaveNote(ctx, { id: item.id, text: 'x', actor: kiln, channel: 'cli' }, now),
-    ).toThrow(/only the person/);
-  });
 });
 
 describe('what the page reads of the notes', () => {

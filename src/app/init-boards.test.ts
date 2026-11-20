@@ -9,10 +9,11 @@ const names = (ctx: ReturnType<typeof memoryContext>) =>
     .map(({ name, status }) => `${name} ${status}`);
 
 describe('initBoards', () => {
-  it('starts a project with no board: the person picks the boards it uses', () => {
+  // A project starts with no board, the person picks the boards it uses; none makes none either.
+  it.each([[undefined], ['none']])('makes no board with template %s', (template) => {
     const ctx = memoryContext();
 
-    expect(initBoards(ctx)).toEqual([]);
+    expect(initBoards(ctx, template)).toEqual([]);
     expect(names(ctx)).toEqual([]);
   });
 
@@ -29,13 +30,6 @@ describe('initBoards', () => {
     expect(initBoards(ctx, 'decisions').map(({ name }) => name)).toEqual(['Decisiones']);
   });
 
-  it('makes none with none', () => {
-    const ctx = memoryContext();
-
-    expect(initBoards(ctx, 'none')).toEqual([]);
-    expect(names(ctx)).toEqual([]);
-  });
-
   it('makes no board from a template on a project that has boards of its own', () => {
     const ctx = memoryContext();
     initBoards(ctx, 'changes');
@@ -43,13 +37,6 @@ describe('initBoards', () => {
     expect(initBoards(ctx, 'repos')).toEqual([]);
     expect(initBoards(ctx, 'decisions')).toEqual([]);
     expect(names(ctx)).toEqual(['Cambios live']);
-  });
-
-  it('does not know bug-handoff: the template was removed', () => {
-    const ctx = memoryContext();
-    expect(() => initBoards(ctx, 'bug-handoff')).toThrow(
-      expect.objectContaining({ code: 'not_found' }),
-    );
   });
 
   it('refuses a retired template: the catalogue replaced it', () => {

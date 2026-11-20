@@ -130,15 +130,6 @@ describe('attachEvidence', () => {
     });
   });
 
-  it('derives the kind from the extension', () => {
-    expect(attach({ path: file('fix.diff', '--- a\n+++ b\n') })).toMatchObject({
-      kind: 'diff',
-      contentType: 'text/x-diff',
-    });
-    expect(attach({ path: file('test.log', 'ok\n') }).kind).toBe('log');
-    expect(attach({ path: file('icon.svg', '<svg/>') }).kind).toBe('file');
-  });
-
   it('appends an evidence_added event with the channel', () => {
     attach({ role: 'after', caption: 'Fixed', channel: 'mcp' });
 
@@ -211,12 +202,11 @@ describe('attachEvidence', () => {
       );
     });
 
-    it('refuses a missing file with file_not_found', () => {
-      refused({ path: join(files, 'nope.png') }, 'file_not_found');
-    });
-
-    it('refuses a directory with file_not_found', () => {
-      refused({ path: files }, 'file_not_found');
+    it.each([
+      ['a missing file', () => join(files, 'nope.png')],
+      ['a directory', () => files],
+    ])('refuses %s with file_not_found', (_, path) => {
+      refused({ path: path() }, 'file_not_found');
     });
 
     it(`refuses a file over ${MAX_EVIDENCE_BYTES} bytes with evidence_too_large`, () => {

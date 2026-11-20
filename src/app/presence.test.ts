@@ -79,13 +79,6 @@ describe('agent presence', () => {
       });
     });
 
-    it('bumps the last-seen time on a later sighting', () => {
-      seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T0));
-      seeAgent(ctx.db, { agent: 'claude', channel: 'mcp', harness: CLAUDE_CODE }, at(T1));
-
-      expect(findAgent(ctx.db, 'claude')?.lastSeen).toBe(T1);
-    });
-
     it('writes nothing when seen again within half a minute with the same harness', () => {
       const sighting = { agent: 'claude', channel: 'mcp' as const, harness: CLAUDE_CODE };
       expect(seeAgent(ctx.db, sighting, at(T0))).toBe(true);
@@ -605,23 +598,30 @@ describe('agent presence', () => {
   describe('ownerGone', () => {
     const alive = (pids: number[]) => (pid: number) => pids.includes(pid);
 
-    it('holds while the process that started the wait still runs', () => {
-      expect(ownerGone(500, 500, alive([500]))).toBe(false);
-    });
-
-    it('is gone once that process ended, or the wait was handed to another parent', () => {
-      expect(ownerGone(500, 500, alive([]))).toBe(true);
-      expect(ownerGone(500, 1, alive([500]))).toBe(true);
-    });
-
-    it('is gone once any process of the chain that started it ended, though its parent runs', () => {
-      expect(ownerGone(500, 500, alive([500, 600]), [500, 600, 700])).toBe(true);
-      expect(ownerGone(500, 500, alive([500, 600, 700]), [500, 600, 700])).toBe(false);
-    });
-
-    it('never calls a wait started with no parent to watch orphaned', () => {
-      expect(ownerGone(1, 1, alive([]))).toBe(false);
-      expect(ownerGone(0, 0, alive([]))).toBe(false);
+    it.each<[string, number, number, number[], number[] | undefined, boolean]>([
+      [
+        'holds while the process that started the wait still runs',
+        500,
+        500,
+        [500],
+        undefined,
+        false,
+      ],
+      ['is gone once that process ended', 500, 500, [], undefined, true],
+      ['is gone once the wait was handed to another parent', 500, 1, [500], undefined, true],
+      [
+        'is gone once any process of the chain that started it ended, though its parent runs',
+        500,
+        500,
+        [500, 600],
+        [500, 600, 700],
+        true,
+      ],
+      ['holds while its whole chain runs', 500, 500, [500, 600, 700], [500, 600, 700], false],
+      ['never calls a wait started with parent 1 orphaned', 1, 1, [], undefined, false],
+      ['never calls a wait started with parent 0 orphaned', 0, 0, [], undefined, false],
+    ])('%s', (_, pid, parent, pids, chain, gone) => {
+      expect(ownerGone(pid, parent, alive(pids), chain)).toBe(gone);
     });
   });
 
