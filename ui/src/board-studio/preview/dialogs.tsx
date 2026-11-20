@@ -22,7 +22,14 @@ import type { ReadyDraft } from '../use-board-draft.ts';
 import { changeText, problemText } from '../words.ts';
 import { HookOffer, useProjectSettings, writeGitHook } from './HookOffer.tsx';
 import { Effects, PairDiscardDialog, PairPublishDialog } from './PairDialogs.tsx';
-import { effectLines, hookOffer, pairToast, setupLeftText } from './publish.ts';
+import {
+  effectLines,
+  hookOffer,
+  pairToast,
+  setupLeftText,
+  ungatedRepos,
+  ungatedText,
+} from './publish.ts';
 import { failedText, plainToast } from './toasts.tsx';
 
 export { PracticeDialog } from './Practice.tsx';
@@ -137,6 +144,8 @@ function SinglePublishDialog({
   const alongIds = along.map((mate) => mate.id);
   const alongNames = along.map((mate) => mate.name).join(', ');
   const hookRepos = hookOffer(def, settings);
+  // Pushes nothing gates: neither this board nor another live one protects a branch.
+  const ungated = ready ? ungatedRepos([def], ready.guardingBoards, settings) : [];
 
   const publish = async () => {
     if (!ready) return;
@@ -412,6 +421,11 @@ function SinglePublishDialog({
           </label>
         ) : null}
         <HookOffer repos={hookRepos} checked={writeHook} onChange={setWriteHook} />
+        {ungated.length > 0 ? (
+          <p className="bsp-fhint" data-i="">
+            {ungatedText(ungated)}
+          </p>
+        ) : null}
         <p className="bsp-dwarn" aria-live="polite">
           {error ? failedText(error) : ''}
         </p>

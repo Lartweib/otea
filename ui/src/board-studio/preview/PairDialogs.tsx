@@ -25,6 +25,8 @@ import {
   pairToast,
   publishRoles,
   setupLeftText,
+  ungatedRepos,
+  ungatedText,
 } from './publish.ts';
 import { failedText, plainToast } from './toasts.tsx';
 
@@ -123,6 +125,17 @@ export function PairPublishDialog({
   const hookRepos = [
     ...new Set(roles.flatMap((role) => hookOffer(draftOf(pair, role).def, settings))),
   ];
+  // Pushes nothing gates: neither board of the pair, nor another live one, protects a branch.
+  const pairIds = ROLES.map((role) => draftOf(pair, role).record.id);
+  const ungated = plans
+    ? ungatedRepos(
+        ROLES.map((role) => draftOf(pair, role).def),
+        ROLES.flatMap((role) => plans[role]?.guardingBoards ?? []).filter(
+          (board) => !pairIds.includes(board.id),
+        ),
+        settings,
+      )
+    : [];
   const warnings = roles.flatMap((role) =>
     (plans?.[role]?.problems ?? [])
       .filter((p) => p.level === 'warning')
@@ -359,6 +372,11 @@ export function PairPublishDialog({
           </p>
         ) : null}
         <HookOffer repos={hookRepos} checked={writeHook} onChange={setWriteHook} />
+        {ungated.length > 0 ? (
+          <p className="bsp-fhint" data-i="">
+            {ungatedText(ungated)}
+          </p>
+        ) : null}
         <p className="bsp-dwarn" aria-live="polite">
           {error ? failedText(error) : ''}
         </p>

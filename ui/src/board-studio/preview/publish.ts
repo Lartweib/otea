@@ -151,6 +151,23 @@ export function hookOffer(def: BoardDefinition, settings: ProjectSettings | null
   return [...new Set(repos.filter((repo) => repo.gate !== 'hard').map((repo) => repo.name))];
 }
 
+// The project's repos with a remote when no board protects a branch, the ones going out
+// (`defs`) nor the other live ones (`guarding`, from the plan): nothing gates their pushes, which
+// Publicar says in one line without blocking. None while the settings are not read.
+export function ungatedRepos(
+  defs: readonly BoardDefinition[],
+  guarding: readonly { id: string; name: string }[],
+  settings: ProjectSettings | null,
+): string[] {
+  if (!settings || guarding.length > 0 || defs.some((def) => guardedBranch(def))) return [];
+  const repos = settings.paths.flatMap((path) => path.repos);
+  return [...new Set(repos.filter((repo) => repo.remote).map((repo) => repo.name))];
+}
+
+export function ungatedText(repos: readonly string[]): string {
+  return t('bs.preview.publish.ungated', { repos: listOf(repos) });
+}
+
 // The toast's words after writing the hook: where it went, and each repo that keeps a pre-push
 // hook of its own, which Otea never overwrites.
 export function hookResultText({ installed, refused }: GitHookInstall): string {

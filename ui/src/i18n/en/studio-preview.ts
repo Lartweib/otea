@@ -393,6 +393,8 @@ export const studioPreview = {
   'bs.preview.publish.publishing': 'Publishing…',
   'bs.preview.publish.seeBoard': 'See the board',
   'bs.preview.publish.closeRequest': 'Close {id}, “{title}”: publishing it takes the draft',
+  'bs.preview.publish.ungated':
+    'No published board protects a branch, so Otea stops no push from {repos} to the remote.',
   'bs.preview.publish.hook':
     'Install Otea’s git hook in {repos}: without it, git lets a push through before you approve',
   'bs.preview.publish.toast.hook':

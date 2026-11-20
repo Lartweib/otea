@@ -49,14 +49,18 @@ describe('the repos table grid', () => {
 describe('an empty repos cell', () => {
   it('reads — when the repo is the folder itself', () => {
     const html = renderToStaticMarkup(
-      createElement(Repos, { repos: [{ name: 'otea', folder: '.', gate: 'soft', items: 3 }] }),
+      createElement(Repos, {
+        repos: [{ name: 'otea', folder: '.', gate: 'soft', items: 3, remote: false }],
+      }),
     );
     expect(html).toContain('<span class="t-cap pj-repo-wide">—</span>');
   });
 
   it('shows the folder when the repo sits inside it', () => {
     const html = renderToStaticMarkup(
-      createElement(Repos, { repos: [{ name: 'api', folder: 'api', gate: 'hard', items: 0 }] }),
+      createElement(Repos, {
+        repos: [{ name: 'api', folder: 'api', gate: 'hard', items: 0, remote: false }],
+      }),
     );
     expect(html).toContain('<span class="t-cap pj-repo-wide">api/</span>');
   });
@@ -66,7 +70,9 @@ describe('the gate of a repo', () => {
   // The command that makes it hard is one the person can paste: hook install needs --git.
   it('names the whole command for a repo without the hook', () => {
     const html = renderToStaticMarkup(
-      createElement(Repos, { repos: [{ name: 'bot', folder: '.', gate: 'soft', items: 1 }] }),
+      createElement(Repos, {
+        repos: [{ name: 'bot', folder: '.', gate: 'soft', items: 1, remote: false }],
+      }),
     );
     expect(html).toContain('<code class="pj-code">otea hook install --git</code>');
   });

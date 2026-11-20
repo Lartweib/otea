@@ -390,6 +390,8 @@ export const studioPreview = {
   'bs.preview.publish.publishing': 'Publicando…',
   'bs.preview.publish.seeBoard': 'Ver el tablero',
   'bs.preview.publish.closeRequest': 'Cerrar {id}, «{title}»: publicarlo es aceptar el esbozo',
+  'bs.preview.publish.ungated':
+    'Ningún tablero publicado protege una rama, así que Otea no frena ningún push de {repos} al remoto.',
   'bs.preview.publish.hook':
     'Instalar el hook de git de Otea en {repos}: sin él, git deja pasar un push antes de que lo apruebes',
   'bs.preview.publish.toast.hook':
