@@ -101,7 +101,12 @@ export function roundsOf(
         to,
         by: event.actor,
         ...(note ? { note } : {}),
-        evidence: evidence.filter(({ createdAt }) => createdAt > since && createdAt <= event.at),
+        // What the person attached meanwhile (a reference) is theirs, no evidence of the round
+        // (P5-R3-1): it is never compared with the next round, nor listed as gone from it.
+        evidence: evidence.filter(
+          ({ createdAt, actor }) =>
+            actor.kind !== 'human' && createdAt > since && createdAt <= event.at,
+        ),
         ...(step ? { step } : {}),
       });
       since = event.at;
@@ -161,4 +166,80 @@ export function roundFiles(round: Round | undefined, module: string): Evidence[]
   return (round?.evidence ?? [])
     .filter((entry) => entry.module === module)
     .sort((a, b) => b.id - a.id);
+}
+
+// The words a file's name says, to tell it again in another round under a new name: its letters
+// split at anything else, without its extension, numbers or round marks (r2, v3, ronda).
+const ROUND_MARK = /^(?:[rv]\d+|round|ronda|final|new|nuevo|nueva|old|viejo|vieja)$/;
+
+function nameWords(filename: string): Set<string> {
+  const stem = filename.replace(/\.[^.]+$/, '').toLocaleLowerCase();
+  return new Set(
+    stem
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g, '')
+      .split(/[^a-z0-9]+/)
+      .filter((word) => word.length > 1 && !/^\d+$/.test(word) && !ROUND_MARK.test(word)),
+  );
+}
+
+function sharedWords(a: Evidence, b: Evidence): number {
+  const theirs = nameWords(b.filename);
+  return [...nameWords(a.filename)].filter((word) => theirs.has(word)).length;
+}
+
+// The files of two rounds paired to be compared, by name, never by their place (P5-R3-1: a file
+// of the person's in the first round shifted every pair): a file with the same name in both; else
+// the one whose name shares the most words with it (logo-2026-chico and r2-logo-chico); a lone
+// file on each side pairs whatever their names. What is left stands alone, the newer's in its
+// place, the older's after.
+export function namePairs(
+  older: readonly Evidence[],
+  newer: readonly Evidence[],
+): { before?: Evidence; after?: Evidence }[] {
+  const used = new Set<Evidence>();
+  const match = new Map<Evidence, Evidence>();
+  const take = (after: Evidence, before: Evidence) => {
+    used.add(before);
+    match.set(after, before);
+  };
+  for (const after of newer) {
+    const same = older.find((e) => !used.has(e) && e.filename === after.filename);
+    if (same) take(after, same);
+  }
+  for (const after of newer) {
+    if (match.has(after)) continue;
+    let best: Evidence | undefined;
+    let score = 0;
+    for (const e of older) {
+      const shared = used.has(e) ? 0 : sharedWords(e, after);
+      if (shared > score) [best, score] = [e, shared];
+    }
+    if (best) take(after, best);
+  }
+  const [lone] = older;
+  const [only] = newer;
+  if (older.length === 1 && newer.length === 1 && lone && only && !match.has(only))
+    take(only, lone);
+  const pairs = newer.map((after) => {
+    const before = match.get(after);
+    return before ? { before, after } : { after };
+  });
+  return [...pairs, ...older.filter((e) => !used.has(e)).map((before) => ({ before }))];
+}
+
+// The two files of a module Comparar rondas shows for rounds A and B: the newest of B's with its
+// pair by name in A (namePairs); with no pair, the newest of each, as a module with one file a
+// round has.
+export function comparedFiles(
+  a: Round | undefined,
+  b: Round | undefined,
+  module: string,
+): { a?: Evidence; b?: Evidence } {
+  const was = roundFiles(a, module);
+  const now = roundFiles(b, module);
+  const pair = namePairs(was, now).find(({ before, after }) => before && after);
+  const fileA = pair?.before ?? was[0];
+  const fileB = pair?.after ?? now[0];
+  return { ...(fileA ? { a: fileA } : {}), ...(fileB ? { b: fileB } : {}) };
 }

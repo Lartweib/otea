@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { creatures } from '../../src/core/board/testing.ts';
 import { optionsSummary, parseOptions } from './options.ts';
-import { roundFiles, roundsOf } from './rounds.ts';
+import { comparedFiles, roundFiles, roundsOf } from './rounds.ts';
 import type { Evidence, ItemEvent, State } from './types.ts';
 
 const agent = { kind: 'agent' as const, name: 'claude-b' };
@@ -64,6 +64,41 @@ describe('rounds', () => {
     file(3, '13:29', 'idle_r3.mp4'),
     file(4, '13:29', 'bestiary.md', 'images'),
   ];
+
+  // P5-R3-1: the person's Referencias picture, attached while round 1 was made, counted as round 1's
+  // evidence: Comparar paired it with round 2's first picture and listed it «ya no está».
+  it('leaves the files the person attached out of every round: they are no agent’s evidence', () => {
+    const reference = { ...file(5, '08:40', 'boceto-hoja.png', 'frefs'), actor: you };
+    const rounds = roundsOf(events, [reference, ...evidence], STATES);
+    expect(rounds.map(({ evidence: files }) => files.map(({ id }) => id))).toEqual([
+      [1],
+      [2],
+      [3, 4],
+    ]);
+  });
+
+  // The desk's Comparar rondas showed the newest file of each round, whatever their names.
+  it('compares on the desk the file of round B with its pair by name in round A', () => {
+    const shot = (n: number, at: string, filename: string) => ({
+      ...file(n, at, filename, 'shots'),
+      kind: 'image' as const,
+    });
+    const rounds = roundsOf(
+      events,
+      [
+        ...evidence,
+        shot(11, '09:00', 'logo-2026-chico.png'),
+        shot(12, '09:01', 'comparacion-2026.png'),
+        shot(13, '10:50', 'r2-logo-chico.png'),
+      ],
+      STATES,
+    );
+    const { a, b } = comparedFiles(rounds[0], rounds[1], 'shots');
+    expect([a?.filename, b?.filename]).toEqual(['logo-2026-chico.png', 'r2-logo-chico.png']);
+    // One file a round, whatever their names, is still compared.
+    const lone = comparedFiles(rounds[1], rounds[2], 'recording');
+    expect([lone.a?.filename, lone.b?.filename]).toEqual(['idle_r2.mp4', 'idle_r3.mp4']);
+  });
 
   it('reads one round per agent move into review, its note, files and verdict', () => {
     const rounds = roundsOf(events, evidence, STATES);
