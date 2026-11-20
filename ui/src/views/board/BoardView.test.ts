@@ -107,6 +107,27 @@ describe('a board', () => {
     expect(html).toContain('data-s="ERR-1:edge"');
   });
 
+  // P7 run 2: a set-aside item read «en cola» on its Pasos card, though Lista, Te toca and its page
+  // say who set it aside. Every view of the board reads the same setAside the server sends.
+  it('says on a Pasos card who set an item aside, never that it is queued', () => {
+    const queued = item({
+      id: 'ERR-5',
+      title: 'La lluvia no moja',
+      state: 'fixing',
+      turn: 'agent',
+    });
+    const aside: typeof queued = {
+      ...queued,
+      setAside: { by: 'mender', at: new Date(NOW).toISOString() },
+    };
+    const pasos = render('board', [aside]);
+    expect(pasos).toMatch(/data-k="ERR-5".*apartado por mender/);
+    expect(pasos).not.toContain('en cola');
+    expect(render('list', [aside])).toContain('apartado por mender');
+    // Not set aside, it waits in the queue as before.
+    expect(render('board', [queued])).toContain('en cola');
+  });
+
   it('draws Tabla with its sticky head: the lanes, tick-all, sortable heads with carets', () => {
     const html = render('grid');
     expect(html).toContain('class="tabla');
