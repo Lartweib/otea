@@ -36,7 +36,7 @@ import type { Evidence, ItemView, TypeView } from '../../types.ts';
 import { evidenceWords } from '../toca/phone.ts';
 import { Acts, type ActsMode } from './Acts.tsx';
 import type { Facts } from './facts.ts';
-import { toastOf } from './frame.ts';
+import { resumedToastOf, toastOf } from './frame.ts';
 import { type MoveChoice, type MovePlan, moveSaysOf, otherMoves } from './moves.ts';
 import { AnchorPicker, countWords, showPiece, Thread } from './NotesThread.tsx';
 import type { ItemNote } from './notes.ts';
@@ -704,6 +704,16 @@ export function PhoneItem(p: PhoneItemProps) {
   useLayoutEffect(() => {
     if (noting) noteArea.current?.focus({ preventScroll: true });
   }, [noting]);
+  // Set aside for later by an agent: Retomar is docked beside the note, which takes it up too.
+  const aside = p.mode === 'aside' && leave ? item.setAside : undefined;
+  const resume = () => {
+    setRefused('');
+    app
+      .resume(item.id, resumedToastOf(item.title))
+      .catch((e: unknown) =>
+        setRefused(e instanceof Error && e.message ? e.message : t('sheet.refused')),
+      );
+  };
   const openNote = () => {
     setNoteText('');
     setAnchor(null);
@@ -854,8 +864,8 @@ export function PhoneItem(p: PhoneItemProps) {
           />
         </section>
       ) : null}
-      {/* Set aside for later, Retomar stays in view above the docked note (P7-R3-1). */}
-      {docked && p.mode !== 'aside' ? null : (
+      {/* Set aside for later, Retomar is docked beside the note (P7-R3-1, P5-R3-11). */}
+      {docked ? null : (
         <Acts
           item={item}
           type={p.type}
@@ -945,7 +955,7 @@ export function PhoneItem(p: PhoneItemProps) {
       {docked ? <div className="p-push" /> : null}
       {docked && leave ? (
         <section ref={dockEl} className="p-dock" aria-label={t('phone.r.dock')}>
-          <div className="btns">
+          <div className={aside ? 'btns two' : 'btns'}>
             <button
               ref={noteBtn}
               type="button"
@@ -957,8 +967,26 @@ export function PhoneItem(p: PhoneItemProps) {
               <Icon name="note" />
               {t('notes.leave')}
             </button>
+            {aside ? (
+              <button type="button" className="btn primary" data-resume="" onClick={resume}>
+                {t('sheet.aside.resume')}
+              </button>
+            ) : null}
           </div>
-          <p className="hint">{tx('notes.phone.hint', { beat: <b>{t('notes.phone.beat')}</b> })}</p>
+          {refused ? (
+            <p className="hint warn" role="alert">
+              {refused}
+            </p>
+          ) : aside ? (
+            <p className="hint">
+              {t('sheet.aside.resume')} ·{' '}
+              {t('sheet.aside.says', { state: word(item.state), agent: aside.by })}
+            </p>
+          ) : (
+            <p className="hint">
+              {tx('notes.phone.hint', { beat: <b>{t('notes.phone.beat')}</b> })}
+            </p>
+          )}
         </section>
       ) : docked ? (
         <section ref={dockEl} className="p-dock" aria-label={t('phone.r.dock')}>

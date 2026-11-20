@@ -122,8 +122,13 @@ const dipWhen = (iso: string, now: number): string => {
   return t('sheet.when.on', { day: fmt.format(Date.parse(iso)) });
 };
 
-// Where a note goes: to the agent by its name, or "al agente" when none holds the step yet.
-export function leaveSays(agent: string | null): ReactNode {
+// Where a note goes: to the agent by its name, or "al agente" when none holds the step yet. On an
+// item an agent set aside, the note takes it up again (P7-R3-1), and says so (P5-R3-11).
+export function leaveSays(agent: string | null, aside = false): ReactNode {
+  if (aside)
+    return agent
+      ? tx('notes.leaveSaysAside', { agent: <b>{agent}</b> })
+      : t('notes.leaveSaysAsideAny');
   return agent ? tx('notes.leaveSays', { agent: <b>{agent}</b> }) : t('notes.leaveSaysAny');
 }
 
@@ -486,7 +491,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
   const leave = canNote
     ? {
         open: !!noting?.open,
-        says: leaveSays(noteTo ?? null),
+        says: leaveSays(noteTo ?? null, !!item.setAside),
         onToggle: toggleNote,
       }
     : undefined;

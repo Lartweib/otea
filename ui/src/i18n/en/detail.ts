@@ -783,6 +783,10 @@ export const detail = {
     'reaches the agent the next time it checks Otea · step, round and lease stay as they are',
   'notes.leaveSays':
     'reaches {agent} the next time it checks Otea · step, round and lease stay as they are',
+  'notes.leaveSaysAsideAny':
+    'reaches the agent the next time it checks Otea, and takes it up again · step, round and lease stay as they are',
+  'notes.leaveSaysAside':
+    'reaches {agent} the next time it checks Otea, and takes it up again · step, round and lease stay as they are',
   'notes.quiet': '{agent} has given no sign of life for {minutes} min; it may not read it',
   'notes.form.title': 'Your note',
   'notes.form.for': 'for {agent}, without stopping it',
