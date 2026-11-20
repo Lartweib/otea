@@ -102,7 +102,8 @@ export type PresetReading =
   | { ok: false; problems: string[] };
 
 const NAME = /^[a-z0-9][a-z0-9-]*$/;
-const KEY = /^[a-z][a-z0-9_]*$/;
+// The key of a field, state, gate or type: a board's part and step ids are checked by it too.
+export const KEY = /^[a-z][a-z0-9_]*$/;
 
 const fieldSchema = z.strictObject({
   module: z.string(),

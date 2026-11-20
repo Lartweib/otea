@@ -40,14 +40,14 @@
       "type": "object",
       "propertyNames": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9_-]*$"
+        "pattern": "^[a-z][a-z0-9_]*$"
       },
       "additionalProperties": {
         "type": "object",
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]*$",
+            "pattern": "^[a-z][a-z0-9_]*$",
             "description": "The hidden id of the part: its key in parts",
             "examples": ["fsteps"]
           },
@@ -93,7 +93,7 @@
               "properties": {
                 "id": {
                   "type": "string",
-                  "pattern": "^[a-z][a-z0-9_-]*$",
+                  "pattern": "^[a-z][a-z0-9_]*$",
                   "description": "The hidden id of the choice",
                   "examples": ["chigh"]
                 },
@@ -141,14 +141,14 @@
                 "type": "array",
                 "items": {
                   "type": "string",
-                  "pattern": "^[a-z][a-z0-9_-]*$"
+                  "pattern": "^[a-z][a-z0-9_]*$"
                 },
                 "description": "The steps (ids) during which the branch may be pushed",
                 "examples": [["simplement"]]
               },
               "repo": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_-]*$",
+                "pattern": "^[a-z][a-z0-9_]*$",
                 "description": "The field (part id) the repository is read from",
                 "examples": ["frepo"]
               },
@@ -208,7 +208,7 @@
         "properties": {
           "ref": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]*$",
+            "pattern": "^[a-z][a-z0-9_]*$",
             "description": "A field (id) the creation form asks for",
             "examples": ["fsteps"]
           },
@@ -245,7 +245,7 @@
         "properties": {
           "id": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]*$",
+            "pattern": "^[a-z][a-z0-9_]*$",
             "description": "The hidden id of the step",
             "examples": ["sfix"]
           },
@@ -273,7 +273,7 @@
               "properties": {
                 "ref": {
                   "type": "string",
-                  "pattern": "^[a-z][a-z0-9_-]*$",
+                  "pattern": "^[a-z][a-z0-9_]*$",
                   "description": "The part (id) the step hands off, or title",
                   "examples": ["fsteps"]
                 },
@@ -288,7 +288,7 @@
                   "properties": {
                     "part": {
                       "type": "string",
-                      "pattern": "^[a-z][a-z0-9_-]*$",
+                      "pattern": "^[a-z][a-z0-9_]*$",
                       "description": "The choice, multi, level or yesno part (id) it reads",
                       "examples": ["fseverity"]
                     },
@@ -340,14 +340,14 @@
             "type": "array",
             "items": {
               "type": "string",
-              "pattern": "^[a-z][a-z0-9_-]*$"
+              "pattern": "^[a-z][a-z0-9_]*$"
             },
             "description": "Ways out besides the next step: a later step (id) or done, or an earlier step to take the item back to",
             "examples": [["done"], []]
           },
           "back": {
             "type": "string",
-            "pattern": "^[a-z][a-z0-9_-]*$",
+            "pattern": "^[a-z][a-z0-9_]*$",
             "description": "Where a send-back lands: same (this step) or an earlier step id",
             "examples": ["same"]
           },
@@ -437,7 +437,7 @@
             "properties": {
               "to": {
                 "type": "string",
-                "pattern": "^[a-z][a-z0-9_-]*$",
+                "pattern": "^[a-z][a-z0-9_]*$",
                 "description": "Where it leads instead of the next step: a later step id or done",
                 "examples": ["done"]
               },
@@ -446,7 +446,7 @@
                 "properties": {
                   "part": {
                     "type": "string",
-                    "pattern": "^[a-z][a-z0-9_-]*$",
+                    "pattern": "^[a-z][a-z0-9_]*$",
                     "description": "The choice, multi, level or yesno part (id) it reads",
                     "examples": ["fmine"]
                   },
@@ -493,7 +493,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9_-]*$"
+        "pattern": "^[a-z][a-z0-9_]*$"
       },
       "description": "Parts (ids) that can be filled at any step",
       "examples": [["fbranch"], []]
@@ -502,7 +502,7 @@
       "type": "object",
       "propertyNames": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9_-]*$"
+        "pattern": "^[a-z][a-z0-9_]*$"
       },
       "additionalProperties": {
         "type": "string",
@@ -520,7 +520,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9_-]*$"
+        "pattern": "^[a-z][a-z0-9_]*$"
       },
       "description": "The parts (ids) the list row shows, in order",
       "examples": [["fseverity"], []]
@@ -577,7 +577,7 @@
       "properties": {
         "board": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]*$",
+          "pattern": "^[a-z][a-z0-9_]*$",
           "description": "The board (hidden id) its items divide into, or same",
           "examples": ["same"]
         },
@@ -601,7 +601,7 @@
       "type": "array",
       "items": {
         "type": "string",
-        "pattern": "^[a-z][a-z0-9_-]*$"
+        "pattern": "^[a-z][a-z0-9_]*$"
       },
       "description": "The boards (hidden ids) a template made with this one",
       "examples": [["bbugs"]]
@@ -611,31 +611,31 @@
       "properties": {
         "effort": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]*$",
+          "pattern": "^[a-z][a-z0-9_]*$",
           "description": "The field (part id) that says how much work an item is",
           "examples": ["feffort"]
         },
         "risk": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]*$",
+          "pattern": "^[a-z][a-z0-9_]*$",
           "description": "The field (part id) that says how risky an item is to do",
           "examples": ["frisk"]
         },
         "impact": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]*$",
+          "pattern": "^[a-z][a-z0-9_]*$",
           "description": "The field (part id) that says how much an item matters",
           "examples": ["fseverity"]
         },
         "area": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]*$",
+          "pattern": "^[a-z][a-z0-9_]*$",
           "description": "The field (part id) that says where an item belongs",
           "examples": ["farea"]
         },
         "due": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]*$",
+          "pattern": "^[a-z][a-z0-9_]*$",
           "description": "The date field (part id) an item is due by",
           "examples": ["fdue"]
         }
@@ -732,7 +732,7 @@
         },
         "group": {
           "type": "string",
-          "pattern": "^[a-z][a-z0-9_-]*$",
+          "pattern": "^[a-z][a-z0-9_]*$",
           "description": "What it groups by: a choice, level or yesno part (id), step or motive",
           "examples": ["step"]
         }

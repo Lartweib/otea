@@ -526,8 +526,9 @@ const same = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 
 // The agent's board is what it was asked for, whole: its steps (in its order) replace the draft's,
 // so a step it left out is gone; its item, form, instructions and texts are taken as they are.
-// Only the name stays the person's. Parts are kept from both, so a step put back finds its own.
-// The note says what changed, removals included.
+// Only the name stays the person's. The draft's parts the agent's board uses are kept, so a step put
+// back finds its own; the rest go with what it left out. The note says what changed, removals
+// included.
 export function mergeDefinitions(
   draft: BoardDefinition,
   agent: BoardDefinition,
@@ -541,12 +542,17 @@ export function mergeDefinitions(
   );
   const parts = clone(agent.parts);
   for (const { id } of unplaced) delete parts[id];
+  // A part of the draft the agent's board leaves out and does not use is gone with it: kept, it
+  // stood beside the copy the agent renamed, each part twice on the board (P5-R3-9).
+  const left = Object.values(draft.parts).filter(({ id }) => !agent.parts[id] && !placed.has(id));
+  const kept = clone(draft.parts);
+  for (const { id } of left) delete kept[id];
   const layout = { ...draft.layout, ...agent.layout };
-  for (const { id } of unplaced) delete layout[id];
+  for (const { id } of [...unplaced, ...left]) delete layout[id];
   const out: BoardDefinition = {
     ...clone(agent),
     name: draft.name,
-    parts: { ...clone(draft.parts), ...parts },
+    parts: { ...kept, ...parts },
     layout,
   };
   const added: Part[] = Object.values(agent.parts).filter(

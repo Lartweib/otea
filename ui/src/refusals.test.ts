@@ -201,6 +201,17 @@ describe('a refusal from the server', () => {
         { kind: 'draft_invalid' },
         'No se pudo leer el borrador como tablero: recarga el editor.',
       ],
+      // P5-R3-9: never the compiler's «fields.docs-si: Invalid key in record».
+      [
+        'invalid_board',
+        { kind: 'draft_uncompilable', part: 'Es un documento' },
+        '«Es un documento» tiene un id que Otea no puede usar. Pídele al agente que le dé uno con solo minúsculas, números y _ (como docs_si, no docs-si) y que vuelva a entregar el esbozo.',
+      ],
+      [
+        'invalid_board',
+        { kind: 'draft_uncompilable' },
+        'Este tablero no se puede publicar tal como está: pídele al agente que lo revise y vuelva a entregar el esbozo.',
+      ],
     ];
     for (const [code, details, said] of cases) {
       expect(serverMessage(refused(code, 'English', details), 409)).toBe(said);

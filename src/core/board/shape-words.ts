@@ -11,6 +11,8 @@ export type ShapeIssue = {
   expected?: string;
   values?: readonly unknown[];
   keys?: readonly string[];
+  // invalid_key: what the key itself failed (a part keyed by an id that is not one).
+  issues?: readonly { message: string }[];
 };
 
 type Node = {
@@ -188,6 +190,15 @@ export function shapeProblems(
       continue;
     }
     const key = path.at(-1);
+    // A part keyed by an id that is not one: said as its id, which the key repeats.
+    const [keyIssue] = issue.code === 'invalid_key' ? (issue.issues ?? []) : [];
+    if (keyIssue) {
+      const id = [...path, 'id'];
+      lines.push(
+        `${placeOf(raw, path)} › id: ${received(key)} ${keyIssue.message}${aboutKey(nodeAt(root, id))}${at(id)}`,
+      );
+      continue;
+    }
     if (typeof key === 'string' && !present(raw, path)) {
       const parent = path.slice(0, -1);
       const group = missing.get(parent.join('.')) ?? { path: parent, keys: [] };

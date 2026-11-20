@@ -11,6 +11,25 @@ describe('compileBoard', () => {
     );
   });
 
+  // P5-R3-9: Studio's Publicar said «Board … does not compile: fields.docs-si: Invalid key in
+  // record». The refusal names the part, as data Studio words for the person.
+  it('refuses a part it cannot key by naming the part, never with the preset words', () => {
+    const def = creatures();
+    const docs = { id: 'docs-si', name: 'Es un documento', kind: 'yesno', hint: '', options: [] };
+    const board = {
+      ...def,
+      parts: { ...def.parts, 'docs-si': docs },
+      form: [...def.form, { ref: 'docs-si', required: false }],
+    } as typeof def;
+
+    expect(() => compileBoard('bcria', 1, board)).toThrow(
+      expect.objectContaining({
+        code: 'invalid_board',
+        details: { kind: 'draft_uncompilable', part: 'Es un documento' },
+      }),
+    );
+  });
+
   it('draws a blind A and B as a compare that never says which is before (P5-4)', () => {
     const design = TEMPLATES.find(({ key }) => key === 'design');
     if (!design) throw new Error('no design template');

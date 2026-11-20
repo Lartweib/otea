@@ -219,6 +219,10 @@ export const common = {
   'refusal.boardUnpublished':
     'The board changed since this draft started: it is not published now.',
   'refusal.draftInvalid': 'The draft could not be read as a board: reload the editor.',
+  'refusal.draftBadId':
+    '“{part}” has an id Otea cannot use. Ask the agent to give it one with only lowercase letters, digits and _ (like docs_si, not docs-si) and hand the draft in again.',
+  'refusal.draftUncompilable':
+    'This board cannot be published as it is: ask the agent to check it and hand the draft in again.',
   'refusal.boardNameTaken': 'There is already a board called {name}.',
   'refusal.boardNameEmpty': 'A board needs a name.',
   'refusal.draftErrors': 'The draft has errors: fix them before you publish.',

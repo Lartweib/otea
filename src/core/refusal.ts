@@ -102,6 +102,8 @@ export type RefusalDetails =
   // Studio: the draft or the board changed under the editor, a name, a draft with errors.
   | { kind: 'draft_changed' }
   | { kind: 'draft_invalid' }
+  // A draft that does not compile: the part or step whose id Otea cannot use, when one is named.
+  | { kind: 'draft_uncompilable'; part?: string }
   | { kind: 'board_changed'; version: number | null }
   | { kind: 'board_name_taken'; name: string }
   | { kind: 'board_name_empty' }

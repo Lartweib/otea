@@ -44,7 +44,7 @@ describe('parseDefinition', () => {
       ).toEqual([
         'schema: must be 2, not 7 (the version of the board format: write 2, e.g. 2) [schema]',
         'field "Rareza" (fx) › kind: must be one of "text", "long", "check", "choice", "multi", "level", "number", "date", "yesno", "url", "branch", "images", "video", "audio", "code", "log", "diagram" or "file", not "poem" (a field (text, long, check, choice, multi, level, number, date, yesno, url, branch) or evidence (images, video, audio, code, log, diagram, file), e.g. "long") [parts.fx.kind]',
-        'step 1 "Concepto" › id: "Not An Id" is not an id: lowercase letters, digits, - and _, starting with a letter (the hidden id of the step, e.g. "sfix") [steps.0.id]',
+        'step 1 "Concepto" › id: "Not An Id" is not an id: lowercase letters, digits and _, starting with a letter, no dashes (the hidden id of the step, e.g. "sfix") [steps.0.id]',
         'step 1 "Concepto" › handoff 1 (fdesc) › req: must be "always", "when" or "no", not "maybe" (whether it is required: always, only when another part has a value, or no, e.g. "always") [steps.0.hand.0.req]',
         'cap › on: must be true or false, not "yes" (whether agents add items only while few wait for the person, e.g. false) [cap.on]',
       ]);
@@ -185,6 +185,28 @@ describe('parseDefinition', () => {
     def.list = { as: 'table', group: 'fbiome' };
     def.layout = { ...def.layout, rounds: 'main', parts: 'side' };
     expect(parseDefinition(JSON.parse(JSON.stringify(def)))).toEqual({ ok: true, definition: def });
+  });
+
+  // A part id keys the published board's fields, and a step id its states, which take no dash: an
+  // id with one read as a board and then failed to publish (P5-R3-9).
+  it('refuses a part or step id with a dash, the way publishing would, saying what an id is', () => {
+    const def = creatures();
+    const [first] = def.steps as [Step];
+    const part = { ...def.parts.fdesc, id: 'docs-si', name: 'Es un documento para leer' } as Part;
+    const result = parseDefinition({
+      ...def,
+      parts: { ...def.parts, 'docs-si': part },
+      form: [...def.form, { ref: 'docs-si', required: false }],
+      steps: [{ ...first, id: 'make-it' }, ...def.steps.slice(1)],
+    });
+    expect(result.ok).toBe(false);
+    if (result.ok) return;
+    expect(result.problems.join('\n')).toContain(
+      'field "Es un documento para leer" (docs-si) › id: "docs-si" is not an id: lowercase letters, digits and _, starting with a letter, no dashes',
+    );
+    expect(result.problems.join('\n')).toContain(
+      'step 1 "Concepto" › id: "make-it" is not an id: lowercase letters, digits and _, starting with a letter, no dashes',
+    );
   });
 
   it('refuses a motive id a closed state cannot carry, and places as part ids', () => {
