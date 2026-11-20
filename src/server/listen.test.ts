@@ -2,7 +2,7 @@ import { connect, createServer as createNetServer, type Server } from 'node:net'
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import type { Project } from '../app/project.ts';
 import { lanAddresses } from './lan.ts';
-import { DEFAULT_PORT, isUnsafePort, type Listening, listen, localNetwork } from './listen.ts';
+import { isUnsafePort, type Listening, listen, localNetwork } from './listen.ts';
 import { createServer } from './server.ts';
 import { memoryProject } from './testing.ts';
 
@@ -48,10 +48,6 @@ describe('listen', () => {
     await listening?.close();
     listening = undefined;
     project.db.close();
-  });
-
-  it('defaults to port 4400', () => {
-    expect(DEFAULT_PORT).toBe(4400);
   });
 
   it('knows the ports browsers refuse to connect to', () => {

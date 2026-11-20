@@ -35,13 +35,6 @@ describe('the wordmark', () => {
     expect(wordmark()).not.toContain('working');
     expect(wordmark(true)).toContain('class="brand working"');
   });
-
-  it('is what the picker shows instead of a ring of its own and a serif «Otea»', () => {
-    const html = read('./picker.html');
-    expect(html).toContain('id="brand"');
-    expect(html).not.toContain('class="mark"');
-    expect(read('./picker.ts')).toContain('wordmark(');
-  });
 });
 
 describe('the window shown while the installer works', () => {

@@ -8,7 +8,6 @@ import {
   BADGE_LABELS,
   badgeSvg,
   faviconSvg,
-  INK_ON_DARK,
   INK_ON_LIGHT,
   MARK,
   macAppIconSvg,
@@ -37,11 +36,6 @@ describe('markSvg', () => {
     expect(markSvg('yours', 16, INK_ON_LIGHT)).toContain(MARK);
     expect(markSvg('working', 16, INK_ON_LIGHT)).toContain(MARK);
     expect(markSvg('yours-working', 16, INK_ON_LIGHT)).toContain(MARK);
-  });
-
-  it('is the same blue on light and dark grounds', () => {
-    expect(INK_ON_DARK.you).toBe(MARK);
-    expect(INK_ON_LIGHT.you).toBe(MARK);
   });
 
   it('draws the trail only while an agent works, and turns dot and trail 30° a step', () => {

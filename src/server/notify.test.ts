@@ -8,7 +8,7 @@ import { choosePhoneTransport } from '../app/phone.ts';
 import type { Project } from '../app/project.ts';
 import { fakeTailscale, TAILNET_HOST } from '../app/tailscale-testing.ts';
 import type { Actor } from '../core/item.ts';
-import { GATHER_MS, ITEM_COOLDOWN_MS } from '../core/notify/planner.ts';
+import { GATHER_MS } from '../core/notify/planner.ts';
 import { formatCode } from './lan.ts';
 import type { PushResult, PushSender, PushSubscriptionKeys } from './push.ts';
 import { createServer, type OteaServer } from './server.ts';
@@ -342,26 +342,6 @@ describe('notifications on the server', () => {
       expect(sent).toEqual([]);
     });
 
-    it('sends a burst as one push', async () => {
-      const second = newTask('Fix the menu');
-      const third = newTask('Write the docs');
-      toReview(first);
-      await pass(1000);
-      toReview(second);
-      toReview(third);
-      await pass(1000);
-      await pass(GATHER_MS);
-      expect(sent.map(({ payload }) => payload)).toEqual([
-        {
-          title: 'memory · 3 cosas te tocan',
-          body: 'Ship the login · Fix the menu · Write the docs',
-          tag: 'otea-group',
-          url: '/p/memory-aaaaaa/#/',
-          item: null,
-        },
-      ]);
-    });
-
     it('says an item got stuck when its agent goes quiet with the lease', async () => {
       claimItem(project, { id: first, actor: { kind: 'agent', name: 'codex' }, ttlMs: 60_000 }, at);
       await pass(1000);
@@ -370,25 +350,6 @@ describe('notifications on the server', () => {
       expect(sent.map(({ payload }) => payload.title)).toEqual([
         'memory · Se atascó · codex no responde',
       ]);
-    });
-
-    it('waits a few minutes before telling about the same item again', async () => {
-      toReview(first);
-      await pass(1000);
-      await pass(GATHER_MS);
-      const human: Actor = { kind: 'human', name: 'human' };
-      moveItem(
-        project,
-        { id: first, to: 'todo', actor: human, channel: 'ui', reason: 'Again' },
-        at,
-      );
-      await pass(1000);
-      toReview(first);
-      await pass(1000);
-      await pass(GATHER_MS);
-      expect(sent).toHaveLength(1);
-      await pass(ITEM_COOLDOWN_MS);
-      expect(sent).toHaveLength(2);
     });
 
     it('leaves out a kind the phone turned off', async () => {

@@ -53,19 +53,16 @@ function rig(versions: (string | undefined | Error)[], mode: 'install' | 'notify
 }
 
 describe('updateMode', () => {
-  it('leaves a development run alone', () => {
-    expect(updateMode({ packaged: false, platform: 'win32', macSigned: false })).toBe('off');
-  });
-
-  it('installs on Windows and Linux', () => {
-    expect(updateMode({ packaged: true, platform: 'win32', macSigned: false })).toBe('install');
-    expect(updateMode({ packaged: true, platform: 'linux', macSigned: false })).toBe('install');
-  });
-
-  // macOS only applies an update to a signed app: until then it says where to download it.
-  it('only notifies on an unsigned Mac', () => {
-    expect(updateMode({ packaged: true, platform: 'darwin', macSigned: false })).toBe('notify');
-    expect(updateMode({ packaged: true, platform: 'darwin', macSigned: true })).toBe('install');
+  // A development run is left alone; Windows and Linux install. macOS only applies an update to a
+  // signed app: until then it says where to download it.
+  it.each([
+    [false, 'win32', false, 'off'],
+    [true, 'win32', false, 'install'],
+    [true, 'linux', false, 'install'],
+    [true, 'darwin', false, 'notify'],
+    [true, 'darwin', true, 'install'],
+  ] as const)('packaged %s on %s, Mac signed %s: %s', (packaged, platform, macSigned, mode) => {
+    expect(updateMode({ packaged, platform, macSigned })).toBe(mode);
   });
 });
 

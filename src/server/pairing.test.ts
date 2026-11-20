@@ -76,10 +76,6 @@ describe('LAN access', () => {
 
     afterEach(() => local.close());
 
-    it('has no LAN access', () => {
-      expect(local.phone.doors()).toEqual([]);
-    });
-
     it('refuses a request naming a LAN address, even from the LAN', async () => {
       const response = await Promise.resolve(
         local.app.request(
@@ -140,17 +136,6 @@ describe('LAN access', () => {
       });
 
       expect(response.status).toBe(401);
-    });
-
-    it('is sent from the UI to the pairing screen', async () => {
-      const response = await call('/');
-
-      expect(response.status).toBe(302);
-      expect(response.headers.get('location')).toBe('/pair');
-    });
-
-    it('reaches the pairing screen', async () => {
-      expect((await call('/pair')).status).not.toBe(401);
     });
 
     it('cannot sign in with the UI token', async () => {

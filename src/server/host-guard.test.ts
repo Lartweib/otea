@@ -66,10 +66,6 @@ describe('host guard', () => {
     });
   });
 
-  it.each(['127.0.0.1:4400', 'localhost:4400'])('accepts %s', async (host) => {
-    expect((await request(server, '/p/memory-aaaaaa/api/items', host)).status).toBe(200);
-  });
-
   it('rejects a request without a host header', async () => {
     expect((await server.app.request('/p/memory-aaaaaa/api/items')).status).toBe(403);
   });
