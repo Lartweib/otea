@@ -225,6 +225,10 @@ export const common = {
   'refusal.boardUnpublished':
     'El tablero cambió desde que empezó este borrador: ahora no está publicado.',
   'refusal.draftInvalid': 'No se pudo leer el borrador como tablero: recarga el editor.',
+  'refusal.draftBadId':
+    '«{part}» tiene un id que Otea no puede usar. Pídele al agente que le dé uno con solo minúsculas, números y _ (como docs_si, no docs-si) y que vuelva a entregar el esbozo.',
+  'refusal.draftUncompilable':
+    'Este tablero no se puede publicar tal como está: pídele al agente que lo revise y vuelva a entregar el esbozo.',
   'refusal.boardNameTaken': 'Ya hay un tablero llamado {name}.',
   'refusal.boardNameEmpty': 'El tablero necesita un nombre.',
   'refusal.draftErrors': 'El borrador tiene errores: corrígelos antes de publicar.',

@@ -249,6 +249,10 @@ function said(details: RefusalDetails): string | undefined {
       return t('refusal.draftChanged');
     case 'draft_invalid':
       return t('refusal.draftInvalid');
+    case 'draft_uncompilable':
+      return details.part === undefined
+        ? t('refusal.draftUncompilable')
+        : t('refusal.draftBadId', { part: details.part });
     case 'board_changed':
       return details.version === null
         ? t('refusal.boardUnpublished')

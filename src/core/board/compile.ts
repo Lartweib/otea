@@ -240,6 +240,19 @@ function zoneOf(def: BoardDefinition, part: Part): Zone {
   return def.layout[part.id] ?? defaultZone(part.kind);
 }
 
+// The name of the part (fields.<id>) or step (workflow.states.<id>__…) a preset problem is about.
+function uncompiled(def: BoardDefinition, problems: readonly string[]): string | undefined {
+  for (const problem of problems) {
+    const field = /^fields\.([^:.\s]+)/.exec(problem)?.[1];
+    const part = field === undefined ? undefined : def.parts[field];
+    if (part) return part.name;
+    const state = /^workflow\.states\.([^:.\s]+)/.exec(problem)?.[1];
+    const step = def.steps.find(({ id }) => state?.startsWith(id));
+    if (step) return step.name;
+  }
+  return undefined;
+}
+
 // Compiles a version of a board: `id` names the preset (the board's hidden id), `version` its
 // version. Throws when the board cannot be published: problemsOf says why in words first.
 export function compileBoard(id: string, version: number, def: BoardDefinition): Preset {
@@ -402,11 +415,15 @@ export function compileBoard(id: string, version: number, def: BoardDefinition):
     labels,
   };
   const reading = readPreset(JSON.stringify(raw));
-  if (!reading.ok)
+  if (!reading.ok) {
+    // Said as the part or step it is about, for Studio to word: never the preset's own words.
+    const named = uncompiled(def, reading.problems);
     throw new OteaError(
       'invalid_board',
-      `Board ${def.name} does not compile: ${reading.problems.join('; ')}`,
+      `Board ${def.name} does not compile${named ? `: "${named}" has an id Otea cannot use` : ''}: ${reading.problems.join('; ')}`,
+      { kind: 'draft_uncompilable', ...(named ? { part: named } : {}) },
     );
+  }
   // Its states are hidden ids: each reads as its step (Refinar (in review)), in what Otea says.
   const { preset } = reading;
   for (const workflow of [preset.workflow, ...preset.types.map((type) => type.workflow)])

@@ -702,9 +702,76 @@ describe('an agent drafting a board', () => {
     ]);
   });
 
+  // P5-R3-9: Haiku handed in parts with ids docs-si and docs-archivos; the hand-in took them, and
+  // Studio's Publicar then failed on a compile error. It is refused at hand-in, by the part's id.
+  it('refuses a hand-in whose part id the published board could not key, naming it, attaching nothing', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Piezas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    const docs = { id: 'docs-si', name: 'Es un documento', kind: 'yesno', hint: '', options: [] };
+    const file = {
+      ...draft,
+      parts: { ...draft.parts, 'docs-si': docs },
+      form: [...draft.form, { ref: 'docs-si', required: false }],
+    };
+
+    expect(() =>
+      submitAgentDraft(
+        ctx,
+        { id: item, text: JSON.stringify(file), actor: kiln, channel: 'cli' },
+        now,
+      ),
+    ).toThrowError(
+      /field "Es un documento" \(docs-si\) › id: "docs-si" is not an id: lowercase letters, digits and _, starting with a letter, no dashes/,
+    );
+    expect(showItem(ctx, item, { actor: kiln, channel: 'cli' }).evidence).toEqual([]);
+  });
+
+  // P5-R3-9: handed in again with the ids renamed, the parts of the first hand-in stayed in the
+  // draft beside their new copies, and the published board had each twice.
+  it('drops the parts of the draft that a hand-in leaves out and does not use: no orphans', () => {
+    const ctx = project();
+    const { board, item } = requestAgentDraft(
+      ctx,
+      { name: 'Piezas', need: 'x', agent: 'kiln', lang: 'es' },
+      now,
+    );
+    const draft = getBoardRecord(ctx, board.id).draft?.definition;
+    if (!draft) throw new Error('no draft');
+    const withDocs = (id: string): BoardDefinition => ({
+      ...draft,
+      parts: {
+        ...draft.parts,
+        [id]: { id, name: 'Es un documento', kind: 'yesno', hint: '', options: [] },
+      },
+      form: [...draft.form, { ref: id, required: false }],
+      layout: { ...draft.layout, [id]: 'side' },
+    });
+    const handIn = (file: BoardDefinition) =>
+      submitAgentDraft(
+        ctx,
+        { id: item, text: JSON.stringify(file), actor: kiln, channel: 'cli' },
+        now,
+      );
+
+    handIn(withDocs('fdocs'));
+    handIn(withDocs('fdocs2'));
+    const merged = getBoardRecord(ctx, board.id).draft?.definition;
+
+    expect(Object.keys(merged?.parts ?? {})).not.toContain('fdocs');
+    expect(Object.keys(merged?.layout ?? {})).not.toContain('fdocs');
+    expect(
+      Object.values(merged?.parts ?? {}).filter(({ name }) => name === 'Es un documento'),
+    ).toHaveLength(1);
+  });
+
   // P5-R3-2: an agent drafted from Diseño visual and left out Rama, «En el repositorio» and Cambios.
-  // The merge keeps the parts it dropped (for undo and reuse), unused; once published, Rama's guard
-  // still gated pushes and told agents they may push, on a board Studio showed with no Rama.
+  // Once published, Rama's guard still gated pushes and told agents they may push, on a board Studio showed with no Rama.
   it('publishes a board whose draft dropped its protected branch with no guard: what Studio shows is what agents get', () => {
     const ctx = project();
     const { board, item } = requestAgentDraft(

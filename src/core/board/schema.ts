@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { ICON_NAMES } from '../icons.ts';
+import { KEY } from '../preset.ts';
 import {
   BOARD_SCHEMA,
   type BoardDefinition,
@@ -23,11 +24,11 @@ import { placeOf, shapeProblems } from './shape-words.ts';
 
 const about = (description: string, ...examples: unknown[]) => ({ description, examples });
 
-const ID = /^[a-z][a-z0-9_-]*$/;
-
+// An id keys what the published board compiles to (a part its field, a step its states), so it
+// reads by the same rule: a board.json that reads here also publishes (P5-R3-9).
 const id = z
   .string()
-  .regex(ID, 'is not an id: lowercase letters, digits, - and _, starting with a letter');
+  .regex(KEY, 'is not an id: lowercase letters, digits and _, starting with a letter, no dashes');
 
 // An id: of the thing itself, or of the step or part it names.
 const idOf = (description: string, ...examples: unknown[]) =>
