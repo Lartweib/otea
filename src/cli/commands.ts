@@ -737,6 +737,11 @@ function mcpInstructionText(entry: McpEntry): string[] {
   ];
 }
 
+// What an agent's harness must let it run for Otea's flow, said the same for every harness: Otea
+// writes no harness config, and the docs give an example per harness.
+const HARNESS_PERMISSIONS =
+  "Have your harness allow, for this project: otea (its commands and its MCP tools), git push to the items' branches (Otea's pre-push hook still checks each push) and git worktree add. Otea writes no harness config: docs/working-with-agents.md, «What your harness must allow», has examples.";
+
 // What otea connect --check says: whether the agent named (or any agent) was heard through Otea's
 // MCP server in this project.
 function mcpCheck(project: Project, agent: string | undefined, now = systemClock): Output {
@@ -838,6 +843,8 @@ const connect: Command = {
     const old = oldMcpEntry(here);
     const text = [
       `${AGENTS_MD_TEXT[agentsMd.action](agentsMd.path)}: every agent that reads AGENTS.md finds Otea there (if your harness doesn't read AGENTS.md, import it from the file it reads)`,
+      // A harness's permission mode blocked git push and git worktree add mid-flow (p6).
+      HARNESS_PERMISSIONS,
       ...mcpInstructionText(entry),
       ...(old
         ? [
