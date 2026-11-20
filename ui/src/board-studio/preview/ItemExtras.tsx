@@ -18,7 +18,7 @@ import { NodeGlyph } from '../../lanes/NodeGlyph.tsx';
 import type { ReadyDraft } from '../use-board-draft.ts';
 import { groupOptions, setListAs, setListGroup } from './arrange.ts';
 import { sampleParts } from './practice.ts';
-import { sampleTitle, sampleValue } from './samples.ts';
+import { sampleSkipped, sampleTitle, sampleValue } from './samples.ts';
 import { plainToast } from './toasts.tsx';
 
 // What Lo que ves adds for the new capabilities: the Rondas and Partes tiles, the branch strip under
@@ -84,7 +84,8 @@ export function PlaceValue({
 // reviewed, or it takes no pushes in this step (gateAt).
 export function BranchStrip({ def, step, at }: { def: BoardDefinition; step: Step; at: Phase }) {
   const branch = guardedBranch(def);
-  if (!branch) return null;
+  // A branch the sample never gets, by the board's own fields (P5-R3-16), has no strip.
+  if (!branch || sampleSkipped(def).has(branch.id)) return null;
   const answer = gateAt(def, { step: step.id, phase: at }, 'push');
   const state = answer.allowed ? 'ok' : answer.why === 'review' ? 'frozen' : 'off';
   const words =

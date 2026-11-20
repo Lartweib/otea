@@ -33,7 +33,7 @@ import { PartValue } from './PartValue.tsx';
 import { partsLabel, sampleBlocker, sampleParts } from './practice.ts';
 import { definitionRoute } from './route.ts';
 import { sampleRowBlock } from './SampleRow.tsx';
-import { boardPrefix, type SampleItem, sampleId, sampleTitle } from './samples.ts';
+import { boardPrefix, type SampleItem, sampleId, sampleSkipped, sampleTitle } from './samples.ts';
 import { arrangeToast } from './toasts.tsx';
 
 // Lo que ves: the item page at the selected step, in the item page's own grammar (its crumb,
@@ -415,6 +415,8 @@ function Zones({
 }) {
   const { def } = draft;
   const tiles = pageTiles(def, step.id);
+  // What the sample never gets, by the board's own fields, shows only while arranging (P5-R3-16).
+  const skipped = arranging ? new Set<string>() : sampleSkipped(def);
   const host = useRef<HTMLDivElement>(null);
   const before = useRef<{ rects: Rects; moved: string; from: string } | null>(null);
   const drag = useRef<{ ref: string; fromRow: boolean } | null>(null);
@@ -490,7 +492,7 @@ function Zones({
   const tile = (item: Tile, place: Place) => {
     const part = partOf(def, item.ref);
     const placed = isPlace(item.ref);
-    if (!part && !placed) return null;
+    if ((!part && !placed) || skipped.has(item.ref)) return null;
     const empty = item.now && at === 'doing';
     const name = part ? part.name : placeLabel(item.ref);
     const body =

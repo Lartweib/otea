@@ -1,5 +1,8 @@
 import { afterEach, describe, expect, it } from 'vitest';
 import { handoffCheck } from '../../../../src/core/board/engine.ts';
+import { sequenceIds } from '../../../../src/core/board/ids.ts';
+import type { BoardDefinition } from '../../../../src/core/board/model.ts';
+import { instantiate, requireTemplate } from '../../../../src/core/board/templates.ts';
 import { creatures } from '../../../../src/core/board/testing.ts';
 import { setLanguage } from '../../i18n/i18n.ts';
 import {
@@ -9,6 +12,7 @@ import {
   sampleId,
   sampleItems,
   sampleRaw,
+  sampleSkipped,
   sampleTitle,
   sampleValue,
   setBoardPrefixes,
@@ -139,5 +143,42 @@ describe('sampleFacts', () => {
     const review = sampleFacts(def, 'sanimate', 'review');
     expect(handoffCheck(def, 'sanimate', review.engine).ok).toBe(true);
     expect(review.evidence.eanim).toBe(1);
+  });
+});
+
+// P5-R3-16: on a design board whose «En el repositorio» starts «no», the preview's sample still
+// showed a branch, a diff and «Falta probarlo de punta a punta». The sample follows the board's
+// own fields: what is asked only when a field says so is left out when the sample's field does not.
+describe('the sample follows the board’s own fields', () => {
+  const design = () => instantiate(requireTemplate('design'), 'es', {}, sequenceIds());
+  const ref = (def: BoardDefinition, name: string) =>
+    Object.values(def.parts).find((p) => p.name === name)?.id ?? name;
+
+  it('gives a yes or no the value the board starts it with', () => {
+    const def = design();
+    const repo = def.parts[ref(def, 'En el repositorio')];
+    if (!repo) throw new Error('no repo part');
+    expect(sampleRaw(repo, 0)).toBe('no');
+    setLanguage('es');
+    expect(sampleValue(repo, 1)).toBe('no');
+  });
+
+  it('leaves out what a field the sample does not set asks for: the branch and the diff', () => {
+    const def = design();
+    const skipped = sampleSkipped(def);
+    expect(skipped.has(ref(def, 'Rama'))).toBe(true);
+    expect(skipped.has(ref(def, 'Cambios'))).toBe(true);
+    expect(skipped.has(ref(def, 'A y B'))).toBe(true);
+    expect(skipped.has(ref(def, 'Imágenes'))).toBe(false);
+    const create = def.steps[0];
+    if (!create) throw new Error('no step');
+    const review = sampleFacts(def, create.id, 'review');
+    expect(review.evidence[ref(def, 'Cambios')]).toBeUndefined();
+    expect(review.fields[ref(def, 'Rama')]).toBeUndefined();
+    expect(review.evidence[ref(def, 'Imágenes')]).toBe(1);
+  });
+
+  it('keeps what a board always asks for', () => {
+    expect(sampleSkipped(creatures()).size).toBe(0);
   });
 });
