@@ -198,6 +198,26 @@ describe('hook', () => {
         expect(push('HEAD:refs/tags/v1')).toBe(0);
         expect(asked()).toEqual(['frozen']);
       });
+
+      // Otea where a real install puts it, in a folder with spaces (C:\Program Files\nodejs, a
+      // user's AppData), with backslashes on Windows: the hook's shell line quotes each path, and
+      // git's sh, git-bash's on Windows, must run it whole. A line it split would fail to start
+      // Otea, and the push would go on unchecked.
+      it.each([
+        ['a checkout, on Node', (main: string) => oteaLauncher(main, { execPath: 'node' })],
+        [
+          'the desktop app, on its own runtime',
+          (main: string) => oteaLauncher(main, { execPath: process.execPath, electron: '45.2.1' }),
+        ],
+      ])('runs Otea from a path with spaces: %s', (_, launcherOf) => {
+        const main = join(repo.dir, 'Program Files', 'Otea app', 'otea.mjs');
+        repo.write(join('Program Files', 'Otea app', 'otea.mjs'), read('otea.mjs'));
+        installGitHook(repo.dir, launcherOf(main));
+
+        expect(push('HEAD:refs/heads/frozen')).toBe(1);
+        expect(push('HEAD:refs/heads/open')).toBe(0);
+        expect(asked()).toEqual(['frozen', 'open']);
+      });
     });
 
     it('writes it where core.hooksPath points', async () => {
