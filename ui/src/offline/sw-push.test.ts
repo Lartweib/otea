@@ -77,7 +77,8 @@ type FakeClient = {
   visibilityState: string;
   messages: unknown[];
   postMessage(message: unknown): void;
-  focus(): Promise<FakeClient>;
+  focus(): Promise<unknown>;
+  navigate?: (url: string) => Promise<unknown>;
 };
 
 function client(url: string, o: Partial<FakeClient> = {}): FakeClient {
@@ -123,6 +124,40 @@ describe('openFromClick', () => {
     });
     expect(front.messages).toHaveLength(1);
     expect(back.messages).toEqual([]);
+  });
+
+  // TS-34: the open window comes forward first, while the tap still allows it, and only then is
+  // told where to go; it is never left behind a second window.
+  it('brings the open window forward before it moves', async () => {
+    const steps: string[] = [];
+    const open = client(`${ORIGIN}/#/`, {
+      focus: async () => void steps.push('focus'),
+      postMessage: () => void steps.push('message'),
+    });
+    const opened: string[] = [];
+    await openFromClick(target, {
+      matchAll: async () => [open],
+      openWindow: async (url) => void opened.push(url),
+    });
+    expect(steps).toEqual(['focus', 'message']);
+    expect(opened).toEqual([]);
+  });
+
+  // A notice about another project: the open window goes to that project's page itself.
+  it('navigates the open window to another project’s page', async () => {
+    const elsewhere = `${ORIGIN}/p/web-x1/#/i/WEB-2`;
+    const went: string[] = [];
+    const open = client(`${ORIGIN}/p/proj-aaaaaa/#/`, {
+      navigate: async (url: string) => void went.push(url),
+    });
+    const opened: string[] = [];
+    await openFromClick(elsewhere, {
+      matchAll: async () => [open],
+      openWindow: async (url) => void opened.push(url),
+    });
+    expect(went).toEqual([elsewhere]);
+    expect(open.messages).toEqual([]);
+    expect(opened).toEqual([]);
   });
 
   it('opens the app on the item when it is closed', async () => {

@@ -16,7 +16,6 @@ import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCa
 import { ProjectSettings } from './components/ProjectSettings.tsx';
 import { ProjectsInbox } from './components/ProjectsInbox.tsx';
 import { Triage } from './components/Triage.tsx';
-import { offerShortcut } from './home-screen.ts';
 import { useAttention, useRoute } from './hooks.ts';
 import { t, useLanguage } from './i18n/i18n.ts';
 import { Dialog } from './kit/pop/Dialog.tsx';
@@ -120,19 +119,11 @@ function Shell() {
   const app = useApp();
   const ws = useWorkspace();
   const { yours, working } = useAttention(app.all);
-  const projectId = app.project?.id;
   const projectName = app.project?.name;
   const phone = app.phone;
   useEffect(
     () => applyAttention({ yours, working }, { project: projectName, phone }),
     [yours, working, projectName, phone],
-  );
-  useEffect(
-    () =>
-      offerShortcut(
-        projectId && projectName !== undefined ? { id: projectId, name: projectName } : null,
-      ),
-    [projectId, projectName],
   );
   useQuestionNotice(app.feed, { open: app.route.item, phone: app.phone, onAnswer: app.openItem });
   const route = app.route;

@@ -119,6 +119,21 @@ export function whenInFront(
   });
 }
 
+// A launch with the app open comes back to the open window (the manifest's launch_handler, TS-34):
+// the page goes where the launch names, unless that is only the app's start (`/`, the home-screen
+// icon, Android's bundle of notices) or the page already open.
+export function launchGoesTo(target: string, current: string): string | undefined {
+  try {
+    const url = new URL(target, current);
+    if (url.pathname === '/' || url.href === new URL(current).href) return undefined;
+    return url.href;
+  } catch {
+    return undefined;
+  }
+}
+
+type LaunchQueue = { setConsumer(consume: (params: { targetURL?: string }) => void): void };
+
 export function goTo(url: string): void {
   const move = moveTo(url, window.location.href);
   if (move === undefined) return;
@@ -194,6 +209,12 @@ export async function startShell(
     );
   };
   whenInFront(openShownNotice, document, window);
+  // A launch brought the open window back instead of opening a second one (TS-34).
+  (window as { launchQueue?: LaunchQueue }).launchQueue?.setConsumer(({ targetURL }) => {
+    const to = targetURL ? launchGoesTo(targetURL, window.location.href) : undefined;
+    if (to === undefined) openShownNotice();
+    else goTo(to);
+  });
   let checked = Date.now();
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState !== 'visible' || Date.now() - checked < CHECK_EVERY_MS) return;

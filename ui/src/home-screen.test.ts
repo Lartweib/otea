@@ -1,13 +1,7 @@
 import { readFileSync } from 'node:fs';
-import { afterEach, describe, expect, it, vi } from 'vitest';
-import {
-  dismissHint,
-  hintDismissed,
-  isStandalone,
-  offerShortcut,
-  platformOf,
-  shortcutOf,
-} from './home-screen.ts';
+import { describe, expect, it } from 'vitest';
+import * as homeScreen from './home-screen.ts';
+import { dismissHint, hintDismissed, isStandalone, platformOf } from './home-screen.ts';
 
 const media = (standalone: boolean) => (query: string) => ({
   matches: standalone && query === '(display-mode: standalone)',
@@ -121,46 +115,27 @@ describe('the page a phone adds to its home screen', () => {
   });
 });
 
-// Each project's page offers its own shortcut, named after it (P7-13); the pairing screen keeps Otea.
-describe('the shortcut a page offers', () => {
-  afterEach(() => vi.unstubAllGlobals());
+// One paired phone opens every project, so the installed app is one app (TS-30): the page links the
+// one manifest wherever it opens, and nothing swaps it for a project's.
+describe('one installed app', () => {
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
+  const manifest = JSON.parse(
+    readFileSync(new URL('../public/manifest.webmanifest', import.meta.url), 'utf8'),
+  );
 
-  it('is the project’s own manifest and name on a project page', () => {
-    expect(shortcutOf({ id: 'web-x1', name: 'Web' })).toEqual({
-      manifest: '/p/web-x1/manifest.webmanifest',
-      title: 'Web',
-    });
+  it('is Otea, by the id `/`, on every page', () => {
+    expect(manifest).toMatchObject({ id: '/', name: 'Otea', short_name: 'Otea' });
+    expect(Object.keys(homeScreen)).not.toContain('offerShortcut');
+    expect(html.match(/rel="manifest"/g)).toHaveLength(1);
   });
 
-  it('is Otea’s without a project', () => {
-    expect(shortcutOf(null)).toEqual({ manifest: '/manifest.webmanifest', title: 'Otea' });
-  });
-
-  // The project's manifest stays behind the device's cookie, so the link asks for it to be sent,
-  // even on a page whose link did not say so.
-  it('points the page at it, fetched with the session', () => {
-    const link = element({ rel: 'manifest', href: '/manifest.webmanifest' });
-    const title = element({ name: 'apple-mobile-web-app-title', content: 'Otea' });
-    vi.stubGlobal('document', {
-      querySelector: (selector: string) =>
-        selector === 'link[rel="manifest"]' ? link : selector.startsWith('meta') ? title : null,
-    });
-
-    offerShortcut({ id: 'web-x1', name: 'Web' });
-
-    expect(link.getAttribute('href')).toBe('/p/web-x1/manifest.webmanifest');
-    expect(link.getAttribute('crossorigin')).toBe('use-credentials');
-    expect(title.getAttribute('content')).toBe('Web');
+  // A launch with the app open (Android's bundle of notices, the home-screen icon) comes back to
+  // the open window rather than a second one behind a splash (TS-34); the page then goes where
+  // the launch asked (register.ts).
+  it('brings the open window back on a launch', () => {
+    expect(manifest.launch_handler).toEqual({ client_mode: ['focus-existing', 'auto'] });
   });
 });
-
-function element(attributes: Record<string, string>) {
-  const values = new Map(Object.entries(attributes));
-  return {
-    getAttribute: (name: string) => values.get(name) ?? null,
-    setAttribute: (name: string, value: string) => void values.set(name, value),
-  };
-}
 
 // OKLCH to sRGB hex (Björn Ottosson's matrices), to read a token as a manifest colour.
 function hexOfOklch(l: number, c: number, h: number): string {
