@@ -71,6 +71,7 @@ export type WindowLike = {
   focused?: boolean;
   postMessage(message: unknown): void;
   focus(): Promise<unknown>;
+  navigate?: (url: string) => Promise<unknown>;
 };
 
 export type ClientsLike = {
@@ -78,8 +79,10 @@ export type ClientsLike = {
   openWindow(url: string): Promise<unknown>;
 };
 
-// The app open already comes forward and goes to the item (the page moves itself, see
-// register.ts: a reload would lose what it holds); with no app open, one opens on the item.
+// The app open already comes forward first, while the tap still allows it, then goes to the item:
+// on its own page the page moves itself (register.ts: a reload would lose what it holds); a notice
+// about another project navigates that window there. With no app open, one opens on the item; an
+// open one is never left behind a second window (TS-34).
 export async function openFromClick(target: string, clients: ClientsLike): Promise<void> {
   const origin = new URL(target).origin;
   const open = (await clients.matchAll()).filter((each) => {
@@ -97,6 +100,11 @@ export async function openFromClick(target: string, clients: ClientsLike): Promi
     await clients.openWindow(target);
     return;
   }
-  best.postMessage({ type: 'open', url: target });
   await best.focus().catch(() => undefined);
+  const samePage = new URL(best.url).pathname === new URL(target).pathname;
+  if (!samePage && best.navigate) {
+    await best.navigate(target).catch(() => best.postMessage({ type: 'open', url: target }));
+    return;
+  }
+  best.postMessage({ type: 'open', url: target });
 }

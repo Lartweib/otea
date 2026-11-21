@@ -2,7 +2,6 @@ import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { DEFAULT_QUIET, type NotifyPrefs } from '../../../src/core/notify/planner.ts';
 import type { NotifyKind } from '../../../src/core/notify/signals.ts';
 import { fetchNotify, fetchProjects, postNotifyPrefs, postTestPush } from '../api.ts';
-import { currentProjectId } from '../base.ts';
 import type { Platform } from '../home-screen.ts';
 import { language, type PlainKey, t } from '../i18n/i18n.ts';
 import { Icon } from '../kit/Icon.tsx';
@@ -19,7 +18,7 @@ import {
   subscribeHere,
   unsubscribeHere,
 } from './push-client.ts';
-import { APP_FALLBACK, testPushWords } from './test-push.ts';
+import { APP_NAME, testPushWords } from './test-push.ts';
 
 // Preferencias › Avisos. On a phone over HTTPS: turn them on (the browser asks), then what you are
 // told and when, and turn them off. On a phone that cannot have them: one line that says why and
@@ -172,25 +171,22 @@ export type NotifyBodyProps = {
   onRecheck?: () => void;
   // This browser lost its subscription and the server dropped it (TS-3): turn them on again.
   lost?: boolean;
-  // The installed app's name, which Android's settings list it by (TS-22).
-  app?: string;
 };
 
 // Where to allow them again, with a way to read it again once allowed.
 // On Android, allowed again in its settings, the open app still reads them as denied until it is
-// opened again (TS-25): the warning says so.
+// opened again (TS-25): the warning says so, naming the installed app as Android lists it (TS-30).
 function Blocked({
   platform,
   lost,
-  app,
   onRecheck,
 }: {
   platform: Platform | undefined;
   lost: boolean;
-  app: string;
   onRecheck: (() => void) | undefined;
 }) {
   const android = platform === 'android';
+  const app = APP_NAME;
   return (
     <>
       <p className="gnote nproblem" role="status">
@@ -221,10 +217,9 @@ export function NotifyBody({
   onTest,
   onRecheck,
   lost = false,
-  app = APP_FALLBACK,
 }: NotifyBodyProps) {
   if (offer === 'blocked')
-    return <Blocked platform={platform} lost={false} app={app} onRecheck={onRecheck} />;
+    return <Blocked platform={platform} lost={false} onRecheck={onRecheck} />;
   const why = WHY[offer];
   if (why) return <p className="gnote">{t(why)}</p>;
   const failed = problem ? (
@@ -252,7 +247,7 @@ export function NotifyBody({
   return (
     <>
       {offer === 'push' && blockedHere ? (
-        <Blocked platform={platform} lost app={app} onRecheck={onRecheck} />
+        <Blocked platform={platform} lost onRecheck={onRecheck} />
       ) : null}
       <NotifyChoices prefs={view.prefs} projects={projects} onChange={onPrefs} />
       {offer === 'desktop' ? <p className="gnote">{t('notify.desktopNote')}</p> : null}
@@ -365,7 +360,6 @@ export function NotifyGroup() {
   const offer = notifyOffer(place);
   if (offer === null) return null;
   const blockedHere = blockedHereOf(view, here, changedAt.current);
-  const app = projects.find(({ id }) => id === currentProjectId())?.name ?? APP_FALLBACK;
   const act = async (
     run: () => Promise<NotifyView | null>,
     failure: NonNullable<NotifyBodyProps['problem']>,
@@ -396,7 +390,6 @@ export function NotifyGroup() {
           problem={problem}
           projects={projects}
           lost={lost}
-          app={app}
           onOn={() =>
             void act(async () => {
               if (!view.key) return null;
@@ -426,9 +419,7 @@ export function NotifyGroup() {
             setTested(null);
             postTestPush()
               .then((answer) =>
-                setTested(
-                  testPushWords(answer, { blocked: blockedHere, here: place.platform, app }),
-                ),
+                setTested(testPushWords(answer, { blocked: blockedHere, here: place.platform })),
               )
               .catch(() => setTested(t('testPush.failed')))
               .finally(() => setTesting(false));

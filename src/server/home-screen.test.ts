@@ -109,26 +109,20 @@ describe('home screen on the LAN', () => {
     expect(response.headers.get('cache-control')).toBe('no-cache');
   });
 
-  // A project's shortcut names the project, so it waits for the device's cookie. A browser sends
-  // none with a manifest request unless the page's link asks for it (crossorigin="use-credentials",
-  // ui/index.html): without it the phone reads a redirect, and its shortcut gets no icon.
-  it('serves a project’s manifest to a paired device only, by its cookie', async () => {
-    const path = `/p/${project.identity.id}/manifest.webmanifest`;
+  // One paired phone opens every project, so the installed app is one app, «Otea», whatever page
+  // it was installed from (TS-30): a project's page offers no manifest of its own, which would be a
+  // second identity (a second install offer, and an app named after whichever project it came from).
+  it('gives a paired phone no manifest of a project’s own', async () => {
     const { token } = pairDevice(server.machine, 'Pixel · Chrome');
-
-    const without = await get(path);
-    const withCookie = await Promise.resolve(
+    const response = await Promise.resolve(
       server.app.request(
-        path,
+        `/p/${project.identity.id}/manifest.webmanifest`,
         { headers: { host: `${DESK}:4400`, cookie: `otea_device_4400=${token}` } },
         { incoming: { socket: { remoteAddress: PHONE } } },
       ),
     );
 
-    expect(without.status).toBe(302);
-    expect(without.headers.get('location')).toBe('/pair');
-    expect(withCookie.status).toBe(200);
-    expect(await withCookie.json()).toMatchObject({ short_name: project.identity.name });
+    expect(response.headers.get('content-type') ?? '').not.toContain('manifest+json');
   });
 
   it('still keeps everything else from an unpaired device', async () => {
@@ -163,9 +157,9 @@ describe('home screen on the LAN', () => {
   );
 });
 
-// One server serves every project: each one's page offers its own home-screen shortcut, named after
-// it and opening it, so three projects never make three icons all called Otea (P7-13).
-describe('a home-screen shortcut per project', () => {
+// One server serves every project, and one installed app opens them all (TS-30): every page offers
+// the same manifest, «Otea» with id `/`, so Android installs it once and names it the same everywhere.
+describe('one installed app for every project', () => {
   let dir: string;
   let project: Project;
   let server: OteaServer;
@@ -204,27 +198,23 @@ describe('a home-screen shortcut per project', () => {
     rmSync(dir, { recursive: true, force: true });
   });
 
-  it('names the shortcut after the project and opens that project', async () => {
-    const { id, name } = project.identity;
-    const response = await get(`/p/${id}/manifest.webmanifest`, 'es-ES,es;q=0.9');
+  it('serves the one Otea manifest, in the device’s language', async () => {
+    const response = await get('/manifest.webmanifest', 'es-ES,es;q=0.9');
 
-    expect(response.status).toBe(200);
     expect(response.headers.get('content-type')).toContain('application/manifest+json');
     expect(await response.json()).toMatchObject({
-      name: `${name} · Otea`,
-      short_name: name,
-      id: `/p/${id}/`,
-      start_url: `/p/${id}/`,
+      name: 'Otea',
+      short_name: 'Otea',
+      id: '/',
+      start_url: '/',
       scope: '/',
-      display: 'standalone',
       description: 'En español.',
     });
   });
 
-  it('keeps the plain Otea manifest for the pairing screen', async () => {
-    expect(await (await get('/manifest.webmanifest')).json()).toMatchObject({
-      name: 'Otea',
-      start_url: '/',
-    });
+  it('offers no manifest of a project’s own, from any page', async () => {
+    const response = await get(`/p/${project.identity.id}/manifest.webmanifest`);
+
+    expect(response.headers.get('content-type') ?? '').not.toContain('manifest+json');
   });
 });

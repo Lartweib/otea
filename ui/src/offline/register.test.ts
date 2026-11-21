@@ -1,7 +1,22 @@
 import { describe, expect, it, vi } from 'vitest';
-import { moveTo, whenInFront } from './register.ts';
+import { launchGoesTo, moveTo, whenInFront } from './register.ts';
 
 const HERE = 'https://desk.tail1.ts.net/p/alpha-aaaaaa/#/';
+
+// TS-34: a launch with the app open comes back to the open window (the manifest's launch_handler);
+// the page then goes where the launch asked, unless it is only the app's start.
+describe('launchGoesTo', () => {
+  it('stays where it is for the app’s start, or the page already open', () => {
+    expect(launchGoesTo('https://desk.tail1.ts.net/', HERE)).toBeUndefined();
+    expect(launchGoesTo(HERE, HERE)).toBeUndefined();
+  });
+
+  it('goes to the place a launch names', () => {
+    expect(launchGoesTo('https://desk.tail1.ts.net/p/beta-bbbbbb/#/i/PED-1', HERE)).toBe(
+      'https://desk.tail1.ts.net/p/beta-bbbbbb/#/i/PED-1',
+    );
+  });
+});
 
 describe('moveTo', () => {
   it("moves within this project's page by its hash", () => {

@@ -5,7 +5,7 @@ import { DEFAULT_PREFS } from '../../../src/core/notify/planner.ts';
 import { setLanguage } from '../i18n/i18n.ts';
 import { NotifyBody, type NotifyBodyProps, NotifyOffline, toggleMuted } from './NotifyGroup.tsx';
 import { blockedHereOf, dropIfStale, keyBytes, staleSubscription } from './push-client.ts';
-import { testPushWords } from './test-push.ts';
+import { APP_NAME, testPushWords } from './test-push.ts';
 
 afterEach(() => {
   setLanguage('en');
@@ -237,34 +237,31 @@ describe('a subscription the browser lost', () => {
   });
 });
 
-// TS-22: Android names the installed app after its project (its manifest's short_name, so three
-// projects never make three icons all called Otea): where to look names that app.
+// TS-30: one installed app opens every project, and Android lists it as Otea (the one manifest's
+// name), so where to look names Otea, on the phone and from the desk, in any project.
 describe('the installed app, by its name', () => {
-  it('names it in Android’s settings path, on the phone and from the desk', () => {
-    setLanguage('es');
-    expect(render({ offer: 'blocked', platform: 'android', app: 'proj2' })).toContain(
-      'Ajustes › Apps › proj2 › Notificaciones',
-    );
-    const sent = { result: 'sent', status: 201, detail: '' } as const;
-    expect(testPushWords(sent, { here: 'android', app: 'proj2' })).toContain(
-      'Ajustes › Apps › proj2 › Notificaciones',
-    );
-    expect(testPushWords(sent, { here: 'ios', app: 'proj2' })).toContain(
-      'Ajustes › Notificaciones › proj2',
-    );
-    expect(testPushWords(sent, { blocked: true, app: 'proj2' })).toContain('› proj2 ›');
-    expect(testPushWords(sent, { app: 'proj2', desk: true })).toContain(
-      'Si no llega, revisa en el teléfono: Ajustes › Apps › proj2 › Notificaciones.',
-    );
-    setLanguage('en');
-    expect(testPushWords(sent, { here: 'android', app: 'proj2' })).toContain(
-      'Settings › Apps › proj2 › Notifications',
-    );
+  it('is Otea', () => {
+    expect(APP_NAME).toBe('Otea');
   });
 
-  it('falls back to Otea when it does not know the project', () => {
+  it('names it in Android’s settings path, on the phone and from the desk', () => {
     setLanguage('es');
-    expect(render({ offer: 'blocked', platform: 'android' })).toContain('› Otea ›');
+    expect(render({ offer: 'blocked', platform: 'android' })).toContain(
+      'Ajustes › Apps › Otea › Notificaciones',
+    );
+    const sent = { result: 'sent', status: 201, detail: '' } as const;
+    expect(testPushWords(sent, { here: 'android' })).toContain(
+      'Ajustes › Apps › Otea › Notificaciones',
+    );
+    expect(testPushWords(sent, { here: 'ios' })).toContain('Ajustes › Notificaciones › Otea');
+    expect(testPushWords(sent, { blocked: true })).toContain('› Otea ›');
+    expect(testPushWords(sent, { desk: true })).toContain(
+      'Si no llega, revisa en el teléfono: Ajustes › Apps › Otea › Notificaciones.',
+    );
+    setLanguage('en');
+    expect(testPushWords(sent, { here: 'android' })).toContain(
+      'Settings › Apps › Otea › Notifications',
+    );
   });
 });
 
@@ -273,11 +270,11 @@ describe('the installed app, by its name', () => {
 describe('allowed again while the app stays open', () => {
   it('says to close the app and open it again', () => {
     setLanguage('es');
-    const html = render({ offer: 'blocked', platform: 'android', app: 'proj2' });
-    expect(html).toContain('Si ya los permitiste, cierra proj2 del todo y vuelve a abrirla');
+    const html = render({ offer: 'blocked', platform: 'android' });
+    expect(html).toContain('Si ya los permitiste, cierra Otea del todo y vuelve a abrirla');
     setLanguage('en');
-    expect(render({ offer: 'blocked', platform: 'android', app: 'proj2' })).toContain(
-      'If you already allowed them, close proj2 completely and open it again',
+    expect(render({ offer: 'blocked', platform: 'android' })).toContain(
+      'If you already allowed them, close Otea completely and open it again',
     );
   });
 });

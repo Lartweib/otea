@@ -10,23 +10,23 @@ const IF_NOT_HERE = {
   other: 'testPush.ifNotOther',
 } as const satisfies Record<Platform, string>;
 
-// The installed app goes by its project's name (the project's manifest names it so, TS-22): Otea
-// when that is not known.
-export const APP_FALLBACK = 'Otea';
+// The installed app's name, as the phone's settings list it: one app opens every project, by the
+// one manifest (TS-30).
+export const APP_NAME = 'Otea';
 
 // A test push's answer in plain words. `blocked`: the push service took it, but this phone cannot
 // show it (the permission is denied), so the answer says where to allow it. `here`: sent from the
 // phone itself, which then says where to look if it does not arrive (TS-2); `desk`: sent from the
-// desk, which says where to look on the phone. `app`: the installed app's name.
+// desk, which says where to look on the phone.
 export function testPushWords(
   answer: TestPush,
   {
     blocked = false,
     here,
     desk = false,
-    app = APP_FALLBACK,
-  }: { blocked?: boolean; here?: Platform; desk?: boolean; app?: string | undefined } = {},
+  }: { blocked?: boolean; here?: Platform; desk?: boolean } = {},
 ): string {
+  const app = APP_NAME;
   const { result, status, detail } = answer;
   const code = status ?? 0;
   if (result === 'off') return t('testPush.off');
