@@ -152,7 +152,8 @@ function refuse(result: 'expired' | 'wrong'): never {
   );
 }
 
-// The phone reads what it is about to pair with before it asks for a token; the code stays good.
+// The phone reads what it is about to pair with before it asks for a token, and whether it is
+// paired already; the code stays good.
 export async function peekPairing(c: Context, computer: string, phone: Phone) {
   const on = assertPhoneOn(phone);
   const { code } = await body(c, CodeBody, '{"code": string}');
@@ -160,7 +161,8 @@ export async function peekPairing(c: Context, computer: string, phone: Phone) {
   const result = on.codes.check(code);
   if (result !== 'ok') refuse(result);
   const expiresAt = new Date(on.codes.current()?.expiresAt ?? 0).toISOString();
-  return { computer, expiresAt };
+  // A phone paired already (its token came along): pairing again gives it a new key.
+  return { computer, expiresAt, paired: clientOf(c).kind === 'device' };
 }
 
 // Only tailscale serve brings a phone over HTTPS; the local network is plain HTTP.

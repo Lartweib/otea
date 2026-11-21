@@ -1,3 +1,4 @@
+import { homeTarget } from './base.ts';
 import { t } from './i18n/i18n.ts';
 // Pairing a phone over the LAN: the pieces of the pairing screen and the LAN panel that need no DOM.
 
@@ -32,6 +33,19 @@ export function deviceNameFrom(userAgent: string): string {
           ? 'Safari'
           : '';
   return browser === '' ? system : `${system} · ${browser}`;
+}
+
+// Paired over Tailscale's HTTPS (a *.ts.net name), the phone reaches Otea from anywhere while
+// Tailscale is connected on it; over the local network, on the same network only (TS-4).
+export function reachesAnywhere(host: string, secure: boolean): boolean {
+  const name = host.toLowerCase();
+  return secure && (name === 'ts.net' || name.endsWith('.ts.net'));
+}
+
+// Where the paired phone opens Otea: the project it opened last, which the installed app opens
+// from its cache without waiting for the PC (TS-12); else `/`, which the PC sends to a project.
+export function pairedHome(kept: Pick<Storage, 'getItem' | 'setItem'> | undefined): string {
+  return homeTarget(kept) ?? '/';
 }
 
 // What is left of a code, as m:ss; 0:00 once it ran out.

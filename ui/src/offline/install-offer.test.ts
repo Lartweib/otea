@@ -13,6 +13,7 @@ const place = (over: Partial<InstallPlace> = {}): InstallPlace => ({
   platform: 'android',
   canPrompt: false,
   dismissed: false,
+  installed: false,
   ...over,
 });
 
@@ -22,6 +23,14 @@ describe('installOffer', () => {
     expect(installOffer(place({ phone: false }))).toBe('none');
     expect(installOffer(place({ dismissed: true }))).toBe('none');
     expect(installOffer(place({ dismissed: true, canPrompt: true }))).toBe('none');
+  });
+
+  // TS-16: a Chrome tab with the app installed still offered to install it.
+  it('offers nothing in the browser once Otea is installed on this phone', () => {
+    expect(installOffer(place({ installed: true }))).toBe('none');
+    expect(installOffer(place({ installed: true, platform: 'ios' }))).toBe('none');
+    // A prompt means the browser knows it is not installed (any more).
+    expect(installOffer(place({ installed: true, canPrompt: true }))).toBe('prompt');
   });
 
   it('uses the browser’s own prompt where it fired (Chrome on HTTPS)', () => {

@@ -10,7 +10,9 @@ import {
   hostOf,
   ipFallback,
   isLocalName,
+  pairedHome,
   qrPath,
+  reachesAnywhere,
   timeLeft,
 } from './pairing.ts';
 
@@ -113,5 +115,35 @@ describe('the addresses the pairing code can point at', () => {
     expect(addressLabel('100.64.0.1:4400', 1)).toContain('Tailscale');
     expect(addressLabel('100.127.255.1:4400', 1)).toContain('Tailscale');
     expect(addressLabel('100.128.0.1:4400', 1)).toContain('other network');
+  });
+});
+
+// TS-4: paired over Tailscale's HTTPS, the screen said it worked on the same network only.
+describe('where a paired phone reaches Otea', () => {
+  it('from anywhere through Tailscale, on the same network otherwise', () => {
+    expect(reachesAnywhere('desk.tail1.ts.net', true)).toBe(true);
+    expect(reachesAnywhere('DESK.TAIL1.TS.NET', true)).toBe(true);
+    expect(reachesAnywhere('192.168.1.24', false)).toBe(false);
+    expect(reachesAnywhere('desk.local', false)).toBe(false);
+  });
+
+  it('says so on the paired screen', () => {
+    setLanguage('es');
+    expect(t('pair.doneTextAnywhere', { computer: 'Desk' })).toContain(
+      'desde cualquier lugar mientras Tailscale esté conectado en el teléfono',
+    );
+    expect(t('pair.reachAnywhere')).not.toContain('misma red');
+    setLanguage('en');
+  });
+});
+
+// TS-12: Abrir Otea went to `/`, which waits for the PC: it opens the last project, from the cache.
+describe('where Abrir Otea leads', () => {
+  const kept = (id: string | null) => ({ getItem: () => id, setItem: () => undefined });
+
+  it('to the project this phone opened last, else the home page', () => {
+    expect(pairedHome(kept('web-k3x7qa'))).toBe('/p/web-k3x7qa/#/');
+    expect(pairedHome(kept(null))).toBe('/');
+    expect(pairedHome(undefined)).toBe('/');
   });
 });

@@ -5,6 +5,8 @@ import {
   dismissHint,
   hintDismissed,
   isStandalone,
+  knownInstalled,
+  noteInstalled,
   platformOf,
 } from '../home-screen.ts';
 import { type PlainKey, t } from '../i18n/i18n.ts';
@@ -35,6 +37,7 @@ export function InstallBannerView({ offer, onInstall, onDismiss }: InstallBanner
     <aside className="install-banner" aria-labelledby="install-banner-title">
       <h2 id="install-banner-title">{t('install.title')}</h2>
       <p>{offer === 'prompt' ? t('install.prompt') : t(STEPS[offer])}</p>
+      {offer === 'ios' ? <p className="install-note">{t('install.iosPair')}</p> : null}
       {offer === 'ios' ? <p className="install-note">{t('install.iosPush')}</p> : null}
       {offer === 'prompt' ? null : <p className="install-note">{t('install.again')}</p>}
       <div className="install-acts">
@@ -55,10 +58,23 @@ export function InstallBanner() {
   const app = useApp();
   const [dismissed, setDismissed] = useState(() => hintDismissed(browserStore()));
   const [canPrompt, setCanPrompt] = useState(canPromptInstall);
+  const standalone = isStandalone(window.matchMedia, navigator);
+  const [installed, setInstalled] = useState(() => knownInstalled(browserStore()));
   useEffect(() => onInstallPrompt(() => setCanPrompt(canPromptInstall())), []);
+  // Running installed, or installed just now: the browser tab never offers it again.
+  useEffect(() => {
+    if (standalone) noteInstalled(browserStore());
+    const done = () => {
+      noteInstalled(browserStore());
+      setInstalled(true);
+    };
+    window.addEventListener('appinstalled', done);
+    return () => window.removeEventListener('appinstalled', done);
+  }, [standalone]);
   const offer = installOffer({
     phone: app.phone,
-    standalone: isStandalone(window.matchMedia, navigator),
+    standalone,
+    installed,
     platform: platformOf(navigator.userAgent, navigator.maxTouchPoints),
     canPrompt,
     dismissed,

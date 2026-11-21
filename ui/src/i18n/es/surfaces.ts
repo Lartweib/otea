@@ -147,18 +147,17 @@ export const surfaces = {
   'pair.tokenKept': '··{hint} · guardada en este teléfono',
   'pair.reach': 'alcance',
   'pair.reachText': 'Solo en la misma red. Fuera de casa, usa Tailscale.',
+  'pair.doneTextAnywhere':
+    'Este teléfono puede abrir todos tus proyectos de {computer} desde cualquier lugar mientras Tailscale esté conectado en el teléfono. Nada más cambia en el escritorio.',
+  'pair.reachAnywhere': 'Desde cualquier lugar, con Tailscale conectado en el teléfono.',
+  'pair.alreadyPaired': 'ya emparejado',
+  'pair.introAgain':
+    'Este teléfono ya está emparejado. Emparejarlo de nuevo le da una clave nueva, y la anterior deja de funcionar.',
   'pair.open': 'Abrir Otea',
   'pair.titleApp': 'Emparejar esta app',
   'pair.appName': '{system} · pantalla de inicio',
   'pair.introApp':
     'Escribe el código que aparece en tu equipo, en Configuración › Teléfono. Esta app de la pantalla de inicio guarda su propia clave, aparte del navegador; si ya usaste el código allí, muestra uno nuevo.',
-  'home.title': 'Agrega Otea a tu pantalla de inicio',
-  'home.ios': 'Toca Compartir y luego Agregar a pantalla de inicio.',
-  'home.iosAfter':
-    'Abre Otea desde la pantalla de inicio y emparéjala otra vez con un código nuevo: la app guarda sus datos aparte de Safari.',
-  'home.android': 'Abre el menú del navegador (⋮) y luego Agregar a la pantalla principal.',
-  'home.androidAfter': 'Si la app pide un código, emparéjala otra vez con uno nuevo.',
-  'home.other': 'Usa el menú del navegador para agregar esta página a tu pantalla de inicio.',
   'home.dismiss': 'Entendido',
   'pair.error.invalid_code':
     'Este código no es válido. Revísalo en el escritorio o muestra uno nuevo allí.',

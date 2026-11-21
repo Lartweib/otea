@@ -258,6 +258,8 @@ export const phone = {
   'install.ios': 'En Safari, toca Compartir y luego Agregar a inicio.',
   'install.iosPush':
     'En iPhone, los avisos solo llegan a Otea si está en tu pantalla de inicio: agrégala antes de activarlos.',
+  'install.iosPair':
+    'Luego abre Otea desde la pantalla de inicio y emparéjala otra vez con un código nuevo: la app guarda sus datos aparte de Safari.',
   'install.android':
     'En Chrome, abre el menú (⋮) y luego Agregar a la pantalla principal (o Instalar app).',
   'install.other': 'Usa el menú del navegador para agregar esta página a tu pantalla de inicio.',

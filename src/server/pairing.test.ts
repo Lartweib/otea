@@ -333,8 +333,21 @@ describe('LAN access', () => {
       expect(await peek.json()).toEqual({
         computer: 'Otea',
         expiresAt: new Date(clock + CODE_TTL_MS).toISOString(),
+        paired: false,
       });
       expect((await pairPhone(code)).response.status).toBe(201);
+    });
+
+    // TS-13: a phone paired already read "not paired yet" before pairing again.
+    it('tells a phone paired already that it is', async () => {
+      const { cookie } = await pairPhone();
+      const peek = await call('/api/pair/peek', {
+        method: 'POST',
+        body: { code: issue() },
+        cookie,
+      });
+
+      expect(await peek.json()).toMatchObject({ paired: true });
     });
   });
 

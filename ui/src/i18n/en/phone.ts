@@ -255,6 +255,8 @@ export const phone = {
   'install.ios': 'In Safari, tap Share, then Add to Home Screen.',
   'install.iosPush':
     'On iPhone, notifications reach Otea only once it is on the Home Screen: add it before turning them on.',
+  'install.iosPair':
+    'Then open Otea from the Home Screen and pair it once more with a new code: the app keeps its own storage, apart from Safari.',
   'install.android': 'In Chrome, open the menu (⋮), then Add to Home screen (or Install app).',
   'install.other': "Use your browser's menu to add this page to your home screen.",
   'install.again': 'You can add it later from Preferences.',
