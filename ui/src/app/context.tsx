@@ -60,6 +60,8 @@ export type AppData = {
   // Whether the PC answers and when it last did; while it does not, writes wait (read-only) and
   // a quick capture goes to the queue, where the app can keep one.
   sync: SyncState;
+  // Tries the PC again now (the offline line's Reintentar).
+  retry: () => void;
   canCapture: boolean;
   project?: ProjectView;
   projects?: ProjectOverview[];
@@ -275,6 +277,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     now: data.now,
     session: data.session,
     sync: data.sync,
+    retry: data.retry,
     canCapture: data.canCapture,
     ...(data.project ? { project: data.project } : {}),
     ...(data.projects ? { projects: data.projects } : {}),

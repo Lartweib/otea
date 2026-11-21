@@ -13,26 +13,46 @@ export function syncedTime(at: number, now: number, lang: string): string {
   return new Intl.DateTimeFormat(lang, options).format(at);
 }
 
-// On this computer's own browser Otea itself is down; on the phone, or anywhere else, it is the PC
-// that does not answer.
-export function downWords(host: string, phone = false): string {
-  const local = !phone && (host === 'localhost' || host === '127.0.0.1' || host === '[::1]');
-  return t(local ? 'offline.oteaDown' : 'offline.pcDown');
+// What the line says. On this computer's own browser Otea itself is down. Anywhere else the app
+// cannot reach the PC, and it asks the two things that cause it nearly every time: through Tailscale
+// (a *.ts.net origin), whether Tailscale is connected on this phone, the everyday case of a phone set
+// up once and left with Tailscale off; on the local network, whether it is on the same wifi; and, in
+// both, whether Otea is open on the PC.
+export type DownWords = { head: string; ask: string | null };
+
+export function downWords(host: string, phone = false): DownWords {
+  const name = host.toLowerCase();
+  const local = !phone && (name === 'localhost' || name === '127.0.0.1' || name === '[::1]');
+  if (local) return { head: t('offline.oteaDown'), ask: null };
+  const tailscale = name === 'ts.net' || name.endsWith('.ts.net');
+  return {
+    head: t('offline.noReach'),
+    ask: t(tailscale ? 'offline.askTailscale' : 'offline.askLan'),
+  };
 }
 
-export type OfflineBarProps = { sync: SyncState; now: number; host: string; phone?: boolean };
+export type OfflineBarProps = {
+  sync: SyncState;
+  now: number;
+  host: string;
+  phone?: boolean;
+  // Tries the PC again now: the live stream and every read.
+  onRetry?: () => void;
+};
 
-export function OfflineBar({ sync, now, host, phone = false }: OfflineBarProps) {
+export function OfflineBar({ sync, now, host, phone = false, onRetry }: OfflineBarProps) {
   if (!sync.offline) return null;
   const synced =
     sync.syncedAt === null
       ? null
       : t('offline.synced', { time: syncedTime(sync.syncedAt, now, language()) });
+  const words = downWords(host, phone);
   return (
-    <div className="offline-bar" role="status">
+    <div className="offline-bar" role="status" data-ask={words.ask === null ? undefined : ''}>
       <span className="ob-dot" aria-hidden="true" />
       <span className="ob-text">
-        <b>{downWords(host, phone)}</b>
+        <b>{words.head}</b>
+        {words.ask === null ? null : <span className="ob-ask"> {words.ask}</span>}
         {synced === null ? null : (
           <>
             <span className="ob-sep"> · </span>
@@ -41,6 +61,11 @@ export function OfflineBar({ sync, now, host, phone = false }: OfflineBarProps) 
         )}
       </span>
       <span className="ob-ro">{t('offline.readOnly')}</span>
+      {onRetry ? (
+        <button type="button" className="ob-retry" onClick={onRetry}>
+          {t('offline.retry')}
+        </button>
+      ) : null}
     </div>
   );
 }

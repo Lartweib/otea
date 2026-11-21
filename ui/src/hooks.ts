@@ -11,7 +11,13 @@ export type Connection = 'connecting' | 'live' | 'reconnecting';
 
 // version: bumped on every change to the items; presence: on every change to who is connected
 // (a session seen, a harness named, a lease taken or given back).
-export type Live = { connection: Connection; version: number; presence: number };
+// retry: opens the stream again and reads everything again now (the offline line's Reintentar).
+export type Live = {
+  connection: Connection;
+  version: number;
+  presence: number;
+  retry: () => void;
+};
 
 const RETRY_MS = 10_000;
 
@@ -19,6 +25,8 @@ export function useLive(url = '/api/stream'): Live {
   const [connection, setConnection] = useState<Connection>('connecting');
   const [version, setVersion] = useState(0);
   const [presence, setPresence] = useState(0);
+  const retryRef = useRef<() => void>(() => undefined);
+  const retryNow = useCallback(() => retryRef.current(), []);
   useEffect(() => {
     let source: EventSource;
     let retry: ReturnType<typeof setTimeout> | undefined;
@@ -44,17 +52,29 @@ export function useLive(url = '/api/stream'): Live {
       if (source.readyState === EventSource.CLOSED && document.visibilityState === 'visible')
         open();
     };
+    // Back at the front (the installed app opened again, or from a notification): read again, so a
+    // PC out of reach meanwhile shows as such, and a PC back shows fresh.
+    const front = () => {
+      if (document.visibilityState !== 'visible') return;
+      again();
+      refresh();
+    };
+    retryRef.current = () => {
+      source.close();
+      open();
+      refresh();
+    };
     open();
     window.addEventListener('online', again);
-    document.addEventListener('visibilitychange', again);
+    document.addEventListener('visibilitychange', front);
     return () => {
       clearTimeout(retry);
       window.removeEventListener('online', again);
-      document.removeEventListener('visibilitychange', again);
+      document.removeEventListener('visibilitychange', front);
       source.close();
     };
   }, [url]);
-  return { connection, version, presence };
+  return { connection, version, presence, retry: retryNow };
 }
 
 export function useRemote<T>(

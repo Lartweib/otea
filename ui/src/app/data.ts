@@ -26,6 +26,8 @@ export type Session = { canWrite: boolean; canConfigure: boolean; canManageDevic
 
 export type LoadedData = {
   connection: Connection;
+  // Tries the PC again now: the stream and every read (the offline line's Reintentar).
+  retry: () => void;
   version: number;
   presence: number;
   now: number;
@@ -81,7 +83,7 @@ export function boardsKey(studioWrites: number, version: number): number {
 }
 
 export function useAppData(): LoadedData {
-  const { connection, version, presence } = useLive();
+  const { connection, version, presence, retry } = useLive();
   const beat = useBeat(30_000);
   const now = useNow(beat);
   const items = useRemote(fetchItems, version, connection);
@@ -104,6 +106,7 @@ export function useAppData(): LoadedData {
   const sync = useSync();
   const data: LoadedData = {
     connection,
+    retry,
     version,
     presence,
     now,

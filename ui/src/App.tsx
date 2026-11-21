@@ -148,6 +148,7 @@ function Shell() {
           now={app.now}
           host={window.location.hostname}
           phone={app.phone}
+          onRetry={app.retry}
         />
         <Rail />
         <main className="main">
