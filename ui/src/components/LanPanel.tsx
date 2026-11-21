@@ -25,6 +25,7 @@ import {
   timeLeft,
 } from '../pairing.ts';
 import type { Remote } from '../remote.ts';
+import type { Route } from '../selection.ts';
 import type { Device, LanView } from '../types.ts';
 
 // Emparejar un teléfono (#/lan, SPEC §10.4, mock:3529-3536): a dialog over Te toca with the real
@@ -125,6 +126,11 @@ export function DeviceRow({
 
 type LanPanelProps = { canManage: boolean };
 
+// Hecho, and closing the dialog, go back where it was opened: Configuración, or Te toca (TS-14).
+export function pairingBack(route: Route): { view: 'settings' | 'toca' } {
+  return { view: route.view === 'lan' ? (route.over ?? 'toca') : 'toca' };
+}
+
 export function LanPanel({ canManage }: LanPanelProps) {
   const app = useApp();
   const [view, setView] = useState<Remote<LanView>>({ status: 'loading' });
@@ -181,7 +187,7 @@ export function LanPanel({ canManage }: LanPanelProps) {
   };
   const done = (
     <div className="dbtns" data-i="">
-      <Button variant="primary" onClick={() => app.go({ view: 'toca' })}>
+      <Button variant="primary" onClick={() => app.go(pairingBack(app.route))}>
         {t('lan.done')}
       </Button>
     </div>

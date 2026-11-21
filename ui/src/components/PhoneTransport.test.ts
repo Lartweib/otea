@@ -404,6 +404,20 @@ describe('the guided steps to Tailscale', () => {
 });
 
 describe('what stops Tailscale', () => {
+  // TS-26: after tailscale down, step 3 said "installed but not signed in".
+  it('says Tailscale is stopped on this computer, rather than signed out', () => {
+    setLanguage('es');
+    expect(problemOf({ state: 'logged_out', authUrl: null, stopped: true })).toMatchObject({
+      key: 'phone.ts.stopped',
+      text: 'Tailscale está detenido en este equipo. Ejecuta esto para volver a conectarlo:',
+      commands: ['tailscale up'],
+    });
+    setLanguage('en');
+    expect(problemOf({ state: 'logged_out', authUrl: null, stopped: true })).toMatchObject({
+      text: 'Tailscale is stopped on this computer. Run this to connect it again:',
+    });
+  });
+
   it('names the command or the page that fixes it', () => {
     expect(problemOf({ state: 'logged_out', authUrl: null })).toMatchObject({
       key: 'phone.ts.loggedOut',

@@ -52,6 +52,8 @@ export function problemOf(check: TailscaleCheck): Problem | null {
         label: t('phone.ts.download'),
       });
     case 'logged_out':
+      if (check.stopped)
+        return problem('phone.ts.stopped', t('phone.ts.stopped'), ['tailscale up']);
       return problem(
         'phone.ts.loggedOut',
         t('phone.ts.loggedOut'),
@@ -774,13 +776,17 @@ const served = (check: TailscaleCheck | null | undefined) =>
   check?.state === 'ready' && check.serving;
 
 // Tailscale serves Otea and nothing answered there yet: right after serving, the first HTTPS
-// request waits for the certificate, so the status is read again a few times (TS-8).
+// request waits for the certificate, which can take well over half a minute, so the status is read
+// again every few seconds until Otea answers, for up to three minutes (TS-8).
 export function settlesAgain(status: PhoneStatus): boolean {
   return status.transport === 'tailscale' && status.reachable === false && served(status.tailscale);
 }
 
-const SETTLE_TRIES = 6;
 const SETTLE_EVERY_MS = 3000;
+const SETTLE_TRIES = 60;
+// While Tailscale carries the phone and the page stays open, what Tailscale says (the phone online
+// or not, Otea answering or not) is read again now and then, and as the window comes back (TS-23).
+const FRESH_EVERY_MS = 30_000;
 
 // The section's data: the status from the server, the guide while Tailscale is open, and what the
 // person picks. A pick opens or closes the local network (Otea's own setting); Tailscale opens its
@@ -841,6 +847,25 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
     readGuide(controller.signal);
     return () => controller.abort();
   }, [canWrite, chosen, readGuide]);
+
+  useEffect(() => {
+    if (!canWrite || active !== 'tailscale') return undefined;
+    const controller = new AbortController();
+    const fresh = () => {
+      if (document.visibilityState === 'hidden') return;
+      fetchPhone(controller.signal).then(setStatus, () => undefined);
+      void readGuide(controller.signal);
+    };
+    const timer = window.setInterval(fresh, FRESH_EVERY_MS);
+    window.addEventListener('focus', fresh);
+    document.addEventListener('visibilitychange', fresh);
+    return () => {
+      controller.abort();
+      window.clearInterval(timer);
+      window.removeEventListener('focus', fresh);
+      document.removeEventListener('visibilitychange', fresh);
+    };
+  }, [canWrite, active, readGuide]);
 
   // One change at a time; the status comes back with it.
   const act = (

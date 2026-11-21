@@ -1,4 +1,5 @@
 // @vitest-environment happy-dom
+import { act } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { setLanguage } from '../i18n/i18n.ts';
 import { buttonNamed, type Mounted, mount, press, settle } from '../test-dom.tsx';
@@ -17,6 +18,9 @@ type World = {
   lanOpen: boolean;
   serving: boolean;
   serveFails: string | null;
+  // Reads of the status left before the served address answers (the certificate on its way).
+  silentReads?: number;
+  phoneOnline?: boolean | null;
 };
 
 const check = (w: World): TailscaleCheck => ({
@@ -31,7 +35,7 @@ const statusOf = (w: World): PhoneStatus =>
     ? {
         transport: 'tailscale',
         url: `https://${HOST}`,
-        reachable: w.serving,
+        reachable: w.serving && !(w.silentReads && w.silentReads > 0),
         tailscale: check(w),
         lanOpen: w.lanOpen,
         firewallPrompt: false,
@@ -48,7 +52,7 @@ const statusOf = (w: World): PhoneStatus =>
 const guideOf = (w: World): TailscaleGuide => ({
   done: { phone: true, pc: true, signIn: true, https: true, serve: w.serving, pair: false },
   pairing: 'none',
-  phoneOnline: null,
+  phoneOnline: w.phoneOnline ?? null,
   signedIn: true,
   check: check(w),
   host: HOST,
@@ -69,7 +73,11 @@ function serve(w: World): Sent[] {
     const body = typeof init.body === 'string' ? (JSON.parse(init.body) as unknown) : undefined;
     const json = (value: unknown) =>
       new Response(JSON.stringify(value), { headers: { 'content-type': 'application/json' } });
-    if (method === 'GET' && path === '/api/phone') return json(statusOf(w));
+    if (method === 'GET' && path === '/api/phone') {
+      const status = statusOf(w);
+      if (w.silentReads) w.silentReads -= 1;
+      return json(status);
+    }
     if (method === 'GET' && path === '/api/phone/tailscale') return json(guideOf(w));
     sent.push({ method, path, body });
     if (path === '/api/phone') {
@@ -182,4 +190,60 @@ describe('Configuración · Teléfono, clicked', () => {
     expect(card('local')?.getAttribute('aria-checked')).toBe('true');
     expect(page?.root.querySelector('.ph-guide')).toBeNull();
   });
+});
+
+// TS-8: right after serving, the certificate took longer than the page waited, and the status sat on
+// «comprobando…» with Otea already answering. TS-23: an open Configuración never noticed the phone
+// leaving Tailscale, nor coming back.
+describe('Configuración · Teléfono, left open', () => {
+  afterEach(() => vi.useRealTimers());
+
+  // Time passes a few seconds at a time, each step letting the reads it started come back.
+  const tick = async (ms: number) => {
+    for (let left = ms; left > 0; left -= 3000) {
+      await act(async () => {
+        await vi.advanceTimersByTimeAsync(3000);
+      });
+      await settle();
+    }
+  };
+  const reach = () => page?.root.querySelector('.ph-reach')?.textContent ?? '';
+
+  it('keeps reading after serving until Otea answers, however long the certificate takes', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'setInterval', 'Date'] });
+    const w: World = { transport: 'lan', lanOpen: false, serving: false, serveFails: null };
+    await open(w);
+    await press(card('tailscale'));
+    await press(page && buttonNamed(page.root, 'Ejecutar este comando'));
+    w.silentReads = 20;
+    await press(page && buttonNamed(page.root, 'Sí, ejecutarlo'));
+    await tick(40_000);
+    expect(reach()).toContain('comprobando');
+    await tick(40_000);
+    expect(reach()).toContain('Otea responde');
+  }, 30_000);
+
+  it('notices the phone leave Tailscale and come back, while the page stays open', async () => {
+    vi.useFakeTimers({ shouldAdvanceTime: true, toFake: ['setTimeout', 'setInterval', 'Date'] });
+    const w: World = {
+      transport: 'tailscale',
+      lanOpen: false,
+      serving: true,
+      serveFails: null,
+      phoneOnline: true,
+    };
+    await open(w);
+    const offline = () =>
+      page?.root.textContent?.includes('Tu teléfono no está conectado a Tailscale ahora');
+    expect(offline()).toBe(false);
+    w.phoneOnline = false;
+    await tick(60_000);
+    expect(offline()).toBe(true);
+    w.phoneOnline = true;
+    await act(async () => {
+      window.dispatchEvent(new Event('focus'));
+    });
+    await settle();
+    expect(offline()).toBe(false);
+  }, 30_000);
 });
