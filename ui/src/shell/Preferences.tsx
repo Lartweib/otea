@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import { useApp } from '../app/context.tsx';
 import { focusSettings } from '../components/settings-focus.ts';
+import { isStandalone } from '../home-screen.ts';
 import {
   browserLanguage,
   chooseLanguageSetting,
@@ -20,7 +21,7 @@ import { NotifyGroup } from '../notify/NotifyGroup.tsx';
 import { InstallHint, wantsInstallLine } from '../offline/InstallHint.tsx';
 import type { ThemeChoice } from '../theme.ts';
 import { loadChoice, switchChoice } from '../theme-dom.ts';
-import { motionNote } from './prefs-model.ts';
+import { motionNote, prefsScope } from './prefs-model.ts';
 import { shellUi, useShellUi } from './shell-ui.ts';
 import { useMedia } from './use-media.ts';
 
@@ -67,13 +68,16 @@ export function PrefsBody({ server, onPhone }: PrefsBodyProps) {
   const [theme, setTheme] = useState<ThemeChoice>(loadChoice);
   const [motion, setMotion] = useState<MotionPref>(motionPref);
   const [lang, setLang] = useState<LanguageChoice>(languageChoice);
+  const [standalone] = useState(
+    () => typeof window !== 'undefined' && isStandalone(window.matchMedia, navigator),
+  );
   return (
     <>
       <div className="phead" data-i="">
         <Buddy size={20} />
         <span>
           <b>{t('prefs.title')}</b>
-          <small>{t('prefs.scope')}</small>
+          <small>{t(prefsScope({ phone: app.phone, standalone }))}</small>
         </span>
       </div>
       <Group label={t('prefs.theme')}>
