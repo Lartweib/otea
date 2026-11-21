@@ -322,5 +322,12 @@ export const phone = {
   'testPush.off': 'Este dispositivo no tiene los avisos activados.',
   'testPush.failed': 'No se pudo enviar. Vuelve a intentarlo.',
   'testPush.ifNot': 'Si no llega, revisa en el teléfono: Ajustes › Apps › Otea › Notificaciones.',
+  'testPush.ifNotAndroid':
+    'Si no llega, revisa en este teléfono Ajustes › Apps › Otea › Notificaciones.',
+  'testPush.ifNotIos': 'Si no llega, revisa en este teléfono Ajustes › Notificaciones › Otea.',
+  'testPush.ifNotOther':
+    'Si no llega, revisa que este navegador tenga permitidas las notificaciones de este sitio.',
+  'notify.lostHere':
+    'Este teléfono dejó de recibir los avisos (pasa al bloquearlos y volver a permitirlos en los ajustes). Vuelve a activarlos aquí.',
   'notify.saveFailed': 'No se guardó. Vuelve a intentarlo.',
 } satisfies Partial<Catalog>;

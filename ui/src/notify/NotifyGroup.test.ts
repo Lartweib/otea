@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it } from 'vitest';
 import { DEFAULT_PREFS } from '../../../src/core/notify/planner.ts';
 import { setLanguage } from '../i18n/i18n.ts';
 import { NotifyBody, type NotifyBodyProps, toggleMuted } from './NotifyGroup.tsx';
-import { keyBytes } from './push-client.ts';
+import { blockedHereOf, keyBytes, staleSubscription } from './push-client.ts';
 import { testPushWords } from './test-push.ts';
 
 afterEach(() => setLanguage('en'));
@@ -170,5 +170,63 @@ describe('a test push and a blocked app', () => {
     expect(lost).toContain('Android tiene bloqueados los avisos de esta app');
     expect(lost).toContain('Comprobar de nuevo');
     expect(render({ view: on, platform: 'android' })).not.toContain('Android tiene bloqueados');
+  });
+});
+
+// TS-2: Android's own switch for the installed app cannot be read by the page, so a test push
+// "sent" may never show: the phone says where to look, as the desk does.
+describe('a test push from the phone', () => {
+  it('says where to look on this phone when it does not arrive', () => {
+    setLanguage('es');
+    const sent = { result: 'sent', status: 201, detail: '' } as const;
+    expect(testPushWords(sent, { here: 'android' })).toBe(
+      'Enviado: debería llegarte en unos segundos. Si no llega, revisa en este teléfono Ajustes › Apps › Otea › Notificaciones.',
+    );
+    expect(testPushWords(sent, { here: 'ios' })).toContain('Ajustes › Notificaciones › Otea');
+    expect(testPushWords(sent, { here: 'other' })).toContain('Si no llega');
+    setLanguage('en');
+    expect(testPushWords(sent, { here: 'android' })).toContain(
+      'If it does not arrive, check Settings › Apps › Otea › Notifications on this phone.',
+    );
+  });
+});
+
+// TS-3: Android's block, then allow, leaves the browser with no subscription while the server
+// keeps pushing to the dead one (and the desk says Listo). The phone tells the server it has none.
+describe('a subscription the browser lost', () => {
+  const on = { ...view, subscribed: true };
+
+  it('is stale when the server has one and this browser has none', () => {
+    expect(staleSubscription(on, { permission: 'granted', subscribed: false })).toBe(true);
+    expect(staleSubscription(on, { permission: 'default', subscribed: false })).toBe(true);
+    expect(staleSubscription(on, { permission: 'granted', subscribed: true })).toBe(false);
+    // Cannot tell (no service worker yet): never a guess.
+    expect(staleSubscription(on, { permission: 'granted', subscribed: null })).toBe(false);
+    expect(staleSubscription(view, { permission: 'granted', subscribed: false })).toBe(false);
+    expect(
+      staleSubscription({ ...on, target: 'desktop' }, { permission: 'granted', subscribed: false }),
+    ).toBe(false);
+  });
+
+  it('says notifications stopped here, beside Activar avisos', () => {
+    setLanguage('es');
+    const html = render({ lost: true, platform: 'android' });
+    expect(html).toContain('Este teléfono dejó de recibir los avisos');
+    expect(html).toContain('Activar avisos');
+    expect(render({})).not.toContain('dejó de recibir');
+  });
+});
+
+// TS-7: right after Activar avisos, a read of this browser made before it subscribed still said
+// "no subscription", and the red Android line showed at the moment of success.
+describe('whether this browser blocks what the server sends', () => {
+  const on = { ...view, subscribed: true };
+
+  it('trusts only a read made after the last change', () => {
+    const before = { permission: 'granted', subscribed: false, at: 1 };
+    expect(blockedHereOf(on, before, 2)).toBe(false);
+    expect(blockedHereOf(on, { ...before, permission: 'denied', at: 3 }, 2)).toBe(true);
+    expect(blockedHereOf(on, { permission: 'granted', subscribed: true, at: 3 }, 2)).toBe(false);
+    expect(blockedHereOf(on, null, 0)).toBe(false);
   });
 });

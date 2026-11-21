@@ -10,6 +10,7 @@ import { currentProjectId, homeTarget, rememberProject } from './base.ts';
 import { PairScreen } from './components/PairScreen.tsx';
 import { startLanguage } from './i18n/i18n.ts';
 import { applyMotionPref } from './motion/reduced.ts';
+import { startPushCheck } from './notify/push-client.ts';
 import { announceFlushed, announceUpdated } from './offline/announce.ts';
 import { startQueue } from './offline/queue-store.ts';
 import { startShell } from './offline/register.ts';
@@ -85,4 +86,6 @@ if (root) {
 if (!pairing && import.meta.env.PROD) {
   void startShell(announceUpdated);
   startQueue(announceFlushed);
+  // A subscription this browser lost (Android's block, then allow) is told to the PC (TS-3).
+  startPushCheck();
 }

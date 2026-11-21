@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs';
+import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
 import { clickTarget, openFromClick, pushNotification } from './sw-push.ts';
 
@@ -19,7 +21,7 @@ describe('pushNotification', () => {
         body: 'TASKS-7 · Ship the login',
         tag: 'otea-item-TASKS-7',
         icon: '/icons/otea-192.png',
-        badge: '/icons/otea-192.png',
+        badge: '/icons/otea-badge.png',
         data: { url: '/#/i/TASKS-7' },
       },
     });
@@ -31,6 +33,29 @@ describe('pushNotification', () => {
       options: { body: '', data: { url: '/#/' } },
     });
     expect(pushNotification({ title: 7 })).toMatchObject({ title: 'Otea' });
+  });
+
+  // TS-18: Android draws the status-bar badge from the image's alpha alone, so the full-colour icon
+  // showed as a white square. The badge is Otea's mark, white on transparent.
+  it('badges with a monochrome mark: white, its shape in the alpha alone', () => {
+    const png = readFileSync(new URL('../../public/icons/otea-badge.png', import.meta.url));
+    const ihdr = png.indexOf('IHDR');
+    expect(png.readUInt32BE(ihdr + 4)).toBe(96);
+    expect(png[ihdr + 13]).toBe(6);
+    const idat = png.indexOf('IDAT');
+    const pixels = inflateSync(png.subarray(idat + 4, idat + 4 + png.readUInt32BE(idat - 4)));
+    const row = 96 * 4 + 1;
+    let ink = 0;
+    let clear = 0;
+    for (let y = 0; y < 96; y++)
+      for (let x = 0; x < 96; x++) {
+        const at = y * row + 1 + x * 4;
+        expect([pixels[at], pixels[at + 1], pixels[at + 2]]).toEqual([255, 255, 255]);
+        if ((pixels[at + 3] ?? 0) > 200) ink++;
+        if (pixels[at + 3] === 0) clear++;
+      }
+    expect(ink).toBeGreaterThan(96 * 96 * 0.15);
+    expect(clear).toBeGreaterThan(96 * 96 * 0.4);
   });
 });
 

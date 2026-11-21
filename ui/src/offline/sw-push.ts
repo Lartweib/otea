@@ -15,6 +15,8 @@ export type PushShown = {
 };
 
 const ICON = '/icons/otea-192.png';
+// Android draws the status-bar badge from its alpha alone: Otea's mark, white on transparent.
+const BADGE = '/icons/otea-badge.png';
 const HOME = '/#/';
 
 const text = (value: unknown): string | undefined =>
@@ -30,7 +32,7 @@ export function pushNotification(payload: unknown): PushShown {
       body: (title === undefined ? undefined : text(notice.body)) ?? '',
       ...(tag === undefined ? {} : { tag }),
       icon: ICON,
-      badge: ICON,
+      badge: BADGE,
       data: { url: text(notice.url) ?? HOME },
     },
   };

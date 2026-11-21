@@ -1,4 +1,4 @@
-import { postSubscription, postUnsubscribe } from '../api.ts';
+import { fetchNotify, postSubscription, postUnsubscribe } from '../api.ts';
 import { isStandalone, platformOf } from '../home-screen.ts';
 import type { Language } from '../i18n/i18n.ts';
 import { isDesktopApp, type NotifyPlace, type NotifyView } from './offer.ts';
@@ -81,10 +81,13 @@ export async function unsubscribeHere(): Promise<NotifyView> {
   return view;
 }
 
+export type LocalPush = { permission: string; subscribed: boolean | null };
+
 // What this browser holds for push now: its permission, and whether its service worker still has a
 // subscription (null when it cannot tell: no service worker yet). Android can block an installed
-// app's notifications on its own, apart from the browser's permission.
-export async function localPush(): Promise<{ permission: string; subscribed: boolean | null }> {
+// app's notifications on its own, apart from the browser's permission, and the page cannot read
+// that switch; blocking and allowing them again there leaves the browser with no subscription.
+export async function localPush(): Promise<LocalPush> {
   const permission =
     typeof Notification === 'undefined' ? 'unknown' : String(Notification.permission);
   try {
@@ -96,4 +99,90 @@ export async function localPush(): Promise<{ permission: string; subscribed: boo
   } catch {
     return { permission, subscribed: null };
   }
+}
+
+// The server pushes to a subscription this browser no longer has (TS-3): every push "arrives" at a
+// dead end, and the desk counts notifications as on.
+export function staleSubscription(view: NotifyView, here: LocalPush): boolean {
+  return view.target === 'device' && view.subscribed && here.subscribed === false;
+}
+
+// Android blocks what the server still sends: the permission is denied. Only a read made after the
+// last change of the subscription counts (`changedAt`), so a read from before Activar avisos never
+// shows the red line at the moment of success (TS-7).
+export function blockedHereOf(
+  view: NotifyView,
+  here: (LocalPush & { at: number }) | null,
+  changedAt: number,
+): boolean {
+  if (here === null || here.at < changedAt) return false;
+  return view.target === 'device' && view.subscribed && here.permission === 'denied';
+}
+
+// What the phone remembers once the server dropped a lost subscription: that it did (Preferencias
+// says notifications stopped here) and the choices it had, given back when they are turned on again.
+export const PUSH_LOST_KEY = 'otea.pushLost';
+
+function lostStore(): Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | undefined {
+  try {
+    return window.localStorage;
+  } catch {
+    return undefined;
+  }
+}
+
+export function lostPrefs(): NotifyView['prefs'] | null {
+  try {
+    const kept = lostStore()?.getItem(PUSH_LOST_KEY);
+    return kept ? (JSON.parse(kept) as NotifyView['prefs']) : null;
+  } catch {
+    return null;
+  }
+}
+
+export function forgetLost(): void {
+  try {
+    lostStore()?.removeItem(PUSH_LOST_KEY);
+  } catch {
+    // nothing kept
+  }
+}
+
+// Tells the server this browser has no subscription, so it stops pushing to the dead one and the
+// desk no longer counts notifications as on. Returns the server's new view, or null when nothing
+// was stale (or the server could not be told).
+export async function dropIfStale(view: NotifyView, here: LocalPush): Promise<NotifyView | null> {
+  if (!staleSubscription(view, here)) return null;
+  try {
+    const next = await postUnsubscribe();
+    try {
+      lostStore()?.setItem(PUSH_LOST_KEY, JSON.stringify(view.prefs));
+    } catch {
+      // the warning shows for this open only
+    }
+    return next;
+  } catch {
+    return null;
+  }
+}
+
+// As the installed app opens and comes back to the front: the lost subscription is told to the
+// server even before Preferencias opens.
+export async function reconcilePush(): Promise<void> {
+  try {
+    const view = await fetchNotify(new AbortController().signal);
+    if (!view || typeof view !== 'object' || !('target' in view)) return;
+    await dropIfStale(view, await localPush());
+  } catch {
+    // The PC does not answer: the next open tries again.
+  }
+}
+
+export function startPushCheck(): void {
+  if (typeof window === 'undefined' || !window.isSecureContext || !('PushManager' in window))
+    return;
+  void reconcilePush();
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') void reconcilePush();
+  });
 }
