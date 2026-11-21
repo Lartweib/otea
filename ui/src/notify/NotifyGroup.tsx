@@ -1,4 +1,4 @@
-import { type ReactNode, useEffect, useId, useState } from 'react';
+import { type ReactNode, useEffect, useId, useRef, useState } from 'react';
 import { DEFAULT_QUIET, type NotifyPrefs } from '../../../src/core/notify/planner.ts';
 import type { NotifyKind } from '../../../src/core/notify/signals.ts';
 import { fetchNotify, fetchProjects, postNotifyPrefs, postTestPush } from '../api.ts';
@@ -6,7 +6,17 @@ import type { Platform } from '../home-screen.ts';
 import { language, type PlainKey, t } from '../i18n/i18n.ts';
 import { Icon } from '../kit/Icon.tsx';
 import { type NotifyOffer, type NotifyView, notifyOffer } from './offer.ts';
-import { localPush, placeHere, subscribeHere, unsubscribeHere } from './push-client.ts';
+import {
+  blockedHereOf,
+  dropIfStale,
+  forgetLost,
+  type LocalPush,
+  localPush,
+  lostPrefs,
+  placeHere,
+  subscribeHere,
+  unsubscribeHere,
+} from './push-client.ts';
 import { testPushWords } from './test-push.ts';
 
 // Preferencias › Avisos. On a phone over HTTPS: turn them on (the browser asks), then what you are
@@ -150,7 +160,7 @@ export type NotifyBodyProps = {
   onOff: () => void;
   onPrefs: (next: NotifyPrefs) => void;
   platform?: Platform;
-  // On for the server, but this browser cannot show them: its subscription is gone.
+  // On for the server, but this browser cannot show them: its permission is denied.
   blockedHere?: boolean;
   // A test push: running, and what came back.
   testing?: boolean;
@@ -158,6 +168,8 @@ export type NotifyBodyProps = {
   onTest?: () => void;
   // Reads the permission and the subscription again (after allowing them in Android's settings).
   onRecheck?: () => void;
+  // This browser lost its subscription and the server dropped it (TS-3): turn them on again.
+  lost?: boolean;
 };
 
 // Where to allow them again, with a way to read it again once allowed.
@@ -200,6 +212,7 @@ export function NotifyBody({
   tested = null,
   onTest,
   onRecheck,
+  lost = false,
 }: NotifyBodyProps) {
   if (offer === 'blocked')
     return <Blocked platform={platform} lost={false} onRecheck={onRecheck} />;
@@ -213,6 +226,11 @@ export function NotifyBody({
   if (offer === 'push' && !view.subscribed) {
     return (
       <>
+        {lost ? (
+          <p className="gnote nproblem" role="status">
+            {t('notify.lostHere')}
+          </p>
+        ) : null}
         <button type="button" className="plink" disabled={busy} onClick={onOn}>
           <Icon name="bell" />
           {t('notify.on')}
@@ -260,16 +278,21 @@ export function NotifyGroup() {
   const [projects, setProjects] = useState<NotifyProject[]>([]);
   const [testing, setTesting] = useState(false);
   const [tested, setTested] = useState<string | null>(null);
+  // The server dropped a subscription this browser had lost (TS-3): it says so until turned on.
+  const [lost, setLost] = useState(() => lostPrefs() !== null);
   // What this browser holds: its permission, and whether it still has a push subscription. Read as
-  // the group opens and as the app comes back to the front (from Android's settings, say).
-  const [here, setHere] = useState<{ permission: string; subscribed: boolean | null } | null>(null);
+  // the group opens and as the app comes back to the front (from Android's settings, say), each
+  // read stamped with when it started: one from before the last change never counts (TS-7).
+  const [here, setHere] = useState<(LocalPush & { at: number }) | null>(null);
+  const changedAt = useRef(0);
   const [checks, setChecks] = useState(0);
   // biome-ignore lint/correctness/useExhaustiveDependencies: Comprobar de nuevo bumps checks to read again
   useEffect(() => {
     let live = true;
     const read = () => {
+      const at = performance.now();
       void localPush().then((next) => {
-        if (live) setHere(next);
+        if (live) setHere({ ...next, at });
       });
     };
     read();
@@ -296,15 +319,25 @@ export function NotifyGroup() {
       .catch(() => undefined);
     return () => controller.abort();
   }, []);
+  // The server still pushes to a subscription this browser lost: it is told, and drops it.
+  useEffect(() => {
+    if (!view || !here || here.at < changedAt.current) return;
+    let live = true;
+    void dropIfStale(view, here).then((next) => {
+      if (!live || !next) return;
+      changedAt.current = performance.now();
+      setView(next);
+      setLost(true);
+    });
+    return () => {
+      live = false;
+    };
+  }, [view, here]);
   if (!view) return null;
   const place = placeHere(view);
   const offer = notifyOffer(place);
   if (offer === null) return null;
-  const blockedHere =
-    view.target === 'device' &&
-    view.subscribed &&
-    here !== null &&
-    (here.permission === 'denied' || here.subscribed === false);
+  const blockedHere = blockedHereOf(view, here, changedAt.current);
   const act = async (
     run: () => Promise<NotifyView | null>,
     failure: NonNullable<NotifyBodyProps['problem']>,
@@ -313,8 +346,11 @@ export function NotifyGroup() {
     setProblem(null);
     try {
       const next = await run();
-      if (next) setView(next);
-      else setProblem(failure);
+      if (next) {
+        changedAt.current = performance.now();
+        setView(next);
+        setChecks((n) => n + 1);
+      } else setProblem(failure);
     } catch {
       setProblem(failure);
     } finally {
@@ -331,14 +367,27 @@ export function NotifyGroup() {
           busy={busy}
           problem={problem}
           projects={projects}
+          lost={lost}
           onOn={() =>
             void act(async () => {
               if (!view.key) return null;
               const out = await subscribeHere(view.key, language());
-              return 'view' in out ? out.view : null;
+              if (!('view' in out)) return null;
+              // Turned on again after a lost subscription: the choices it had come back.
+              const kept = lostPrefs();
+              forgetLost();
+              setLost(false);
+              if (!kept) return out.view;
+              return postNotifyPrefs(kept, language()).catch(() => out.view);
             }, 'notify.failed')
           }
-          onOff={() => void act(unsubscribeHere, 'notify.failed')}
+          onOff={() =>
+            void act(async () => {
+              forgetLost();
+              setLost(false);
+              return unsubscribeHere();
+            }, 'notify.failed')
+          }
           platform={place.platform}
           blockedHere={blockedHere}
           testing={testing}
@@ -347,7 +396,9 @@ export function NotifyGroup() {
             setTesting(true);
             setTested(null);
             postTestPush()
-              .then((answer) => setTested(testPushWords(answer, { blocked: blockedHere })))
+              .then((answer) =>
+                setTested(testPushWords(answer, { blocked: blockedHere, here: place.platform })),
+              )
               .catch(() => setTested(t('testPush.failed')))
               .finally(() => setTesting(false));
           }}

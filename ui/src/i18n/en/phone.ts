@@ -315,5 +315,13 @@ export const phone = {
   'testPush.failed': 'It could not be sent. Try again.',
   'testPush.ifNot':
     'If it does not arrive, check on the phone: Settings › Apps › Otea › Notifications.',
+  'testPush.ifNotAndroid':
+    'If it does not arrive, check Settings › Apps › Otea › Notifications on this phone.',
+  'testPush.ifNotIos':
+    'If it does not arrive, check Settings › Notifications › Otea on this phone.',
+  'testPush.ifNotOther':
+    'If it does not arrive, check that this browser allows notifications for this site.',
+  'notify.lostHere':
+    'This phone stopped getting notifications (it happens after blocking them and allowing them again in Settings). Turn them on again here.',
   'notify.saveFailed': 'Not saved. Try again.',
 } as const;
