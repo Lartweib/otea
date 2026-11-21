@@ -461,6 +461,11 @@ export const MIGRATIONS = [
   ALTER TABLE process_beats ADD COLUMN called_at TEXT;
   ALTER TABLE process_beats ADD COLUMN calling INTEGER NOT NULL DEFAULT 0;
   `,
+  // How a paired device last reached Otea (tailscale over HTTPS, or lan), as on the machine's
+  // devices table (store/machine.ts): the devices' use cases read both the same way.
+  `
+  ALTER TABLE devices ADD COLUMN via TEXT;
+  `,
 ];
 
 function userVersion(db: DatabaseSync): number {

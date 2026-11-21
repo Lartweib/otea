@@ -11,7 +11,7 @@ import type { CollectionView, ProjectOverview } from '../types.ts';
 import { ActivityDrawer } from './ActivityDrawer.tsx';
 import { ConnectDialog, ConnectView } from './ConnectDialog.tsx';
 import { LandsAs, previewBlock } from './LandsAs.tsx';
-import { LanPanel } from './LanPanel.tsx';
+import { BeforeScan, LanPanel } from './LanPanel.tsx';
 import { NewItemForm } from './NewItemForm.tsx';
 import { elsewhereBlocks, hereBlocks, ProjectsInbox } from './ProjectsInbox.tsx';
 import { Triage } from './Triage.tsx';
@@ -438,5 +438,15 @@ describe('dialogs', () => {
     expect(html).toContain('Emparejar un teléfono');
     expect(html).toContain('otea open');
     expect(html).toContain('>Hecho</button>');
+  });
+
+  it('Emparejar un teléfono says, above the QR on Tailscale, to connect Tailscale on the phone first', () => {
+    setLanguage('es');
+    const html = render(createElement(BeforeScan, { tailscale: true }));
+    expect(html).toContain('class="lan-before" role="note"');
+    expect(html).toContain(
+      'Antes de escanear: abre Tailscale en el teléfono y comprueba que está conectado.',
+    );
+    expect(render(createElement(BeforeScan, { tailscale: false }))).toBe('');
   });
 });

@@ -42,6 +42,8 @@ const guideOf = (done: Partial<TailscaleGuide['done']> = {}): TailscaleGuide => 
     pair: false,
     ...done,
   },
+  pairing: done.pair ? 'push' : 'none',
+  phoneOnline: null,
   signedIn: done.signIn ?? false,
   check: { state: 'ready', host: HOST, url: `https://${HOST}`, serving: done.serve ?? false },
   host: HOST,
@@ -419,5 +421,57 @@ describe('what stops Tailscale', () => {
     });
     expect(problemOf({ ...ready, serving: false })).toMatchObject({ key: 'phone.ts.notServing' });
     expect(problemOf(ready)).toBeNull();
+  });
+});
+
+describe('once Tailscale carries the phone', () => {
+  const all = { phone: true, pc: true, signIn: true, https: true, serve: true, pair: true };
+
+  it('says the phone is paired and names the next action while notifications are off', () => {
+    setLanguage('es');
+    const html = render({
+      status: tailscale,
+      guide: { ...guideOf({ ...all, pair: false }), pairing: 'paired' },
+    });
+
+    expect(html).toMatch(/data-step="pair" data-done="false" data-partial="true"/);
+    expect(html).toContain('emparejado, sin avisos');
+    expect(html).toContain('Preferencias › Avisos');
+    expect(html).toContain('Activar avisos');
+  });
+
+  it('folds every step into a short Listo once all are done, and opens them again', () => {
+    setLanguage('es');
+    const html = render({ status: tailscale, guide: guideOf(all) });
+
+    expect(html).toContain('class="ph-guide ph-ready"');
+    expect(html).toContain('Listo');
+    expect(html).toMatch(/<button[^>]*aria-expanded="false"[^>]*>Ver los pasos<\/button>/);
+    expect(html).not.toContain('data-step="phone"');
+    // Not all done: the steps stay open.
+    expect(render({ status: tailscale, guide: guideOf({ ...all, pair: false }) })).toContain(
+      'data-step="phone"',
+    );
+  });
+
+  it('keeps a prominent note: away from this computer, Tailscale must be connected on the phone', () => {
+    setLanguage('es');
+    const note = 'Tailscale tiene que estar conectado en el teléfono';
+    const html = render({ status: tailscale, guide: guideOf(all) });
+    expect(html).toContain('<p class="ph-away" role="note">');
+    expect(html.slice(html.indexOf('class="ph-away"'))).toContain(note);
+    expect(render({ status: lan })).not.toContain(note);
+  });
+
+  it('says the phone is not connected to Tailscale now, and nothing when it is or cannot tell', () => {
+    setLanguage('es');
+    const off = render({ status: tailscale, guide: { ...guideOf(all), phoneOnline: false } });
+    expect(off).toContain('Tu teléfono no está conectado a Tailscale ahora');
+    expect(off.indexOf('Tu teléfono no está conectado')).toBeLessThan(off.indexOf('ph-ready"'));
+    for (const phoneOnline of [true, null]) {
+      expect(render({ status: tailscale, guide: { ...guideOf(all), phoneOnline } })).not.toContain(
+        'no está conectado a Tailscale',
+      );
+    }
   });
 });

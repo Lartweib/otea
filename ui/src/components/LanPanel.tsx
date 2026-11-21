@@ -187,6 +187,7 @@ export function LanPanel({ canManage }: LanPanelProps) {
           t('lan.dialogLead')
         )}
       </p>
+      <BeforeScan tailscale={tailscale && lan?.enabled === true} />
       <div className="qrw" data-i="">
         <QrCode view={lan} now={now} />
         <div className="qrside">
@@ -271,5 +272,16 @@ export function LanPanel({ canManage }: LanPanelProps) {
       </p>
       {done}
     </>
+  );
+}
+
+// On Tailscale, the phone opens the QR's address only while its Tailscale app is connected: the
+// owner's first scan failed for that alone.
+export function BeforeScan({ tailscale }: { tailscale: boolean }) {
+  if (!tailscale) return null;
+  return (
+    <p className="lan-before" role="note" data-i="">
+      {t('lan.beforeScan')}
+    </p>
   );
 }

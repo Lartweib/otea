@@ -5,6 +5,7 @@ import { encode } from 'uqr';
 import { z } from 'zod';
 import {
   type Device,
+  type DeviceVia,
   deviceName,
   listDevices,
   pairDevice,
@@ -162,6 +163,9 @@ export async function peekPairing(c: Context, computer: string, phone: Phone) {
   return { computer, expiresAt };
 }
 
+// Only tailscale serve brings a phone over HTTPS; the local network is plain HTTP.
+export const viaOf = (secure: boolean): DeviceVia => (secure ? 'tailscale' : 'lan');
+
 export async function pair(
   c: Context,
   machine: DatabaseSync,
@@ -179,8 +183,13 @@ export async function pair(
   // A phone paired already (its token came with the request) scanning a new code stays one device.
   const { device, token } =
     client.kind === 'device'
-      ? repairDevice(machine, client.device.id, named)
-      : pairDevice(machine, named);
+      ? repairDevice(machine, client.device.id, named, new Date(), viaOf(client.secure))
+      : pairDevice(
+          machine,
+          named,
+          new Date(),
+          client.kind === 'local' ? null : viaOf(client.secure),
+        );
   setCookie(c, deviceCookie(port()), token, {
     path: '/',
     httpOnly: true,

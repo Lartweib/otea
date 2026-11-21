@@ -426,6 +426,7 @@ export const surfaces = {
   'lan.dialogLead': 'Scan it with the phone on the same network. Each code lasts 10 minutes.',
   'lan.dialogLeadTailscale':
     'Scan it with the phone logged in to Tailscale. Each code lasts 10 minutes.',
+  'lan.beforeScan': 'Before you scan: open Tailscale on the phone and check that it is connected.',
   'lan.done': 'Done',
   'lan.revoked': 'revoked just now',
   'settings.kicker': 'Project',

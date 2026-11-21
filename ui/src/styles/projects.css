@@ -473,6 +473,49 @@
 .ph-guide > .pj-hint {
   margin: 0;
 }
+/* Every step done: the guide folds into one line that says so, with a way to open the steps. */
+.ph-ready {
+  padding: 12px 16px;
+  border: 1px solid var(--rule-2);
+  border-radius: 10px;
+}
+.ph-ready > h3 {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+.ph-ready-mark {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: var(--plus);
+  color: var(--sheet);
+  font-size: 12px;
+}
+.ph-ready > p {
+  font: 400 14px / 1.5 var(--sans);
+  color: var(--ink-2);
+}
+/* Tailscale carries the phone: always in sight, since a phone with Tailscale off looks like Otea broken. */
+.ph-away {
+  max-width: 820px;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-left: 3px solid var(--you);
+  border-radius: 0 8px 8px 0;
+  background: var(--you-wash);
+  font: 450 14px / 1.5 var(--sans);
+  color: var(--ink);
+}
+.ph-step[data-partial] .ph-step-mark {
+  border-color: var(--you);
+  color: var(--you-ink);
+}
+.ph-step[data-partial] .ph-step-state {
+  color: var(--you-ink);
+}
 /* While Tailscale is being set up: what still carries the phone (or nothing) until it is done. */
 .ph-meanwhile {
   font: 400 13.5px / 1.45 var(--sans);

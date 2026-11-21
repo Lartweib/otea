@@ -321,6 +321,16 @@
   border-bottom: 1px solid var(--rule);
   color: var(--ink-3);
 }
+/* On Tailscale, above the QR: the phone's Tailscale must be connected before the scan opens. */
+.dialog .lan-before {
+  margin: 0 0 12px;
+  padding: 9px 12px;
+  border-left: 3px solid var(--you);
+  border-radius: 0 8px 8px 0;
+  background: var(--you-wash);
+  font: 450 13.5px / 1.45 var(--sans);
+  color: var(--ink);
+}
 .dialog .lan-away {
   font: 400 11.5px / 1.45 var(--mono);
   font-style: normal;

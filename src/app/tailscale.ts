@@ -16,6 +16,9 @@ export type TailscaleStatus = {
   authUrl: string | null;
   // Whether a phone (Android or iOS) is on the same tailnet: its app is installed and signed in.
   phoneOnTailnet: boolean;
+  // Whether a phone is connected to the tailnet right now (its peer's Online): true when any is,
+  // false when every phone peer says it is not, null when none says (no phone, an older CLI).
+  phoneOnline: boolean | null;
 };
 
 // One route `tailscale serve` runs: the HTTPS port and path it answers, and where it forwards.
@@ -95,13 +98,16 @@ export function parseStatus(json: unknown): TailscaleStatus {
     typeof self.DNSName === 'string' && self.DNSName !== '' ? trimDot(self.DNSName) : null;
   const certs = Array.isArray(status.CertDomains) ? status.CertDomains : [];
   const peers = Object.values(record(status.Peer)).map(record);
+  const phones = peers.filter(({ OS }) => typeof OS === 'string' && PHONE_SYSTEMS.has(OS));
+  const online = phones.map(({ Online }) => Online).filter((on) => typeof on === 'boolean');
   return {
     backend: typeof status.BackendState === 'string' ? status.BackendState : 'NoState',
     dnsName: dns,
     magicDns: tailnet.MagicDNSEnabled === true,
     https: certs.some((domain) => typeof domain === 'string' && domain !== ''),
     authUrl: typeof status.AuthURL === 'string' && status.AuthURL !== '' ? status.AuthURL : null,
-    phoneOnTailnet: peers.some(({ OS }) => typeof OS === 'string' && PHONE_SYSTEMS.has(OS)),
+    phoneOnTailnet: phones.length > 0,
+    phoneOnline: online.length === 0 ? null : online.includes(true),
   };
 }
 
@@ -183,8 +189,15 @@ export const GUIDE_STEPS = ['phone', 'pc', 'signIn', 'https', 'serve', 'pair'] a
 
 export type GuideStep = (typeof GUIDE_STEPS)[number];
 
+// The last step as the paired devices tell it: none paired through Tailscale yet; paired, with
+// notifications still off; or a device with notifications on.
+export type GuidePairing = 'none' | 'paired' | 'push';
+
 export type TailscaleGuide = {
   done: Record<GuideStep, boolean>;
+  pairing: GuidePairing;
+  // Whether the phone is connected to Tailscale right now; null when it cannot be told.
+  phoneOnline: boolean | null;
   // This computer is logged in (the phone may not be yet).
   signedIn: boolean;
   check: TailscaleCheck;
@@ -198,8 +211,8 @@ export type TailscaleGuide = {
 
 export type GuideOptions = {
   platform?: Platform;
-  // A paired device turned notifications on: only possible over HTTPS, the last step.
-  pushOn: boolean;
+  // What the paired devices say (server.ts pairingOf); the last step is done at 'push'.
+  pairing: GuidePairing;
 };
 
 export async function readGuide(
@@ -228,8 +241,10 @@ export async function readGuide(
       signIn: signedIn && phone,
       https,
       serve,
-      pair: serve && options.pushOn,
+      pair: serve && options.pairing === 'push',
     },
+    pairing: options.pairing,
+    phoneOnline: read?.phoneOnline ?? null,
     signedIn,
     check: found,
     host: signedIn ? (read?.dnsName ?? null) : null,

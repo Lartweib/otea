@@ -39,6 +39,11 @@ const MACHINE_MIGRATIONS = [
     added_at TEXT NOT NULL
   );
   `,
+  // How each paired device last reached Otea: 'tailscale' (HTTPS through tailscale serve) or
+  // 'lan'; NULL until it is seen again. The Tailscale guide's last step reads it.
+  `
+  ALTER TABLE devices ADD COLUMN via TEXT;
+  `,
 ];
 
 export function migrateMachine(db: DatabaseSync): void {
