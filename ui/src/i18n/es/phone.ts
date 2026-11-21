@@ -220,7 +220,7 @@ export const phone = {
   'phone.ts.step3': 'Escanea el código de emparejamiento que muestra Otea.',
   'phone.ts.ledger':
     'El certificado HTTPS es público: el nombre {host} queda en los registros de Certificate Transparency, que cualquiera puede leer.',
-  // La app instalada por HTTPS: sin el PC, la cola, las actualizaciones (offline/)
+  // La app instalada por HTTPS: sin el equipo, la cola, las actualizaciones (offline/)
   'offline.noReach': 'No llego a tu equipo.',
   'offline.askTailscale':
     '¿Tailscale está conectado en este teléfono? ¿Otea está abierto en tu equipo?',
@@ -238,12 +238,14 @@ export const phone = {
   'offline.sentOne': 'Enviado desde la cola: {title} · {id}',
   'offline.sentMany': 'Enviados {n} ítems que estaban en cola',
   'offline.refused': '{title} no se pudo enviar: míralo en la cola de Te toca',
-  'offline.full': 'La cola está llena ({mb} MB). Se vacía cuando tu PC vuelve a responder.',
-  'offline.storage': 'Este navegador no deja guardar la captura. Inténtalo cuando tu PC responda.',
-  'offline.queuedToast': 'En cola para {board} · se enviará cuando tu PC responda',
-  'offline.lands': 'en cola para {board} hasta que tu PC responda',
+  'offline.full': 'La cola está llena ({mb} MB). Se vacía cuando tu equipo vuelve a responder.',
+  'offline.storage':
+    'Este navegador no deja guardar la captura. Inténtalo cuando tu equipo responda.',
+  'offline.queuedToast': 'En cola para {board} · se enviará cuando tu equipo responda',
+  'offline.lands': 'en cola para {board} hasta que tu equipo responda',
   'offline.queue.title': 'En cola',
-  'offline.queue.note': 'Apuntado mientras tu PC no respondía. Se envían solos cuando responda.',
+  'offline.queue.note':
+    'Apuntado mientras tu equipo no respondía. Se envían solos cuando responda.',
   'offline.queue.waiting': 'en cola',
   'offline.queue.refused': 'no se envió: {message}',
   'offline.queue.discard': 'Descartar',
@@ -264,7 +266,7 @@ export const phone = {
     'En Chrome, abre el menú (⋮) y luego Agregar a la pantalla principal (o Instalar app).',
   'install.other': 'Usa el menú del navegador para agregar esta página a tu pantalla de inicio.',
   'install.again': 'Puedes agregarla más tarde desde Preferencias.',
-  'offline.install.why': 'Instalada, se abre aunque tu PC esté apagado y se actualiza sola.',
+  'offline.install.why': 'Instalada, se abre aunque tu equipo esté apagado y se actualiza sola.',
   'phone.transport.lanOnly':
     'Por la red local el teléfono funciona solo mientras este equipo está encendido y Otea abierto.',
   'phone.transport.offline':
@@ -318,6 +320,8 @@ export const phone = {
   'notify.lost':
     'Este navegador perdió la suscripción a los avisos. Desactívalos y vuelve a activarlos.',
   'notify.recheck': 'Comprobar de nuevo',
+  'notify.needsConnection':
+    'Los avisos necesitan conexión: se cargan cuando tu equipo vuelva a responder.',
   'testPush.send': 'Enviar un aviso de prueba',
   'testPush.sendTo': 'Enviar un aviso de prueba a {name}',
   'testPush.sending': 'Enviando…',

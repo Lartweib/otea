@@ -1,4 +1,5 @@
 import { afterEach, describe, expect, it } from 'vitest';
+import { en } from './en.ts';
 import { es } from './es.ts';
 import { setLanguage, t } from './i18n.ts';
 
@@ -97,5 +98,18 @@ describe('the copy says one thing one way', () => {
     expect(t('settings.reposNote', files)).toBe(
       "Otea writes only AGENTS.md, when an agent runs otea connect, and git's pre-push hook, if you make the gate hard, into your repos. It writes no agent's config.",
     );
+  });
+});
+
+// TS-28: the offline copy mixed «tu equipo» and «tu PC». The computer is «tu equipo» (your computer)
+// throughout.
+describe('the computer, by one name', () => {
+  it('never calls it the PC', () => {
+    const words = (catalog: object) =>
+      Object.values(catalog).flatMap((value) =>
+        typeof value === 'string' ? [value] : Object.values(value as object),
+      );
+    expect(words(es).filter((text) => /\b(tu|el|del) PC\b/.test(text))).toEqual([]);
+    expect(words(en).filter((text) => /\b(your|the) PC\b/.test(text))).toEqual([]);
   });
 });

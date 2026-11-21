@@ -3,7 +3,7 @@ import { renderToStaticMarkup } from 'react-dom/server';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PREFS } from '../../../src/core/notify/planner.ts';
 import { setLanguage } from '../i18n/i18n.ts';
-import { NotifyBody, type NotifyBodyProps, toggleMuted } from './NotifyGroup.tsx';
+import { NotifyBody, type NotifyBodyProps, NotifyOffline, toggleMuted } from './NotifyGroup.tsx';
 import { blockedHereOf, dropIfStale, keyBytes, staleSubscription } from './push-client.ts';
 import { testPushWords } from './test-push.ts';
 
@@ -293,5 +293,22 @@ describe('whether this browser blocks what the server sends', () => {
     expect(blockedHereOf(on, { ...before, permission: 'denied', at: 3 }, 2)).toBe(true);
     expect(blockedHereOf(on, { permission: 'granted', subscribed: true, at: 3 }, 2)).toBe(false);
     expect(blockedHereOf(on, null, 0)).toBe(false);
+  });
+});
+
+// TS-24: after an offline cold start, Preferencias had no avisos section at all, even once the
+// computer answered again, until a reload. It shows, saying it needs the connection.
+describe('Preferencias › Avisos without the computer', () => {
+  it('shows the section, saying it loads once the computer answers', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(createElement(NotifyOffline));
+    expect(html).toContain('avisos');
+    expect(html).toContain(
+      'Los avisos necesitan conexión: se cargan cuando tu equipo vuelva a responder.',
+    );
+    setLanguage('en');
+    expect(renderToStaticMarkup(createElement(NotifyOffline))).toContain(
+      'Notifications need the connection: they load once your computer answers again.',
+    );
   });
 });

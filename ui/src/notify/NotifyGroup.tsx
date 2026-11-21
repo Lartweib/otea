@@ -6,6 +6,7 @@ import { currentProjectId } from '../base.ts';
 import type { Platform } from '../home-screen.ts';
 import { language, type PlainKey, t } from '../i18n/i18n.ts';
 import { Icon } from '../kit/Icon.tsx';
+import { useSync } from '../offline/sync-state.ts';
 import { type NotifyOffer, type NotifyView, notifyOffer } from './offer.ts';
 import {
   blockedHereOf,
@@ -279,8 +280,24 @@ export function NotifyBody({
   );
 }
 
+// Without the computer, before its answer ever came: the section still shows, and says why it is
+// empty (TS-24).
+export function NotifyOffline() {
+  return (
+    <div className="pgroup" data-i="">
+      <span className="gl">{t('notify.title')}</span>
+      <div className="gb">
+        <p className="gnote">{t('notify.needsConnection')}</p>
+      </div>
+    </div>
+  );
+}
+
 export function NotifyGroup() {
   const [view, setView] = useState<NotifyView | null>(null);
+  // Read again once the computer answers, if the first read never got through (TS-24).
+  const offline = useSync().offline;
+  const loaded = view !== null;
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<NotifyBodyProps['problem']>(null);
   const [projects, setProjects] = useState<NotifyProject[]>([]);
@@ -313,7 +330,9 @@ export function NotifyGroup() {
       document.removeEventListener('visibilitychange', front);
     };
   }, [checks]);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: read again as the computer comes back
   useEffect(() => {
+    if (loaded) return undefined;
     const controller = new AbortController();
     fetchNotify(controller.signal)
       .then((answer) => {
@@ -326,7 +345,7 @@ export function NotifyGroup() {
       })
       .catch(() => undefined);
     return () => controller.abort();
-  }, []);
+  }, [loaded, offline]);
   // The server still pushes to a subscription this browser lost: it is told, and drops it.
   useEffect(() => {
     if (!view || !here || here.at < changedAt.current) return;
@@ -341,7 +360,7 @@ export function NotifyGroup() {
       live = false;
     };
   }, [view, here]);
-  if (!view) return null;
+  if (!view) return offline ? <NotifyOffline /> : null;
   const place = placeHere(view);
   const offer = notifyOffer(place);
   if (offer === null) return null;

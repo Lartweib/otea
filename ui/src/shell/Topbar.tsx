@@ -12,6 +12,7 @@ import { MenuLabel } from '../kit/pop/Menu.tsx';
 import { Pop } from '../kit/pop/Pop.tsx';
 import { lookOf } from '../lanes/looks.ts';
 import { NodeGlyph } from '../lanes/NodeGlyph.tsx';
+import { useSync } from '../offline/sync-state.ts';
 import { monogramOf } from '../place-icons.ts';
 import {
   type AgentRow,
@@ -21,6 +22,7 @@ import {
   type PillMark,
   type PillSummary,
   type ProjectRow,
+  pillConnection,
   pillMark,
   pillSummary,
   projectRows,
@@ -503,15 +505,16 @@ function AgentsPill() {
   const app = useApp();
   const [open, setOpen] = useState(false);
   const [btn, setBtn] = useState<HTMLButtonElement | null>(null);
+  const connection = pillConnection(app.connection, useSync().offline);
   if (app.agents === null) return null;
   // Until the server first answers, the pill says nothing rather than «Sin agentes» or «Sin
   // conexión» (P1-R2-8); a stream that cannot open still says it is offline.
-  if (app.agents === undefined && app.connection !== 'reconnecting') return null;
+  if (app.agents === undefined && connection !== 'reconnecting') return null;
   const agents = app.agents ?? [];
   // One source for the pill and its menu: the menu's rows.
   const rows = agentRows(agents, app.all, app.now, app.feed);
-  const mark = pillMark(app.connection, rows);
-  const summary = pillSummary(app.connection, rows);
+  const mark = pillMark(connection, rows);
+  const summary = pillSummary(connection, rows);
   const offline = mark === 'offline';
   const counts = agentCounts(rows);
   const close = () => setOpen(false);

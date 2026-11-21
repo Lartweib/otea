@@ -224,11 +224,16 @@ export const LANGUAGE_NOTE_KEY = 'otea.languageNote';
 
 let note: FirstRunNote | undefined;
 
+// Seen, or as good as seen: a page its service worker controls was opened on this device before
+// (the worker installs on the first open and controls only the next ones), so an offline open of
+// the installed app never shows it again, whatever storage kept (TS-19). A browser that keeps
+// nothing never shows it: it could not remember the answer, and would show it on every open.
 function noteSeen(): boolean {
+  if (typeof navigator !== 'undefined' && navigator.serviceWorker?.controller) return true;
   try {
     return window.localStorage.getItem(LANGUAGE_NOTE_KEY) !== null;
   } catch {
-    return false;
+    return true;
   }
 }
 

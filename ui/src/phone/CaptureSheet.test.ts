@@ -92,7 +92,7 @@ describe('the capture sheet (mock screen 3)', () => {
     setLanguage('es');
     const html = render(props({ title: 'Niebla', queues: true }));
 
-    expect(html).toContain('en cola para Pedidos hasta que tu PC responda');
+    expect(html).toContain('en cola para Pedidos hasta que tu equipo responda');
     expect(html).not.toContain('llega a Pedidos');
     expect(html).not.toMatch(/type="submit"[^>]*disabled/);
   });
