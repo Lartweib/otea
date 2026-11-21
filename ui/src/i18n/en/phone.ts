@@ -199,6 +199,7 @@ export const phone = {
   'phone.ts.download': 'Download Tailscale',
   'phone.ts.loggedOut':
     'Tailscale is installed but not logged in. Run this and log in once in the browser it opens:',
+  'phone.ts.stopped': 'Tailscale is stopped on this computer. Run this to connect it again:',
   'phone.ts.logIn': 'Open the login page',
   'phone.ts.noMagicDns':
     'MagicDNS is off on your tailnet. Turn it on in the DNS settings; new tailnets have it on.',

@@ -193,7 +193,7 @@ export type LanView = {
 // Where Tailscale stands for Otea (src/app/tailscale.ts), from the first thing missing to ready.
 export type TailscaleCheck =
   | { state: 'missing'; install: { commands: string[]; link: string } }
-  | { state: 'logged_out'; authUrl: string | null }
+  | { state: 'logged_out'; authUrl: string | null; stopped?: true }
   | { state: 'no_magic_dns'; settings: string }
   | { state: 'no_https'; settings: string }
   | { state: 'taken'; host: string; target: string }

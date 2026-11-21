@@ -135,7 +135,8 @@ export function forwardsTo(route: ServeRoute, port: number): boolean {
 // Where Tailscale stands for Otea, from the first thing missing to ready.
 export type TailscaleCheck =
   | { state: 'missing'; install: InstallHint }
-  | { state: 'logged_out'; authUrl: string | null }
+  // `stopped`: signed in, but stopped on this computer (tailscale down): tailscale up brings it back.
+  | { state: 'logged_out'; authUrl: string | null; stopped?: true }
   | { state: 'no_magic_dns'; settings: string }
   | { state: 'no_https'; settings: string }
   // https://<host>/ already forwards somewhere else (another Otea project, another app).
@@ -170,6 +171,7 @@ async function check(
 ): Promise<TailscaleCheck> {
   if (cli.locate() === undefined) return { state: 'missing', install: installHint(platform) };
   const status = await read();
+  if (status.backend === 'Stopped') return { state: 'logged_out', authUrl: null, stopped: true };
   if (status.backend !== 'Running') return { state: 'logged_out', authUrl: status.authUrl };
   if (!status.magicDns || status.dnsName === null) {
     return { state: 'no_magic_dns', settings: DNS_SETTINGS_URL };

@@ -53,6 +53,7 @@ export function tailscaleProblem(check: Exclude<TailscaleCheck, { state: 'ready'
         'Then log in, and run otea phone tailscale again.',
       ].join('\n');
     case 'logged_out':
+      if (check.stopped) return 'Tailscale is stopped on this computer. Run: tailscale up';
       return [
         'Tailscale is installed but not logged in. Run: tailscale up',
         ...(check.authUrl ? [`  or open ${check.authUrl}`] : []),

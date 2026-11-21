@@ -10,7 +10,7 @@ import { ActivityDrawer } from './components/ActivityDrawer.tsx';
 import { BriefView } from './components/BriefView.tsx';
 import { ConnectDialog } from './components/ConnectDialog.tsx';
 import { LanguageNote } from './components/LanguageNote.tsx';
-import { LanPanel } from './components/LanPanel.tsx';
+import { LanPanel, pairingBack } from './components/LanPanel.tsx';
 import { ModelPerformance } from './components/ModelPerformance.tsx';
 import { CatalogOverview, ModuleIndex, ModulePanel } from './components/ModuleCatalog.tsx';
 import { ProjectSettings } from './components/ProjectSettings.tsx';
@@ -169,8 +169,7 @@ function Shell() {
       <Dialog
         open={route.view === 'lan'}
         label={t('lan.title')}
-        // Hecho goes back to where it was opened: Configuración, or Te toca (TS-14).
-        onClose={() => app.go({ view: route.view === 'lan' ? (route.over ?? 'toca') : 'toca' })}
+        onClose={() => app.go(pairingBack(route))}
       >
         <LanPanel canManage={app.session.canManageDevices} />
       </Dialog>

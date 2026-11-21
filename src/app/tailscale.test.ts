@@ -111,6 +111,16 @@ describe('setting Tailscale up for Otea', () => {
     expect(cli.calls).toEqual([]);
   });
 
+  // TS-26: after tailscale down the backend reads Stopped: still signed in, only stopped.
+  it('tells a stopped Tailscale from a signed-out one', async () => {
+    const cli = fakeTailscale({ backend: 'Stopped' });
+    expect(await setUpTailscale(cli, 4400)).toEqual({
+      state: 'logged_out',
+      authUrl: null,
+      stopped: true,
+    });
+  });
+
   it('explains the login and runs tailscale up only when asked to', async () => {
     const cli = fakeTailscale({
       backend: 'NeedsLogin',
