@@ -27,6 +27,7 @@ import { AgentMark, Button, Icon, StepPill } from '../../kit/index.ts';
 import { itemOpened } from '../../kit/pop/toast.tsx';
 import type { Look } from '../../lanes/looks.ts';
 import { handsToAgent, hearing } from '../../listening.ts';
+import { OfflineBar } from '../../offline/OfflineBar.tsx';
 import { type DecisionOption, parseOptions } from '../../options.ts';
 import { BottomSheet } from '../../phone/BottomSheet.tsx';
 import { useKeyboardInset } from '../../phone/CaptureSheet.tsx';
@@ -870,6 +871,17 @@ export function PhoneItem(p: PhoneItemProps) {
           {word(item.state)}
         </StepPill>
       </div>
+      {/* The item page covers the line under the top bar: offline, it carries its own (TS-31). */}
+      {app.sync?.offline ? (
+        <OfflineBar
+          sync={app.sync}
+          now={app.now}
+          host={globalThis.location?.hostname ?? ''}
+          phone
+          queues={app.canCapture}
+          onRetry={app.retry}
+        />
+      ) : null}
       <h1 className="headline p-title" data-c>
         {item.title}
       </h1>

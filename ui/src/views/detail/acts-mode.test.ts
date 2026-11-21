@@ -12,6 +12,14 @@ describe('what stands for the moves', () => {
     expect(actsModeOf({ ...o, asks: true, canWrite: false })).toBe('read');
   });
 
+  // TS-31: offline, a paired phone still shows the question it kept, to answer once the PC is back.
+  it('keeps the question in view offline, and only the question', () => {
+    const o = { look: 'yours' as const, canWrite: false, question: true, plan: none };
+    expect(actsModeOf({ ...o, asks: true, offline: true })).toBe('qa');
+    expect(actsModeOf({ ...o, offline: true })).toBe('read');
+    expect(actsModeOf({ ...o, asks: true, offline: false })).toBe('read');
+  });
+
   // P7-R3-1: an item an agent set aside offers Retomar, not the receipt of a step on its way.
   it('offers Retomar on an item an agent set aside for later, and only to who may write', () => {
     const o = { canWrite: true, question: false, plan: none, aside: true };

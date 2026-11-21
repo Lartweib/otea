@@ -4,12 +4,14 @@ import { SYNC_TAG } from './register.ts';
 import { clickTarget, openFromClick, pushNotification, type WindowLike } from './sw-push.ts';
 import { SHELL_KEY, swRoute } from './sw-routes.ts';
 import {
+  type Background,
   type CacheLike,
   cacheFirst,
   DATA_CACHE,
   dataCacheFor,
   homeFirst,
   networkFirst,
+  newLink,
   rememberProject,
   shellCache,
   staleCaches,
@@ -66,6 +68,19 @@ const opened = (name: string): Promise<CacheLike> =>
 
 const net = (request: Request | string) => fetch(request);
 
+// What this worker knows of the PC while it runs: found down once, the next reads answer from the
+// cache at once (TS-33).
+const link = newLink();
+
+// Answers with `answer`, keeping the worker alive for what goes on after it (a late answer kept, a
+// check on the PC).
+function respond(event: FetchEvent, answer: (background: Background) => Promise<Response>): void {
+  const tasks: Promise<unknown>[] = [];
+  const response = answer((task) => void tasks.push(task));
+  event.respondWith(response);
+  event.waitUntil(response.then(() => Promise.allSettled(tasks)).catch(() => undefined));
+}
+
 // A new version fills its own cache, then waits: it takes over when the page asks (register.ts).
 sw.addEventListener('install', (event) => {
   event.waitUntil(caches.open(shellCache(VERSION)).then((cache) => cache.addAll(PRECACHE)));
@@ -91,17 +106,17 @@ sw.addEventListener('fetch', (event) => {
   const route = swRoute(request, origin, PRECACHED);
   if (route === 'network') return;
   if (route === 'home') {
-    event.respondWith(
+    respond(event, (background) =>
       Promise.all([opened(shellCache(VERSION)), opened(DATA_CACHE)]).then(([shell, data]) =>
-        homeFirst(request, { net, shell, data }),
+        homeFirst(request, { net, shell, data, link, background }),
       ),
     );
     return;
   }
   if (route === 'data') {
-    event.respondWith(
+    respond(event, (background) =>
       opened(dataCacheFor(request.url)).then((cache) =>
-        networkFirst(request, { net, cache, now: Date.now }),
+        networkFirst(request, { net, cache, now: Date.now, link, background }),
       ),
     );
     return;

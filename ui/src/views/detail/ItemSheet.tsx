@@ -351,6 +351,7 @@ export function ItemSheet({ item, full, nav, onNav, onFull, onClose }: ItemSheet
     plan,
     asks: !!item.asks,
     aside: !!item.setAside,
+    offline: app.sync?.offline === true,
   });
   // Reviewing an item that carries options, you pick one as you approve: the ways on are named for
   // the pick, and the moves keep the rest (the send-backs, the closes).
