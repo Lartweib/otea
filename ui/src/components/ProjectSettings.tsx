@@ -354,6 +354,30 @@ function Storage({ settings }: { settings: Settings }) {
   );
 }
 
+// Configuración without a session, at the top of the page: this computer's browser signs in with
+// otea open; a paired phone or tablet never changes it. Every section below stays read-only.
+export function SettingsSignIn({
+  canConfigure,
+  canWrite,
+}: {
+  canConfigure: boolean;
+  canWrite: boolean;
+}) {
+  if (canConfigure) return null;
+  return (
+    <p className="pj-signin" role="note">
+      <span className="pj-signin-mark" aria-hidden="true">
+        <Icon name="lock" />
+      </span>
+      <span>
+        {canWrite
+          ? t('settings.deviceOnly')
+          : tx('settings.signIn', { command: <code className="pj-code">otea open</code> })}
+      </span>
+    </p>
+  );
+}
+
 // rail: the project's sidebar beside the page; sidebar: whether it is open.
 type ProjectSettingsProps = {
   version: number;
@@ -375,9 +399,11 @@ export function ProjectSettings({ version, connection, canWrite }: ProjectSettin
     const section = takeSettingsFocus();
     if (section) document.getElementById(settingsSectionId(section))?.scrollIntoView();
   }, [ready]);
+  const signIn = <SettingsSignIn canConfigure={canWrite} canWrite={app.session.canWrite} />;
   if (settings.status !== 'ready') {
     return (
       <div className="page pj-settings">
+        {signIn}
         <p
           className={
             settings.status === 'failed' ? 'pane-message action-error' : 'pane-message t-small'
@@ -400,6 +426,7 @@ export function ProjectSettings({ version, connection, canWrite }: ProjectSettin
         <h1 className="display">{t('settings.display')}</h1>
         <p className="dek">{t('settings.dek', { name: value.name })}</p>
       </header>
+      {signIn}
       <div className="pj-body" data-enter="fade">
         <Section name={t('settings.name')}>
           <div className="pj-name">

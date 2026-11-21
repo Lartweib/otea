@@ -431,6 +431,10 @@ export const surfaces = {
   'settings.kicker': 'Project',
   'settings.display': 'Settings',
   'settings.dek': 'Where {name} lives, what it keeps and the repos it follows.',
+  'settings.signIn':
+    'Sign this browser in with {command} on this computer to change anything. Without a session, here you can only look.',
+  'settings.deviceOnly':
+    'Settings change only in the browser of the computer Otea runs on. Here you can only look.',
 
   // Performance: how each model performs, per family and effort, from the profile on each handoff
   'perf.kicker': 'Project',

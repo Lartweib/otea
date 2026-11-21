@@ -359,15 +359,14 @@ export function Rail() {
             label={t('nav.studio')}
             to={studioHash()}
           />
-          {canConfigure ? (
-            <Row
-              k="settings"
-              on={key === 'settings'}
-              icon={<TypeIcon name="gear" size={16} />}
-              label={t('nav.settings')}
-              to={{ view: 'settings' }}
-            />
-          ) : null}
+          {/* Always here: without a session its page says how to sign in (it changes nothing). */}
+          <Row
+            k="settings"
+            on={key === 'settings'}
+            icon={<TypeIcon name="gear" size={16} />}
+            label={t('nav.settings')}
+            to={{ view: 'settings' }}
+          />
           <Row
             k="performance"
             on={key === 'performance'}

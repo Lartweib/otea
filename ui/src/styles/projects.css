@@ -54,6 +54,28 @@
 .pj-body {
   padding-left: 72px;
 }
+/* Without a session: at the top, before any section, how to sign in (everything below is read-only). */
+.pj-signin {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  max-width: 820px;
+  margin: 0 0 22px 72px;
+  padding: 12px 16px;
+  border: 1px solid var(--rule-2);
+  border-left: 3px solid var(--you);
+  border-radius: 0 10px 10px 0;
+  background: var(--you-wash);
+  font: 450 15px / 1.5 var(--sans);
+  color: var(--ink);
+}
+.pj-signin-mark {
+  flex: none;
+  display: inline-grid;
+  place-items: center;
+  margin-top: 2px;
+  color: var(--you-ink);
+}
 .pj-sec {
   display: grid;
   grid-template-columns: 168px minmax(0, 1fr);
@@ -767,6 +789,9 @@
 @container pj (max-width: 760px) {
   .pj-body {
     padding-left: 0;
+  }
+  .pj-signin {
+    margin-left: 0;
   }
   .pj-sec {
     grid-template-columns: minmax(0, 1fr);

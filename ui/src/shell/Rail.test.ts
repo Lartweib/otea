@@ -203,7 +203,7 @@ describe('the rail', () => {
     expect(rowOf(html, 'topics')).toMatch(/^<div class="nrow on apart"[^>]*aria-current="page"/);
   });
 
-  it('keeps the project’s Studio and, for whoever may configure it, its settings', () => {
+  it('keeps the project’s Studio and its settings, even for a browser without a session', () => {
     const html = rail();
     expect(html).toContain('<div class="rail-label">proyecto</div>');
     expect(html).toContain('Studio');
@@ -211,7 +211,8 @@ describe('the rail', () => {
     const reader = rail({
       session: { canWrite: false, canConfigure: false, canManageDevices: false },
     });
-    expect(reader).not.toContain('Configuración');
+    // Its page says how to sign in; hiding the row made the owner think it was gone.
+    expect(rowOf(reader, 'settings')).toContain('Configuración');
     expect(reader).not.toContain('Nuevo tablero');
     expect(reader).not.toContain('class="rnew"');
     expect(reader).toContain('<div class="rail-label first">vistas</div>');
