@@ -47,6 +47,8 @@ const statusOf = (w: World): PhoneStatus =>
 
 const guideOf = (w: World): TailscaleGuide => ({
   done: { phone: true, pc: true, signIn: true, https: true, serve: w.serving, pair: false },
+  pairing: 'none',
+  phoneOnline: null,
   signedIn: true,
   check: check(w),
   host: HOST,

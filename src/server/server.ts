@@ -9,7 +9,7 @@ import { askingItems, holderAsksOf } from '../app/asking.ts';
 import { syncBoardPresets } from '../app/boards.ts';
 import { briefFor } from '../app/brief.ts';
 import { listCollectionViews, listShownCollectionViews } from '../app/collections.ts';
-import { deviceByToken, touchDevice } from '../app/devices.ts';
+import { deviceByToken, listDevices, touchDevice } from '../app/devices.ts';
 import { listEvents } from '../app/events.ts';
 import { attachFiles, createItemWithEvidence } from '../app/intake.ts';
 import { searchItems } from '../app/item-search.ts';
@@ -49,7 +49,13 @@ import { answerQuestion } from '../app/questions.ts';
 import { linkItems, unlinkItems } from '../app/relations.ts';
 import { reassignItem, restartItem, resumeItem, undoRelease } from '../app/restart.ts';
 import { setAsideOf } from '../app/set-aside.ts';
-import { NO_TAILSCALE, readGuide, serveCommand, type TailscaleCli } from '../app/tailscale.ts';
+import {
+  type GuidePairing,
+  NO_TAILSCALE,
+  readGuide,
+  serveCommand,
+  type TailscaleCli,
+} from '../app/tailscale.ts';
 import {
   closeTopic,
   convertTopic,
@@ -104,6 +110,7 @@ import {
   peekPairing,
   qrCode,
   revoke,
+  viaOf,
 } from './pairing.ts';
 import {
   addPath,
@@ -387,8 +394,7 @@ function machineApi(doors: Doors): Hono<OteaEnv> {
       // with the command Otea would run and the store pages as QR codes. It changes nothing.
       .get('/phone/tailscale', async (c) => {
         assertCanManageDevices(c, auth);
-        const pushOn = listTargets(machine).some(({ device }) => device !== null);
-        const guide = await readGuide(doors.tailscale, port(), { pushOn });
+        const guide = await readGuide(doors.tailscale, port(), { pairing: pairingOf(machine) });
         const store = (url: string) => ({ url, qr: qrCode(url) });
         return c.json({
           ...guide,
@@ -864,6 +870,15 @@ function statusSources(doors: Doors) {
   };
 }
 
+// The Tailscale guide's last step, from the paired devices. A push subscription counts wherever the
+// device paired: browsers give push only to a secure page, and the only HTTPS Otea has is Tailscale.
+// Paired without one counts only once the device reached Otea through Tailscale (a LAN pairing is
+// another origin, whose token the HTTPS page never sees).
+function pairingOf(machine: DatabaseSync): GuidePairing {
+  if (listTargets(machine).some(({ device }) => device !== null)) return 'push';
+  return listDevices(machine).some(({ via }) => via === 'tailscale') ? 'paired' : 'none';
+}
+
 // The transport's status, whether the local network is open now, and whether opening it may make
 // Windows ask for a firewall permission (Otea never changes the firewall itself).
 async function phoneView(doors: Doors) {
@@ -954,7 +969,11 @@ export function createServer(
     const device = deviceByToken(machine, getCookie(c, deviceCookie(port)) ?? '');
     if (!device) return { kind: 'unpaired', address, secure };
     const seen = device.lastSeenAt === null ? 0 : Date.parse(device.lastSeenAt);
-    if (now() - seen >= SEEN_EVERY_MS) touchDevice(machine, device.id, new Date(now()));
+    // How it came in now, kept with the time: the Tailscale guide's last step reads it.
+    const via = viaOf(secure);
+    if (now() - seen >= SEEN_EVERY_MS || device.via !== via) {
+      touchDevice(machine, device.id, new Date(now()), via);
+    }
     return { kind: 'device', device, address, secure };
   };
   // Each project's API runs as its own app; the client the root identified travels with the request.

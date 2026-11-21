@@ -207,6 +207,11 @@ export type StoreLink = { url: string; qr: { size: number; cells: boolean[][] } 
 
 export type TailscaleGuide = {
   done: Record<GuideStep, boolean>;
+  // The last step, from the paired devices: none through Tailscale yet, paired without
+  // notifications, or a device with notifications on.
+  pairing: 'none' | 'paired' | 'push';
+  // Whether the phone is connected to Tailscale right now (its peer's Online); null: cannot tell.
+  phoneOnline: boolean | null;
   signedIn: boolean;
   check: TailscaleCheck;
   host: string | null;

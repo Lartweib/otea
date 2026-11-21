@@ -2,14 +2,19 @@ import { createHash, randomBytes } from 'node:crypto';
 import type { DatabaseSync } from 'node:sqlite';
 import { OteaError } from '../core/errors.ts';
 
-// A phone or tablet paired over the LAN. `hint` is the end of its token's hash, enough to tell two
-// devices apart without showing anything that opens the UI.
+// How a device reaches Otea: through tailscale serve (HTTPS), or on the local network.
+export type DeviceVia = 'tailscale' | 'lan';
+
+// A paired phone or tablet. `hint` is the end of its token's hash, enough to tell two devices apart
+// without showing anything that opens the UI. `via`: how it last reached Otea (null when it has not
+// been seen since Otea began keeping it).
 export type Device = {
   id: string;
   name: string;
   pairedAt: string;
   lastSeenAt: string | null;
   hint: string;
+  via: DeviceVia | null;
 };
 
 type DeviceRow = {
@@ -18,6 +23,7 @@ type DeviceRow = {
   token_hash: string;
   paired_at: string;
   last_seen_at: string | null;
+  via: string | null;
 };
 
 export const MAX_DEVICE_NAME = 60;
@@ -31,6 +37,7 @@ function toDevice(row: DeviceRow): Device {
     pairedAt: row.paired_at,
     lastSeenAt: row.last_seen_at,
     hint: row.token_hash.slice(-4),
+    via: row.via === 'tailscale' || row.via === 'lan' ? row.via : null,
   };
 }
 
@@ -47,12 +54,13 @@ export function pairDevice(
   db: DatabaseSync,
   name: string,
   now = new Date(),
+  via: DeviceVia | null = null,
 ): { device: Device; token: string } {
   const token = randomBytes(32).toString('base64url');
   const id = randomBytes(4).toString('hex');
   db.prepare(
-    'INSERT INTO devices (id, name, token_hash, paired_at, last_seen_at) VALUES (?, ?, ?, ?, ?)',
-  ).run(id, deviceName(name), hashToken(token), now.toISOString(), now.toISOString());
+    'INSERT INTO devices (id, name, token_hash, paired_at, last_seen_at, via) VALUES (?, ?, ?, ?, ?, ?)',
+  ).run(id, deviceName(name), hashToken(token), now.toISOString(), now.toISOString(), via);
   const row = db.prepare('SELECT * FROM devices WHERE id = ?').get(id) as DeviceRow;
   return { device: toDevice(row), token };
 }
@@ -64,11 +72,12 @@ export function repairDevice(
   id: string,
   name: string,
   now = new Date(),
+  via: DeviceVia | null = null,
 ): { device: Device; token: string } {
   const token = randomBytes(32).toString('base64url');
   db.prepare(
-    'UPDATE devices SET name = ?, token_hash = ?, paired_at = ?, last_seen_at = ? WHERE id = ?',
-  ).run(deviceName(name), hashToken(token), now.toISOString(), now.toISOString(), id);
+    'UPDATE devices SET name = ?, token_hash = ?, paired_at = ?, last_seen_at = ?, via = coalesce(?, via) WHERE id = ?',
+  ).run(deviceName(name), hashToken(token), now.toISOString(), now.toISOString(), via, id);
   const row = db.prepare('SELECT * FROM devices WHERE id = ?').get(id) as DeviceRow | undefined;
   if (!row) throw new OteaError('not_found', `No paired device ${id}`);
   return { device: toDevice(row), token };
@@ -90,8 +99,17 @@ export function deviceByToken(db: DatabaseSync, token: string): Device | undefin
   return row ? toDevice(row) : undefined;
 }
 
-export function touchDevice(db: DatabaseSync, id: string, now = new Date()): void {
-  db.prepare('UPDATE devices SET last_seen_at = ? WHERE id = ?').run(now.toISOString(), id);
+export function touchDevice(
+  db: DatabaseSync,
+  id: string,
+  now = new Date(),
+  via: DeviceVia | null = null,
+): void {
+  db.prepare('UPDATE devices SET last_seen_at = ?, via = coalesce(?, via) WHERE id = ?').run(
+    now.toISOString(),
+    via,
+    id,
+  );
 }
 
 export function revokeDevice(db: DatabaseSync, id: string): Device {

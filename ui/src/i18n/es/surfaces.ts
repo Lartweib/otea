@@ -428,6 +428,8 @@ export const surfaces = {
   'lan.dialogLead': 'Escanéalo con el teléfono en la misma red. Cada código dura 10 minutos.',
   'lan.dialogLeadTailscale':
     'Escanéalo con el teléfono con sesión en Tailscale. Cada código dura 10 minutos.',
+  'lan.beforeScan':
+    'Antes de escanear: abre Tailscale en el teléfono y comprueba que está conectado.',
   'lan.done': 'Hecho',
   'lan.revoked': 'revocado ahora',
   'settings.kicker': 'Proyecto',

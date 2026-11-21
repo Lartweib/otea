@@ -30,6 +30,7 @@ describe('reading the tailscale CLI', () => {
       https: true,
       authUrl: null,
       phoneOnTailnet: false,
+      phoneOnline: null,
     });
     expect(
       parseStatus({ BackendState: 'NeedsLogin', AuthURL: 'https://login.tailscale.com/a/1' }),
@@ -40,6 +41,7 @@ describe('reading the tailscale CLI', () => {
       https: false,
       authUrl: 'https://login.tailscale.com/a/1',
       phoneOnTailnet: false,
+      phoneOnline: null,
     });
     expect(parseStatus(null).backend).toBe('NoState');
   });
@@ -53,6 +55,27 @@ describe('reading the tailscale CLI', () => {
     expect(parseStatus(peers('iOS')).phoneOnTailnet).toBe(true);
     expect(parseStatus(peers('windows', 'macOS')).phoneOnTailnet).toBe(false);
     expect(parseStatus({ Peer: 'junk' }).phoneOnTailnet).toBe(false);
+  });
+
+  it('reads whether a phone is connected now, from the peers’ Online, and copes without it', () => {
+    const peers = (...phones: { OS: string; Online?: unknown }[]) => ({
+      BackendState: 'Running',
+      Peer: Object.fromEntries(phones.map((peer, n) => [`key${n}`, peer])),
+    });
+    expect(parseStatus(peers({ OS: 'android', Online: true })).phoneOnline).toBe(true);
+    expect(parseStatus(peers({ OS: 'iOS', Online: false })).phoneOnline).toBe(false);
+    // Two phones: one connected is enough.
+    expect(
+      parseStatus(peers({ OS: 'android', Online: false }, { OS: 'iOS', Online: true })).phoneOnline,
+    ).toBe(true);
+    // A computer's Online says nothing about the phone.
+    expect(
+      parseStatus(peers({ OS: 'windows', Online: true }, { OS: 'android', Online: false }))
+        .phoneOnline,
+    ).toBe(false);
+    // An older CLI without Online, or no phone at all: not known.
+    expect(parseStatus(peers({ OS: 'android' })).phoneOnline).toBeNull();
+    expect(parseStatus(peers({ OS: 'linux', Online: true })).phoneOnline).toBeNull();
   });
 
   it('reads serve status --json into the routes it forwards', () => {
@@ -181,7 +204,7 @@ describe('the guided path to Tailscale', () => {
     const cli = fakeTailscale();
     cli.installed = false;
 
-    const guide = await readGuide(cli, 4400, { platform: 'darwin', pushOn: false });
+    const guide = await readGuide(cli, 4400, { platform: 'darwin', pairing: 'none' });
 
     expect(guide.done).toEqual({
       phone: false,
@@ -200,7 +223,7 @@ describe('the guided path to Tailscale', () => {
   it('marks what it reads as done, and changes nothing', async () => {
     const cli = fakeTailscale({ phoneOnTailnet: true });
 
-    const ready = await readGuide(cli, 4400, { pushOn: false });
+    const ready = await readGuide(cli, 4400, { pairing: 'none' });
 
     expect(ready.done).toEqual({
       phone: true,
@@ -214,30 +237,49 @@ describe('the guided path to Tailscale', () => {
     expect(cli.calls).toEqual(['status', 'serve status']);
 
     cli.routes = [{ host: TAILNET_HOST, port: 443, path: '/', target: 'http://127.0.0.1:4400' }];
-    const served = await readGuide(cli, 4400, { pushOn: true });
+    const served = await readGuide(cli, 4400, { pairing: 'push' });
     expect(served.done.serve).toBe(true);
     expect(served.done.pair).toBe(true);
+    expect(served.pairing).toBe('push');
     expect(served.check).toMatchObject({ state: 'ready', serving: true });
   });
 
+  it('keeps the last step pending, and says so, while the phone is paired without notifications', async () => {
+    const cli = fakeTailscale({ phoneOnTailnet: true, phoneOnline: true });
+    cli.routes = [{ host: TAILNET_HOST, port: 443, path: '/', target: 'http://127.0.0.1:4400' }];
+
+    const paired = await readGuide(cli, 4400, { pairing: 'paired' });
+
+    expect(paired.done.pair).toBe(false);
+    expect(paired.pairing).toBe('paired');
+    expect(paired.phoneOnline).toBe(true);
+    // Not served yet: what the phone did over Tailscale before does not count.
+    cli.routes = [];
+    expect((await readGuide(cli, 4400, { pairing: 'push' })).done.pair).toBe(false);
+  });
+
+  it('says nothing about the phone being connected when Tailscale cannot be read', async () => {
+    const cli = fakeTailscale();
+    cli.installed = false;
+    expect((await readGuide(cli, 4400, { pairing: 'none' })).phoneOnline).toBeNull();
+  });
+
   it('keeps the sign-in pending until the phone shows up on the same tailnet', async () => {
-    const guide = await readGuide(fakeTailscale(), 4400, { pushOn: false });
+    const guide = await readGuide(fakeTailscale(), 4400, { pairing: 'none' });
 
     expect(guide.signedIn).toBe(true);
     expect(guide.done).toMatchObject({ pc: true, phone: false, signIn: false, https: true });
   });
 
   it('reads MagicDNS and certificates apart, and a login still missing', async () => {
-    const noCerts = await readGuide(fakeTailscale({ https: false }), 4400, { pushOn: false });
+    const noCerts = await readGuide(fakeTailscale({ https: false }), 4400, { pairing: 'none' });
     expect(noCerts.done.https).toBe(false);
     expect(noCerts.check.state).toBe('no_https');
 
     const out = await readGuide(
       fakeTailscale({ backend: 'NeedsLogin', phoneOnTailnet: true }),
       4400,
-      {
-        pushOn: false,
-      },
+      { pairing: 'none' },
     );
     expect(out.signedIn).toBe(false);
     expect(out.done).toMatchObject({ pc: true, signIn: false, https: false, serve: false });
@@ -247,7 +289,7 @@ describe('the guided path to Tailscale', () => {
     const cli = fakeTailscale();
     cli.routes = [{ host: TAILNET_HOST, port: 443, path: '/', target: 'http://127.0.0.1:3000' }];
 
-    const guide = await readGuide(cli, 4400, { pushOn: false });
+    const guide = await readGuide(cli, 4400, { pairing: 'none' });
 
     expect(guide.done.serve).toBe(false);
     expect(guide.check).toMatchObject({ state: 'taken', target: 'http://127.0.0.1:3000' });

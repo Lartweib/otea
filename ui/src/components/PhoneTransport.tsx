@@ -246,26 +246,33 @@ function Step({
   step,
   n,
   done,
+  partial = false,
   title,
   children,
 }: {
   step: GuideStep;
   n: number;
   done: boolean;
+  // Halfway: the phone paired, notifications still off.
+  partial?: boolean;
   title: string;
   children: ReactNode;
 }) {
+  const state = done ? 'phone.guide.done' : partial ? 'phone.guide.partial' : 'phone.guide.pending';
   return (
-    <li className="ph-step" data-step={step} data-done={done}>
+    <li
+      className="ph-step"
+      data-step={step}
+      data-done={done}
+      data-partial={(partial && !done) || undefined}
+    >
       <span className="ph-step-mark" aria-hidden="true">
         {done ? '✓' : n}
       </span>
       <div className="ph-step-body">
         <h4>
           {title}
-          <span className="ph-step-state">
-            {done ? t('phone.guide.done') : t('phone.guide.pending')}
-          </span>
+          <span className="ph-step-state">{t(state)}</span>
         </h4>
         {children}
       </div>
@@ -319,6 +326,10 @@ export function TailscaleSteps({
   // Only once every step before it holds and the HTTPS name forwards nowhere yet.
   const canServe = check.state === 'ready' && !check.serving && done.pc && done.https;
   const doneCount = Object.values(done).filter(Boolean).length;
+  const paired = !done.pair && guide.pairing === 'paired';
+  // Every step done: the guide folds into a short Listo, and opens again on demand.
+  const [open, setOpen] = useState(false);
+  const allDone = doneCount === STEP_COUNT;
 
   // The question takes the focus (its safe answer first); canceled, the focus goes back to the
   // button that asked it.
@@ -337,9 +348,40 @@ export function TailscaleSteps({
     onCancelServe();
   };
 
+  if (allDone && !open) {
+    return (
+      <section className="ph-guide ph-ready" aria-labelledby="ph-guide-title">
+        <h3 id="ph-guide-title">
+          <span className="ph-ready-mark" aria-hidden="true">
+            ✓
+          </span>
+          {t('phone.ready.title')}
+        </h3>
+        <p>{t('phone.ready.text')}</p>
+        <div className="ph-acts">
+          <Button size="sm" variant="quiet" aria-expanded={false} onClick={() => setOpen(true)}>
+            {t('phone.ready.show')}
+          </Button>
+          {inUse ? (
+            <Button size="sm" variant="quiet" disabled={busy !== null} onClick={onPair}>
+              {t('phone.transport.pair')}
+            </Button>
+          ) : null}
+        </div>
+      </section>
+    );
+  }
+
   return (
     <section className="ph-guide" aria-labelledby="ph-guide-title">
       <h3 id="ph-guide-title">{t('phone.guide.title')}</h3>
+      {allDone ? (
+        <div className="ph-acts">
+          <Button size="sm" variant="quiet" aria-expanded onClick={() => setOpen(false)}>
+            {t('phone.ready.hide')}
+          </Button>
+        </div>
+      ) : null}
       <p className="pj-hint">{t('phone.guide.lead')}</p>
       {meanwhile ? (
         <p className="ph-meanwhile">
@@ -479,8 +521,14 @@ export function TailscaleSteps({
             </div>
           ) : null}
         </Step>
-        <Step step="pair" n={6} done={done.pair} title={t('phone.guide.pair')}>
-          <p>{done.pair ? t('phone.guide.pairDone') : t('phone.guide.pairText', { url })}</p>
+        <Step step="pair" n={6} done={done.pair} partial={paired} title={t('phone.guide.pair')}>
+          <p>
+            {done.pair
+              ? t('phone.guide.pairDone')
+              : paired
+                ? t('phone.guide.pairPartial')
+                : t('phone.guide.pairText', { url })}
+          </p>
           {inUse && done.serve ? (
             <div className="ph-acts">
               <Button size="sm" variant="primary" disabled={busy !== null} onClick={onPair}>
@@ -540,11 +588,14 @@ function StatusRows({
   status,
   active,
   busy,
+  phoneOnline,
   onCloseLan,
 }: {
   status: PhoneStatus | null;
   active: Reach | null;
   busy: Doing | null;
+  // From the Tailscale guide: false only when Tailscale says the phone is offline now.
+  phoneOnline: boolean | null;
   onCloseLan?: (() => void) | undefined;
 }) {
   const transport = (() => {
@@ -569,6 +620,17 @@ function StatusRows({
             <span className="ph-reach" data-ok={status.reachable ?? undefined}>
               <span className="ph-dot" aria-hidden="true" />
               {reachLabel(status)}
+            </span>
+          </dd>
+        </>
+      ) : null}
+      {active === 'tailscale' && phoneOnline === false ? (
+        <>
+          <dt>{t('phone.status.phone')}</dt>
+          <dd>
+            <span className="ph-reach" data-ok={false}>
+              <span className="ph-dot" aria-hidden="true" />
+              {t('phone.status.phoneOffline')}
             </span>
           </dd>
         </>
@@ -638,7 +700,19 @@ export function PhoneTransportView({
       {chosen === 'local' && !pending && status?.firewallPrompt ? (
         <p className="pj-hint">{t('phone.lan.firewall')}</p>
       ) : null}
-      <StatusRows status={status} active={active} busy={busy} onCloseLan={onCloseLan} />
+      <StatusRows
+        status={status}
+        active={active}
+        busy={busy}
+        phoneOnline={guide?.phoneOnline ?? null}
+        onCloseLan={onCloseLan}
+      />
+      {/* The everyday case: set up once, then Tailscale left off on the phone. */}
+      {active === 'tailscale' ? (
+        <p className="ph-away" role="note">
+          {t('phone.transport.away')}
+        </p>
+      ) : null}
       {lost ? <ProblemNote found={lost} /> : null}
       {failure && !guideOpen ? (
         <p className="dhint" role="alert">

@@ -357,6 +357,36 @@ describe('phone transports on the server', () => {
       expect(signedOut.status).toBe(403);
     });
 
+    it('reads the last step from the paired devices: paired over Tailscale, then with notifications', async () => {
+      choosePhoneTransport(server.machine, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
+      cli.state = { ...cli.state, phoneOnTailnet: true, phoneOnline: false };
+      cli.routes = [{ host: TAILNET_HOST, port: 443, path: '/', target: 'http://127.0.0.1:4400' }];
+      const guide = async () =>
+        (await (await desk('/p/memory-aaaaaa/api/phone/tailscale')).json()) as {
+          done: Record<string, boolean>;
+          pairing: string;
+          phoneOnline: boolean | null;
+        };
+
+      expect(await guide()).toMatchObject({ pairing: 'none', phoneOnline: false });
+      const { cookie } = await pairOverTailscale();
+      expect(listDevices(server.machine)[0]?.via).toBe('tailscale');
+      expect(await guide()).toMatchObject({ pairing: 'paired', done: { pair: false } });
+
+      const p256dh = Buffer.concat([Buffer.from([4]), Buffer.alloc(64, 7)]).toString('base64url');
+      const subscribed = await viaTailscale('/p/memory-aaaaaa/api/notify/subscribe', {
+        method: 'POST',
+        cookie,
+        body: {
+          endpoint: 'https://fcm.googleapis.com/fcm/send/abc',
+          keys: { p256dh, auth: Buffer.alloc(16, 1).toString('base64url') },
+          lang: 'es',
+        },
+      });
+      expect(subscribed.status).toBe(201);
+      expect(await guide()).toMatchObject({ pairing: 'push', done: { pair: true } });
+    });
+
     it('says what is missing and stays on the local network', async () => {
       cli.installed = false;
 
