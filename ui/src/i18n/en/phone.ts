@@ -172,6 +172,11 @@ export const phone = {
     'Pair a phone shows a QR code that opens {url}. Scan it with the phone, then turn notifications on in Preferences › Notifications. On iPhone, add Otea to the Home Screen first: Safari allows notifications only there.',
   'phone.guide.pairDone': 'A paired device has notifications on.',
   'phone.guide.partial': 'paired, no notifications',
+  'phone.guide.unchecked': 'done (not checked)',
+  'phone.guide.uncheckedText':
+    'It was done. Otea checks it again once Tailscale is connected on this computer again (step 3).',
+  'phone.transport.awayPc':
+    'Tailscale is stopped on this computer: the phone cannot reach Otea until you connect it again here (step 3).',
   'phone.guide.pairPartial':
     'Your phone is paired over Tailscale. One step left: on the phone, open Preferences › Notifications and tap “Turn on notifications”. On iPhone, do it from Otea on the Home Screen.',
   'phone.ready.title': 'Ready',
