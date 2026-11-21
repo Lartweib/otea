@@ -1,5 +1,5 @@
 import { useSyncExternalStore } from 'react';
-import { FROM_CACHE, SAVED_AT } from './sw-routes.ts';
+import { CLOSED, FROM_CACHE, SAVED_AT } from './sw-routes.ts';
 
 // Whether what the app shows came from the PC just now or is the last it saw: every read the app
 // makes tells this store (api.ts). A read the service worker answered from its cache, or one that
@@ -9,11 +9,14 @@ export type SyncState = {
   offline: boolean;
   // When the app last heard from the PC (ms since the epoch); null before it ever has.
   syncedAt: number | null;
+  // The PC answered through its door (Tailscale serve, 502) with nothing behind it: Otea itself
+  // is closed there, rather than the PC out of reach.
+  closed?: true;
 };
 
 export type Read =
   | { kind: 'fresh' }
-  | { kind: 'cached'; savedAt: number | null }
+  | { kind: 'cached'; savedAt: number | null; closed?: true }
   | { kind: 'failed' };
 
 export function afterRead(state: SyncState, read: Read, now: number): SyncState {
@@ -21,20 +24,27 @@ export function afterRead(state: SyncState, read: Read, now: number): SyncState 
   const saved = read.kind === 'cached' ? read.savedAt : null;
   const syncedAt =
     saved === null ? state.syncedAt : Math.max(saved, state.syncedAt ?? Number.NEGATIVE_INFINITY);
-  return { offline: true, syncedAt };
+  const closed = read.kind === 'cached' && read.closed === true;
+  return closed ? { offline: true, syncedAt, closed } : { offline: true, syncedAt };
 }
 
 export function readOf(headers: Pick<Headers, 'get'>): Read {
-  if (headers.get(FROM_CACHE) === null) return { kind: 'fresh' };
+  const from = headers.get(FROM_CACHE);
+  if (from === null) return { kind: 'fresh' };
   const saved = Number(headers.get(SAVED_AT));
-  return { kind: 'cached', savedAt: Number.isFinite(saved) && saved > 0 ? saved : null };
+  const savedAt = Number.isFinite(saved) && saved > 0 ? saved : null;
+  return from === CLOSED ? { kind: 'cached', savedAt, closed: true } : { kind: 'cached', savedAt };
 }
 
 let state: SyncState = { offline: false, syncedAt: null };
 const listeners = new Set<() => void>();
 
 function set(next: SyncState) {
-  if (next.offline === state.offline && next.syncedAt === state.syncedAt) return;
+  const same =
+    next.offline === state.offline &&
+    next.syncedAt === state.syncedAt &&
+    next.closed === state.closed;
+  if (same) return;
   state = next;
   for (const fn of [...listeners]) fn();
 }

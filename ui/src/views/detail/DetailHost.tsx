@@ -15,6 +15,7 @@ import { drive } from '../../motion/drive.ts';
 import { reduced } from '../../motion/reduced.ts';
 import { relayoutList } from '../../motion/relayout.ts';
 import { T, Tt } from '../../motion/time.ts';
+import { syncNow } from '../../offline/sync-state.ts';
 import type { ItemView } from '../../types.ts';
 import { AgentSheet } from '../agent/AgentSheet.tsx';
 import { dividerBounds, dividerKey, intakeTarget, sheetItem } from './frame.ts';
@@ -38,22 +39,35 @@ const rowIdOf = (target: string | null) =>
 
 // The items opened so far, so reopening or swapping back never waits for the server.
 const cache = new Map<string, ItemView | null>();
+// The items that could not be read because the PC did not answer and nothing of them was kept:
+// their sheet says they open once it answers (TS-10), and they are read again as it does.
+const unreached = new Set<string>();
 
-function useItemView(id: string | null, version: number): ItemView | null | undefined {
+function useItemView(
+  id: string | null,
+  version: number,
+  offline: boolean,
+): ItemView | null | undefined {
   const [, bump] = useReducer((n: number) => n + 1, 0);
-  // biome-ignore lint/correctness/useExhaustiveDependencies: a new version means the item changed
+  // biome-ignore lint/correctness/useExhaustiveDependencies: a new version means the item changed, and the PC answering again means it can be read
   useEffect(() => {
     if (!id) return;
     const ctl = new AbortController();
     fetchItem(id, ctl.signal).then(
       (v) => {
+        unreached.delete(id);
         cache.set(id, v);
         bump();
       },
-      () => undefined,
+      () => {
+        if (ctl.signal.aborted || !syncNow().offline || cache.get(id)) return;
+        unreached.add(id);
+        cache.set(id, null);
+        bump();
+      },
     );
     return () => ctl.abort();
-  }, [id, version]);
+  }, [id, version, offline]);
   return id ? cache.get(id) : undefined;
 }
 
@@ -180,7 +194,7 @@ export function DetailHost() {
   const ws = useWorkspace();
   const phone = app.phone;
   const want = app.route.item ?? null;
-  const item = useItemView(want, app.version);
+  const item = useItemView(want, app.version, app.sync.offline);
   // After Crear: the created id, until the place opens it (or anything else).
   const [created, setCreated] = useState<string | null>(null);
   const placed = intakeTarget(!!ws.intake, want, created);
@@ -822,7 +836,12 @@ export function DetailHost() {
               />
             </ReadOnly>
           ) : (
-            <ItemMissing id={shown} phone={phone} onClose={app.closeItem} />
+            <ItemMissing
+              id={shown}
+              phone={phone}
+              offline={unreached.has(shown)}
+              onClose={app.closeItem}
+            />
           )}
         </div>
       </article>

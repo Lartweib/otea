@@ -199,7 +199,7 @@ export function browserLanguage(): Language {
 
 // The first-run note, once: when the browser picked the language (nothing asked in the address,
 // nothing chosen before) and it is not English, the note says so, naming the tag the browser asked
-// for, and that only the interface is translated. Dismissed, it never comes back to this browser.
+// for, and that only the interface is translated. Once shown, it never comes back to this browser.
 export type FirstRunNote = { tag: string };
 
 export function firstRunNote({
@@ -240,10 +240,14 @@ export function languageNote(): FirstRunNote | undefined {
 // Got it, or a click elsewhere: the note is remembered as seen in this browser.
 export function dismissLanguageNote(): void {
   note = undefined;
+  rememberNoteSeen();
+}
+
+function rememberNoteSeen(): void {
   try {
     window.localStorage.setItem(LANGUAGE_NOTE_KEY, 'seen');
   } catch {
-    // Dismissed for this tab; with site data blocked it may show again on the next load.
+    // Seen for this tab; with site data blocked it may show again on the next load.
   }
 }
 
@@ -255,6 +259,8 @@ export function startLanguage(): void {
   if (isLanguage(asked)) store(asked);
   const chosen = chooseLanguage({ asked, stored, preferred });
   note = firstRunNote({ asked, stored, preferred, chosen, seen: noteSeen() });
+  // Shown once is seen: it stays up on this open until answered, never on the next (TS-19).
+  if (note) rememberNoteSeen();
   wanted = chosen;
   apply(chosen);
 }

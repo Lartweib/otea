@@ -48,6 +48,21 @@ export function clickTarget(data: unknown, origin: string): string {
   return `${origin}${HOME}`;
 }
 
+// Android bundles the app's notifications, and a tap on the bundle opens the app without a
+// notificationclick (TS-17). Opening on a project's home (Te toca), the app looks at the notices
+// still shown: exactly one about an item leads there; several stay on Te toca, which lists them.
+export function launchNotice(
+  shown: readonly { data: unknown }[],
+  here: string,
+): string | undefined {
+  const at = new URL(here);
+  if (at.hash !== '' && at.hash !== '#/') return undefined;
+  const items = shown
+    .map((each) => clickTarget(each.data, at.origin))
+    .filter((url) => new URL(url).hash.startsWith('#/i/'));
+  return items.length === 1 ? items[0] : undefined;
+}
+
 export type WindowLike = {
   url: string;
   visibilityState?: string;

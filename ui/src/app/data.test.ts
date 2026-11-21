@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { boardsKey } from './data.ts';
+import { boardsKey, canCaptureNow } from './data.ts';
 
 // P5-R3-9: a board published elsewhere (another window, the phone, an agent's change) left this
 // desk on the boards it first read, and an item's new field showed by its hidden key («DSI4K2MQ:
@@ -12,5 +12,21 @@ describe('when the desk reads the boards again', () => {
 
   it('keeps them while nothing changed', () => {
     expect(boardsKey(2, 5)).toBe(boardsKey(2, 5));
+  });
+});
+
+// TS-6: offline, Nuevo stayed grey whenever the session answer had not been kept, though the queue
+// takes the capture and sends it once the PC answers (and says so if the PC then refuses it).
+describe('whether Nuevo can capture', () => {
+  it('online, as the session allows', () => {
+    expect(canCaptureNow({ canWrite: true, offline: false, queue: true })).toBe(true);
+    expect(canCaptureNow({ canWrite: undefined, offline: false, queue: true })).toBe(false);
+  });
+
+  it('offline, into the queue, unless the session said no', () => {
+    expect(canCaptureNow({ canWrite: true, offline: true, queue: true })).toBe(true);
+    expect(canCaptureNow({ canWrite: undefined, offline: true, queue: true })).toBe(true);
+    expect(canCaptureNow({ canWrite: false, offline: true, queue: true })).toBe(false);
+    expect(canCaptureNow({ canWrite: true, offline: true, queue: false })).toBe(false);
   });
 });

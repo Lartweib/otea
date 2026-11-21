@@ -1,11 +1,14 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import { FROM_CACHE, PROJECT, SAVED_AT, swRoute } from './sw-routes.ts';
 import {
   type CacheLike,
   cacheFirst,
   DATA_CACHE,
   dataCacheFor,
+  homeFirst,
+  LAST_PROJECT,
   networkFirst,
+  rememberProject,
   shellCache,
   staleCaches,
   unreachable,
@@ -116,17 +119,47 @@ describe('networkFirst', () => {
     expect(map.get(ITEMS)?.headers.get(SAVED_AT)).toBe('1700000000000');
   });
 
+  // TS-11: Tailscale serve answers 502 while nothing listens behind it: Otea is closed on the PC,
+  // which the offline line says apart from a PC it cannot reach at all.
   it.each([
-    ['does not answer', down],
-    ['answers through a door with nothing behind it', async () => json({}, 502)],
-  ])('when the PC %s, answers with the last answer, marked as cached', async (_, net) => {
+    ['does not answer', down, '1'],
+    ['answers through a door with nothing behind it', async () => json({}, 502), 'closed'],
+  ])('when the PC %s, answers with the last answer, marked as cached', async (_, net, why) => {
     const kept = new Response('[{"id":"A-1"}]', { headers: { [SAVED_AT]: '1700000000000' } });
     const { cache } = memoryCache({ [ITEMS]: kept });
     const response = await networkFirst(new Request(ITEMS), { net, cache, now: () => 0 });
 
     expect(await response.json()).toEqual([{ id: 'A-1' }]);
-    expect(response.headers.get(FROM_CACHE)).toBe('1');
+    expect(response.headers.get(FROM_CACHE)).toBe(why);
     expect(response.headers.get(SAVED_AT)).toBe('1700000000000');
+  });
+
+  it('marks a door with nothing behind it as Otea closed, even with nothing kept', async () => {
+    const response = await networkFirst(new Request(ITEMS), {
+      net: async () => json({}, 502),
+      cache: memoryCache().cache,
+      now: () => 0,
+    });
+
+    expect(response.status).toBe(502);
+    expect(response.headers.get(FROM_CACHE)).toBe('closed');
+  });
+
+  it('gives up on a hanging PC within a few seconds by default', async () => {
+    vi.useFakeTimers();
+    try {
+      const { cache } = memoryCache({ [ITEMS]: json([]) });
+      const answer = networkFirst(new Request(ITEMS), {
+        net: () => new Promise<Response>(() => undefined),
+        cache,
+        now: () => 0,
+      });
+      await vi.advanceTimersByTimeAsync(4000);
+      const response = await answer;
+      expect(response.headers.get(FROM_CACHE)).toBe('1');
+    } finally {
+      vi.useRealTimers();
+    }
   });
 
   it('counts a request left hanging as the PC being off', async () => {
@@ -211,6 +244,67 @@ describe('networkFirst, a cache per project', () => {
       now: () => 0,
     });
     expect(map.has(A)).toBe(false);
+  });
+});
+
+// TS-1, TS-5: the installed app opens at `/`. A PC off the tailnet leaves that request hanging for
+// minutes, so the app waits a few seconds at most, then opens the last project from the cache.
+describe('homeFirst', () => {
+  const HOME = `${ORIGIN}/`;
+  const hanging = () => new Promise<Response>(() => undefined);
+  const shell = () => memoryCache({ '/index.html': new Response('cached app') });
+
+  it('takes the PC answer when it comes', async () => {
+    const { cache } = shell();
+    const response = await homeFirst(new Request(HOME), {
+      net: async () => new Response('from the PC'),
+      shell: cache,
+      data: memoryCache().cache,
+    });
+
+    expect(await response.text()).toBe('from the PC');
+  });
+
+  it('opens the last project from the cache when the PC hangs', async () => {
+    const data = memoryCache({ [LAST_PROJECT]: new Response('web-k3x7qa') });
+    const response = await homeFirst(new Request(HOME), {
+      net: hanging,
+      shell: shell().cache,
+      data: data.cache,
+      waitMs: 5,
+    });
+
+    expect(response.status).toBe(302);
+    expect(response.headers.get('location')).toBe(`${ORIGIN}/p/web-k3x7qa/`);
+  });
+
+  it('opens the cached app when no project was opened yet', async () => {
+    const response = await homeFirst(new Request(HOME), {
+      net: down,
+      shell: shell().cache,
+      data: memoryCache().cache,
+    });
+
+    expect(await response.text()).toBe('cached app');
+  });
+
+  it('counts a door with nothing behind it as the PC being off', async () => {
+    const data = memoryCache({ [LAST_PROJECT]: new Response('web-k3x7qa') });
+    const response = await homeFirst(new Request(HOME), {
+      net: async () => json({}, 502),
+      shell: shell().cache,
+      data: data.cache,
+    });
+
+    expect(response.headers.get('location')).toBe(`${ORIGIN}/p/web-k3x7qa/`);
+  });
+
+  it("keeps the project of each project's page as the last one", async () => {
+    const { cache, map } = memoryCache();
+    await rememberProject(`${ORIGIN}/p/web-k3x7qa/`, cache);
+    await rememberProject(`${ORIGIN}/pair`, cache);
+
+    expect(await map.get(LAST_PROJECT)?.text()).toBe('web-k3x7qa');
   });
 });
 

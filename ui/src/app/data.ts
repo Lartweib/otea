@@ -10,6 +10,7 @@ import {
   fetchProjects,
   fetchSession,
 } from '../api.ts';
+import { currentProjectId } from '../base.ts';
 import { type Connection, useBeat, useLive, useRemote } from '../hooks.ts';
 import { flushQueue, queueAvailable } from '../offline/queue-store.ts';
 import { type SyncState, useSync } from '../offline/sync-state.ts';
@@ -82,6 +83,22 @@ export function boardsKey(studioWrites: number, version: number): number {
   return studioWrites + version;
 }
 
+// Nuevo: online as the session allows; offline into the queue, where there is one, unless the
+// session said no. A session never read while the PC answered stays unknown, and the queue still
+// takes the capture: the PC refuses it later if it must, and the queue shows that (TS-6).
+export function canCaptureNow({
+  canWrite,
+  offline,
+  queue,
+}: {
+  canWrite: boolean | undefined;
+  offline: boolean;
+  queue: boolean;
+}): boolean {
+  if (!offline) return canWrite === true;
+  return queue && canWrite !== false;
+}
+
 export function useAppData(): LoadedData {
   const { connection, version, presence, retry } = useLive();
   const beat = useBeat(30_000);
@@ -116,7 +133,12 @@ export function useAppData(): LoadedData {
       canManageDevices: s?.canManageDevices === true,
     },
     sync,
-    canCapture: s?.canWrite === true && (!sync.offline || queueAvailable()),
+    canCapture: canCaptureNow({
+      canWrite: s?.canWrite,
+      offline: sync.offline,
+      // Outside any project (`/` with nothing saved) a capture has nowhere to go.
+      queue: queueAvailable() && currentProjectId() !== undefined,
+    }),
     items,
     all: ready(items) ?? [],
     collections: ready(collections) ?? [],

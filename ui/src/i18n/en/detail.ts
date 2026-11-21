@@ -397,6 +397,8 @@ export const detail = {
   'sheet.missing.title': 'Item not found',
   'sheet.missing.text':
     'There is no item {id} in this project. It may have been deleted, or the link may be wrong.',
+  'sheet.unreached.title': 'No connection to your computer',
+  'sheet.unreached.text': '{id} opens when your computer answers again.',
   'sheet.yourTurn': 'your turn',
   'sheet.typeBoard': '{type} · {board}',
   'sheet.stand.handed': '{agent} hands it to you.',

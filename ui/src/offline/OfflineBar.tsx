@@ -20,10 +20,13 @@ export function syncedTime(at: number, now: number, lang: string): string {
 // both, whether Otea is open on the PC.
 export type DownWords = { head: string; ask: string | null };
 
-export function downWords(host: string, phone = false): DownWords {
+// `closed`: the PC's door answered with nothing behind it (sync-state.ts), so the phone does reach
+// the PC and it is Otea that is not open there (TS-11).
+export function downWords(host: string, phone = false, closed = false): DownWords {
   const name = host.toLowerCase();
   const local = !phone && (name === 'localhost' || name === '127.0.0.1' || name === '[::1]');
   if (local) return { head: t('offline.oteaDown'), ask: null };
+  if (closed) return { head: t('offline.closed'), ask: t('offline.askClosed') };
   const tailscale = name === 'ts.net' || name.endsWith('.ts.net');
   return {
     head: t('offline.noReach'),
@@ -36,31 +39,37 @@ export type OfflineBarProps = {
   now: number;
   host: string;
   phone?: boolean;
+  // Nuevo still works: what is captured waits in the queue (offline/queue-store.ts).
+  queues?: boolean;
   // Tries the PC again now: the live stream and every read.
   onRetry?: () => void;
 };
 
-export function OfflineBar({ sync, now, host, phone = false, onRetry }: OfflineBarProps) {
+export function OfflineBar({
+  sync,
+  now,
+  host,
+  phone = false,
+  queues = false,
+  onRetry,
+}: OfflineBarProps) {
   if (!sync.offline) return null;
+  // Never synced: what shows is empty because nothing was saved, not because nothing waits (TS-5).
   const synced =
     sync.syncedAt === null
-      ? null
+      ? t('offline.nothingSaved')
       : t('offline.synced', { time: syncedTime(sync.syncedAt, now, language()) });
-  const words = downWords(host, phone);
+  const words = downWords(host, phone, sync.closed === true);
   return (
     <div className="offline-bar" role="status" data-ask={words.ask === null ? undefined : ''}>
       <span className="ob-dot" aria-hidden="true" />
       <span className="ob-text">
         <b>{words.head}</b>
         {words.ask === null ? null : <span className="ob-ask"> {words.ask}</span>}
-        {synced === null ? null : (
-          <>
-            <span className="ob-sep"> · </span>
-            <span className="ob-when">{synced}</span>
-          </>
-        )}
+        <span className="ob-sep"> · </span>
+        <span className="ob-when">{synced}</span>
       </span>
-      <span className="ob-ro">{t('offline.readOnly')}</span>
+      <span className="ob-ro">{t(queues ? 'offline.readQueue' : 'offline.readOnly')}</span>
       {onRetry ? (
         <button type="button" className="ob-retry" onClick={onRetry}>
           {t('offline.retry')}

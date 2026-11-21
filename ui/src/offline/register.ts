@@ -7,6 +7,8 @@
 // with one already waiting) it takes over and the page reloads out of sight. The first look at a
 // version the app has not run before says, quietly, "Otea se actualizó".
 
+import { clickTarget, launchNotice } from './sw-push.ts';
+
 export type Where = { secure: boolean; hasWorker: boolean; userAgent: string };
 
 export function offlineCapable({ secure, hasWorker, userAgent }: Where): boolean {
@@ -153,8 +155,24 @@ export async function startShell(
       if (worker.state === 'installed' && sw.controller) whenQuiet(() => apply(worker));
     });
   });
+  // A tap on Android's bundle of notices opens the app with no notificationclick (TS-17): the one
+  // item notice still shown leads to its item, and goes from the shade.
+  const openShownNotice = () => {
+    registration.getNotifications?.().then(
+      (shown) => {
+        const url = launchNotice(shown, window.location.href);
+        if (url === undefined) return;
+        for (const each of shown)
+          if (clickTarget(each.data, window.location.origin) === url) each.close();
+        goTo(url);
+      },
+      () => undefined,
+    );
+  };
+  openShownNotice();
   let checked = Date.now();
   document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') openShownNotice();
     if (document.visibilityState !== 'visible' || Date.now() - checked < CHECK_EVERY_MS) return;
     checked = Date.now();
     registration.update().catch(() => undefined);

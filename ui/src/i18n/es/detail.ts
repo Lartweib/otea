@@ -405,6 +405,8 @@ export const detail = {
   'sheet.missing.title': 'Ítem no encontrado',
   'sheet.missing.text':
     'No hay ningún ítem {id} en este proyecto. Puede que se haya borrado o que el enlace tenga un error.',
+  'sheet.unreached.title': 'Sin conexión con tu equipo',
+  'sheet.unreached.text': '{id} se abre cuando tu equipo vuelva a responder.',
   'sheet.yourTurn': 'tu turno',
   'sheet.typeBoard': '{type} · {board}',
   'sheet.stand.handed': '{agent} te lo entrega.',
