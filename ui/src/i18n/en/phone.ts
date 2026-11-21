@@ -314,7 +314,7 @@ export const phone = {
   'notify.androidBlocked':
     'Android blocks this app’s notifications: Settings › Apps › {app} › Notifications.',
   'notify.reopen':
-    'If you already allowed them, close {app} completely and open it again: Android tells the app only when it opens.',
+    'If you already allowed them, close {app} completely and open it again: while it stays open, Chrome may report neither a block nor an allow.',
   'notify.lost': 'This browser lost its notification subscription. Turn them off and on again.',
   'notify.recheck': 'Check again',
   'notify.needsConnection':

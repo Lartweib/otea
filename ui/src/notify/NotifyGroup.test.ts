@@ -266,7 +266,8 @@ describe('the installed app, by its name', () => {
 });
 
 // TS-25: allowed again in Android's settings, the open app still reads them as denied until it is
-// closed and opened again: the warning says so.
+// closed and opened again: the warning says so. TS-37: a block made while it is open goes unseen
+// the same way, so the warning says the lag goes both ways.
 describe('allowed again while the app stays open', () => {
   it('says to close the app and open it again', () => {
     setLanguage('es');
@@ -275,6 +276,17 @@ describe('allowed again while the app stays open', () => {
     setLanguage('en');
     expect(render({ offer: 'blocked', platform: 'android' })).toContain(
       'If you already allowed them, close Otea completely and open it again',
+    );
+  });
+
+  it('says Chrome may report neither a block nor an allow while the app stays open', () => {
+    setLanguage('es');
+    expect(render({ offer: 'blocked', platform: 'android' })).toContain(
+      'Chrome puede no avisarle ni de un bloqueo ni de un permiso',
+    );
+    setLanguage('en');
+    expect(render({ offer: 'blocked', platform: 'android' })).toContain(
+      'Chrome may report neither a block nor an allow',
     );
   });
 });
