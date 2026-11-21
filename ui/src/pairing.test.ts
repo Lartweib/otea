@@ -6,6 +6,7 @@ import {
   addressLabel,
   codeFromHash,
   deviceNameFrom,
+  dotSegments,
   hostnameOf,
   hostOf,
   ipFallback,
@@ -145,5 +146,19 @@ describe('where Abrir Otea leads', () => {
     expect(pairedHome(kept('web-k3x7qa'))).toBe('/p/web-k3x7qa/#/');
     expect(pairedHome(kept(null))).toBe('/');
     expect(pairedHome(undefined)).toBe('/');
+  });
+});
+
+// TS-20: the ts.net address in the pairing dialog broke mid-word.
+describe('an address that wraps', () => {
+  it('breaks only after its dots', () => {
+    expect(dotSegments('https://lartweib.tail913fd6.ts.net')).toEqual([
+      'https://lartweib.',
+      'tail913fd6.',
+      'ts.',
+      'net',
+    ]);
+    expect(dotSegments('http://127.0.0.1')).toEqual(['http://127.', '0.', '0.', '1']);
+    expect(dotSegments('plain')).toEqual(['plain']);
   });
 });

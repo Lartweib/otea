@@ -140,7 +140,7 @@ export const phone = {
   'phone.guide.phoneText': 'Scan the code for your phone’s store with its camera.',
   'phone.guide.phoneSeen': 'A phone is on your tailnet.',
   'phone.guide.phoneUnseen':
-    'Otea marks it done once this computer is signed in to Tailscale and sees the phone on your tailnet.',
+    'It turns done together with step 3: once this computer is signed in to Tailscale and sees the phone on your tailnet.',
   'phone.guide.android': 'Google Play · Android',
   'phone.guide.ios': 'App Store · iPhone',
   'phone.guide.pc': 'Install Tailscale on this computer',

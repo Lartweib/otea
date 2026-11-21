@@ -46,7 +46,7 @@ import { TopicsView } from './views/topics/TopicsView.tsx';
 // The view's identity: a new key is a new view (the old one leaves, the new one draws in).
 export function viewKeyOf(route: Route): string {
   if (route.view === 'board') return `board:${route.board}`;
-  if (route.view === 'lan') return 'toca';
+  if (route.view === 'lan') return route.over ?? 'toca';
   if (route.view === 'studio' && route.page.kind === 'board') return `studio:${route.page.board}`;
   return route.view;
 }
@@ -81,9 +81,17 @@ function View({ route }: { route: Route }): ReactNode {
   // On the phone, the pages that set the project up are on the computer: they say so.
   const desk = app.phone ? deskOnlyOf(route) : null;
   if (desk) return <DeskOnly page={desk} />;
+  const settings = () => (
+    <ProjectSettings
+      version={app.version}
+      connection={app.connection}
+      canWrite={app.session.canConfigure}
+    />
+  );
   switch (route.view) {
-    case 'toca':
     case 'lan':
+      return route.over === 'settings' ? settings() : <TocaView />;
+    case 'toca':
       return <TocaView />;
     case 'atasco':
       return <TocaView atasco />;
@@ -94,13 +102,7 @@ function View({ route }: { route: Route }): ReactNode {
     case 'projects':
       return <ProjectsInbox />;
     case 'settings':
-      return (
-        <ProjectSettings
-          version={app.version}
-          connection={app.connection}
-          canWrite={app.session.canConfigure}
-        />
-      );
+      return settings();
     case 'performance':
       return <ModelPerformance />;
     case 'topics':
@@ -153,7 +155,10 @@ function Shell() {
         />
         <Rail />
         <main className="main">
-          <ViewHost viewKey={viewKeyOf(route)} kind={route.view === 'lan' ? 'toca' : route.view}>
+          <ViewHost
+            viewKey={viewKeyOf(route)}
+            kind={route.view === 'lan' ? (route.over ?? 'toca') : route.view}
+          >
             <View route={route} />
           </ViewHost>
           <DetailHost />
@@ -164,7 +169,8 @@ function Shell() {
       <Dialog
         open={route.view === 'lan'}
         label={t('lan.title')}
-        onClose={() => app.go({ view: 'toca' })}
+        // Hecho goes back to where it was opened: Configuración, or Te toca (TS-14).
+        onClose={() => app.go({ view: route.view === 'lan' ? (route.over ?? 'toca') : 'toca' })}
       >
         <LanPanel canManage={app.session.canManageDevices} />
       </Dialog>

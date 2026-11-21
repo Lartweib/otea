@@ -142,7 +142,7 @@ export const phone = {
   'phone.guide.phoneText': 'Escanea con la cámara el código de la tienda de tu teléfono.',
   'phone.guide.phoneSeen': 'Hay un teléfono en tu tailnet.',
   'phone.guide.phoneUnseen':
-    'Otea lo marca como hecho cuando este equipo inicia sesión en Tailscale y ve el teléfono en tu tailnet.',
+    'Se marca como hecho junto con el paso 3: cuando este equipo inicia sesión en Tailscale y ve el teléfono en tu tailnet.',
   'phone.guide.android': 'Google Play · Android',
   'phone.guide.ios': 'App Store · iPhone',
   'phone.guide.pc': 'Instala Tailscale en este equipo',

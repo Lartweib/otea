@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   fetchLan,
   freshPairingCode,
@@ -16,6 +16,7 @@ import { testPushWords } from '../notify/test-push.ts';
 import {
   addressHint,
   addressLabel,
+  dotSegments,
   hostnameOf,
   hostOf,
   ipFallback,
@@ -258,7 +259,15 @@ export function LanPanel({ canManage }: LanPanelProps) {
             </>
           ) : (
             <span className="lan-addr">
-              {lan?.enabled ? `${tailscale ? 'https' : 'http'}://${shown}` : 'http://127.0.0.1'}
+              {dotSegments(
+                lan?.enabled ? `${tailscale ? 'https' : 'http'}://${shown}` : 'http://127.0.0.1',
+              ).map((part, index) => (
+                // biome-ignore lint/suspicious/noArrayIndexKey: the parts of one fixed address
+                <Fragment key={index}>
+                  {index > 0 ? <wbr /> : null}
+                  {part}
+                </Fragment>
+              ))}
             </span>
           )}
           <span className="lan-code">

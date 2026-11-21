@@ -21,8 +21,9 @@ export type RailKey =
 export function railKey(route: Route): RailKey {
   switch (route.view) {
     case 'toca':
-    case 'lan':
       return 'toca';
+    case 'lan':
+      return route.over === 'settings' ? 'settings' : 'toca';
     case 'atasco':
       return 'atasco';
     case 'board':

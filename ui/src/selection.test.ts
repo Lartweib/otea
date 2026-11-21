@@ -58,6 +58,7 @@ describe('selection', () => {
     ['#/triage/x', { view: 'toca' }],
     ['#/triage/i/ERR-9', { view: 'triage', item: 'ERR-9' }],
     ['#/lan', { view: 'lan' }],
+    ['#/settings/lan', { view: 'lan', over: 'settings' }],
     ['#/i/%E0%A4%A', { view: 'toca' }],
   ])('routes %j to %j', (hash, route) => {
     expect(routeFromHash(hash)).toEqual(route);
@@ -76,6 +77,8 @@ describe('selection', () => {
     [{ view: 'settings' }, '#/settings'],
     [{ view: 'performance' }, '#/performance'],
     [{ view: 'lan' }, '#/lan'],
+    // TS-14: Emparejar un teléfono from Configuración opens over it, and Hecho goes back there.
+    [{ view: 'lan', over: 'settings' }, '#/settings/lan'],
     [{ view: 'modules', name: 'enum' }, '#/modules/enum'],
     [{ view: 'brief', ids: ['A', 'B'] }, '#/brief/A,B'],
     [{ view: 'studio', page: { kind: 'boards' } }, '#/studio'],
