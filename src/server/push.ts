@@ -33,9 +33,32 @@ export type PushSubscriptionKeys = { endpoint: string; p256dh: string; auth: str
 
 export type PushResult = 'sent' | 'gone' | 'failed';
 
+// What a push came to, to log and to show a test push: the push service's HTTP status (null when
+// none came back: a network error, or an endpoint that is no push service) and, when it refused or
+// the request failed, what it said, short and without any address in it.
+export type PushOutcome = { result: PushResult; status: number | null; detail: string };
+
 export type PushSender = {
-  send(subscription: PushSubscriptionKeys, payload: string): Promise<PushResult>;
+  send(subscription: PushSubscriptionKeys, payload: string): Promise<PushOutcome>;
 };
+
+const DETAIL_MAX = 200;
+
+// What a push service or the network said, safe to log and show: one line, at most 200 characters,
+// and no URL (an error may name the subscription's endpoint, which opens a push to that browser).
+export function pushDetail(text: string): string {
+  const plain = text
+    .replace(/https?:\/\/\S+/g, '…')
+    .replace(/\s+/g, ' ')
+    .trim();
+  return plain.length > DETAIL_MAX ? `${plain.slice(0, DETAIL_MAX - 1)}…` : plain;
+}
+
+function networkDetail(error: unknown): string {
+  if (!(error instanceof Error)) return 'unknown error';
+  const code = (error.cause as { code?: unknown } | undefined)?.code;
+  return pushDetail(typeof code === 'string' ? `${error.message} (${code})` : error.message);
+}
 
 export const PUSH_KEYS_FILE = 'push-keys.json';
 
@@ -206,7 +229,9 @@ export function webPushSender(
   return {
     async send(subscription, payload) {
       // Not a push service: a subscription that can never be delivered to.
-      if (!isPushEndpoint(subscription.endpoint)) return 'gone';
+      if (!isPushEndpoint(subscription.endpoint)) {
+        return { result: 'gone', status: null, detail: 'not a push service' };
+      }
       try {
         const body = encryptPayload(Buffer.from(payload, 'utf8'), subscription);
         const response = await post(subscription.endpoint, {
@@ -222,11 +247,14 @@ export function webPushSender(
           redirect: 'error',
           signal: AbortSignal.timeout(SEND_TIMEOUT_MS),
         });
-        if (response.ok) return 'sent';
+        const { status } = response;
+        if (response.ok) return { result: 'sent', status, detail: '' };
+        const said = pushDetail(await response.text().catch(() => ''));
         // The browser unsubscribed, or the subscription expired: never again.
-        return response.status === 404 || response.status === 410 ? 'gone' : 'failed';
-      } catch {
-        return 'failed';
+        const result = status === 404 || status === 410 ? 'gone' : 'failed';
+        return { result, status, detail: said };
+      } catch (error) {
+        return { result: 'failed', status: null, detail: networkDetail(error) };
       }
     },
   };

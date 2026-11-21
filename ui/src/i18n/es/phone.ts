@@ -305,5 +305,22 @@ export const phone = {
   'notify.blocked':
     'Los avisos de Otea están bloqueados. Permítelos en los ajustes de este navegador para este sitio.',
   'notify.failed': 'No se pudieron activar. Vuelve a intentarlo.',
+  'notify.androidBlocked':
+    'Android tiene bloqueados los avisos de esta app: Ajustes › Apps › Otea › Notificaciones.',
+  'notify.lost':
+    'Este navegador perdió la suscripción a los avisos. Desactívalos y vuelve a activarlos.',
+  'notify.recheck': 'Comprobar de nuevo',
+  'testPush.send': 'Enviar un aviso de prueba',
+  'testPush.sendTo': 'Enviar un aviso de prueba a {name}',
+  'testPush.sending': 'Enviando…',
+  'testPush.sent': 'Enviado: debería llegarte en unos segundos.',
+  'testPush.refused': 'El servicio de avisos rechazó el envío ({status}): {detail}',
+  'testPush.refusedPlain': 'El servicio de avisos rechazó el envío ({status}).',
+  'testPush.gone':
+    'El servicio de avisos ya no reconoce este dispositivo ({status}). Vuelve a activar los avisos en el teléfono.',
+  'testPush.network': 'No se pudo llegar al servicio de avisos: {detail}',
+  'testPush.off': 'Este dispositivo no tiene los avisos activados.',
+  'testPush.failed': 'No se pudo enviar. Vuelve a intentarlo.',
+  'testPush.ifNot': 'Si no llega, revisa en el teléfono: Ajustes › Apps › Otea › Notificaciones.',
   'notify.saveFailed': 'No se guardó. Vuelve a intentarlo.',
 } satisfies Partial<Catalog>;

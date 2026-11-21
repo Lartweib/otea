@@ -132,6 +132,7 @@ import {
   session,
 } from './session.ts';
 import { type LiveStreams, liveStreams } from './stream.ts';
+import { sendTestPush } from './test-push.ts';
 import { type Arrival, type PhoneTransport, proxied, tailscaleTransport } from './transports.ts';
 import { BUILT_UI_DIR, mountUi } from './ui.ts';
 import {
@@ -212,6 +213,8 @@ export type ServerOptions = {
     sender?: PushSender;
     tickMs?: number;
     minuteOfDay?: (ms: number) => number;
+    // Where each push's outcome is told (otea serve prints it).
+    log?: (line: string) => void;
   };
   // How a pre-push hook the desk writes runs this Otea again, as otea hook install --git writes it
   // (otea serve gives its own); without it, the desk cannot write one.
@@ -301,6 +304,9 @@ type Doors = {
   tailscale: TailscaleCli;
   probe: Probe;
   gitHook: Launcher | undefined;
+  // How a push is sent, and where its outcome is told: a test push goes through them too.
+  sender: PushSender;
+  log: (line: string) => void;
 };
 
 const TransportBody = z.object({ transport: z.string() });
@@ -413,6 +419,19 @@ function machineApi(doors: Doors): Hono<OteaEnv> {
         const check = await switchToTailscale(machine, doors.tailscale, port());
         if (phone.chosen()) phone.codes.issue();
         return c.json({ ...(await phoneView(doors)), tailscale: check });
+      })
+      // One push to that device now, past the planner, the quiet hours and the spacing, with what
+      // its push service answered.
+      .post('/devices/:id/test-push', async (c) => {
+        assertCanManageDevices(c, auth);
+        assertSameOrigin(c);
+        const id = c.req.param('id');
+        if (!listDevices(machine).some((device) => device.id === id)) {
+          throw new RejectedRequest(404, 'not_found', `No paired device ${id}`);
+        }
+        const answer = await sendTestPush(machine, doors.sender, id, doors.log);
+        if (answer.result === 'gone') doors.changed();
+        return c.json(answer);
       })
       .post('/devices/:id/revoke', (c) => {
         assertCanManageDevices(c, auth);
@@ -835,7 +854,7 @@ function api(project: Project, { feed, streams, notifier }: Live, doors: Doors):
         return serveEvidence(c, project, c.req.param('id'));
       })
       .route('/', boardsApi(project, feed, auth))
-      .route('/', notifyApi(machine, notifier, doors.keys, auth))
+      .route('/', notifyApi(machine, notifier, doors.keys, auth, doors))
       .get('/events', (c) => c.json(listEvents(project, eventsFilter(c.req.query()))))
       .get('/stream', (c) => streams.handle(c))
       .all('*', (c) => c.json(errorBody('not_found', `No route ${c.req.path}`), 404))
@@ -1024,6 +1043,8 @@ export function createServer(
     tailscale: options.tailscale ?? NO_TAILSCALE,
     probe: options.probe ?? fetchProbe,
     gitHook: options.gitHook,
+    sender,
+    log: options.notify?.log ?? (() => undefined),
   };
 
   const open = (project: Project): Host => {
@@ -1034,6 +1055,7 @@ export function createServer(
       sender,
       targets: machine,
       now,
+      log: doors.log,
       ...(options.notify?.tickMs === undefined ? {} : { tickMs: options.notify.tickMs }),
       ...(options.notify?.minuteOfDay === undefined
         ? {}

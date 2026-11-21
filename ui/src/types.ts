@@ -375,3 +375,11 @@ export type ProjectSettings = {
   collections: Array<{ name: string; preset: string }>;
   paths: Array<ProjectPath & { repos: RepoSettings[] }>;
 };
+
+// A test push's answer (src/server/test-push.ts): what the push service said, or `off` when the
+// device has no subscription.
+export type TestPush = {
+  result: 'sent' | 'gone' | 'failed' | 'off';
+  status: number | null;
+  detail: string;
+};

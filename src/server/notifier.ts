@@ -18,6 +18,7 @@ import { type NoticeLang, type NoticeText, noticeText } from '../core/notify/tex
 import { selectEvents } from '../store/queries.ts';
 import type { ChangeFeed } from './changes.ts';
 import type { PushSender } from './push.ts';
+import { outcomeLine } from './test-push.ts';
 
 // The server's side of notifications: it looks at the items on every change (and every few
 // seconds, since a lease runs out without writing anything), finds what is new (core/notify), and
@@ -47,6 +48,8 @@ export type NotifierOptions = {
   now?: () => number;
   minuteOfDay?: (ms: number) => number;
   tickMs?: number;
+  // Where each push's outcome is told (otea serve's output): the device id, never its endpoint.
+  log?: (line: string) => void;
 };
 
 const TICK_MS = 5000;
@@ -98,12 +101,17 @@ export function createNotifier(
     if (!subscription) return;
     const sent = options.sender
       .send(subscription, JSON.stringify(text))
-      .then((result) => {
-        if (result !== 'gone') return;
+      .then((outcome) => {
+        options.log?.(
+          `Otea ${outcomeLine(`push to device ${target.device ?? target.id}`, outcome)}`,
+        );
+        if (outcome.result !== 'gone') return;
         dropEndpoint(targetsDb, subscription.endpoint);
         refresh();
       })
-      .catch(() => {})
+      .catch((error: unknown) => {
+        options.log?.(`Otea push to device ${target.device ?? target.id}: ${String(error)}`);
+      })
       .finally(() => sending.delete(sent));
     sending.add(sent);
   };

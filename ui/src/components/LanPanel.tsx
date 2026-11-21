@@ -1,10 +1,18 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { fetchLan, freshPairingCode, newPairingCode, openLan, revokeDevice } from '../api.ts';
+import {
+  fetchLan,
+  freshPairingCode,
+  newPairingCode,
+  openLan,
+  postDeviceTestPush,
+  revokeDevice,
+} from '../api.ts';
 import { useApp } from '../app/context.tsx';
 import { agoLabel, momentLabel } from '../format.ts';
 import { t, tx } from '../i18n/i18n.ts';
 import { Button, Swap } from '../kit/index.ts';
 import { notifySummary } from '../notify/summary.ts';
+import { testPushWords } from '../notify/test-push.ts';
 import {
   addressHint,
   addressLabel,
@@ -48,16 +56,23 @@ function QrCode({ view, now }: { view: LanView | undefined; now: number }) {
   );
 }
 
-function DeviceRow({
+export function DeviceRow({
   device,
   now,
   revoked,
   onRevoke,
+  onTest,
+  testing = false,
+  tested,
 }: {
   device: Device;
   now: number;
   revoked: boolean;
   onRevoke: () => void;
+  // A test push to this device, and what its push service answered.
+  onTest: () => void;
+  testing?: boolean;
+  tested?: string | undefined;
 }) {
   const seen = device.lastSeenAt ? agoLabel(device.lastSeenAt, now) : t('lan.never');
   return (
@@ -76,16 +91,32 @@ function DeviceRow({
         {revoked || device.notify === undefined ? null : (
           <small className="dev-notify">{notifySummary(device.notify)}</small>
         )}
+        {tested && !revoked ? (
+          <small className="dev-test" role="status">
+            {tested}
+          </small>
+        ) : null}
       </Swap>
       {revoked ? null : (
-        <Button
-          variant="text"
-          size="sm"
-          aria-label={t('lan.revokeLabel', { name: device.name })}
-          onClick={onRevoke}
-        >
-          {t('lan.revoke')}
-        </Button>
+        <span className="dev-acts">
+          <Button
+            variant="text"
+            size="sm"
+            disabled={testing}
+            aria-label={t('testPush.sendTo', { name: device.name })}
+            onClick={onTest}
+          >
+            {testing ? t('testPush.sending') : t('testPush.send')}
+          </Button>
+          <Button
+            variant="text"
+            size="sm"
+            aria-label={t('lan.revokeLabel', { name: device.name })}
+            onClick={onRevoke}
+          >
+            {t('lan.revoke')}
+          </Button>
+        </span>
       )}
     </div>
   );
@@ -99,6 +130,19 @@ export function LanPanel({ canManage }: LanPanelProps) {
   const [address, setAddress] = useState<string | undefined>();
   const [failure, setFailure] = useState<string | undefined>();
   const [revoked, setRevoked] = useState<ReadonlyMap<string, Device>>(new Map());
+  // Each device's test push: running, then what came back.
+  const [tests, setTests] = useState<ReadonlyMap<string, string | null>>(new Map());
+  const testPush = (id: string) => {
+    setTests((was) => new Map(was).set(id, null));
+    postDeviceTestPush(id)
+      .then((answer) =>
+        answer.result === 'sent'
+          ? `${testPushWords(answer)} ${t('testPush.ifNot')}`
+          : testPushWords(answer),
+      )
+      .catch(() => t('testPush.failed'))
+      .then((words) => setTests((was) => new Map(was).set(id, words)));
+  };
   const [now, setNow] = useState(Date.now);
   const opened = useRef(false);
 
@@ -254,6 +298,9 @@ export function LanPanel({ canManage }: LanPanelProps) {
               device={device}
               now={now}
               revoked={revoked.has(device.id)}
+              onTest={() => testPush(device.id)}
+              testing={tests.get(device.id) === null}
+              tested={tests.get(device.id) ?? undefined}
               onRevoke={() => {
                 setRevoked((was) => new Map(was).set(device.id, device));
                 act(() => revokeDevice(device.id));

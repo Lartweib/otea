@@ -15,8 +15,9 @@ import { isNoticeLang, type NoticeLang } from '../core/notify/text.ts';
 import { RejectedRequest } from './errors.ts';
 import type { Notifier } from './notifier.ts';
 import { assertCanManageDevices } from './pairing.ts';
-import { isPushEndpoint, type VapidKeys } from './push.ts';
+import { isPushEndpoint, type PushSender, type VapidKeys } from './push.ts';
 import { clientOf, type OteaEnv, type Session } from './session.ts';
+import { sendTestPush } from './test-push.ts';
 import { assertSameOrigin, assertWritable } from './writes.ts';
 
 // Preferencias › Avisos, as the server answers it:
@@ -102,6 +103,7 @@ export function notifyApi(
   notifier: Notifier,
   keys: VapidKeys,
   auth: Session,
+  push: { sender: PushSender; log: (line: string) => void },
 ): Hono<OteaEnv> {
   return (
     new Hono<OteaEnv>()
@@ -127,6 +129,16 @@ export function notifyApi(
         saveSubscription(machine, device, { endpoint, ...subscription }, lang);
         notifier.refresh();
         return c.json(view(c, machine, keys), 201);
+      })
+      // Preferencias › Avisos › Enviar un aviso de prueba: one push to this device now, past the
+      // planner, the quiet hours and the spacing, with what its push service answered.
+      .post('/notify/test', async (c) => {
+        assertWritable(c, auth);
+        assertSameOrigin(c);
+        const device = pushDevice(c);
+        const answer = await sendTestPush(machine, push.sender, device, push.log);
+        if (answer.result === 'gone') notifier.refresh();
+        return c.json(answer);
       })
       .post('/notify/unsubscribe', (c) => {
         assertWritable(c, auth);

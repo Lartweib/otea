@@ -166,10 +166,11 @@ describe('webPushSender', () => {
   const keys = generateVapidKeys();
   const calls: { url: string; init: RequestInit }[] = [];
   let status = 201;
+  let answer: string | null = null;
   const sender = webPushSender(keys, {
     fetch: async (url, init) => {
       calls.push({ url: String(url), init: init ?? {} });
-      return new Response(null, { status });
+      return new Response(answer, { status });
     },
     now: () => Date.parse('2026-11-14T10:00:00.000Z'),
   });
@@ -177,15 +178,22 @@ describe('webPushSender', () => {
   beforeEach(() => {
     calls.length = 0;
     status = 201;
+    answer = null;
   });
 
   it('posts the encrypted payload to the subscription’s push service', async () => {
     const { subscription, decrypt } = browser();
-    expect(await sender.send(subscription, '{"title":"Te toca"}')).toBe('sent');
+    expect(await sender.send(subscription, '{"title":"Te toca"}')).toEqual({
+      result: 'sent',
+      status: 201,
+      detail: '',
+    });
     const [call] = calls;
     expect(call?.url).toBe(subscription.endpoint);
     const headers = new Headers(call?.init.headers);
     expect(headers.get('content-encoding')).toBe('aes128gcm');
+    expect(headers.get('content-type')).toBe('application/octet-stream');
+    expect(headers.get('urgency')).toBe('normal');
     expect(headers.get('ttl')).toBe(String(24 * 60 * 60));
     expect(headers.get('authorization')).toMatch(/^vapid t=/);
     expect(decrypt(Buffer.from(call?.init.body as Uint8Array))).toBe('{"title":"Te toca"}');
@@ -198,24 +206,41 @@ describe('webPushSender', () => {
     [429, 'failed'],
   ] as const)('reads %i as %s', async (code, result) => {
     status = code;
-    expect(await sender.send(browser().subscription, '{}')).toBe(result);
+    expect(await sender.send(browser().subscription, '{}')).toMatchObject({ result, status: code });
+  });
+
+  it('keeps what the push service said when it refused, short and without any address', async () => {
+    status = 403;
+    answer =
+      'the key in the authorization header does not correspond to the sender used to subscribe this user. See https://fcm.googleapis.com/fcm/send/abc ' +
+      'x'.repeat(400);
+    const out = await sender.send(browser().subscription, '{}');
+    expect(out.result).toBe('failed');
+    expect(out.status).toBe(403);
+    expect(out.detail).toContain('does not correspond to the sender');
+    expect(out.detail).not.toContain('https://');
+    expect(out.detail.length).toBeLessThanOrEqual(200);
   });
 
   it('never posts outside the push services', async () => {
     const { subscription } = browser();
-    expect(await sender.send({ ...subscription, endpoint: 'https://10.0.0.1/x' }, '{}')).toBe(
-      'gone',
-    );
+    expect(
+      await sender.send({ ...subscription, endpoint: 'https://10.0.0.1/x' }, '{}'),
+    ).toMatchObject({ result: 'gone', status: null });
     expect(calls).toEqual([]);
   });
 
-  it('counts a network failure as failed', async () => {
+  it('counts a network failure as failed, and says what failed', async () => {
     const failing = webPushSender(keys, {
       fetch: async () => {
-        throw new Error('offline');
+        throw new TypeError('fetch failed', { cause: { code: 'ENOTFOUND' } });
       },
     });
-    expect(await failing.send(browser().subscription, '{}')).toBe('failed');
+    expect(await failing.send(browser().subscription, '{}')).toEqual({
+      result: 'failed',
+      status: null,
+      detail: 'fetch failed (ENOTFOUND)',
+    });
   });
 });
 

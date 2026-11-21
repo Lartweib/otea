@@ -5,6 +5,7 @@ import { DEFAULT_PREFS } from '../../../src/core/notify/planner.ts';
 import { setLanguage } from '../i18n/i18n.ts';
 import { NotifyBody, type NotifyBodyProps, toggleMuted } from './NotifyGroup.tsx';
 import { keyBytes } from './push-client.ts';
+import { testPushWords } from './test-push.ts';
 
 afterEach(() => setLanguage('en'));
 
@@ -121,5 +122,53 @@ describe('Preferencias › Avisos', () => {
 describe('keyBytes', () => {
   it('reads the key the server gives, base64url', () => {
     expect([...keyBytes('AQID_-8')]).toEqual([1, 2, 3, 255, 239]);
+  });
+});
+
+describe('a test push and a blocked app', () => {
+  const on = { ...view, subscribed: true };
+
+  it('offers a test push once notifications are on, and says what came back', () => {
+    setLanguage('es');
+    expect(render({ view: on })).toMatch(/<button[^>]*>.*Enviar un aviso de prueba<\/button>/);
+    expect(render({})).not.toContain('Enviar un aviso de prueba');
+    const html = render({ view: on, tested: 'Enviado: debería llegarte en unos segundos.' });
+    expect(html).toContain('role="status"');
+    expect(html).toContain('Enviado: debería llegarte en unos segundos.');
+  });
+
+  it('words each answer from the push service plainly', () => {
+    setLanguage('es');
+    expect(testPushWords({ result: 'sent', status: 201, detail: '' })).toBe(
+      'Enviado: debería llegarte en unos segundos.',
+    );
+    expect(testPushWords({ result: 'failed', status: 403, detail: 'bad key' })).toBe(
+      'El servicio de avisos rechazó el envío (403): bad key',
+    );
+    expect(testPushWords({ result: 'off', status: null, detail: '' })).toBe(
+      'Este dispositivo no tiene los avisos activados.',
+    );
+    expect(testPushWords({ result: 'failed', status: null, detail: 'fetch failed' })).toBe(
+      'No se pudo llegar al servicio de avisos: fetch failed',
+    );
+    expect(testPushWords({ result: 'gone', status: 410, detail: '' })).toContain('(410)');
+    // Accepted, but this app cannot show it: Android's own switch for the installed app.
+    expect(testPushWords({ result: 'sent', status: 201, detail: '' }, { blocked: true })).toContain(
+      'Ajustes › Apps › Otea › Notificaciones',
+    );
+  });
+
+  it('says Android blocks the app’s notifications, with where to allow them, and checks again', () => {
+    setLanguage('es');
+    const denied = render({ offer: 'blocked', platform: 'android' });
+    expect(denied).toContain(
+      'Android tiene bloqueados los avisos de esta app: Ajustes › Apps › Otea › Notificaciones.',
+    );
+    expect(denied).toMatch(/<button[^>]*>.*Comprobar de nuevo<\/button>/);
+    // On for the server, but the browser lost its subscription.
+    const lost = render({ view: on, platform: 'android', blockedHere: true });
+    expect(lost).toContain('Android tiene bloqueados los avisos de esta app');
+    expect(lost).toContain('Comprobar de nuevo');
+    expect(render({ view: on, platform: 'android' })).not.toContain('Android tiene bloqueados');
   });
 });

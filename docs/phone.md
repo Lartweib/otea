@@ -99,6 +99,12 @@ The installed app still opens without this computer: the service worker keeps th
 
 On a phone over HTTPS (Tailscale), **Preferences › Notifications** (Avisos) turns on Web Push: the phone's browser subscribes with the server's VAPID key pair (made on the first `otea serve`, kept in `push-keys.json` in the Otea home with owner-only permissions); a notice names its project and opens it and `otea serve` posts each notice to that browser's push service, encrypted for it (aes128gcm) and to no other host. On iPhone, Safari allows it only for Otea added to the Home Screen; over the local network's plain HTTP no browser allows it, and Preferences says so. The desktop app shows the same notices as the system's notifications (see `desktop/README.md`).
 
+**When a notice does not arrive:**
+
+- **The serve output.** `otea serve` prints each push's outcome, naming the device by its id only, never its endpoint, keys or words. The outcomes are: `sent (201)`; `gone (410), subscription dropped`; `refused by the push service (403): …`, with what the push service said, short and with any address taken out; or `network error: …`.
+- **Send a test notification.** The button sits in Preferences › Notifications on the phone, and on each device in **Pair a phone** on the desk (`POST /api/notify/test`, `POST /api/devices/<id>/test-push`). It sends one push to that device right away, past the quiet hours and the spacing, and says what the push service answered: sent, refused with its status, or that the device has no notifications on.
+- **Android can block an installed app's notifications on its own.** That setting is separate from the browser's permission, so Otea can still show notifications as on. Preferences › Notifications checks the permission and the browser's subscription each time it opens and each time the app comes back to the front. When the permission is denied, or the subscription is gone while the server still has one, it says: **Android blocks this app's notifications: Settings › Apps › Otea › Notifications**, with **Check again**.
+
 Each paired phone chooses what it is told, and the server keeps that choice per device and applies it before it sends anything. The desk's device list (**Pair a phone**) shows each device's choice in a line. Each kind is a switch:
 
 | Kind | Default |

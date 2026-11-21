@@ -89,6 +89,8 @@ describe('the write routes the router holds', () => {
         'POST /api/notify/prefs',
         'POST /api/lan/code',
         'POST /api/devices/:id/revoke',
+        'POST /api/devices/:id/test-push',
+        'POST /api/notify/test',
       ]),
     );
   });

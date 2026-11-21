@@ -315,6 +315,27 @@
   font-family: var(--sans);
   font-size: 12px;
 }
+/* A test push's answer, under the device. */
+.devs small.dev-test {
+  color: var(--ink);
+  font-family: var(--sans);
+  font-size: 12.5px;
+  line-height: 1.4;
+}
+/* The device's lines take the room; its two actions go under them when it runs short. */
+.devs > div {
+  flex-wrap: wrap;
+}
+.devs > div > :first-child {
+  flex: 1 1 240px;
+  min-width: 0;
+}
+.devs .dev-acts {
+  display: inline-flex;
+  flex: none;
+  gap: 4px;
+  margin-left: auto;
+}
 .dialog .devs-none {
   font-size: 14px;
   padding: 10px 0;

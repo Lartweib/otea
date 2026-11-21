@@ -30,6 +30,7 @@ import type {
   ProjectView,
   Session,
   TailscaleGuide,
+  TestPush,
   TransportKind,
 } from './types.ts';
 import { type AgentDetail, parseAgentDetail } from './views/agent/agent-sheet.ts';
@@ -413,6 +414,15 @@ export function postUnsubscribe(): Promise<NotifyView> {
 
 export function postNotifyPrefs(prefs: NotifyPrefs, lang: Language): Promise<NotifyView> {
   return post<NotifyView>('/api/notify/prefs', { prefs, lang });
+}
+
+// One push now to this phone (Preferencias › Avisos), or to a paired device (the desk's list).
+export function postTestPush(): Promise<TestPush> {
+  return post<TestPush>('/api/notify/test', {});
+}
+
+export function postDeviceTestPush(id: string): Promise<TestPush> {
+  return post<TestPush>(`/api/devices/${encodeURIComponent(id)}/test-push`, {});
 }
 
 export async function revokeDevice(id: string): Promise<void> {

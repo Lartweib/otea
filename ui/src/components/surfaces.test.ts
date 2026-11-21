@@ -11,7 +11,7 @@ import type { CollectionView, ProjectOverview } from '../types.ts';
 import { ActivityDrawer } from './ActivityDrawer.tsx';
 import { ConnectDialog, ConnectView } from './ConnectDialog.tsx';
 import { LandsAs, previewBlock } from './LandsAs.tsx';
-import { BeforeScan, LanPanel } from './LanPanel.tsx';
+import { BeforeScan, DeviceRow, LanPanel } from './LanPanel.tsx';
 import { NewItemForm } from './NewItemForm.tsx';
 import { elsewhereBlocks, hereBlocks, ProjectsInbox } from './ProjectsInbox.tsx';
 import { Triage } from './Triage.tsx';
@@ -449,5 +449,32 @@ describe('dialogs', () => {
       'Antes de escanear: abre Tailscale en el teléfono y comprueba que está conectado.',
     );
     expect(render(createElement(BeforeScan, { tailscale: false }))).toBe('');
+  });
+
+  it('Emparejar un teléfono sends a test push to a device, and says what came back', () => {
+    setLanguage('es');
+    const device = {
+      id: 'd1',
+      name: 'Pixel · Edge',
+      pairedAt: new Date(NOW - 60_000).toISOString(),
+      lastSeenAt: null,
+      hint: '3f2a',
+      notify: null,
+    };
+    const row = (tested?: string) =>
+      render(
+        createElement(DeviceRow, {
+          device,
+          now: NOW,
+          revoked: false,
+          onRevoke: () => {},
+          onTest: () => {},
+          ...(tested === undefined ? {} : { tested }),
+        }),
+      );
+    expect(row()).toMatch(/aria-label="Enviar un aviso de prueba a Pixel · Edge"/);
+    expect(row('Enviado: debería llegarte en unos segundos.')).toContain(
+      'Enviado: debería llegarte en unos segundos.',
+    );
   });
 });

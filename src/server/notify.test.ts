@@ -10,7 +10,7 @@ import { fakeTailscale, TAILNET_HOST } from '../app/tailscale-testing.ts';
 import type { Actor } from '../core/item.ts';
 import { DEFAULT_PREFS, GATHER_MS, SPACING_MS } from '../core/notify/planner.ts';
 import { formatCode } from './lan.ts';
-import type { PushResult, PushSender, PushSubscriptionKeys } from './push.ts';
+import type { PushOutcome, PushSender, PushSubscriptionKeys } from './push.ts';
 import { createServer, type OteaServer } from './server.ts';
 import { LOCAL_HOST, memoryProject, SESSION_COOKIE, TOKEN } from './testing.ts';
 
@@ -37,7 +37,8 @@ describe('notifications on the server', () => {
   let project: Project;
   let server: OteaServer;
   let clock: number;
-  let answer: PushResult;
+  let answer: PushOutcome;
+  const logged: string[] = [];
   const sent: { subscription: PushSubscriptionKeys; payload: Record<string, unknown> }[] = [];
   const sender: PushSender = {
     async send(subscription, payload) {
@@ -115,13 +116,19 @@ describe('notifications on the server', () => {
     project = memoryProject();
     addCollection(project, { name: 'tasks' });
     clock = T0;
-    answer = 'sent';
+    answer = { result: 'sent', status: 201, detail: '' };
     sent.length = 0;
+    logged.length = 0;
     server = createServer(project, {
       token: TOKEN,
       tailscale: fakeTailscale(),
       now: () => clock,
-      notify: { sender, tickMs: 60 * 60_000, minuteOfDay: () => 12 * 60 },
+      notify: {
+        sender,
+        tickMs: 60 * 60_000,
+        minuteOfDay: () => 12 * 60,
+        log: (line) => logged.push(line),
+      },
     });
     choosePhoneTransport(server.machine, { transport: 'tailscale', tailscaleHost: TAILNET_HOST });
   });
@@ -459,12 +466,97 @@ describe('notifications on the server', () => {
     });
 
     it('forgets a subscription the push service says is gone', async () => {
-      answer = 'gone';
+      answer = { result: 'gone', status: 410, detail: '' };
       toReview(first);
       await pass(1000);
       await pass(GATHER_MS);
       expect(sent).toHaveLength(1);
       expect(listTargets(server.machine)).toEqual([]);
+    });
+
+    it('logs each push’s outcome with the device id only, never its endpoint, keys or words', async () => {
+      const outcomes: [PushOutcome, RegExp][] = [
+        [{ result: 'sent', status: 201, detail: '' }, /push to device [0-9a-f]{8}: sent \(201\)/],
+        [
+          { result: 'failed', status: 403, detail: 'bad key' },
+          /push to device [0-9a-f]{8}: refused by the push service \(403\): bad key/,
+        ],
+        [
+          { result: 'failed', status: null, detail: 'fetch failed (ENOTFOUND)' },
+          /push to device [0-9a-f]{8}: network error: fetch failed \(ENOTFOUND\)/,
+        ],
+        [
+          { result: 'gone', status: 410, detail: '' },
+          /push to device [0-9a-f]{8}: gone \(410\), subscription dropped/,
+        ],
+      ];
+      for (const [outcome, line] of outcomes) {
+        answer = outcome;
+        logged.length = 0;
+        const id = newTask(`Item ${outcome.status}`);
+        toReview(id);
+        await pass(SPACING_MS);
+        await pass(SPACING_MS);
+        expect(logged.join('\n')).toMatch(line);
+      }
+      const all = logged.join('\n');
+      expect(all).not.toContain('fcm.googleapis.com');
+      expect(all).not.toContain('Item');
+    });
+  });
+
+  describe('a test push', () => {
+    it('sends one push to the phone right away, past the quiet hours and the spacing', async () => {
+      const { cookie, device } = await pair();
+      await subscribe(cookie);
+      const prefs = { ...DEFAULT_PREFS, quiet: { from: '00:00', to: '23:59' } };
+      await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
+        method: 'POST',
+        cookie,
+        body: { prefs, lang: 'es' },
+      });
+
+      const fromPhone = await viaTailscale('/p/memory-aaaaaa/api/notify/test', {
+        method: 'POST',
+        cookie,
+        body: {},
+      });
+      expect(fromPhone.status).toBe(200);
+      expect(await fromPhone.json()).toEqual({ result: 'sent', status: 201, detail: '' });
+      expect(sent).toHaveLength(1);
+      expect(sent[0]?.payload).toMatchObject({ title: 'Otea · aviso de prueba', url: '/#/' });
+
+      const fromDesk = await desk(`/api/devices/${device}/test-push`, { method: 'POST', body: {} });
+      expect(await fromDesk.json()).toEqual({ result: 'sent', status: 201, detail: '' });
+      expect(sent).toHaveLength(2);
+      expect(logged.join('\n')).toContain(`test push to device ${device}: sent (201)`);
+    });
+
+    it('says what the push service answered, and drops a subscription it calls gone', async () => {
+      const { cookie, device } = await pair();
+      await subscribe(cookie);
+      answer = { result: 'failed', status: 403, detail: 'bad key' };
+      const refused = await desk(`/api/devices/${device}/test-push`, { method: 'POST', body: {} });
+      expect(await refused.json()).toEqual({ result: 'failed', status: 403, detail: 'bad key' });
+
+      answer = { result: 'gone', status: 410, detail: '' };
+      await desk(`/api/devices/${device}/test-push`, { method: 'POST', body: {} });
+      expect(listTargets(server.machine)).toEqual([]);
+    });
+
+    it('says a device without notifications on has nothing to send to', async () => {
+      const { cookie, device } = await pair();
+      const fromDesk = await desk(`/api/devices/${device}/test-push`, { method: 'POST', body: {} });
+      expect(await fromDesk.json()).toEqual({ result: 'off', status: null, detail: '' });
+      const fromPhone = await viaTailscale('/p/memory-aaaaaa/api/notify/test', {
+        method: 'POST',
+        cookie,
+        body: {},
+      });
+      expect(await fromPhone.json()).toMatchObject({ result: 'off' });
+      expect(sent).toEqual([]);
+      const unknown = await desk('/api/devices/nope/test-push', { method: 'POST', body: {} });
+      expect(unknown.status).toBe(404);
     });
   });
 
