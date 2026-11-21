@@ -243,6 +243,14 @@ button.lk2:hover {
   overflow-wrap: anywhere;
 }
 
+/* offline: the question stays, and the answer waits for the computer (TS-31) */
+.acts .said.offline {
+  margin-top: 8px;
+  max-width: 70ch;
+  font: 400 13.5px / 1.5 var(--sans);
+  color: var(--ink-2);
+}
+
 /* an Aprobar refused in words */
 .acts .said.warn {
   margin-top: 8px;

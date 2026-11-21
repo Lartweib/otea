@@ -455,10 +455,16 @@ export function Acts({
             >
               {t('sheet.qa.send')}
             </Button>
-            <span className="closeas" role={offline ? 'status' : undefined}>
-              {offline ? t('sheet.qa.offline') : t('sheet.qa.goesOn', { agent: agent ?? '—' })}
-            </span>
+            {offline ? null : (
+              <span className="closeas">{t('sheet.qa.goesOn', { agent: agent ?? '—' })}</span>
+            )}
           </div>
+          {/* Its own line: a narrow sheet hides the close-as hint beside the button. */}
+          {offline ? (
+            <p className="said offline" role="status">
+              {t('sheet.qa.offline')}
+            </p>
+          ) : null}
           {heard && !offline ? <Unheard hearing={heard} /> : null}
           {!offline && (plan.primary || closeAs) ? (
             <div className="actions more">
