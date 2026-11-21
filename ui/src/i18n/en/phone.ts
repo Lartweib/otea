@@ -218,7 +218,11 @@ export const phone = {
   'phone.ts.ledger':
     'The HTTPS certificate is public: the name {host} is listed in the Certificate Transparency logs, which anyone can read.',
   // The installed app over HTTPS: without the PC, the queue, updates (offline/)
-  'offline.pcDown': 'Your PC is not answering',
+  'offline.noReach': 'I can’t reach your computer.',
+  'offline.askTailscale': 'Is Tailscale connected on this phone? Is Otea open on your computer?',
+  'offline.askLan':
+    'Is this phone on the same Wi‑Fi as your computer? Is Otea open on your computer?',
+  'offline.retry': 'Retry',
   'offline.oteaDown': 'Otea is not answering',
   'offline.synced': 'last synced {time}',
   'offline.readOnly': 'read-only',

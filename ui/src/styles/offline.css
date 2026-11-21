@@ -46,6 +46,37 @@
   flex: none;
   color: var(--ink-3);
 }
+/* Away from this computer it asks what to check (Tailscale, or the wifi, and Otea open): a banner
+   that wraps rather than a line that cuts the question short. */
+.offline-bar[data-ask] {
+  border-color: color-mix(in oklch, var(--warn) 45%, var(--rule-2));
+}
+.offline-bar[data-ask] .ob-text {
+  white-space: normal;
+}
+.offline-bar .ob-ask {
+  font-family: var(--sans);
+  font-size: 13.5px;
+  color: var(--ink);
+}
+.offline-bar .ob-retry {
+  flex: none;
+  min-height: 32px;
+  padding: 4px 12px;
+  border: 1px solid var(--rule-2);
+  border-radius: 8px;
+  background: var(--well);
+  font: 500 13px / 1 var(--sans);
+  color: var(--ink);
+  cursor: pointer;
+}
+.offline-bar .ob-retry:hover {
+  border-color: var(--ink-3);
+}
+.offline-bar .ob-retry:focus-visible {
+  outline: 2px solid var(--you);
+  outline-offset: 2px;
+}
 
 /* ───────── Te toca's queue ───────── */
 .queued {
@@ -127,6 +158,25 @@
   }
   .offline-bar .ob-when {
     display: block;
+  }
+  /* At 390: the question, since when, then read-only and Reintentar on their own row. */
+  .offline-bar[data-ask] {
+    flex-wrap: wrap;
+  }
+  .offline-bar[data-ask] .ob-text {
+    flex-basis: calc(100% - 20px);
+  }
+  .offline-bar[data-ask] .ob-ask {
+    display: block;
+    margin-top: 2px;
+  }
+  .offline-bar[data-ask] .ob-ro {
+    margin-left: 15px;
+    align-self: center;
+  }
+  .offline-bar[data-ask] .ob-retry {
+    margin-left: auto;
+    min-height: 40px;
   }
   .queued {
     padding-left: 0;

@@ -85,6 +85,16 @@ Once all six steps are done, the guide folds into a short **Ready** line, with *
 
 What `tailscale serve` forwards comes from this computer, so Otea tells it apart by its host (the tailnet name) and its `X-Forwarded-For`, never takes it for this computer's own browser, and still asks for a device token. A forwarded request that no chosen transport expects is refused. The HTTPS certificate is public: the machine's name on the tailnet is listed in the Certificate Transparency logs. `otea phone lan` goes back to the local network (and says how to stop `tailscale serve`); exit 20 (`transport_unavailable`) means Tailscale is not ready yet, or the relay was chosen.
 
+### If it does not open (Si no abre)
+
+Nearly every time, one of three things:
+
+- **Tailscale is off on the phone.** Open the Tailscale app on the phone and check that it says it is connected, then open Otea again. This is the usual one days after setting it up: every step in Settings › Phone stays done, because they are read on this computer. Settings › Phone says when Tailscale reports the phone offline.
+- **Otea is not running on this computer**, or the computer is asleep or off.
+- **On the local network, the phone is on another Wi‑Fi** (or on mobile data).
+
+The installed app still opens without this computer: the service worker keeps the page and the last data it saw. When it cannot reach this computer, whether opened, brought back to the front or opened from a notification, a banner under the top bar asks what to check. Through Tailscale (a `*.ts.net` address) it says: **I can't reach your computer. Is Tailscale connected on this phone? Is Otea open on your computer?** On the local network it asks about the Wi‑Fi instead. **Retry** reads everything again at once; the app also tries again each time it comes back to the front.
+
 ### Notifications
 
 On a phone over HTTPS (Tailscale), **Preferences › Notifications** (Avisos) turns on Web Push: the phone's browser subscribes with the server's VAPID key pair (made on the first `otea serve`, kept in `push-keys.json` in the Otea home with owner-only permissions); a notice names its project and opens it and `otea serve` posts each notice to that browser's push service, encrypted for it (aes128gcm) and to no other host. On iPhone, Safari allows it only for Otea added to the Home Screen; over the local network's plain HTTP no browser allows it, and Preferences says so. The desktop app shows the same notices as the system's notifications (see `desktop/README.md`).

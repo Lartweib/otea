@@ -13,6 +13,7 @@ export function testApp(o: Partial<App> = {}): App {
     now: NOW,
     session: { canWrite: true, canConfigure: true, canManageDevices: true },
     sync: { offline: false, syncedAt: null },
+    retry: noop,
     canCapture: true,
     project: { id: 'hm', name: 'Hollowmere', icon: null },
     items: { status: 'ready', value: o.all ?? [] },

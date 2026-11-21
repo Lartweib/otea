@@ -23,7 +23,7 @@ describe('the offline line', () => {
     );
 
     expect(html).toContain('role="status"');
-    expect(html).toContain('Tu PC no responde');
+    expect(html).toContain('No llego a tu equipo.');
     expect(html).toContain('última sincronización 14:32');
     expect(html).toContain('solo lectura');
   });
@@ -42,9 +42,55 @@ describe('the offline line', () => {
 
   it('on this computer it is Otea that does not answer', () => {
     setLanguage('es');
-    expect(downWords('localhost')).toBe('Otea no responde');
-    expect(downWords('desk.tail1.ts.net')).toBe('Tu PC no responde');
-    expect(downWords('localhost', true)).toBe('Tu PC no responde');
+    expect(downWords('localhost')).toEqual({ head: 'Otea no responde', ask: null });
+  });
+
+  it('through Tailscale it asks whether Tailscale is connected on the phone and Otea is open', () => {
+    setLanguage('es');
+    expect(downWords('desk.tail1.ts.net', true)).toEqual({
+      head: 'No llego a tu equipo.',
+      ask: '¿Tailscale está conectado en este teléfono? ¿Otea está abierto en tu equipo?',
+    });
+    // The origin says it, whatever the screen.
+    expect(downWords('Desk.Tail1.TS.NET').ask).toContain('Tailscale');
+  });
+
+  it('on the local network it asks about the wifi instead', () => {
+    setLanguage('es');
+    for (const host of ['192.168.1.24', 'desk.local', 'localhost']) {
+      expect(downWords(host, true)).toEqual({
+        head: 'No llego a tu equipo.',
+        ask: '¿Este teléfono está en la misma wifi que tu equipo? ¿Otea está abierto en tu equipo?',
+      });
+    }
+    expect(downWords('192.168.1.24').ask).toContain('wifi');
+  });
+
+  it('offers Reintentar, which tries the PC again', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(
+      createElement(OfflineBar, {
+        sync: { offline: true, syncedAt: null },
+        now: 1,
+        host: 'desk.tail1.ts.net',
+        phone: true,
+        onRetry: () => {},
+      }),
+    );
+    expect(html).toMatch(/<button[^>]*class="ob-retry"[^>]*>Reintentar<\/button>/);
+    expect(html).toContain('¿Tailscale está conectado en este teléfono?');
+    setLanguage('en');
+    const en = renderToStaticMarkup(
+      createElement(OfflineBar, {
+        sync: { offline: true, syncedAt: null },
+        now: 1,
+        host: 'desk.tail1.ts.net',
+        phone: true,
+        onRetry: () => {},
+      }),
+    );
+    expect(en).toContain('I can’t reach your computer.');
+    expect(en).toContain('>Retry</button>');
   });
 });
 
