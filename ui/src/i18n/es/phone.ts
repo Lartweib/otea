@@ -175,6 +175,11 @@ export const phone = {
     'Emparejar un teléfono muestra un código QR que abre {url}. Escanéalo con el teléfono y luego activa los avisos en Preferencias › Avisos. En iPhone, primero agrega Otea a la pantalla de inicio: Safari solo permite avisos ahí.',
   'phone.guide.pairDone': 'Un dispositivo emparejado ya tiene los avisos activados.',
   'phone.guide.partial': 'emparejado, sin avisos',
+  'phone.guide.unchecked': 'hecho (sin comprobar)',
+  'phone.guide.uncheckedText':
+    'Estaba hecho. Otea lo vuelve a comprobar cuando Tailscale vuelva a estar conectado en este equipo (paso 3).',
+  'phone.transport.awayPc':
+    'Tailscale está detenido en este equipo: el teléfono no llega a Otea hasta que lo vuelvas a conectar aquí (paso 3).',
   'phone.guide.pairPartial':
     'Tu teléfono ya está emparejado por Tailscale. Falta un paso: en el teléfono, abre Preferencias › Avisos y pulsa «Activar avisos». En iPhone, hazlo desde Otea en la pantalla de inicio.',
   'phone.ready.title': 'Listo',

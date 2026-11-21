@@ -584,6 +584,14 @@
 .ph-step[data-done="true"] .ph-step-state {
   color: var(--plus);
 }
+/* Done before, not readable while Tailscale is stopped here (TS-32): the tick, drawn hollow. */
+.ph-step[data-unchecked] .ph-step-mark {
+  border-color: var(--plus);
+  color: var(--plus);
+}
+.ph-step[data-unchecked] .ph-step-state {
+  color: var(--ink-2);
+}
 .ph-step-body > p {
   font: 400 14px / 1.5 var(--sans);
   color: var(--ink-2);

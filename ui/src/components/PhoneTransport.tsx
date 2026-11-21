@@ -86,6 +86,10 @@ export function problemOf(check: TailscaleCheck): Problem | null {
 
 export type Reach = 'local' | 'lan' | 'tailscale';
 
+// Tailscale is installed and signed in here, but stopped (`tailscale down`, or its app quit).
+export const stoppedHere = (check: TailscaleCheck | null | undefined): boolean =>
+  check?.state === 'logged_out' && check.stopped === true;
+
 // Which option is in use now, from the server's status.
 export function reachOf(status: PhoneStatus | null): Reach | null {
   if (!status) return null;
@@ -252,6 +256,7 @@ function Step({
   n,
   done,
   partial = false,
+  unchecked = false,
   title,
   children,
 }: {
@@ -260,19 +265,28 @@ function Step({
   done: boolean;
   // Halfway: the phone paired, notifications still off.
   partial?: boolean;
+  // Done before, and not readable now: Tailscale is stopped on this computer (TS-32).
+  unchecked?: boolean;
   title: string;
   children: ReactNode;
 }) {
-  const state = done ? 'phone.guide.done' : partial ? 'phone.guide.partial' : 'phone.guide.pending';
+  const state = done
+    ? 'phone.guide.done'
+    : unchecked
+      ? 'phone.guide.unchecked'
+      : partial
+        ? 'phone.guide.partial'
+        : 'phone.guide.pending';
   return (
     <li
       className="ph-step"
       data-step={step}
       data-done={done}
-      data-partial={(partial && !done) || undefined}
+      data-unchecked={(unchecked && !done) || undefined}
+      data-partial={(partial && !done && !unchecked) || undefined}
     >
       <span className="ph-step-mark" aria-hidden="true">
-        {done ? '✓' : n}
+        {done || unchecked ? '✓' : n}
       </span>
       <div className="ph-step-body">
         <h4>
@@ -332,6 +346,11 @@ export function TailscaleSteps({
   const canServe = check.state === 'ready' && !check.serving && done.pc && done.https;
   const doneCount = Object.values(done).filter(Boolean).length;
   const paired = !done.pair && guide.pairing === 'paired';
+  // Tailscale carried the phone and is stopped on this computer now: the steps after signing in
+  // were done and cannot be read until it runs again, so they stay done, not checked (TS-32).
+  const unchecked = inUse && stoppedHere(check);
+  const pairUnchecked = unchecked && guide.pairing === 'push';
+  const uncheckedText = <p>{t('phone.guide.uncheckedText')}</p>;
   // Every step done: the guide folds into a short Listo, and opens again on demand.
   const [open, setOpen] = useState(false);
   const allDone = doneCount === STEP_COUNT;
@@ -438,9 +457,17 @@ export function TailscaleSteps({
             </>
           )}
         </Step>
-        <Step step="https" n={4} done={done.https} title={t('phone.guide.https')}>
+        <Step
+          step="https"
+          n={4}
+          done={done.https}
+          unchecked={unchecked}
+          title={t('phone.guide.https')}
+        >
           {done.https ? (
             <p>{t('phone.guide.httpsDone')}</p>
+          ) : unchecked ? (
+            uncheckedText
           ) : (
             <>
               <p>{t('phone.guide.httpsText')}</p>
@@ -460,11 +487,21 @@ export function TailscaleSteps({
             </p>
           ) : null}
         </Step>
-        <Step step="serve" n={5} done={done.serve} title={t('phone.guide.serve')}>
-          <p>
-            {done.serve ? t('phone.guide.served', { url }) : t('phone.guide.serveText', { url })}
-          </p>
-          {done.serve ? null : <CopyCommand command={guide.command} />}
+        <Step
+          step="serve"
+          n={5}
+          done={done.serve}
+          unchecked={unchecked}
+          title={t('phone.guide.serve')}
+        >
+          {unchecked && !done.serve ? (
+            uncheckedText
+          ) : (
+            <p>
+              {done.serve ? t('phone.guide.served', { url }) : t('phone.guide.serveText', { url })}
+            </p>
+          )}
+          {done.serve || unchecked ? null : <CopyCommand command={guide.command} />}
           {/* Ejecutar este comando sits right under the command it runs, before the undo (TS-15). */}
           {canServe && !confirming ? (
             <div className="ph-acts">
@@ -518,7 +555,7 @@ export function TailscaleSteps({
               </div>
             </div>
           ) : null}
-          {serveProblem ? null : (
+          {serveProblem || unchecked ? null : (
             <>
               <p className="pj-hint">{t('phone.guide.undo')}</p>
               <CopyCommand command={guide.undo} small />
@@ -527,14 +564,25 @@ export function TailscaleSteps({
           {serveProblem ? <ProblemNote found={serveProblem} /> : null}
           {ranProblem && !done.serve ? <ProblemNote found={ranProblem} /> : null}
         </Step>
-        <Step step="pair" n={6} done={done.pair} partial={paired} title={t('phone.guide.pair')}>
-          <p>
-            {done.pair
-              ? t('phone.guide.pairDone')
-              : paired
-                ? t('phone.guide.pairPartial')
-                : t('phone.guide.pairText', { url })}
-          </p>
+        <Step
+          step="pair"
+          n={6}
+          done={done.pair}
+          partial={paired}
+          unchecked={pairUnchecked}
+          title={t('phone.guide.pair')}
+        >
+          {pairUnchecked && !done.pair ? (
+            uncheckedText
+          ) : (
+            <p>
+              {done.pair
+                ? t('phone.guide.pairDone')
+                : paired
+                  ? t('phone.guide.pairPartial')
+                  : t('phone.guide.pairText', { url })}
+            </p>
+          )}
           {inUse && done.serve ? (
             <div className="ph-acts">
               <Button size="sm" variant="primary" disabled={busy !== null} onClick={onPair}>
@@ -722,10 +770,15 @@ export function PhoneTransportView({
         settling={settling}
         onCloseLan={onCloseLan}
       />
-      {/* The everyday case: set up once, then Tailscale left off on the phone. */}
+      {/* The everyday case: set up once, then Tailscale left off on the phone; or stopped on this
+          computer, which the note then says instead (TS-32). */}
       {active === 'tailscale' ? (
         <p className="ph-away" role="note">
-          {t('phone.transport.away')}
+          {t(
+            stoppedHere(guide?.check ?? status?.tailscale)
+              ? 'phone.transport.awayPc'
+              : 'phone.transport.away',
+          )}
         </p>
       ) : null}
       {lost ? <ProblemNote found={lost} /> : null}

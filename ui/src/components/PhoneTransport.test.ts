@@ -491,6 +491,54 @@ describe('once Tailscale carries the phone', () => {
   });
 });
 
+// TS-32: with Tailscale stopped on this computer, the steps after signing in fell back to a first
+// setup (Activa HTTPS, the serve command without its button), and the note still blamed the phone.
+describe('Tailscale stopped on this computer, once it carried the phone', () => {
+  const stopped: TailscaleCheck = { state: 'logged_out', authUrl: null, stopped: true };
+  const status: PhoneStatus = { ...tailscale, reachable: false, tailscale: stopped };
+  const guide: TailscaleGuide = {
+    ...guideOf({ phone: true, pc: true }),
+    pairing: 'push',
+    check: stopped,
+    host: null,
+  };
+  const step = (html: string, name: string) => {
+    const from = html.indexOf(`data-step="${name}"`);
+    return html.slice(from, html.indexOf('</li>', from));
+  };
+
+  it('keeps the steps after signing in as done, not checked, and points at this computer', () => {
+    setLanguage('es');
+    const html = render({ status, guide });
+    for (const name of ['https', 'serve', 'pair']) {
+      expect(step(html, name)).toContain('hecho (sin comprobar)');
+      expect(step(html, name)).toContain(
+        'cuando Tailscale vuelva a estar conectado en este equipo',
+      );
+    }
+    expect(html).not.toContain('Abrir la página DNS');
+    expect(step(html, 'serve')).not.toContain('tailscale serve --bg');
+    expect(step(html, 'signIn')).toContain('tailscale up');
+  });
+
+  it('says the note about this computer, not the phone', () => {
+    setLanguage('es');
+    const html = render({ status, guide });
+    const note = html.slice(html.indexOf('class="ph-away"'));
+    expect(note).toContain('Tailscale está detenido en este equipo');
+    expect(note).not.toContain('tiene que estar conectado en el teléfono');
+    setLanguage('en');
+    expect(render({ status, guide })).toContain('Tailscale is stopped on this computer: the phone');
+  });
+
+  it('keeps a phone paired without notifications halfway, not done', () => {
+    setLanguage('en');
+    const html = render({ status, guide: { ...guide, pairing: 'paired' } });
+    expect(step(html, 'pair')).toContain('data-partial="true"');
+    expect(step(html, 'pair')).not.toContain('done (not checked)');
+  });
+});
+
 describe('the Tailscale guide, read as it is used', () => {
   const steps = (props: Partial<PhoneTransportViewProps>) =>
     render({ status: tailscale, picked: 'tailscale', ...props });
