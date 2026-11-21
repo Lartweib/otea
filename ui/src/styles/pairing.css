@@ -266,6 +266,10 @@
   color: var(--ink);
   overflow-wrap: anywhere;
 }
+/* It wraps after its dots (<wbr>), inside a name only when one name alone is too wide. */
+.lan-addr {
+  overflow-wrap: break-word;
+}
 .lan-net {
   max-width: 100%;
   height: 28px;

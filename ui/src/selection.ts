@@ -1,5 +1,5 @@
 // Routes live in the hash (SPEC §6.2): `#/` Te toca, `#/atasco`, `#/b/<board>` a board, `#/triage`,
-// `#/projects`, `#/settings`, `#/performance`, `#/lan` (the pairing dialog over Te toca), `#/studio[/...]` (see
+// `#/projects`, `#/settings`, `#/performance`, `#/lan` (the pairing dialog over Te toca; `#/settings/lan` over Configuración), `#/studio[/...]` (see
 // StudioPage), `#/modules[/<name>]` and `#/brief/<id>,<id>`. An open item appends
 // `/i/<id>` to Te toca, Atasco, a board and Triage (`#/b/Errores/i/ERR-214`; `#/i/ERR-214` on
 // Te toca; `#/triage/i/ERR-214` over the pass, which goes on as it was once it closes). A
@@ -13,7 +13,7 @@ export type ViewRoute =
   | { view: 'settings' }
   | { view: 'performance' }
   | { view: 'topics'; topic?: string }
-  | { view: 'lan' }
+  | { view: 'lan'; over?: 'settings' }
   | { view: 'studio'; page: StudioPage }
   | { view: 'modules'; name?: string }
   | { view: 'brief'; ids: string[] };
@@ -94,6 +94,7 @@ export function routeFromHash(hash: string): Route {
     return { view: 'studio', page: studioPage(path.slice(STUDIO.length + 1).split('/')) };
   }
   if (path === LAN) return { view: 'lan' };
+  if (path === `${SETTINGS}${LAN}`) return { view: 'lan', over: 'settings' };
   if (path === PROJECTS) return { view: 'projects' };
   if (path === SETTINGS) return { view: 'settings' };
   if (path === PERFORMANCE) return { view: 'performance' };
@@ -155,7 +156,7 @@ export function hashOf(route: Route): string {
     case 'topics':
       return topicsHash(route.topic);
     case 'lan':
-      return LAN_HASH;
+      return route.over === 'settings' ? `#${SETTINGS}${LAN}` : LAN_HASH;
     case 'studio':
       return studioHash(route.page);
     case 'modules':

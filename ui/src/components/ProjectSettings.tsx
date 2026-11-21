@@ -477,7 +477,10 @@ export function ProjectSettings({ version, connection, canWrite }: ProjectSettin
           sub={t('phone.transport.sub')}
           id={settingsSectionId('phone')}
         >
-          <PhoneTransport canWrite={canWrite} onPair={() => app.go({ view: 'lan' })} />
+          <PhoneTransport
+            canWrite={canWrite}
+            onPair={() => app.go({ view: 'lan', over: 'settings' })}
+          />
         </Section>
         <Section name={t('topics.settings.label')} id={settingsSectionId('topics')}>
           <TopicsSetting canWrite={canWrite} />

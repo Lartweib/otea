@@ -8,6 +8,7 @@ import {
   type PhoneTransportViewProps,
   problemOf,
   reachOf,
+  settlesAgain,
 } from './PhoneTransport.tsx';
 
 afterEach(() => setLanguage('en'));
@@ -473,5 +474,53 @@ describe('once Tailscale carries the phone', () => {
         'no está conectado a Tailscale',
       );
     }
+  });
+});
+
+describe('the Tailscale guide, read as it is used', () => {
+  const steps = (props: Partial<PhoneTransportViewProps>) =>
+    render({ status: tailscale, picked: 'tailscale', ...props });
+
+  // TS-15: Ejecutar este comando sat under the undo command, as if it ran that one.
+  it('puts Ejecutar este comando right after the command it runs, before the undo', () => {
+    setLanguage('es');
+    const html = steps({ guide: guideOf({ pc: true, signIn: true, https: true }) });
+    const run = html.indexOf('Ejecutar este comando');
+    expect(run).toBeGreaterThan(html.indexOf('tailscale serve --bg --https=443'));
+    expect(run).toBeLessThan(html.indexOf('Para deshacerlo'));
+  });
+
+  // TS-21: step 1 turned done only after steps 2 and 3, with nothing saying so.
+  it('says step 1 completes with step 3, whatever is signed in yet', () => {
+    setLanguage('es');
+    for (const signIn of [false, true]) {
+      const html = steps({ guide: guideOf({ signIn }) });
+      expect(html).toContain('Se marca como hecho junto con el paso 3');
+    }
+    expect(steps({ guide: guideOf({ phone: true }) })).not.toContain('junto con el paso 3');
+  });
+
+  // TS-8: the first HTTPS request waits seconds for Tailscale's certificate; right after
+  // serving, "no answer" read as a failure.
+  it('checks again for a while after serving, saying comprobando… instead of sin respuesta', () => {
+    setLanguage('es');
+    const waiting = { ...tailscale, reachable: false };
+    const html = steps({ status: waiting, settling: true });
+    expect(html).toContain('comprobando…');
+    expect(html).not.toContain('sin respuesta');
+    expect(steps({ status: waiting })).toContain('sin respuesta');
+  });
+
+  it('asks again only while Tailscale serves Otea and nothing answered yet', () => {
+    expect(settlesAgain({ ...tailscale, reachable: false })).toBe(true);
+    expect(settlesAgain(tailscale)).toBe(false);
+    expect(settlesAgain({ ...lan, reachable: false })).toBe(false);
+    expect(
+      settlesAgain({
+        ...tailscale,
+        reachable: false,
+        tailscale: { ...ready, serving: false },
+      }),
+    ).toBe(false);
   });
 });

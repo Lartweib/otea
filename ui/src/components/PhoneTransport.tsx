@@ -219,8 +219,11 @@ function ProblemNote({ found }: { found: Problem }) {
   );
 }
 
-function reachLabel(status: PhoneStatus): string {
+// `settling`: just served, Tailscale may still be fetching its certificate (seconds): a fresh "no
+// answer" is not one yet (TS-8).
+function reachLabel(status: PhoneStatus, settling = false): string {
   if (status.reachable === null) return t('phone.status.none');
+  if (settling && !status.reachable) return t('phone.status.loading');
   return status.reachable ? t('phone.status.yes') : t('phone.status.no');
 }
 
@@ -396,7 +399,7 @@ export function TailscaleSteps({
           ) : (
             <>
               <p>{t('phone.guide.phoneText')}</p>
-              {guide.signedIn ? null : <p className="pj-hint">{t('phone.guide.phoneUnseen')}</p>}
+              <p className="pj-hint">{t('phone.guide.phoneUnseen')}</p>
               <div className="ph-stores">
                 <StoreCode store={guide.stores.android} label={t('phone.guide.android')} />
                 <StoreCode store={guide.stores.ios} label={t('phone.guide.ios')} />
@@ -460,14 +463,7 @@ export function TailscaleSteps({
             {done.serve ? t('phone.guide.served', { url }) : t('phone.guide.serveText', { url })}
           </p>
           {done.serve ? null : <CopyCommand command={guide.command} />}
-          {serveProblem ? null : (
-            <>
-              <p className="pj-hint">{t('phone.guide.undo')}</p>
-              <CopyCommand command={guide.undo} small />
-            </>
-          )}
-          {serveProblem ? <ProblemNote found={serveProblem} /> : null}
-          {ranProblem && !done.serve ? <ProblemNote found={ranProblem} /> : null}
+          {/* Ejecutar este comando sits right under the command it runs, before the undo (TS-15). */}
           {canServe && !confirming ? (
             <div className="ph-acts">
               <Button
@@ -520,6 +516,14 @@ export function TailscaleSteps({
               </div>
             </div>
           ) : null}
+          {serveProblem ? null : (
+            <>
+              <p className="pj-hint">{t('phone.guide.undo')}</p>
+              <CopyCommand command={guide.undo} small />
+            </>
+          )}
+          {serveProblem ? <ProblemNote found={serveProblem} /> : null}
+          {ranProblem && !done.serve ? <ProblemNote found={ranProblem} /> : null}
         </Step>
         <Step step="pair" n={6} done={done.pair} partial={paired} title={t('phone.guide.pair')}>
           <p>
@@ -564,6 +568,8 @@ export type PhoneTransportViewProps = {
   // The option the person opened, when it is not the one in use (Tailscale, before it is ready).
   picked: Reach | null;
   ran?: TailscaleCheck | null;
+  // Just served, and nothing answered yet: the status is being read again (TS-8).
+  settling?: boolean;
   checked?: boolean;
   confirming: boolean;
   busy: Doing | null;
@@ -589,11 +595,13 @@ function StatusRows({
   active,
   busy,
   phoneOnline,
+  settling,
   onCloseLan,
 }: {
   status: PhoneStatus | null;
   active: Reach | null;
   busy: Doing | null;
+  settling: boolean;
   // From the Tailscale guide: false only when Tailscale says the phone is offline now.
   phoneOnline: boolean | null;
   onCloseLan?: (() => void) | undefined;
@@ -617,9 +625,12 @@ function StatusRows({
           </dd>
           <dt>{t('phone.status.reachable')}</dt>
           <dd>
-            <span className="ph-reach" data-ok={status.reachable ?? undefined}>
+            <span
+              className="ph-reach"
+              data-ok={settling && !status.reachable ? undefined : (status.reachable ?? undefined)}
+            >
               <span className="ph-dot" aria-hidden="true" />
-              {reachLabel(status)}
+              {reachLabel(status, settling)}
             </span>
           </dd>
         </>
@@ -656,6 +667,7 @@ export function PhoneTransportView({
   picked,
   ran = null,
   checked = false,
+  settling = false,
   confirming,
   busy,
   failure,
@@ -705,6 +717,7 @@ export function PhoneTransportView({
         active={active}
         busy={busy}
         phoneOnline={guide?.phoneOnline ?? null}
+        settling={settling}
         onCloseLan={onCloseLan}
       />
       {/* The everyday case: set up once, then Tailscale left off on the phone. */}
@@ -760,6 +773,15 @@ const messageOf = (error: unknown) => (error instanceof Error ? error.message : 
 const served = (check: TailscaleCheck | null | undefined) =>
   check?.state === 'ready' && check.serving;
 
+// Tailscale serves Otea and nothing answered there yet: right after serving, the first HTTPS
+// request waits for the certificate, so the status is read again a few times (TS-8).
+export function settlesAgain(status: PhoneStatus): boolean {
+  return status.transport === 'tailscale' && status.reachable === false && served(status.tailscale);
+}
+
+const SETTLE_TRIES = 6;
+const SETTLE_EVERY_MS = 3000;
+
 // The section's data: the status from the server, the guide while Tailscale is open, and what the
 // person picks. A pick opens or closes the local network (Otea's own setting); Tailscale opens its
 // steps and changes nothing until the person confirms the command they show, or until the steps
@@ -773,6 +795,25 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState<Doing | null>(null);
   const [failure, setFailure] = useState<string | undefined>();
+  // Reads left after serving, while nothing answers yet (TS-8).
+  const [settling, setSettling] = useState(0);
+  useEffect(() => {
+    if (settling <= 0) return undefined;
+    const controller = new AbortController();
+    const timer = window.setTimeout(() => {
+      fetchPhone(controller.signal).then(
+        (next) => {
+          setStatus(next);
+          setSettling(settlesAgain(next) ? settling - 1 : 0);
+        },
+        () => setSettling(0),
+      );
+    }, SETTLE_EVERY_MS);
+    return () => {
+      window.clearTimeout(timer);
+      controller.abort();
+    };
+  }, [settling]);
 
   const load = useCallback((signal: AbortSignal) => {
     fetchPhone(signal).then(setStatus, (error: unknown) => {
@@ -880,6 +921,7 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
       picked={picked}
       ran={ran}
       checked={checked}
+      settling={settling > 0}
       confirming={confirming}
       busy={busy}
       failure={failure}
@@ -899,6 +941,7 @@ export function PhoneTransport({ canWrite, onPair }: { canWrite: boolean; onPair
           () => serveOverTailscale(command),
           (next) => {
             setRan(served(next.tailscale) ? null : next.tailscale);
+            setSettling(settlesAgain(next) ? SETTLE_TRIES : 0);
             void readGuide();
           },
         );

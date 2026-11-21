@@ -48,6 +48,11 @@ export function pairedHome(kept: Pick<Storage, 'getItem' | 'setItem'> | undefine
   return homeTarget(kept) ?? '/';
 }
 
+// An address cut after each dot, so it wraps between its names and never inside one (TS-20).
+export function dotSegments(text: string): string[] {
+  return text.split(/(?<=\.)/);
+}
+
 // What is left of a code, as m:ss; 0:00 once it ran out.
 export function timeLeft(expiresAt: string, now: number): string {
   const seconds = Math.max(0, Math.floor((Date.parse(expiresAt) - now) / 1000));
