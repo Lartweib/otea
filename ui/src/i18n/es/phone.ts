@@ -323,7 +323,7 @@ export const phone = {
   'notify.androidBlocked':
     'Android tiene bloqueados los avisos de esta app: Ajustes › Apps › {app} › Notificaciones.',
   'notify.reopen':
-    'Si ya los permitiste, cierra {app} del todo y vuelve a abrirla: Android solo se lo avisa a la app cuando se abre.',
+    'Si ya los permitiste, cierra {app} del todo y vuelve a abrirla: mientras sigue abierta, Chrome puede no avisarle ni de un bloqueo ni de un permiso.',
   'notify.lost':
     'Este navegador perdió la suscripción a los avisos. Desactívalos y vuelve a activarlos.',
   'notify.recheck': 'Comprobar de nuevo',
