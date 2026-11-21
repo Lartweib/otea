@@ -433,6 +433,10 @@ export const surfaces = {
   'settings.kicker': 'Proyecto',
   'settings.display': 'Configuración',
   'settings.dek': 'Dónde vive {name}, qué guarda y qué repos sigue.',
+  'settings.signIn':
+    'Inicia sesión en este navegador con {command} en este equipo para cambiar algo. Sin sesión, aquí solo puedes mirar.',
+  'settings.deviceOnly':
+    'La configuración solo se cambia en el navegador del equipo donde corre Otea. Aquí solo puedes mirar.',
 
   // Rendimiento: cómo rinde cada modelo, por familia y esfuerzo, según el perfil de cada entrega
   'perf.kicker': 'Proyecto',
