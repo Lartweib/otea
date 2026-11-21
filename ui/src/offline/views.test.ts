@@ -66,6 +66,48 @@ describe('the offline line', () => {
     expect(downWords('192.168.1.24').ask).toContain('wifi');
   });
 
+  // TS-11: Tailscale answered 502, so the phone reaches the PC and Otea is what is closed there.
+  it('says Otea is not open on the computer when the door answers with nothing behind it', () => {
+    setLanguage('es');
+    expect(downWords('desk.tail1.ts.net', true, true)).toEqual({
+      head: 'Otea no está abierto en tu equipo.',
+      ask: 'Ábrelo allí: la app de escritorio u otea serve.',
+    });
+    setLanguage('en');
+    expect(downWords('desk.tail1.ts.net', true, true).head).toBe(
+      'Otea is not open on your computer.',
+    );
+  });
+
+  // TS-5: never an empty Te toca that looks like nothing waits.
+  it('says when this phone has nothing saved yet', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(
+      createElement(OfflineBar, {
+        sync: { offline: true, syncedAt: null },
+        now: 1,
+        host: 'desk.tail1.ts.net',
+        phone: true,
+      }),
+    );
+    expect(html).toContain('este teléfono todavía no guardó nada de este proyecto');
+  });
+
+  // TS-6: the queue exists, so the line says what Nuevo does offline.
+  it('says new items wait in the queue where the app keeps one', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(
+      createElement(OfflineBar, {
+        sync: { offline: true, syncedAt: 1 },
+        now: 2,
+        host: 'desk.tail1.ts.net',
+        phone: true,
+        queues: true,
+      }),
+    );
+    expect(html).toContain('solo lectura · lo nuevo queda en cola');
+  });
+
   it('offers Reintentar, which tries the PC again', () => {
     setLanguage('es');
     const html = renderToStaticMarkup(

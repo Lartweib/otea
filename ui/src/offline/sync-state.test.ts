@@ -26,6 +26,14 @@ describe('afterRead', () => {
     expect(afterRead(synced, { kind: 'failed' }, 100)).toEqual({ offline: true, syncedAt: 90 });
   });
 
+  // TS-11: the door (Tailscale serve) answered 502: Otea is closed on the PC, not out of reach.
+  it('says when Otea is closed on the PC, and forgets it when the PC cannot be reached at all', () => {
+    const closed = afterRead(start, { kind: 'cached', savedAt: null, closed: true }, 100);
+    expect(closed).toEqual({ offline: true, syncedAt: null, closed: true });
+    expect(afterRead(closed, { kind: 'failed' }, 110)).toEqual({ offline: true, syncedAt: null });
+    expect(afterRead(closed, { kind: 'fresh' }, 120)).toEqual({ offline: false, syncedAt: 120 });
+  });
+
   it('back online with the next read from the PC', () => {
     const off = afterRead(start, { kind: 'failed' }, 50);
     expect(afterRead(off, { kind: 'fresh' }, 60)).toEqual({ offline: false, syncedAt: 60 });
@@ -40,6 +48,11 @@ describe('readOf', () => {
       savedAt: 1700,
     });
     expect(readOf(new Headers({ [FROM_CACHE]: '1' }))).toEqual({ kind: 'cached', savedAt: null });
+    expect(readOf(new Headers({ [FROM_CACHE]: 'closed' }))).toEqual({
+      kind: 'cached',
+      savedAt: null,
+      closed: true,
+    });
   });
 });
 

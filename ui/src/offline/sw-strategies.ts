@@ -1,4 +1,4 @@
-import { FROM_CACHE, PROJECT, SAVED_AT } from './sw-routes.ts';
+import { CLOSED, FROM_CACHE, PROJECT, SAVED_AT, SHELL_KEY } from './sw-routes.ts';
 
 // How the service worker answers each route (sw-routes.ts), over the few calls of the Cache API it
 // needs, so the tests give it a map and a fake network.
@@ -30,6 +30,26 @@ export function unreachable(response: Response | undefined): boolean {
   return response === undefined || [502, 503, 504].includes(response.status);
 }
 
+// Why the PC did not answer, as FROM_CACHE says it (sw-routes.ts).
+const whyUnreachable = (response: Response | undefined): string =>
+  response?.status === 502 ? CLOSED : '1';
+
+// The PC's answer within `waitMs`, or none: a PC off the tailnet leaves a request hanging for
+// minutes (TS-1), and the app must open from the cache long before that.
+async function within(net: Net, request: Request, waitMs: number): Promise<Response | undefined> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  const late = new Promise<undefined>((resolve) => {
+    timer = setTimeout(() => resolve(undefined), waitMs);
+  });
+  try {
+    return await Promise.race([net(request), late]);
+  } catch {
+    return undefined;
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 function withHeaders(response: Response, extra: Record<string, string>): Response {
   const headers = new Headers(response.headers);
   for (const [name, value] of Object.entries(extra)) headers.set(name, value);
@@ -41,8 +61,8 @@ function withHeaders(response: Response, extra: Record<string, string>): Respons
 }
 
 // The read views' data: the PC's answer, kept as the last good one; when the PC does not answer,
-// that last one, marked as coming from the cache. A refusal (401 unpaired, 404) goes through as
-// it came and keeps nothing.
+// that last one, marked as coming from the cache and why (FROM_CACHE). A refusal (401 unpaired,
+// 404) goes through as it came and keeps nothing.
 // A PC that is off behind Tailscale may leave a request hanging: past `waitMs` it counts as off.
 export async function networkFirst(
   request: Request,
@@ -50,35 +70,53 @@ export async function networkFirst(
     net,
     cache,
     now,
-    waitMs = 6000,
+    waitMs = 4000,
   }: { net: Net; cache: CacheLike; now: () => number; waitMs?: number },
 ): Promise<Response> {
   const key = request.url;
-  let timer: ReturnType<typeof setTimeout> | undefined;
-  const late = new Promise<undefined>((resolve) => {
-    timer = setTimeout(() => resolve(undefined), waitMs);
-  });
-  let response: Response | undefined;
-  try {
-    response = await Promise.race([net(request), late]);
-  } catch {
-    response = undefined;
-  } finally {
-    clearTimeout(timer);
-  }
+  const response = await within(net, request, waitMs);
   if (response && !unreachable(response)) {
     if (response.ok && ofItsProject(key, response)) {
       await cache.put(key, withHeaders(response.clone(), { [SAVED_AT]: `${now()}` }));
     }
     return response;
   }
+  const why = whyUnreachable(response);
   const kept = await cache.match(key);
-  if (kept) return withHeaders(kept, { [FROM_CACHE]: '1' });
-  if (response) return response;
+  if (kept) return withHeaders(kept, { [FROM_CACHE]: why });
+  if (response) return withHeaders(response, { [FROM_CACHE]: why });
   return Response.json(
     { error: { code: 'offline', message: 'Your PC does not answer' } },
-    { status: 503, headers: { [FROM_CACHE]: '1' } },
+    { status: 503, headers: { [FROM_CACHE]: why } },
   );
+}
+
+// Where the service worker keeps the project last opened (in DATA_CACHE, which outlives a new
+// version of the app): `/` opens it when the PC does not answer.
+export const LAST_PROJECT = '/otea-last-project';
+
+export async function rememberProject(url: string, data: CacheLike): Promise<void> {
+  const project = projectOfUrl(url);
+  if (project !== undefined) await data.put(LAST_PROJECT, new Response(project));
+}
+
+// `/`, the installed app's start: the PC sends it to the last project. Without the PC within
+// `waitMs`, the last project this app opened, from the cache (TS-5: never an empty page outside
+// any project); else the cached app, which goes there itself when the page knows it (main.tsx).
+export async function homeFirst(
+  request: Request,
+  {
+    net,
+    shell,
+    data,
+    waitMs = 3000,
+  }: { net: Net; shell: CacheLike; data: CacheLike; waitMs?: number },
+): Promise<Response> {
+  const response = await within(net, request, waitMs);
+  if (response && !unreachable(response)) return response;
+  const last = await (await data.match(LAST_PROJECT))?.text();
+  if (last) return Response.redirect(new URL(`/p/${last}/`, request.url).href, 302);
+  return (await shell.match(SHELL_KEY)) ?? response ?? Response.error();
 }
 
 // The page and its files: the cached copy, else the network's (kept when it is good).

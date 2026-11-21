@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { inflateSync } from 'node:zlib';
 import { describe, expect, it } from 'vitest';
-import { clickTarget, openFromClick, pushNotification } from './sw-push.ts';
+import { clickTarget, launchNotice, openFromClick, pushNotification } from './sw-push.ts';
 
 const ORIGIN = 'https://desk.tail1234.ts.net';
 
@@ -135,5 +135,33 @@ describe('openFromClick', () => {
       },
     });
     expect(opened).toEqual([target]);
+  });
+});
+
+// TS-17: Android bundles Otea's notices; a tap on the bundle opens the app with no notificationclick,
+// so the app looks at what is still in the shade: one notice about an item opens it.
+describe('launchNotice', () => {
+  const HOME = `${ORIGIN}/p/proj-aaaaaa/#/`;
+  const item = (id: string) => ({ data: { url: `/p/proj-aaaaaa/#/i/${id}` } });
+  const test = { data: { url: '/#/' } };
+
+  it('opens the one item still in the shade, beside a test notice', () => {
+    expect(launchNotice([item('PEN-1'), test], HOME)).toBe(`${ORIGIN}/p/proj-aaaaaa/#/i/PEN-1`);
+    expect(launchNotice([item('PEN-1')], `${ORIGIN}/p/proj-aaaaaa/`)).toBe(
+      `${ORIGIN}/p/proj-aaaaaa/#/i/PEN-1`,
+    );
+  });
+
+  it('leaves Te toca, which lists them, when several items wait', () => {
+    expect(launchNotice([item('PEN-1'), item('PEN-2')], HOME)).toBeUndefined();
+    expect(launchNotice([test], HOME)).toBeUndefined();
+    expect(launchNotice([], HOME)).toBeUndefined();
+  });
+
+  it('never moves you from a place you opened yourself, nor to another site', () => {
+    expect(launchNotice([item('PEN-1')], `${ORIGIN}/p/proj-aaaaaa/#/b/Tasks`)).toBeUndefined();
+    expect(
+      launchNotice([{ data: { url: 'https://elsewhere.example/#/i/X-1' } }], HOME),
+    ).toBeUndefined();
   });
 });

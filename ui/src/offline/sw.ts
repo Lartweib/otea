@@ -6,8 +6,11 @@ import { SHELL_KEY, swRoute } from './sw-routes.ts';
 import {
   type CacheLike,
   cacheFirst,
+  DATA_CACHE,
   dataCacheFor,
+  homeFirst,
   networkFirst,
+  rememberProject,
   shellCache,
   staleCaches,
 } from './sw-strategies.ts';
@@ -89,10 +92,8 @@ sw.addEventListener('fetch', (event) => {
   if (route === 'network') return;
   if (route === 'home') {
     event.respondWith(
-      fetch(request).catch(() =>
-        opened(shellCache(VERSION)).then(
-          async (cache) => (await cache.match(SHELL_KEY)) ?? Response.error(),
-        ),
+      Promise.all([opened(shellCache(VERSION)), opened(DATA_CACHE)]).then(([shell, data]) =>
+        homeFirst(request, { net, shell, data }),
       ),
     );
     return;
@@ -104,6 +105,10 @@ sw.addEventListener('fetch', (event) => {
       ),
     );
     return;
+  }
+  // A project's page opened: `/` opens it next time the PC does not answer.
+  if (route === 'shell') {
+    event.waitUntil(opened(DATA_CACHE).then((data) => rememberProject(request.url, data)));
   }
   const key = route === 'shell' ? SHELL_KEY : new URL(request.url).pathname;
   event.respondWith(

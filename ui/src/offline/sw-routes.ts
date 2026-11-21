@@ -56,8 +56,10 @@ export const SHELL_KEY = '/index.html';
 
 // Set on a data answer the cache kept: when it came from the PC (ms since the epoch)…
 export const SAVED_AT = 'x-otea-saved-at';
-// …and on one served from the cache because the PC did not answer.
+// …and on one served from the cache because the PC did not answer: '1' when it cannot be reached at
+// all, CLOSED when its door (Tailscale serve) answered 502 with nothing behind it, Otea not open.
 export const FROM_CACHE = 'x-otea-offline';
+export const CLOSED = 'closed';
 // Set by the PC on every answer of a project's API: the project that answered. The cache keeps an
 // answer only under the project that gave it (sw-strategies.ts networkFirst).
 export const PROJECT = 'x-otea-project';

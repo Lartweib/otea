@@ -226,6 +226,10 @@ export const phone = {
     '¿Tailscale está conectado en este teléfono? ¿Otea está abierto en tu equipo?',
   'offline.askLan':
     '¿Este teléfono está en la misma wifi que tu equipo? ¿Otea está abierto en tu equipo?',
+  'offline.closed': 'Otea no está abierto en tu equipo.',
+  'offline.askClosed': 'Ábrelo allí: la app de escritorio u otea serve.',
+  'offline.nothingSaved': 'este teléfono todavía no guardó nada de este proyecto',
+  'offline.readQueue': 'solo lectura · lo nuevo queda en cola',
   'offline.retry': 'Reintentar',
   'offline.oteaDown': 'Otea no responde',
   'offline.synced': 'última sincronización {time}',

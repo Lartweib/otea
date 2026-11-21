@@ -33,6 +33,18 @@ describe('the sheet of an item that is not there', () => {
     expect(html).toMatch(/class="[^"]*closeb[^"]*"[^>]*>Cerrar</);
   });
 
+  // TS-10: offline, an item never read before has nothing kept; the sheet says it opens later
+  // instead of the tap doing nothing.
+  it('says the item opens when the computer answers again, when it could not be read', () => {
+    setLanguage('es');
+    const html = renderToStaticMarkup(
+      createElement(ItemMissing, { id: 'PEN-3', phone: true, offline: true, onClose: () => {} }),
+    );
+    expect(html).toContain('Sin conexión con tu equipo');
+    expect(html).toContain('PEN-3 se abre cuando tu equipo vuelva a responder.');
+    expect(html).not.toContain('Ítem no encontrado');
+  });
+
   it('speaks English, and says Back on the phone', () => {
     expect(render()).toContain('Item not found');
     expect(render()).toContain('There is no item NOPE-1 in this project.');

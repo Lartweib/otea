@@ -3,13 +3,17 @@ import { GhostButton } from '../../kit/index.ts';
 
 // The sheet of an item the server does not have (a mistyped or deleted id): the sheet's own bar and
 // head, so it opens, swaps and closes as any item does, saying what was not found, with Cerrar.
+// `offline`: the PC did not answer and nothing of the item was kept (TS-10): it opens once the PC
+// answers again.
 export function ItemMissing({
   id,
   phone,
+  offline = false,
   onClose,
 }: {
   id: string;
   phone: boolean;
+  offline?: boolean;
   onClose: () => void;
 }) {
   return (
@@ -26,10 +30,12 @@ export function ItemMissing({
       </div>
       <div className="d-head">
         <h1 className="headline" data-c>
-          {t('sheet.missing.title')}
+          {t(offline ? 'sheet.unreached.title' : 'sheet.missing.title')}
         </h1>
         <div data-c>
-          <p className="standfirst">{t('sheet.missing.text', { id })}</p>
+          <p className="standfirst">
+            {t(offline ? 'sheet.unreached.text' : 'sheet.missing.text', { id })}
+          </p>
         </div>
       </div>
     </div>
