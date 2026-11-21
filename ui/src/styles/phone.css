@@ -1170,6 +1170,10 @@
   line-height: 1.08;
   margin: 6px 0 8px;
 }
+/* Offline, the item page carries the line the top bar would (TS-31), with room before the title. */
+.p-item > .offline-bar {
+  margin: 0 0 14px;
+}
 .p-item .acts {
   margin-top: 14px;
 }
