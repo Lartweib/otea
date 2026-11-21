@@ -96,6 +96,29 @@ export function moveTo(
   }
 }
 
+// When to look at what waits for the person: as the app opens, as it comes back to the front, and
+// as its window gets the focus back while it stays in front. With the app open, a tap on Android's
+// bundle of notices only pulls the shade away and back: no visibilitychange, a blur and a focus.
+export function whenInFront(
+  look: () => void,
+  doc: EventTarget & { visibilityState: string },
+  win: EventTarget,
+): void {
+  look();
+  doc.addEventListener('visibilitychange', () => {
+    if (doc.visibilityState === 'visible') look();
+  });
+  let away = false;
+  win.addEventListener('blur', () => {
+    away = true;
+  });
+  win.addEventListener('focus', () => {
+    if (!away) return;
+    away = false;
+    if (doc.visibilityState === 'visible') look();
+  });
+}
+
 export function goTo(url: string): void {
   const move = moveTo(url, window.location.href);
   if (move === undefined) return;
@@ -155,8 +178,9 @@ export async function startShell(
       if (worker.state === 'installed' && sw.controller) whenQuiet(() => apply(worker));
     });
   });
-  // A tap on Android's bundle of notices opens the app with no notificationclick (TS-17): the one
-  // item notice still shown leads to its item, and goes from the shade.
+  // A tap on Android's bundle of notices opens the app, or brings it back, with no
+  // notificationclick (TS-17): the one item notice still shown leads to its item, and goes from the
+  // shade.
   const openShownNotice = () => {
     registration.getNotifications?.().then(
       (shown) => {
@@ -169,10 +193,9 @@ export async function startShell(
       () => undefined,
     );
   };
-  openShownNotice();
+  whenInFront(openShownNotice, document, window);
   let checked = Date.now();
   document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') openShownNotice();
     if (document.visibilityState !== 'visible' || Date.now() - checked < CHECK_EVERY_MS) return;
     checked = Date.now();
     registration.update().catch(() => undefined);
