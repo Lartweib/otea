@@ -10,6 +10,8 @@ export type NotifyView = {
   target: 'device' | 'desktop';
   key: string | null;
   subscribed: boolean;
+  // Lost without the device choosing it (its push service said gone, or the phone found it lost).
+  lost?: boolean;
   prefs: NotifyPrefs;
 };
 

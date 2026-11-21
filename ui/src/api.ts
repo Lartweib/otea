@@ -412,6 +412,11 @@ export function postUnsubscribe(): Promise<NotifyView> {
   return post<NotifyView>('/api/notify/unsubscribe', {});
 }
 
+// This browser no longer holds the subscription the server pushes to (TS-3).
+export function postLost(): Promise<NotifyView> {
+  return post<NotifyView>('/api/notify/lost', {});
+}
+
 export function postNotifyPrefs(prefs: NotifyPrefs, lang: Language): Promise<NotifyView> {
   return post<NotifyView>('/api/notify/prefs', { prefs, lang });
 }

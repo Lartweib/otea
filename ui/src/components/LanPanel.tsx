@@ -136,11 +136,7 @@ export function LanPanel({ canManage }: LanPanelProps) {
   const testPush = (id: string) => {
     setTests((was) => new Map(was).set(id, null));
     postDeviceTestPush(id)
-      .then((answer) =>
-        answer.result === 'sent'
-          ? `${testPushWords(answer)} ${t('testPush.ifNot')}`
-          : testPushWords(answer),
-      )
+      .then((answer) => testPushWords(answer, { desk: true, app: app.project?.name }))
       .catch(() => t('testPush.failed'))
       .then((words) => setTests((was) => new Map(was).set(id, words)));
   };

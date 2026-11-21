@@ -5,6 +5,7 @@ import { z } from 'zod';
 import {
   desktopTarget,
   dropSubscription,
+  loseSubscription,
   saveDesktopPrefs,
   savePrefs,
   saveSubscription,
@@ -32,6 +33,9 @@ export type NotifyView = {
   // The key a browser subscribes with; only to a device over HTTPS, where Web Push works.
   key: string | null;
   subscribed: boolean;
+  // The subscription was lost without the device choosing it (TS-3): its push service called it
+  // gone, or the phone found its browser no longer holds it. Its prefs are kept.
+  lost: boolean;
   prefs: NotifyPrefs;
 };
 
@@ -84,6 +88,14 @@ function pushDevice(c: Context): string {
   return client.device.id;
 }
 
+function unsubscribingDevice(c: Context): string {
+  const client = clientOf(c);
+  if (client.kind !== 'device') {
+    throw new RejectedRequest(403, 'forbidden', 'Only a paired device unsubscribes from push');
+  }
+  return client.device.id;
+}
+
 function view(c: Context, machine: DatabaseSync, keys: VapidKeys): NotifyView {
   const client = clientOf(c);
   if (client.kind === 'device') {
@@ -91,11 +103,18 @@ function view(c: Context, machine: DatabaseSync, keys: VapidKeys): NotifyView {
     return {
       target: 'device',
       key: client.secure ? keys.publicKey : null,
-      subscribed: target !== undefined,
+      subscribed: target?.push != null,
+      lost: target !== undefined && target.push === null,
       prefs: target?.prefs ?? DEFAULT_PREFS,
     };
   }
-  return { target: 'desktop', key: null, subscribed: true, prefs: desktopTarget(machine).prefs };
+  return {
+    target: 'desktop',
+    key: null,
+    subscribed: true,
+    lost: false,
+    prefs: desktopTarget(machine).prefs,
+  };
 }
 
 export function notifyApi(
@@ -143,15 +162,15 @@ export function notifyApi(
       .post('/notify/unsubscribe', (c) => {
         assertWritable(c, auth);
         assertSameOrigin(c);
-        const client = clientOf(c);
-        if (client.kind !== 'device') {
-          throw new RejectedRequest(
-            403,
-            'forbidden',
-            'Only a paired device unsubscribes from push',
-          );
-        }
-        dropSubscription(machine, client.device.id);
+        dropSubscription(machine, unsubscribingDevice(c));
+        notifier.refresh();
+        return c.json(view(c, machine, keys));
+      })
+      // The phone's browser no longer holds the subscription the server pushes to (TS-3).
+      .post('/notify/lost', (c) => {
+        assertWritable(c, auth);
+        assertSameOrigin(c);
+        loseSubscription(machine, unsubscribingDevice(c));
         notifier.refresh();
         return c.json(view(c, machine, keys));
       })

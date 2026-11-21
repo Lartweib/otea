@@ -146,6 +146,7 @@ describe('notifications on the server', () => {
         target: 'device',
         key: expect.stringMatching(/^[A-Za-z0-9_-]{87}$/),
         subscribed: false,
+        lost: false,
         prefs: {
           turn: true,
           ask: true,
@@ -260,6 +261,55 @@ describe('notifications on the server', () => {
         muted: ['other-bbbbbb'],
       });
       expect(lan.devices.find(({ id }) => id === quiet.device)?.notify).toBeNull();
+    });
+
+    // TS-3: a subscription dropped without the phone choosing it (its push service said gone, or the
+    // phone found it lost) is remembered, so the phone says it stopped getting them, with its choices.
+    it('tells the phone its subscription was lost, until it turns them on again or off', async () => {
+      const { cookie, device } = await pair();
+      await subscribe(cookie);
+      const prefs = { ...DEFAULT_PREFS, stuck: false };
+      await viaTailscale('/p/memory-aaaaaa/api/notify/prefs', {
+        method: 'POST',
+        cookie,
+        body: { prefs, lang: 'es' },
+      });
+      const notify = async () =>
+        (await viaTailscale('/p/memory-aaaaaa/api/notify', { cookie })).json();
+      const lan = async () =>
+        (
+          (await (await desk('/p/memory-aaaaaa/api/lan')).json()) as {
+            devices: { id: string; notify: unknown }[];
+          }
+        ).devices.find(({ id }) => id === device)?.notify;
+
+      answer = { result: 'gone', status: 410, detail: '' };
+      await desk(`/api/devices/${device}/test-push`, { method: 'POST', body: {} });
+      expect(await notify()).toMatchObject({ subscribed: false, lost: true, prefs });
+      expect(listTargets(server.machine)).toEqual([]);
+      expect(await lan()).toBeNull();
+
+      answer = { result: 'sent', status: 201, detail: '' };
+      expect(await (await subscribe(cookie, 2)).json()).toMatchObject({
+        subscribed: true,
+        lost: false,
+        prefs,
+      });
+
+      const reported = await viaTailscale('/p/memory-aaaaaa/api/notify/lost', {
+        method: 'POST',
+        cookie,
+        body: {},
+      });
+      expect(await reported.json()).toMatchObject({ subscribed: false, lost: true, prefs });
+      expect(listTargets(server.machine)).toEqual([]);
+
+      const off = await viaTailscale('/p/memory-aaaaaa/api/notify/unsubscribe', {
+        method: 'POST',
+        cookie,
+        body: {},
+      });
+      expect(await off.json()).toMatchObject({ subscribed: false, lost: false });
     });
 
     it('unsubscribes a phone when it is unpaired', async () => {

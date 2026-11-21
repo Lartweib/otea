@@ -143,13 +143,23 @@ export function savePrefs(
   return targetOfDevice(db, device) as NotifyTarget;
 }
 
+// The device turned them off: nothing is kept.
 export function dropSubscription(db: DatabaseSync, device: string): void {
   db.prepare('DELETE FROM notify_targets WHERE device = ?').run(device);
 }
 
+// A subscription lost without the device choosing it: nothing is pushed to it any more, but its
+// prefs stay and the device is told it stopped getting them (TS-3), until it subscribes again.
+const FORGET_PUSH = 'UPDATE notify_targets SET endpoint = NULL, p256dh = NULL, auth = NULL';
+
+// The phone found its browser no longer holds the subscription.
+export function loseSubscription(db: DatabaseSync, device: string): void {
+  db.prepare(`${FORGET_PUSH} WHERE device = ?`).run(device);
+}
+
 // The push service said the subscription is gone (404 or 410).
 export function dropEndpoint(db: DatabaseSync, endpoint: string): void {
-  db.prepare('DELETE FROM notify_targets WHERE endpoint = ?').run(endpoint);
+  db.prepare(`${FORGET_PUSH} WHERE endpoint = ?`).run(endpoint);
 }
 
 export function desktopTarget(db: DatabaseSync): NotifyTarget {

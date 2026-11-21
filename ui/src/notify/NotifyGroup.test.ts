@@ -1,13 +1,16 @@
 import { createElement } from 'react';
 import { renderToStaticMarkup } from 'react-dom/server';
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { DEFAULT_PREFS } from '../../../src/core/notify/planner.ts';
 import { setLanguage } from '../i18n/i18n.ts';
 import { NotifyBody, type NotifyBodyProps, toggleMuted } from './NotifyGroup.tsx';
-import { blockedHereOf, keyBytes, staleSubscription } from './push-client.ts';
+import { blockedHereOf, dropIfStale, keyBytes, staleSubscription } from './push-client.ts';
 import { testPushWords } from './test-push.ts';
 
-afterEach(() => setLanguage('en'));
+afterEach(() => {
+  setLanguage('en');
+  vi.unstubAllGlobals();
+});
 
 const view = { target: 'device', key: 'BKEY', subscribed: false, prefs: DEFAULT_PREFS } as const;
 
@@ -214,6 +217,68 @@ describe('a subscription the browser lost', () => {
     expect(html).toContain('Este teléfono dejó de recibir los avisos');
     expect(html).toContain('Activar avisos');
     expect(render({})).not.toContain('dejó de recibir');
+  });
+
+  // The server dropped it on its own (its push service said gone): the phone hears it from the
+  // server, not from what it kept itself.
+  it('says so too when the server is the one that remembers it', () => {
+    setLanguage('es');
+    expect(render({ view: { ...view, lost: true } })).toContain(
+      'Este teléfono dejó de recibir los avisos',
+    );
+  });
+
+  it('tells the server it was lost, not turned off, so its choices stay', async () => {
+    const fetch = vi.fn(async () => Response.json({ ...view, lost: true }));
+    vi.stubGlobal('fetch', fetch);
+    const next = await dropIfStale(on, { permission: 'granted', subscribed: false });
+    expect(next).toMatchObject({ lost: true });
+    expect(String((fetch.mock.calls[0] as unknown[])[0])).toMatch(/\/api\/notify\/lost$/);
+  });
+});
+
+// TS-22: Android names the installed app after its project (its manifest's short_name, so three
+// projects never make three icons all called Otea): where to look names that app.
+describe('the installed app, by its name', () => {
+  it('names it in Android’s settings path, on the phone and from the desk', () => {
+    setLanguage('es');
+    expect(render({ offer: 'blocked', platform: 'android', app: 'proj2' })).toContain(
+      'Ajustes › Apps › proj2 › Notificaciones',
+    );
+    const sent = { result: 'sent', status: 201, detail: '' } as const;
+    expect(testPushWords(sent, { here: 'android', app: 'proj2' })).toContain(
+      'Ajustes › Apps › proj2 › Notificaciones',
+    );
+    expect(testPushWords(sent, { here: 'ios', app: 'proj2' })).toContain(
+      'Ajustes › Notificaciones › proj2',
+    );
+    expect(testPushWords(sent, { blocked: true, app: 'proj2' })).toContain('› proj2 ›');
+    expect(testPushWords(sent, { app: 'proj2', desk: true })).toContain(
+      'Si no llega, revisa en el teléfono: Ajustes › Apps › proj2 › Notificaciones.',
+    );
+    setLanguage('en');
+    expect(testPushWords(sent, { here: 'android', app: 'proj2' })).toContain(
+      'Settings › Apps › proj2 › Notifications',
+    );
+  });
+
+  it('falls back to Otea when it does not know the project', () => {
+    setLanguage('es');
+    expect(render({ offer: 'blocked', platform: 'android' })).toContain('› Otea ›');
+  });
+});
+
+// TS-25: allowed again in Android's settings, the open app still reads them as denied until it is
+// closed and opened again: the warning says so.
+describe('allowed again while the app stays open', () => {
+  it('says to close the app and open it again', () => {
+    setLanguage('es');
+    const html = render({ offer: 'blocked', platform: 'android', app: 'proj2' });
+    expect(html).toContain('Si ya los permitiste, cierra proj2 del todo y vuelve a abrirla');
+    setLanguage('en');
+    expect(render({ offer: 'blocked', platform: 'android', app: 'proj2' })).toContain(
+      'If you already allowed them, close proj2 completely and open it again',
+    );
   });
 });
 
