@@ -298,5 +298,22 @@ export const phone = {
   'notify.blocked':
     'Notifications are blocked for Otea. Allow them in this browser’s settings for this site.',
   'notify.failed': 'They could not be turned on. Try again.',
+  'notify.androidBlocked':
+    'Android blocks this app’s notifications: Settings › Apps › Otea › Notifications.',
+  'notify.lost': 'This browser lost its notification subscription. Turn them off and on again.',
+  'notify.recheck': 'Check again',
+  'testPush.send': 'Send a test notification',
+  'testPush.sendTo': 'Send a test notification to {name}',
+  'testPush.sending': 'Sending…',
+  'testPush.sent': 'Sent: it should reach you in a few seconds.',
+  'testPush.refused': 'The push service refused it ({status}): {detail}',
+  'testPush.refusedPlain': 'The push service refused it ({status}).',
+  'testPush.gone':
+    'The push service no longer knows this device ({status}). Turn notifications on again on the phone.',
+  'testPush.network': 'Could not reach the push service: {detail}',
+  'testPush.off': 'This device does not have notifications on.',
+  'testPush.failed': 'It could not be sent. Try again.',
+  'testPush.ifNot':
+    'If it does not arrive, check on the phone: Settings › Apps › Otea › Notifications.',
   'notify.saveFailed': 'Not saved. Try again.',
 } as const;

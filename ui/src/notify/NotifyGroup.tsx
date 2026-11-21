@@ -1,11 +1,13 @@
 import { type ReactNode, useEffect, useId, useState } from 'react';
 import { DEFAULT_QUIET, type NotifyPrefs } from '../../../src/core/notify/planner.ts';
 import type { NotifyKind } from '../../../src/core/notify/signals.ts';
-import { fetchNotify, fetchProjects, postNotifyPrefs } from '../api.ts';
+import { fetchNotify, fetchProjects, postNotifyPrefs, postTestPush } from '../api.ts';
+import type { Platform } from '../home-screen.ts';
 import { language, type PlainKey, t } from '../i18n/i18n.ts';
 import { Icon } from '../kit/Icon.tsx';
 import { type NotifyOffer, type NotifyView, notifyOffer } from './offer.ts';
-import { placeHere, subscribeHere, unsubscribeHere } from './push-client.ts';
+import { localPush, placeHere, subscribeHere, unsubscribeHere } from './push-client.ts';
+import { testPushWords } from './test-push.ts';
 
 // Preferencias › Avisos. On a phone over HTTPS: turn them on (the browser asks), then what you are
 // told and when, and turn them off. On a phone that cannot have them: one line that says why and
@@ -147,7 +149,41 @@ export type NotifyBodyProps = {
   onOn: () => void;
   onOff: () => void;
   onPrefs: (next: NotifyPrefs) => void;
+  platform?: Platform;
+  // On for the server, but this browser cannot show them: its subscription is gone.
+  blockedHere?: boolean;
+  // A test push: running, and what came back.
+  testing?: boolean;
+  tested?: string | null;
+  onTest?: () => void;
+  // Reads the permission and the subscription again (after allowing them in Android's settings).
+  onRecheck?: () => void;
 };
+
+// Where to allow them again, with a way to read it again once allowed.
+function Blocked({
+  platform,
+  lost,
+  onRecheck,
+}: {
+  platform: Platform | undefined;
+  lost: boolean;
+  onRecheck: (() => void) | undefined;
+}) {
+  const words =
+    platform === 'android' ? 'notify.androidBlocked' : lost ? 'notify.lost' : 'notify.blocked';
+  return (
+    <>
+      <p className="gnote nproblem" role="status">
+        {t(words)}
+      </p>
+      <button type="button" className="plink" onClick={onRecheck}>
+        <Icon name="check" />
+        {t('notify.recheck')}
+      </button>
+    </>
+  );
+}
 
 export function NotifyBody({
   offer,
@@ -158,7 +194,15 @@ export function NotifyBody({
   onOn,
   onOff,
   onPrefs,
+  platform,
+  blockedHere = false,
+  testing = false,
+  tested = null,
+  onTest,
+  onRecheck,
 }: NotifyBodyProps) {
+  if (offer === 'blocked')
+    return <Blocked platform={platform} lost={false} onRecheck={onRecheck} />;
   const why = WHY[offer];
   if (why) return <p className="gnote">{t(why)}</p>;
   const failed = problem ? (
@@ -180,9 +224,25 @@ export function NotifyBody({
   }
   return (
     <>
+      {offer === 'push' && blockedHere ? (
+        <Blocked platform={platform} lost onRecheck={onRecheck} />
+      ) : null}
       <NotifyChoices prefs={view.prefs} projects={projects} onChange={onPrefs} />
       {offer === 'desktop' ? <p className="gnote">{t('notify.desktopNote')}</p> : null}
       {failed}
+      {offer === 'push' ? (
+        <>
+          <button type="button" className="plink" disabled={busy || testing} onClick={onTest}>
+            <Icon name="bell" />
+            {testing ? t('testPush.sending') : t('testPush.send')}
+          </button>
+          {tested ? (
+            <p className="gnote" role="status">
+              {tested}
+            </p>
+          ) : null}
+        </>
+      ) : null}
       {offer === 'push' ? (
         <button type="button" className="plink" disabled={busy} onClick={onOff}>
           <Icon name="x" />
@@ -198,6 +258,30 @@ export function NotifyGroup() {
   const [busy, setBusy] = useState(false);
   const [problem, setProblem] = useState<NotifyBodyProps['problem']>(null);
   const [projects, setProjects] = useState<NotifyProject[]>([]);
+  const [testing, setTesting] = useState(false);
+  const [tested, setTested] = useState<string | null>(null);
+  // What this browser holds: its permission, and whether it still has a push subscription. Read as
+  // the group opens and as the app comes back to the front (from Android's settings, say).
+  const [here, setHere] = useState<{ permission: string; subscribed: boolean | null } | null>(null);
+  const [checks, setChecks] = useState(0);
+  // biome-ignore lint/correctness/useExhaustiveDependencies: Comprobar de nuevo bumps checks to read again
+  useEffect(() => {
+    let live = true;
+    const read = () => {
+      void localPush().then((next) => {
+        if (live) setHere(next);
+      });
+    };
+    read();
+    const front = () => {
+      if (document.visibilityState === 'visible') read();
+    };
+    document.addEventListener('visibilitychange', front);
+    return () => {
+      live = false;
+      document.removeEventListener('visibilitychange', front);
+    };
+  }, [checks]);
   useEffect(() => {
     const controller = new AbortController();
     fetchNotify(controller.signal)
@@ -213,8 +297,14 @@ export function NotifyGroup() {
     return () => controller.abort();
   }, []);
   if (!view) return null;
-  const offer = notifyOffer(placeHere(view));
+  const place = placeHere(view);
+  const offer = notifyOffer(place);
   if (offer === null) return null;
+  const blockedHere =
+    view.target === 'device' &&
+    view.subscribed &&
+    here !== null &&
+    (here.permission === 'denied' || here.subscribed === false);
   const act = async (
     run: () => Promise<NotifyView | null>,
     failure: NonNullable<NotifyBodyProps['problem']>,
@@ -249,6 +339,19 @@ export function NotifyGroup() {
             }, 'notify.failed')
           }
           onOff={() => void act(unsubscribeHere, 'notify.failed')}
+          platform={place.platform}
+          blockedHere={blockedHere}
+          testing={testing}
+          tested={tested}
+          onTest={() => {
+            setTesting(true);
+            setTested(null);
+            postTestPush()
+              .then((answer) => setTested(testPushWords(answer, { blocked: blockedHere })))
+              .catch(() => setTested(t('testPush.failed')))
+              .finally(() => setTesting(false));
+          }}
+          onRecheck={() => setChecks((n) => n + 1)}
           onPrefs={(prefs) => {
             const before = view;
             setView({ ...view, prefs });

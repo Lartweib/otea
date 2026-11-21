@@ -80,3 +80,20 @@ export async function unsubscribeHere(): Promise<NotifyView> {
   }
   return view;
 }
+
+// What this browser holds for push now: its permission, and whether its service worker still has a
+// subscription (null when it cannot tell: no service worker yet). Android can block an installed
+// app's notifications on its own, apart from the browser's permission.
+export async function localPush(): Promise<{ permission: string; subscribed: boolean | null }> {
+  const permission =
+    typeof Notification === 'undefined' ? 'unknown' : String(Notification.permission);
+  try {
+    if (!('serviceWorker' in navigator)) return { permission, subscribed: null };
+    const registration = await navigator.serviceWorker.getRegistration();
+    if (!registration) return { permission, subscribed: null };
+    const subscription = await registration.pushManager.getSubscription();
+    return { permission, subscribed: subscription !== null };
+  } catch {
+    return { permission, subscribed: null };
+  }
+}

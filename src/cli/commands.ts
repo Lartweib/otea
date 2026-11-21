@@ -2898,7 +2898,12 @@ async function serveUntil(
       tailscale,
       probe,
       // The server's own key pair for Web Push, kept beside the UI token.
-      notify: { keys: ensureVapidKeys(home, { warn }) },
+      // Each push's outcome in this output (the device id, never its endpoint), so a phone that
+      // never hears one says why.
+      notify: {
+        keys: ensureVapidKeys(home, { warn }),
+        log: (line) => process.stdout.write(`${line}\n`),
+      },
       network: localNetwork,
       gitHook,
     });
