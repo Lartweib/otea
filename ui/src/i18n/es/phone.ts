@@ -312,7 +312,9 @@ export const phone = {
     'Los avisos de Otea están bloqueados. Permítelos en los ajustes de este navegador para este sitio.',
   'notify.failed': 'No se pudieron activar. Vuelve a intentarlo.',
   'notify.androidBlocked':
-    'Android tiene bloqueados los avisos de esta app: Ajustes › Apps › Otea › Notificaciones.',
+    'Android tiene bloqueados los avisos de esta app: Ajustes › Apps › {app} › Notificaciones.',
+  'notify.reopen':
+    'Si ya los permitiste, cierra {app} del todo y vuelve a abrirla: Android solo se lo avisa a la app cuando se abre.',
   'notify.lost':
     'Este navegador perdió la suscripción a los avisos. Desactívalos y vuelve a activarlos.',
   'notify.recheck': 'Comprobar de nuevo',
@@ -327,10 +329,10 @@ export const phone = {
   'testPush.network': 'No se pudo llegar al servicio de avisos: {detail}',
   'testPush.off': 'Este dispositivo no tiene los avisos activados.',
   'testPush.failed': 'No se pudo enviar. Vuelve a intentarlo.',
-  'testPush.ifNot': 'Si no llega, revisa en el teléfono: Ajustes › Apps › Otea › Notificaciones.',
+  'testPush.ifNot': 'Si no llega, revisa en el teléfono: Ajustes › Apps › {app} › Notificaciones.',
   'testPush.ifNotAndroid':
-    'Si no llega, revisa en este teléfono Ajustes › Apps › Otea › Notificaciones.',
-  'testPush.ifNotIos': 'Si no llega, revisa en este teléfono Ajustes › Notificaciones › Otea.',
+    'Si no llega, revisa en este teléfono Ajustes › Apps › {app} › Notificaciones.',
+  'testPush.ifNotIos': 'Si no llega, revisa en este teléfono Ajustes › Notificaciones › {app}.',
   'testPush.ifNotOther':
     'Si no llega, revisa que este navegador tenga permitidas las notificaciones de este sitio.',
   'notify.lostHere':

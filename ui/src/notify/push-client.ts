@@ -1,4 +1,4 @@
-import { fetchNotify, postSubscription, postUnsubscribe } from '../api.ts';
+import { fetchNotify, postLost, postSubscription, postUnsubscribe } from '../api.ts';
 import { isStandalone, platformOf } from '../home-screen.ts';
 import type { Language } from '../i18n/i18n.ts';
 import { isDesktopApp, type NotifyPlace, type NotifyView } from './offer.ts';
@@ -149,12 +149,12 @@ export function forgetLost(): void {
 }
 
 // Tells the server this browser has no subscription, so it stops pushing to the dead one and the
-// desk no longer counts notifications as on. Returns the server's new view, or null when nothing
-// was stale (or the server could not be told).
+// desk no longer counts notifications as on; the server keeps that it was lost, with its choices.
+// Returns the server's new view, or null when nothing was stale (or the server could not be told).
 export async function dropIfStale(view: NotifyView, here: LocalPush): Promise<NotifyView | null> {
   if (!staleSubscription(view, here)) return null;
   try {
-    const next = await postUnsubscribe();
+    const next = await postLost();
     try {
       lostStore()?.setItem(PUSH_LOST_KEY, JSON.stringify(view.prefs));
     } catch {

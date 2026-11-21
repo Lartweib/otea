@@ -305,7 +305,9 @@ export const phone = {
     'Notifications are blocked for Otea. Allow them in this browser’s settings for this site.',
   'notify.failed': 'They could not be turned on. Try again.',
   'notify.androidBlocked':
-    'Android blocks this app’s notifications: Settings › Apps › Otea › Notifications.',
+    'Android blocks this app’s notifications: Settings › Apps › {app} › Notifications.',
+  'notify.reopen':
+    'If you already allowed them, close {app} completely and open it again: Android tells the app only when it opens.',
   'notify.lost': 'This browser lost its notification subscription. Turn them off and on again.',
   'notify.recheck': 'Check again',
   'testPush.send': 'Send a test notification',
@@ -320,11 +322,11 @@ export const phone = {
   'testPush.off': 'This device does not have notifications on.',
   'testPush.failed': 'It could not be sent. Try again.',
   'testPush.ifNot':
-    'If it does not arrive, check on the phone: Settings › Apps › Otea › Notifications.',
+    'If it does not arrive, check on the phone: Settings › Apps › {app} › Notifications.',
   'testPush.ifNotAndroid':
-    'If it does not arrive, check Settings › Apps › Otea › Notifications on this phone.',
+    'If it does not arrive, check Settings › Apps › {app} › Notifications on this phone.',
   'testPush.ifNotIos':
-    'If it does not arrive, check Settings › Notifications › Otea on this phone.',
+    'If it does not arrive, check Settings › Notifications › {app} on this phone.',
   'testPush.ifNotOther':
     'If it does not arrive, check that this browser allows notifications for this site.',
   'notify.lostHere':

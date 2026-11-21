@@ -74,10 +74,11 @@ export function pairingView(
   port: number,
   pick?: string,
 ): PairingView {
-  const devices = listDevices(machine).map((device) => ({
-    ...device,
-    notify: targetOfDevice(machine, device.id)?.prefs ?? null,
-  }));
+  const devices = listDevices(machine).map((device) => {
+    // A subscription lost on the way (TS-3) keeps its prefs, but nothing reaches the device.
+    const target = targetOfDevice(machine, device.id);
+    return { ...device, notify: target?.push ? target.prefs : null };
+  });
   const { transport } = phone.settings();
   const door = phone.chosen();
   if (!door) return { transport, enabled: false, urls: [], code: null, devices };
