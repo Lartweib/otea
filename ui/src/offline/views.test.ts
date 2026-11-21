@@ -191,7 +191,7 @@ describe('the install line in Preferencias', () => {
     const html = line('android', false, false);
 
     expect(html).toContain('Agregar a la pantalla de inicio');
-    expect(html).not.toContain('se abre aunque tu PC esté apagado');
+    expect(html).not.toContain('se abre aunque tu equipo esté apagado');
   });
 
   it('belongs on a phone in the browser, never in the installed app or on the desk', () => {
@@ -206,7 +206,7 @@ describe('the install line in Preferencias', () => {
 
     expect(html).toContain('Agregar a la pantalla de inicio');
     expect(html).toContain('En Safari: Compartir › Agregar a inicio.');
-    expect(html).toContain('se abre aunque tu PC esté apagado y se actualiza sola');
+    expect(html).toContain('se abre aunque tu equipo esté apagado y se actualiza sola');
   });
 
   it('on Android, a button when the browser offers its prompt, the menu otherwise', () => {

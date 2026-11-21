@@ -217,7 +217,7 @@ export const phone = {
   'phone.ts.step3': 'Scan the pairing code Otea shows.',
   'phone.ts.ledger':
     'The HTTPS certificate is public: the name {host} is listed in the Certificate Transparency logs, which anyone can read.',
-  // The installed app over HTTPS: without the PC, the queue, updates (offline/)
+  // The installed app over HTTPS: without the computer, the queue, updates (offline/)
   'offline.noReach': 'I can’t reach your computer.',
   'offline.askTailscale': 'Is Tailscale connected on this phone? Is Otea open on your computer?',
   'offline.askLan':
@@ -234,13 +234,14 @@ export const phone = {
   'offline.sentOne': 'Sent from the queue: {title} · {id}',
   'offline.sentMany': 'Sent {n} queued items',
   'offline.refused': '{title} could not be sent: see the queue in Your turn',
-  'offline.full': 'The queue is full ({mb} MB). It empties as your PC answers again.',
-  'offline.storage': 'This browser would not keep the capture. Try again once your PC answers.',
-  'offline.queuedToast': 'Queued for {board} · it goes when your PC answers',
-  'offline.lands': 'queued for {board} until your PC answers',
+  'offline.full': 'The queue is full ({mb} MB). It empties as your computer answers again.',
+  'offline.storage':
+    'This browser would not keep the capture. Try again once your computer answers.',
+  'offline.queuedToast': 'Queued for {board} · it goes when your computer answers',
+  'offline.lands': 'queued for {board} until your computer answers',
   'offline.queue.title': 'Queued',
   'offline.queue.note':
-    'Captured while your PC was not answering. They send themselves when it does.',
+    'Captured while your computer was not answering. They send themselves when it does.',
   'offline.queue.waiting': 'queued',
   'offline.queue.refused': 'not sent: {message}',
   'offline.queue.discard': 'Discard',
@@ -260,7 +261,7 @@ export const phone = {
   'install.android': 'In Chrome, open the menu (⋮), then Add to Home screen (or Install app).',
   'install.other': "Use your browser's menu to add this page to your home screen.",
   'install.again': 'You can add it later from Preferences.',
-  'offline.install.why': 'Installed, it opens even with your PC off and updates itself.',
+  'offline.install.why': 'Installed, it opens even with your computer off and updates itself.',
   'phone.transport.lanOnly':
     'Over the local network the phone works only while this computer is on and Otea is open.',
   'phone.transport.offline':
@@ -310,6 +311,8 @@ export const phone = {
     'If you already allowed them, close {app} completely and open it again: Android tells the app only when it opens.',
   'notify.lost': 'This browser lost its notification subscription. Turn them off and on again.',
   'notify.recheck': 'Check again',
+  'notify.needsConnection':
+    'Notifications need the connection: they load once your computer answers again.',
   'testPush.send': 'Send a test notification',
   'testPush.sendTo': 'Send a test notification to {name}',
   'testPush.sending': 'Sending…',

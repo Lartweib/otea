@@ -216,6 +216,12 @@ export function agentCounts(rows: readonly AgentRow[]): {
 
 export type PillMark = 'working' | 'idle' | 'none' | 'offline';
 
+// The connection the pill goes by: offline as well whenever the reads say the computer does not
+// answer (the offline banner shows), even while the stream still tries to open (TS-29).
+export function pillConnection(connection: Connection, offline: boolean): Connection {
+  return offline ? 'reconnecting' : connection;
+}
+
 // The pill's 16 px mark: the working node with its orbit while an agent holds a lease, a ring with
 // agents connected, a dashed ring with none (one gone quiet is not connected); offline while the
 // stream is down (it cannot count). The first moments of a page load, before the stream is ready,

@@ -7,6 +7,7 @@ import {
   agentCounts,
   agentRows,
   elsewhereLine,
+  pillConnection,
   pillMark,
   pillSummary,
   projectRows,
@@ -343,5 +344,16 @@ describe('the agents pill', () => {
     expect(pillSummary('live', [])).toEqual({ kind: 'none' });
     expect(pillSummary('reconnecting', rows([agent('a')]))).toEqual({ kind: 'offline' });
     expect(pillSummary('connecting', [])).toEqual({ kind: 'none' });
+  });
+});
+
+// TS-29: on an offline cold start the stream still says connecting, and the pill counted the agents
+// the cache kept («1 conectado») under the banner that says the computer does not answer.
+describe('pillConnection', () => {
+  it('is offline whenever the reads say the computer does not answer', () => {
+    expect(pillConnection('connecting', true)).toBe('reconnecting');
+    expect(pillConnection('live', true)).toBe('reconnecting');
+    expect(pillConnection('connecting', false)).toBe('connecting');
+    expect(pillConnection('live', false)).toBe('live');
   });
 });
