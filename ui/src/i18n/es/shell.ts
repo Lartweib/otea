@@ -63,6 +63,8 @@ export const shell = {
   // Preferencias: lo que es de este navegador
   'prefs.title': 'Preferencias',
   'prefs.scope': 'este navegador',
+  'prefs.scopePhone': 'este teléfono',
+  'prefs.scopeComputer': 'este equipo',
   'prefs.theme': 'tema',
   'prefs.system': 'Sistema',
   'prefs.light': 'Claro',

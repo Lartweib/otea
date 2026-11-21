@@ -61,6 +61,8 @@ export const shell = {
   // Preferences: what belongs to this browser
   'prefs.title': 'Preferences',
   'prefs.scope': 'this browser',
+  'prefs.scopePhone': 'this phone',
+  'prefs.scopeComputer': 'this computer',
   'prefs.theme': 'theme',
   'prefs.system': 'System',
   'prefs.light': 'Light',
