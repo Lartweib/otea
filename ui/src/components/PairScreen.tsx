@@ -1,16 +1,9 @@
 import { type FormEvent, useEffect, useState } from 'react';
 import { PairingRefused, pairDevice, peekPairing } from '../api.ts';
-import {
-  browserStore,
-  dismissHint,
-  hintDismissed,
-  isStandalone,
-  type Platform,
-  platformOf,
-} from '../home-screen.ts';
+import { browserStore, isStandalone } from '../home-screen.ts';
 import { type PlainKey, t, useLanguage } from '../i18n/i18n.ts';
 import { Button } from '../kit/index.ts';
-import { codeFromHash, deviceNameFrom, timeLeft } from '../pairing.ts';
+import { codeFromHash, deviceNameFrom, pairedHome, reachesAnywhere, timeLeft } from '../pairing.ts';
 import type { Paired, PairingPeek } from '../types.ts';
 
 type Phase = { step: 'ask' } | { step: 'pairing' } | { step: 'paired'; paired: Paired };
@@ -41,13 +34,23 @@ function useNow(every: number): number {
 
 // The two ends of the pairing, on one lane: the desk that showed the code and this phone. The lane
 // draws itself in as the code is exchanged, and the phone's node turns to your colour once paired.
-function PairRoute({ phase, desk }: { phase: Phase['step']; desk: string }) {
+function PairRoute({
+  phase,
+  desk,
+  already,
+}: {
+  phase: Phase['step'];
+  desk: string;
+  already: boolean;
+}) {
   const note =
     phase === 'paired'
       ? t('pair.pairedNow')
       : phase === 'pairing'
         ? t('pair.exchanging')
-        : t('pair.notPaired');
+        : already
+          ? t('pair.alreadyPaired')
+          : t('pair.notPaired');
   return (
     <div className={`pair-route ${phase}`}>
       <svg className="pair-lane" width="40" height="156" viewBox="0 0 40 156" aria-hidden="true">
@@ -87,44 +90,6 @@ function PairRoute({ phase, desk }: { phase: Phase['step']; desk: string }) {
   );
 }
 
-const STEPS: Readonly<Record<Platform, PlainKey[]>> = {
-  ios: ['home.ios', 'home.iosAfter'],
-  android: ['home.android', 'home.androidAfter'],
-  other: ['home.other'],
-};
-
-// Once paired in the browser: how to put Otea on the home screen, until dismissed. Inside the
-// home-screen app it never shows.
-function HomeScreenHint({ platform }: { platform: Platform }) {
-  const [shown, setShown] = useState(() => !hintDismissed(browserStore()));
-  if (!shown) return null;
-  return (
-    <aside className="pair-hint raised" aria-labelledby="pair-hint-title">
-      <h2 id="pair-hint-title" className="t-ui">
-        {t('home.title')}
-      </h2>
-      <ol className="pair-hint-steps">
-        {STEPS[platform].map((key) => (
-          <li key={key} className="t-small">
-            {t(key)}
-          </li>
-        ))}
-      </ol>
-      <div>
-        <Button
-          size="sm"
-          onClick={() => {
-            dismissHint(browserStore());
-            setShown(false);
-          }}
-        >
-          {t('home.dismiss')}
-        </Button>
-      </div>
-    </aside>
-  );
-}
-
 // What a phone on the LAN sees before it is paired (/pair): it trades the code from the QR code for
 // a device token of its own, which the server keeps in an HTTP-only cookie.
 export function PairScreen() {
@@ -135,7 +100,6 @@ export function PairScreen() {
   const scanned = scannedCode !== '';
   // Opened from the home screen: no QR code reaches it, and on iOS it has none of Safari's cookies.
   const [standalone] = useState(() => isStandalone(window.matchMedia, navigator));
-  const [platform] = useState(() => platformOf(navigator.userAgent, navigator.maxTouchPoints));
   const [code, setCode] = useState(scannedCode);
   const [name, setName] = useState(() => {
     const named = deviceNameFrom(navigator.userAgent);
@@ -149,6 +113,26 @@ export function PairScreen() {
     if (scannedCode === '') return;
     peekPairing(scannedCode).then(setPeek, (refused: unknown) => setError(refusal(refused)));
   }, [scannedCode]);
+
+  // The home-screen app left on this screen, once paired again from the browser (the two share
+  // the key on Android): it goes to the app as soon as the key works, and each time it comes back
+  // to the front (TS-12).
+  useEffect(() => {
+    if (!standalone || scanned) return undefined;
+    const tryIn = () => {
+      fetch('/api/session', { headers: { accept: 'application/json' } })
+        .then((response) => {
+          if (response.ok) window.location.replace(pairedHome(browserStore()));
+        })
+        .catch(() => undefined);
+    };
+    tryIn();
+    const front = () => {
+      if (document.visibilityState === 'visible') tryIn();
+    };
+    document.addEventListener('visibilitychange', front);
+    return () => document.removeEventListener('visibilitychange', front);
+  }, [standalone, scanned]);
 
   const submit = (event: FormEvent) => {
     event.preventDefault();
@@ -170,24 +154,34 @@ export function PairScreen() {
 
   const desk = window.location.host;
   const computer = phase.step === 'paired' ? phase.paired.computer : peek?.computer;
+  const anywhere = reachesAnywhere(window.location.hostname, window.isSecureContext);
+  const already = peek?.paired === true;
   return (
     <main className="pair-screen">
-      <PairRoute phase={phase.step} desk={desk} />
+      <PairRoute phase={phase.step} desk={desk} already={already} />
       {phase.step === 'paired' ? (
         <section className="pair-body" aria-labelledby="pair-title">
           <h1 id="pair-title" className="t-display">
             {t('pair.done')}
           </h1>
-          <p className="t-small">{t('pair.doneText', { computer: phase.paired.computer })}</p>
+          <p className="t-small">
+            {t(anywhere ? 'pair.doneTextAnywhere' : 'pair.doneText', {
+              computer: phase.paired.computer,
+            })}
+          </p>
           <dl className="pair-fields">
             <dt className="t-label">{t('pair.token')}</dt>
             <dd className="mono">{t('pair.tokenKept', { hint: phase.paired.device.hint })}</dd>
             <dt className="t-label">{t('pair.reach')}</dt>
-            <dd>{t('pair.reachText')}</dd>
+            <dd>{t(anywhere ? 'pair.reachAnywhere' : 'pair.reachText')}</dd>
           </dl>
-          {standalone ? null : <HomeScreenHint platform={platform} />}
+          {/* Installing is offered once, by the app's own banner, with Chrome's prompt where it
+              fires (TS-9). */}
           <div className="pair-bar">
-            <Button variant="primary" onClick={() => window.location.assign('/')}>
+            <Button
+              variant="primary"
+              onClick={() => window.location.assign(pairedHome(browserStore()))}
+            >
               {t('pair.open')}
             </Button>
           </div>
@@ -202,7 +196,13 @@ export function PairScreen() {
                 : t('pair.titlePlain')}
           </h1>
           <p className="t-small">
-            {scanned ? t('pair.intro') : standalone ? t('pair.introApp') : t('pair.introTyped')}
+            {already
+              ? t('pair.introAgain')
+              : scanned
+                ? t('pair.intro')
+                : standalone
+                  ? t('pair.introApp')
+                  : t('pair.introTyped')}
           </p>
           <dl className="pair-fields">
             <dt className="t-label">

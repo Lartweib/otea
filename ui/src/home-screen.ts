@@ -47,6 +47,27 @@ export function offerShortcut(project: { id: string; name: string } | null): voi
     ?.setAttribute('content', title);
 }
 
+// Otea ran from the home screen on this phone, or the browser said it installed it: a browser tab
+// then never offers to install it again (TS-16). On Android the tab and the installed app share
+// their storage; iOS keeps them apart, and there the tab cannot know.
+export const INSTALLED_KEY = 'otea.installed';
+
+export function noteInstalled(store: Store | undefined): void {
+  try {
+    store?.setItem(INSTALLED_KEY, '1');
+  } catch {
+    // nowhere to keep it: the banner may show in a tab again
+  }
+}
+
+export function knownInstalled(store: Store | undefined): boolean {
+  try {
+    return store?.getItem(INSTALLED_KEY) === '1';
+  } catch {
+    return false;
+  }
+}
+
 export const HOME_HINT_KEY = 'otea.homeScreenHint';
 
 type Store = Pick<Storage, 'getItem' | 'setItem'>;

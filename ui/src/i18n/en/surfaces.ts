@@ -141,18 +141,17 @@ export const surfaces = {
   'pair.tokenKept': '··{hint} · kept on this phone',
   'pair.reach': 'reach',
   'pair.reachText': 'Same network only. Away from home, use Tailscale.',
+  'pair.doneTextAnywhere':
+    'This phone can open all your projects on {computer} from anywhere while Tailscale is connected on it. Nothing else changes on the desk.',
+  'pair.reachAnywhere': 'From anywhere, with Tailscale connected on the phone.',
+  'pair.alreadyPaired': 'paired already',
+  'pair.introAgain':
+    'This phone is paired already. Pairing it again gives it a new key, and the old one stops working.',
   'pair.open': 'Open Otea',
   'pair.titleApp': 'Pair this app',
   'pair.appName': '{system} · home screen',
   'pair.introApp':
     'Enter the code shown on your computer, in Settings › Phone. This home-screen app keeps its own key, apart from the browser; if you already used the code there, show a new one.',
-  'home.title': 'Add Otea to your home screen',
-  'home.ios': 'Tap Share, then Add to Home Screen.',
-  'home.iosAfter':
-    'Open Otea from the home screen and pair it once more with a new code: the app keeps its own storage, apart from Safari.',
-  'home.android': 'Open the browser menu (⋮), then Add to Home screen.',
-  'home.androidAfter': 'If the app asks for a code, pair it once more with a new one.',
-  'home.other': "Use your browser's menu to add this page to your home screen.",
   'home.dismiss': 'Got it',
   'pair.error.invalid_code':
     'This code is not valid. Check it on the desk, or show a new one there.',

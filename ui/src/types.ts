@@ -236,7 +236,8 @@ export type PhoneStatus = {
 };
 
 // The computer's name: one pairing opens every project its server serves.
-export type PairingPeek = { computer: string; expiresAt: string };
+// `paired`: this phone is paired already, and pairing again gives it a new key.
+export type PairingPeek = { computer: string; expiresAt: string; paired?: boolean };
 
 export type Paired = { computer: string; device: Device };
 
