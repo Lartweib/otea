@@ -37,8 +37,11 @@ export function actsModeOf(o: {
   asks?: boolean;
   // An agent set it aside for later (P7-R3-1): Retomar takes it up again.
   aside?: boolean;
+  // The PC does not answer: the session cannot act, but an agent's question it kept still shows,
+  // to answer once the PC is back (TS-31).
+  offline?: boolean;
 }): ActsMode {
-  if (!o.canWrite) return 'read';
+  if (!o.canWrite) return o.offline && o.look === 'yours' && o.asks ? 'qa' : 'read';
   if (o.aside && (o.look === 'queued' || o.look === 'waiting' || o.look === 'stuck'))
     return 'aside';
   if (o.look === 'yours') {
@@ -317,13 +320,17 @@ export function Acts({
   // nothing of listening until the person goes for Devolver.
   const focus = (first: MoveChoice | null) => notesOpen ?? pointed ?? first;
 
+  // The PC does not answer: what cannot be done now waits for it, never the desk's sign-in (TS-31).
+  const offline = app.sync?.offline === true;
   let body: ReactNode = null;
   if (mode === 'read') {
     body = (
       <p className="receipt">
         {item.archived
           ? t('detail.archived', { board: item.archived.board })
-          : tx('detail.readOnly', { command: <code>otea open</code> })}
+          : offline
+            ? t('detail.offline')
+            : tx('detail.readOnly', { command: <code>otea open</code> })}
       </p>
     );
   } else if (mode === 'moves') {
@@ -433,7 +440,7 @@ export function Acts({
           <div className="actions" ref={sendRow}>
             <Button
               variant="primary"
-              disabled={!answer}
+              disabled={!answer || offline}
               onClick={() => {
                 const refused = () => setRefused({ k: refusalKey, text: t('sheet.refused') });
                 // An agent's question (otea ask) takes the answer with no move; an old handoff
@@ -448,10 +455,12 @@ export function Acts({
             >
               {t('sheet.qa.send')}
             </Button>
-            <span className="closeas">{t('sheet.qa.goesOn', { agent: agent ?? '—' })}</span>
+            <span className="closeas" role={offline ? 'status' : undefined}>
+              {offline ? t('sheet.qa.offline') : t('sheet.qa.goesOn', { agent: agent ?? '—' })}
+            </span>
           </div>
-          {heard ? <Unheard hearing={heard} /> : null}
-          {plan.primary || closeAs ? (
+          {heard && !offline ? <Unheard hearing={heard} /> : null}
+          {!offline && (plan.primary || closeAs) ? (
             <div className="actions more">
               {plan.primary ? btn(plan.primary, 'text') : null}
               {closeAs}

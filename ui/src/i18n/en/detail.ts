@@ -18,6 +18,7 @@ export const detail = {
   'detail.evidence': 'Evidence',
   'detail.missing': 'missing to complete',
   'detail.readOnly': 'Read-only. Run {command} to act from this browser.',
+  'detail.offline': 'No connection to your computer: you can act once it is back.',
   'detail.archived':
     'Read-only: {board} is archived. Restore it in Studio’s Archived to work on this item.',
   'detail.receipt': '{state} · now {turn} · {ago}',
@@ -502,6 +503,7 @@ export const detail = {
   'sheet.qa.placeholder': 'Write your answer…',
   'sheet.qa.send': 'Send answer',
   'sheet.qa.goesOn': '{agent} goes on with what you say',
+  'sheet.qa.offline': 'No connection to your computer: you can answer once it is back.',
   'pick.label': 'Pick an option',
   'pick.recommended': 'recommended',
   'pick.comment': 'A comment for the agent (optional)',

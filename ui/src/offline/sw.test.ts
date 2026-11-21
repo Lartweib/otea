@@ -8,6 +8,7 @@ import {
   homeFirst,
   LAST_PROJECT,
   networkFirst,
+  newLink,
   rememberProject,
   shellCache,
   staleCaches,
@@ -305,6 +306,109 @@ describe('homeFirst', () => {
     await rememberProject(`${ORIGIN}/pair`, cache);
 
     expect(await map.get(LAST_PROJECT)?.text()).toBe('web-k3x7qa');
+  });
+});
+
+// TS-33: an offline cold start showed the splash, then an empty «Cargando…» for several seconds,
+// each read waiting out the PC in turn. Once one request finds the PC down, the others answer from
+// the cache at once, and `/` opens the last project without waiting for the PC at all.
+describe('an offline cold start', () => {
+  const HOME = `${ORIGIN}/`;
+  const hanging = () => new Promise<Response>(() => undefined);
+  const settled = async (promise: Promise<unknown>) => {
+    let done = false;
+    void promise.then(() => {
+      done = true;
+    });
+    await vi.advanceTimersByTimeAsync(0);
+    return done;
+  };
+
+  it('opens the last project at once, and finds out meanwhile whether the PC answers', async () => {
+    vi.useFakeTimers();
+    try {
+      const link = newLink();
+      const kept: Promise<unknown>[] = [];
+      const answer = homeFirst(new Request(HOME), {
+        net: hanging,
+        shell: memoryCache().cache,
+        data: memoryCache({ [LAST_PROJECT]: new Response('web-k3x7qa') }).cache,
+        link,
+        background: (task) => void kept.push(task),
+      });
+
+      expect(await settled(answer)).toBe(true);
+      expect((await answer).headers.get('location')).toBe(`${ORIGIN}/p/web-k3x7qa/`);
+      expect(kept).toHaveLength(1);
+      await vi.advanceTimersByTimeAsync(3000);
+      expect(link.downAt).not.toBeNull();
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('answers the reads waiting on the PC from the cache as soon as one finds it down', async () => {
+    vi.useFakeTimers();
+    try {
+      const link = newLink();
+      const { cache } = memoryCache({ [ITEMS]: json([{ id: 'A-1' }]) });
+      const read = networkFirst(new Request(ITEMS), { net: hanging, cache, now: Date.now, link });
+      void homeFirst(new Request(HOME), {
+        net: hanging,
+        shell: memoryCache().cache,
+        data: memoryCache({ [LAST_PROJECT]: new Response('web-k3x7qa') }).cache,
+        link,
+        waitMs: 1000,
+        background: () => undefined,
+      });
+
+      await vi.advanceTimersByTimeAsync(1000);
+      expect(await settled(read)).toBe(true);
+      expect((await read).headers.get(FROM_CACHE)).toBe('1');
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('answers at once from the cache while the PC is known to be down', async () => {
+    vi.useFakeTimers();
+    try {
+      const link = newLink();
+      const { cache } = memoryCache({ [ITEMS]: json([{ id: 'A-1' }]) });
+      const first = networkFirst(new Request(ITEMS), { net: hanging, cache, now: Date.now, link });
+      await vi.advanceTimersByTimeAsync(4000);
+      await first;
+
+      const next = networkFirst(new Request(ITEMS), { net: hanging, cache, now: Date.now, link });
+      expect(await settled(next)).toBe(true);
+      expect(await (await next).json()).toEqual([{ id: 'A-1' }]);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it('keeps an answer that came late, and the PC counts as back', async () => {
+    const link = newLink();
+    link.downAt = Date.now();
+    let reply: (r: Response) => void = () => undefined;
+    const late = new Promise<Response>((resolve) => {
+      reply = resolve;
+    });
+    const { cache, map } = memoryCache({ [ITEMS]: json([{ id: 'old' }]) });
+    const kept: Promise<unknown>[] = [];
+    const response = await networkFirst(new Request(ITEMS), {
+      net: () => late,
+      cache,
+      now: Date.now,
+      link,
+      background: (task) => void kept.push(task),
+    });
+    expect(response.headers.get(FROM_CACHE)).toBe('1');
+
+    reply(json([{ id: 'new' }]));
+    await Promise.all(kept);
+    expect(await map.get(ITEMS)?.clone().json()).toEqual([{ id: 'new' }]);
+    expect(link.downAt).toBeNull();
   });
 });
 
